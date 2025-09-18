@@ -1,0 +1,35 @@
+version: '3.9'
+services:
+  db:
+    image: mysql:8.0
+    container_name: payments_mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: payments
+      MYSQL_USER: payments
+      MYSQL_PASSWORD: payments
+    ports: ["3306:3306"]
+    command: ["mysqld", "--default-authentication-plugin=mysql_native_password", "--binlog-expire-logs-seconds=864000", "--log-bin-trust-function-creators=1"]
+    volumes:
+    - dbdata:/var/lib/mysql
+    - ./mysql-init.sql:/docker-entrypoint-initdb.d/mysql-init.sql:ro
+
+  redis:
+    image: redis:7
+    container_name: payments_redis
+    ports: ["6379:6379"]
+
+  api:
+    build: ..
+    container_name: payments_api
+    depends_on: [db, redis]
+    env_file: ../.env
+    command: ["npm", "run", "start:dev"]
+    ports: ["3000:3000"]
+    volumes:
+      - ..:/app
+    working_dir: /app
+
+
+volumes:
+  dbdata:
