@@ -5,6 +5,7 @@ import { AsaasProvider } from './infra/providers/asaas/asaas-provider';
 import { CapturePayment } from './app/use-cases/CapturePayment';
 import { makeServer } from './infra/http/express-server';
 import { paymentsRouter } from './infra/http/routes/payments.routes';
+import { healthRouter } from './infra/http/routes/health.routes';
 import { PaymentRepositoryAdapter } from './infra/db/typeorm/payment-repository.adap';
 import { CreatePayment } from './app/use-cases/create-payment';
 
@@ -20,6 +21,7 @@ import { CreatePayment } from './app/use-cases/create-payment';
 
     const app = makeServer({
         paymentsRouter,
+        healthRouter,
         createPayment,
         capturePayment
     });

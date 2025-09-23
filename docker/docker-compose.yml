@@ -20,11 +20,17 @@ services:
     ports: ["6379:6379"]
 
   api:
-    build: ..
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      target: dev
     container_name: payments_api
     depends_on: [db, redis]
     env_file: ../.env
-    command: ["npm", "run", "start:dev"]
+    environment:
+      DB_HOST: db
+      REDIS_HOST: redis
+    command: ["npm", "run", "dev"]
     ports: ["3000:3000"]
     volumes:
       - ..:/app
