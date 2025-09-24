@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { log } from 'src/shared/logger';
+import { log } from '../../../shared/logger';
 
 export function requestLogger(req: Request, res: Response, next: NextFunction) {
     const started = Date.now();

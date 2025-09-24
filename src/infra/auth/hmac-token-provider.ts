@@ -1,5 +1,5 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import { TokenProviderPort } from 'src/ports/providers/token-provider.port';
+import { TokenProviderPort } from '../../ports/providers/token-provider.port';
 
 const nowSeconds = () => Math.floor(Date.now() / 1000);
 const base64UrlEncode = (data: string) => Buffer.from(data).toString('base64url');

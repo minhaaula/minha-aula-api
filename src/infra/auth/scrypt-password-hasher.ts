@@ -1,5 +1,5 @@
 import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
-import { PasswordHasherPort } from 'src/ports/providers/password-hasher.port';
+import { PasswordHasherPort } from '../../ports/providers/password-hasher.port';
 
 export class ScryptPasswordHasher implements PasswordHasherPort {
     async hash(plain: string): Promise<string> {

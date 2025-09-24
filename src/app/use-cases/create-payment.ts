@@ -1,9 +1,9 @@
-import { Payment } from "src/domain/entities/payment";
-import { Money } from "src/domain/value-objects/money";
-import { PaymentProviderPort } from "src/ports/providers/payment-provider.port";
-import { OutboxRepository } from "src/ports/repositories/outbox.repo";
-import { PaymentRepository } from "src/ports/repositories/payment.repo";
-import { Uuid } from "src/shared/uuid";
+import { Payment } from "../../domain/entities/payment";
+import { Money } from "../../domain/value-objects/money";
+import { PaymentProviderPort } from "../../ports/providers/payment-provider.port";
+import { OutboxRepository } from "../../ports/repositories/outbox.repo";
+import { PaymentRepository } from "../../ports/repositories/payment.repo";
+import { Uuid } from "../../shared/uuid";
 
 export class CreatePayment {
     constructor(

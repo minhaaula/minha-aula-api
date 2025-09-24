@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { CapturePayment } from 'src/app/use-cases/CapturePayment';
-import { CreatePayment } from 'src/app/use-cases/create-payment';
+import { CapturePayment } from '../../../app/use-cases/CapturePayment';
+import { CreatePayment } from '../../../app/use-cases/create-payment';
 import { z } from 'zod';
 
 export function paymentsRouter({ createPayment, capturePayment }: { createPayment: CreatePayment; capturePayment: CapturePayment; }) {

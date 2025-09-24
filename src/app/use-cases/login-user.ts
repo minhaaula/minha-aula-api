@@ -1,6 +1,6 @@
-import { UserRepository } from 'src/ports/repositories/user.repo';
-import { PasswordHasherPort } from 'src/ports/providers/password-hasher.port';
-import { TokenProviderPort } from 'src/ports/providers/token-provider.port';
+import { UserRepository } from '../../ports/repositories/user.repo';
+import { PasswordHasherPort } from '../../ports/providers/password-hasher.port';
+import { TokenProviderPort } from '../../ports/providers/token-provider.port';
 
 export class LoginUser {
     constructor(

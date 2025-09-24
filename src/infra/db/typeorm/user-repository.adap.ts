@@ -1,6 +1,6 @@
-import { Email } from 'src/domain/value-objects/email';
-import { User } from 'src/domain/entities/user';
-import { UserRepository } from 'src/ports/repositories/user.repo';
+import { Email } from '../../../domain/value-objects/email';
+import { User } from '../../../domain/entities/user';
+import { UserRepository } from '../../../ports/repositories/user.repo';
 import { UserOrm } from './entities/user.orm';
 import { AppDataSource } from './datasource';
 

@@ -1,8 +1,8 @@
-import { UserRepository } from 'src/ports/repositories/user.repo';
-import { PasswordHasherPort } from 'src/ports/providers/password-hasher.port';
-import { Email } from 'src/domain/value-objects/email';
-import { User } from 'src/domain/entities/user';
-import { Uuid } from 'src/shared/uuid';
+import { UserRepository } from '../../ports/repositories/user.repo';
+import { PasswordHasherPort } from '../../ports/providers/password-hasher.port';
+import { Email } from '../../domain/value-objects/email';
+import { User } from '../../domain/entities/user';
+import { Uuid } from '../../shared/uuid';
 
 type RegisterInput = {
     fullName: string;

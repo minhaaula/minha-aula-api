@@ -1,4 +1,4 @@
-import { Money } from 'src/domain/value-objects/money';
+import { Money } from '../../../domain/value-objects/money';
 import { PaymentProviderPort, CreateChargeInput } from '../../../ports/providers/payment-provider.port';
 import { AsaasClient } from './asaas-client';
 

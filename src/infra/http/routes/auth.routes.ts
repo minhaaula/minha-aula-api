@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { RegisterUser } from 'src/app/use-cases/register-user';
-import { LoginUser } from 'src/app/use-cases/login-user';
+import { RegisterUser } from '../../../app/use-cases/register-user';
+import { LoginUser } from '../../../app/use-cases/login-user';
 
 const cpfSchema = z.string()
     .min(11)

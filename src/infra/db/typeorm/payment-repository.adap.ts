@@ -1,8 +1,8 @@
-import { Payment } from "src/domain/entities/payment";
+import { Payment } from "../../../domain/entities/payment";
 import { PaymentOrm } from "./entities/payment.orm";
-import { Money } from "src/domain/value-objects/money";
+import { Money } from "../../../domain/value-objects/money";
 import { AppDataSource } from "./datasource";
-import { PaymentRepository } from "src/ports/repositories/payment.repo";
+import { PaymentRepository } from "../../../ports/repositories/payment.repo";
 
 export class PaymentRepositoryAdapter implements PaymentRepository {
     private repo = AppDataSource.getRepository(PaymentOrm);
