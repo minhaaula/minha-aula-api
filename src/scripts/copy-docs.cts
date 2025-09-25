@@ -1,8 +1,9 @@
 import fs from 'fs';
 import path from 'path';
 
-const sourceDir = path.resolve(__dirname, '../../docs');
-const targetDir = path.resolve(__dirname, '../docs');
+const projectRoot = process.cwd();
+const sourceDir = path.resolve(projectRoot, 'docs');
+const targetDir = path.resolve(projectRoot, 'dist', 'docs');
 
 if (!fs.existsSync(sourceDir)) {
     console.warn(`Docs directory not found, skipping copy: ${sourceDir}`);
