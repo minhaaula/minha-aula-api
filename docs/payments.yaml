@@ -1,0 +1,60 @@
+paths:
+  /payments:
+    post:
+      tags:
+        - Payments
+      summary: Criar um novo pagamento
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePaymentInput'
+      responses:
+        '201':
+          description: Pagamento criado ou retornado via idempotência.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentResponse'
+        '400':
+          description: Erro de validação, autorização ou processamento.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /payments/{id}/capture:
+    post:
+      tags:
+        - Payments
+      summary: Capturar um pagamento previamente autorizado
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Identificador do pagamento.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CapturePaymentInput'
+      responses:
+        '200':
+          description: Pagamento capturado com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentResponse'
+        '400':
+          description: Pagamento não encontrado ou erro de validação.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'

@@ -1,0 +1,13 @@
+paths:
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Verificar o estado da aplicação
+      responses:
+        '200':
+          description: Serviço operacional.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'

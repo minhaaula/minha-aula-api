@@ -1,0 +1,181 @@
+openapi: 3.0.3
+info:
+  title: Minha Escola API
+  version: 1.0.0
+  description: API para gerenciamento de pagamentos, autenticação de usuários.
+servers:
+  - url: http://localhost:3000
+    description: Ambiente local
+  - url: https://minha-escola-api-production.up.railway.app
+    description: Ambiente Prod
+tags:
+  - name: Auth
+    description: Fluxo de cadastro e autenticação de usuários.
+  - name: Payments
+    description: Operações para criação e captura de pagamentos.
+  - name: Health
+    description: Monitoramento da saúde da aplicação.
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+    RegisterUserInput:
+      type: object
+      required:
+        - fullName
+        - birthDate
+        - email
+        - phone
+        - cpf
+        - address
+        - password
+      properties:
+        fullName:
+          type: string
+          example: Maria Silva
+        birthDate:
+          type: string
+          format: date
+          example: 1990-05-23
+        email:
+          type: string
+          format: email
+          example: maria.silva@example.com
+        phone:
+          type: string
+          example: "+55 11 99999-0000"
+        cpf:
+          type: string
+          description: Apenas dígitos.
+          example: "12345678909"
+        address:
+          type: string
+          example: Rua das Flores, 123, São Paulo - SP
+        password:
+          type: string
+          format: password
+          minLength: 8
+    RegisterUserResponse:
+      type: object
+      properties:
+        userId:
+          type: string
+          format: uuid
+        fullName:
+          type: string
+        email:
+          type: string
+          format: email
+        cpf:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - userId
+        - fullName
+        - email
+        - cpf
+        - createdAt
+    LoginInput:
+      type: object
+      required:
+        - cpf
+        - password
+      properties:
+        cpf:
+          type: string
+          example: "12345678909"
+        password:
+          type: string
+          format: password
+          minLength: 8
+    LoginResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        userId:
+          type: string
+          format: uuid
+        fullName:
+          type: string
+        email:
+          type: string
+          format: email
+        cpf:
+          type: string
+        expiresIn:
+          type: integer
+          format: int32
+      required:
+        - accessToken
+        - userId
+        - fullName
+        - email
+        - cpf
+        - expiresIn
+    CreatePaymentInput:
+      type: object
+      required:
+        - idempotencyKey
+        - amount
+        - currency
+        - method
+        - customerId
+      properties:
+        idempotencyKey:
+          type: string
+          minLength: 8
+        amount:
+          type: number
+          format: int64
+          minimum: 1
+        currency:
+          type: string
+          minLength: 3
+          maxLength: 3
+        method:
+          type: string
+          enum: [CARD, PIX, BOLETO]
+        customerId:
+          type: string
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+    PaymentResponse:
+      type: object
+      properties:
+        paymentId:
+          type: string
+          format: uuid
+        status:
+          type: string
+      required:
+        - paymentId
+        - status
+    CapturePaymentInput:
+      type: object
+      properties:
+        amount:
+          type: number
+          format: int64
+          minimum: 1
+    HealthResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+      required:
+        - ok

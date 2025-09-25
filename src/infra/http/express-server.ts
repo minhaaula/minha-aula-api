@@ -1,10 +1,27 @@
 import express from 'express';
+import swaggerUi from 'swagger-ui-express';
 import { requestLogger } from './middlewares/request-logger';
+import { loadOpenApiDocument } from './swagger/load-openapi';
 
 export function makeServer(deps: any) {
     const app = express();
     app.use(express.json());
     app.use(requestLogger);
+
+    let openApiDocument: unknown;
+    try {
+        openApiDocument = loadOpenApiDocument();
+    } catch (err) {
+        console.warn('Swagger não pôde ser carregado:', err);
+    }
+
+    if (openApiDocument) {
+        app.use('/docs', swaggerUi.serve, swaggerUi.setup(openApiDocument));
+        app.get('/docs/openapi.json', (_req, res) => {
+            res.json(openApiDocument);
+        });
+    }
+
     if (deps.authRouter) {
         app.use('/auth', deps.authRouter(deps));
     }
