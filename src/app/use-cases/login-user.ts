@@ -1,6 +1,7 @@
 import { UserRepository } from '../../ports/repositories/user.repo';
 import { PasswordHasherPort } from '../../ports/providers/password-hasher.port';
 import { TokenProviderPort } from '../../ports/providers/token-provider.port';
+import { AuthTokenPayload } from '../contracts/auth-token-payload';
 
 export class LoginUser {
     constructor(
@@ -20,7 +21,13 @@ export class LoginUser {
         if (!valid) throw new Error('Invalid credentials');
 
         const expiresIn = this.defaultTtl;
-        const accessToken = await this.tokens.sign({ sub: user.id, cpf: user.cpf, fullName: user.fullName, email: user.email.value }, { expiresIn });
+        const payload: AuthTokenPayload = {
+            sub: user.id,
+            cpf: user.cpf,
+            fullName: user.fullName,
+            email: user.email.value
+        };
+        const accessToken = await this.tokens.sign(payload, { expiresIn });
 
         return {
             accessToken,

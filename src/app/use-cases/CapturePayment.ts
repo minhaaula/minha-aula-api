@@ -11,7 +11,7 @@ export class CapturePayment {
     ) {}
 
 
-    async exec(paymentId: string, partialAmount?: number) {
+    async exec(paymentId: string, partialAmount?: number, actorId?: string) {
         const payment = await this.payments.findById(paymentId);
         if (!payment) throw new Error('Payment not found');
         const expected = payment.version;
@@ -21,7 +21,7 @@ export class CapturePayment {
         payment.capture();
         await this.payments.save(payment, { expectedVersion: expected });
 
-        await this.outbox.enqueue({ type: 'PaymentCaptured', aggregateId: payment.id, payload: { paymentId: payment.id, amount: partialAmount ?? payment.amount.amount } });
+        await this.outbox.enqueue({ type: 'PaymentCaptured', aggregateId: payment.id, payload: { paymentId: payment.id, amount: partialAmount ?? payment.amount.amount, requestedBy: actorId } });
 
         return { paymentId: payment.id, status: payment.status };
     }

@@ -8,7 +8,12 @@ export function makeServer(deps: any) {
     if (deps.authRouter) {
         app.use('/auth', deps.authRouter(deps));
     }
-    app.use('/payments', deps.paymentsRouter(deps));
+    const paymentsRoutes = deps.paymentsRouter(deps);
+    if (deps.authMiddleware) {
+        app.use('/payments', deps.authMiddleware, paymentsRoutes);
+    } else {
+        app.use('/payments', paymentsRoutes);
+    }
     app.use('/health', deps.healthRouter(deps));
     app.use((err: any, _req: any, res: any, _next: any) => {
         console.error(err);

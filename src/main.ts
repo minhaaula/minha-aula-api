@@ -14,6 +14,7 @@ import { ScryptPasswordHasher } from './infra/auth/scrypt-password-hasher';
 import { LoginUser } from './app/use-cases/login-user';
 import { HmacTokenProvider } from './infra/auth/hmac-token-provider';
 import { authRouter } from './infra/http/routes/auth.routes';
+import { makeAuthMiddleware } from './infra/http/middlewares/auth';
 
 
 (async () => {
@@ -31,6 +32,7 @@ import { authRouter } from './infra/http/routes/auth.routes';
     const tokenTtl = Number.isFinite(parsedTtl) && parsedTtl > 0 ? parsedTtl : 3600;
     const registerUser = new RegisterUser(users, passwordHasher);
     const loginUser = new LoginUser(users, passwordHasher, tokenProvider, tokenTtl);
+    const authMiddleware = makeAuthMiddleware(tokenProvider);
 
     const app = makeServer({
         paymentsRouter,
@@ -39,7 +41,8 @@ import { authRouter } from './infra/http/routes/auth.routes';
         createPayment,
         capturePayment,
         registerUser,
-        loginUser
+        loginUser,
+        authMiddleware
     });
 
     app.listen(process.env.PORT ?? 3000, () => console.log(`API on http://localhost:${process.env.PORT ?? 3000}`));
