@@ -1,15 +1,15 @@
-const fs = require('fs');
-const path = require('path');
+import fs from 'fs';
+import path from 'path';
 
-const sourceDir = path.resolve(__dirname, '..', 'docs');
-const targetDir = path.resolve(__dirname, '..', 'dist', 'docs');
+const sourceDir = path.resolve(__dirname, '../../docs');
+const targetDir = path.resolve(__dirname, '../docs');
 
 if (!fs.existsSync(sourceDir)) {
     console.warn(`Docs directory not found, skipping copy: ${sourceDir}`);
     process.exit(0);
 }
 
-function copyRecursive(src, dest) {
+function copyRecursive(src: string, dest: string) {
     const stats = fs.statSync(src);
 
     if (stats.isDirectory()) {
