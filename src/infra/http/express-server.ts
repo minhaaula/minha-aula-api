@@ -16,7 +16,11 @@ export function makeServer(deps: any) {
     }
 
     if (openApiDocument) {
-        app.use('/docs', swaggerUi.serve, swaggerUi.setup(openApiDocument));
+        const swaggerHandler = swaggerUi.setup(undefined, {
+            swaggerOptions: { spec: openApiDocument },
+            customSiteTitle: 'Minha Escola API Docs'
+        });
+        app.use('/docs', swaggerUi.serve, swaggerHandler);
         app.get('/docs/openapi.json', (_req, res) => {
             res.json(openApiDocument);
         });
