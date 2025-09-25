@@ -2,7 +2,11 @@ import fs from 'fs';
 import path from 'path';
 import YAML from 'yaml';
 
-const DOCS_DIR = path.resolve(__dirname, '../../../../docs');
+const DOCS_DIR_CANDIDATES = [
+    path.resolve(process.cwd(), 'docs'),
+    path.resolve(__dirname, '../../../docs'),
+    path.resolve(__dirname, '../../../../docs')
+];
 const BASE_FILENAMES = ['openapi.yaml', 'openapi.yml'];
 
 type PlainObject = Record<string, unknown>;
@@ -36,11 +40,12 @@ function parseYamlFile(filePath: string) {
 }
 
 export function loadOpenApiDocument() {
-    if (!fs.existsSync(DOCS_DIR)) {
-        throw new Error(`Diretório de documentação não encontrado: ${DOCS_DIR}`);
+    const docsDir = DOCS_DIR_CANDIDATES.find((dir) => fs.existsSync(dir));
+    if (!docsDir) {
+        throw new Error(`Diretório de documentação não encontrado. Caminhos verificados: ${DOCS_DIR_CANDIDATES.join(', ')}`);
     }
 
-    const filenames = fs.readdirSync(DOCS_DIR)
+    const filenames = fs.readdirSync(docsDir)
         .filter((file) => file.endsWith('.yaml') || file.endsWith('.yml'));
 
     if (filenames.length === 0) {
@@ -48,14 +53,14 @@ export function loadOpenApiDocument() {
     }
 
     const baseFile = BASE_FILENAMES.find((name) => filenames.includes(name)) ?? filenames[0];
-    let document = parseYamlFile(path.join(DOCS_DIR, baseFile));
+    let document = parseYamlFile(path.join(docsDir, baseFile));
 
     const otherFiles = filenames
         .filter((file) => file !== baseFile)
         .sort();
 
     for (const file of otherFiles) {
-        const partialDoc = parseYamlFile(path.join(DOCS_DIR, file));
+        const partialDoc = parseYamlFile(path.join(docsDir, file));
         document = deepMerge(document, partialDoc);
     }
 

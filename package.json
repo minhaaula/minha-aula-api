@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsc -p tsconfig.build.json && node scripts/copy-docs.cjs",
     "start": "node dist/main.js",
     "dev": "tsx watch src/main.ts",
     "migrate:run": "ts-node ./node_modules/typeorm/cli.js migration:run -d src/infra/db/typeorm/datasource.ts",
