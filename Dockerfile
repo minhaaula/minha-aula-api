@@ -21,6 +21,7 @@ COPY package.json package-lock.json* pnpm-lock.yaml* ./
 RUN npm ci || npm i --frozen-lockfile=false
 COPY tsconfig*.json ./
 COPY src ./src
+COPY docs ./docs
 RUN npm run build
 
 
@@ -31,5 +32,6 @@ ENV NODE_ENV=production
 COPY package.json package-lock.json* ./
 RUN npm ci --omit=dev || npm i --omit=dev
 COPY --from=build /app/dist ./dist
+COPY --from=build /app/docs ./docs
 EXPOSE 3000
 CMD ["node","dist/main.js"]
