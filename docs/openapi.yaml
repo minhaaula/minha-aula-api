@@ -6,7 +6,7 @@ info:
 servers:
   - url: http://localhost:3000
     description: Ambiente local
-  - url: https://minha-escola-api-production.up.railway.app
+  - url: https://minha-aula-api-production.up.railway.app
     description: Ambiente Prod
 tags:
   - name: Auth

@@ -72,7 +72,7 @@ export function makeServer(deps: any) {
         const swaggerAuth = makeSwaggerAuthMiddleware();
         const swaggerHandler = swaggerUi.setup(undefined, {
             swaggerOptions: { spec: openApiDocument },
-            customSiteTitle: 'Minha Escola API Docs'
+            customSiteTitle: 'Minha Aula API Docs'
         });
         app.use('/docs', ...swaggerAuth, swaggerUi.serve, swaggerHandler);
         app.get('/docs/openapi.json', ...swaggerAuth, (_req, res) => {
