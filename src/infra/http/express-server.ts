@@ -1,7 +1,60 @@
-import express from 'express';
+import express, { type RequestHandler } from 'express';
 import swaggerUi from 'swagger-ui-express';
 import { requestLogger } from './middlewares/request-logger';
 import { loadOpenApiDocument } from './swagger/load-openapi';
+
+const SWAGGER_REALM = 'Swagger UI';
+
+const sendSwaggerUnauthorized = (res: express.Response) => {
+    res.setHeader('WWW-Authenticate', `Basic realm="${SWAGGER_REALM}"`);
+    res.status(401).send('Authentication required');
+};
+
+function makeSwaggerAuthMiddleware(): RequestHandler[] {
+    if (process.env.NODE_ENV !== 'production') {
+        return [];
+    }
+
+    const username = process.env.SWAGGER_USERNAME;
+    const password = process.env.SWAGGER_PASSWORD;
+
+    if (!username || !password) {
+        console.warn('Swagger basic auth is enabled for production but SWAGGER_USERNAME or SWAGGER_PASSWORD is not set.');
+        return [];
+    }
+
+    const authMiddleware: RequestHandler = (req, res, next) => {
+        const header = req.headers.authorization;
+        if (!header || !header.startsWith('Basic ')) {
+            return sendSwaggerUnauthorized(res);
+        }
+
+        const token = header.slice('Basic '.length).trim();
+        let decoded: string;
+
+        try {
+            decoded = Buffer.from(token, 'base64').toString('utf8');
+        } catch {
+            return sendSwaggerUnauthorized(res);
+        }
+
+        const separatorIndex = decoded.indexOf(':');
+        if (separatorIndex === -1) {
+            return sendSwaggerUnauthorized(res);
+        }
+
+        const providedUsername = decoded.slice(0, separatorIndex);
+        const providedPassword = decoded.slice(separatorIndex + 1);
+
+        if (providedUsername === username && providedPassword === password) {
+            return next();
+        }
+
+        return sendSwaggerUnauthorized(res);
+    };
+
+    return [authMiddleware];
+}
 
 export function makeServer(deps: any) {
     const app = express();
@@ -16,12 +69,13 @@ export function makeServer(deps: any) {
     }
 
     if (openApiDocument) {
+        const swaggerAuth = makeSwaggerAuthMiddleware();
         const swaggerHandler = swaggerUi.setup(undefined, {
             swaggerOptions: { spec: openApiDocument },
             customSiteTitle: 'Minha Escola API Docs'
         });
-        app.use('/docs', swaggerUi.serve, swaggerHandler);
-        app.get('/docs/openapi.json', (_req, res) => {
+        app.use('/docs', ...swaggerAuth, swaggerUi.serve, swaggerHandler);
+        app.get('/docs/openapi.json', ...swaggerAuth, (_req, res) => {
             res.json(openApiDocument);
         });
     }
