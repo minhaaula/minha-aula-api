@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { Payment } from './payment';
-import { Money } from '../value-objects/money';
+import { Payment } from '../../src/domain/entities/payment';
+import { Money } from '../../src/domain/value-objects/money';
 
 describe('Payment entity', () => {
     it('creates a payment with initial state', () => {

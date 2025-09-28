@@ -12,7 +12,7 @@
     "migrate:gen": "ts-node ./node_modules/typeorm/cli.js migration:generate -d src/infra/db/typeorm/datasource.ts src/infra/db/typeorm/migrations/auto",
     "migrate:run:prod": "node ./node_modules/typeorm/cli.js migration:run -d dist/infra/db/typeorm/datasource.js",
     "worker": "tsx watch src/infra/messaging/bullmq/outbox-worker.ts",
-    "deploy:railway": "npm install && npm run build && npm run migrate:run:prod && npm run start"
+    "deploy:railway": "npm install && npm run test && npm run build && npm run migrate:run:prod && npm run start"
   },
   "keywords": [],
   "author": "",

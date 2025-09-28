@@ -7,6 +7,7 @@ import { EnrollmentRepository } from '../../ports/repositories/enrollment.repo';
 import { EnrollmentRequestRepository } from '../../ports/repositories/enrollment-request.repo';
 import { EnrollmentRequest } from '../../domain/entities/enrollment-request';
 import { Uuid } from '../../shared/uuid';
+import { equalUuid } from '../../shared/normalize-uuid';
 
 export class CreateEnrollmentRequest {
     constructor(
@@ -34,14 +35,17 @@ export class CreateEnrollmentRequest {
         requestedForDependentId: string | null;
         createdAt: Date;
     }> {
-        const school = await this.schools.findById(input.schoolId);
+        const schoolId = input.schoolId.trim();
+        const courseClassId = input.courseClassId.trim();
+
+        const school = await this.schools.findById(schoolId);
         if (!school) throw new Error('School not found');
 
-        const courseClass = await this.classes.findById(input.courseClassId);
+        const courseClass = await this.classes.findById(courseClassId);
         if (!courseClass) throw new Error('Course class not found');
 
         const course = await this.courses.findById(courseClass.courseId);
-        if (!course || course.schoolId !== school.id) throw new Error('Course class does not belong to the school');
+        if (!course || !equalUuid(course.schoolId, school.id)) throw new Error('Course class does not belong to the school');
 
         const user = await this.users.findById(input.requestedForUserId);
         if (!user) throw new Error('Target user not found');

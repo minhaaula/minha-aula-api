@@ -2,6 +2,7 @@ import { CourseRepository } from '../../ports/repositories/course.repo';
 import { CourseClassRepository } from '../../ports/repositories/course-class.repo';
 import { CourseClass } from '../../domain/entities/course-class';
 import { Uuid } from '../../shared/uuid';
+import { equalUuid } from '../../shared/normalize-uuid';
 
 export class CreateCourseClass {
     constructor(
@@ -27,18 +28,22 @@ export class CreateCourseClass {
         endsAt: Date | null;
         createdAt: Date;
     }> {
-        const course = await this.courses.findById(input.courseId);
-        if (!course || course.schoolId !== input.schoolId) {
+        const courseId = input.courseId.trim();
+        const schoolId = input.schoolId.trim();
+        const label = input.label.trim();
+
+        const course = await this.courses.findById(courseId);
+        if (!course || !equalUuid(course.schoolId, schoolId)) {
             throw new Error('Course not found for this school');
         }
 
-        const existing = await this.classes.findByCourseAndLabel(course.id, input.label);
+        const existing = await this.classes.findByCourseAndLabel(course.id, label);
         if (existing) throw new Error('Class label already in use for this course');
 
         const courseClass = CourseClass.create({
             id: Uuid(),
             courseId: course.id,
-            label: input.label,
+            label,
             shift: input.shift ?? null,
             capacity: input.capacity ?? null,
             startsAt: input.startsAt ?? null,
