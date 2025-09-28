@@ -7,7 +7,6 @@ import { PaymentRepository } from "../../../ports/repositories/payment.repo";
 export class PaymentRepositoryAdapter implements PaymentRepository {
     private repo = AppDataSource.getRepository(PaymentOrm);
 
-
     async findById(id: string): Promise<Payment | null> {
         const row = await this.repo.findOne({ where: { id } });
         return row ? this.toDomain(row) : null;
@@ -23,8 +22,8 @@ export class PaymentRepositoryAdapter implements PaymentRepository {
 
     async save(entity: Payment, opts?: { expectedVersion?: number }): Promise<void> {
         if (opts?.expectedVersion !== undefined) {
-        const curr = await this.repo.findOneByOrFail({ id: entity.id });
-        if (curr.version !== opts.expectedVersion) throw new Error('OptimisticLockError');
+            const curr = await this.repo.findOneByOrFail({ id: entity.id });
+            if (curr.version !== opts.expectedVersion) throw new Error('OptimisticLockError');
         }
         await this.repo.save(this.toOrm(entity));
     }
@@ -34,7 +33,14 @@ export class PaymentRepositoryAdapter implements PaymentRepository {
     }
 
     private toDomain(r: PaymentOrm): Payment {
-        const p = Payment.create({ id: r.id, amount: Money.of(r.amount, r.currency), method: r.method as any, customerId: r.customer_id, metadata: r.metadata });
+        const p = Payment.create({
+            id: r.id,
+            amount: Money.of(r.amount, r.currency),
+            method: r.method as any,
+            customerId: r.customer_id,
+            metadata: r.metadata,
+            enrollmentId: (r as any).enrollment_id ?? r.enrollmentId ?? null
+        });
         (p as any).providerRef = r.provider_ref;
         (p as any)._status = r.status;
         p.version = r.version;
@@ -43,7 +49,16 @@ export class PaymentRepositoryAdapter implements PaymentRepository {
 
     private toOrm(p: Payment): PaymentOrm {
         const row = new PaymentOrm();
-        row.id = p.id; row.amount = p.amount.amount; row.currency = p.amount.currency; row.method = p.method; row.status = p.status; row.customer_id = p.customerId; row.metadata = p.metadata; row.version = p.version; row.provider_ref = p.providerRef ?? null;
+        row.id = p.id;
+        row.amount = p.amount.amount;
+        row.currency = p.amount.currency;
+        row.method = p.method;
+        row.status = p.status;
+        row.customer_id = p.customerId;
+        row.enrollmentId = p.enrollmentId ?? null;
+        row.metadata = p.metadata;
+        row.version = p.version;
+        row.provider_ref = p.providerRef ?? null;
         return row;
     }
 }

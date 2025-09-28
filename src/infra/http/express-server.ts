@@ -1,4 +1,4 @@
-import express, { type RequestHandler } from 'express';
+import express, { type RequestHandler, type Router } from 'express';
 import swaggerUi from 'swagger-ui-express';
 import { requestLogger } from './middlewares/request-logger';
 import { loadOpenApiDocument } from './swagger/load-openapi';
@@ -61,6 +61,14 @@ export function makeServer(deps: any) {
     app.use(express.json());
     app.use(requestLogger);
 
+    const mount = (path: string, router: Router) => {
+        if (deps.authMiddleware) {
+            app.use(path, deps.authMiddleware, router);
+        } else {
+            app.use(path, router);
+        }
+    };
+
     let openApiDocument: unknown;
     try {
         openApiDocument = loadOpenApiDocument();
@@ -84,10 +92,18 @@ export function makeServer(deps: any) {
         app.use('/auth', deps.authRouter(deps));
     }
     const paymentsRoutes = deps.paymentsRouter(deps);
-    if (deps.authMiddleware) {
-        app.use('/payments', deps.authMiddleware, paymentsRoutes);
-    } else {
-        app.use('/payments', paymentsRoutes);
+    mount('/payments', paymentsRoutes);
+
+    if (deps.schoolsRouter && deps.createSchool) {
+        mount('/schools', deps.schoolsRouter(deps));
+    }
+
+    if (deps.dependentsRouter && deps.addDependent) {
+        mount('/dependents', deps.dependentsRouter(deps));
+    }
+
+    if (deps.enrollmentRequestsRouter && deps.createEnrollmentRequest) {
+        mount('/enrollment-requests', deps.enrollmentRequestsRouter(deps));
     }
     app.use('/health', deps.healthRouter(deps));
     app.use((err: any, _req: any, res: any, _next: any) => {

@@ -6,6 +6,8 @@
     "build": "tsc -p tsconfig.build.json && if [ -d docs ]; then cp -r docs dist/; fi",
     "start": "node dist/main.js",
     "dev": "tsx watch src/main.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "migrate:run": "ts-node ./node_modules/typeorm/cli.js migration:run -d src/infra/db/typeorm/datasource.ts",
     "migrate:gen": "ts-node ./node_modules/typeorm/cli.js migration:generate -d src/infra/db/typeorm/datasource.ts src/infra/db/typeorm/migrations/auto",
     "migrate:run:prod": "node ./node_modules/typeorm/cli.js migration:run -d dist/infra/db/typeorm/datasource.js",
@@ -35,6 +37,7 @@
     "ts-node": "^10.9.2",
     "tslib": "^2.6.3",
     "tsx": "^4.16.2",
-    "typescript": "^5.5.4"
+    "typescript": "^5.5.4",
+    "vitest": "^1.6.1"
   }
 }

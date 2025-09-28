@@ -1,0 +1,102 @@
+paths:
+  /schools:
+    post:
+      tags:
+        - Schools
+      summary: Criar uma nova escola
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSchoolInput'
+      responses:
+        '201':
+          description: Escola criada com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchoolResponse'
+        '400':
+          description: Erro de validação ou usuário sem permissão.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /schools/{schoolId}/courses:
+    post:
+      tags:
+        - Schools
+      summary: Criar um curso para uma escola
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: schoolId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Identificador da escola.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCourseInput'
+      responses:
+        '201':
+          description: Curso criado com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseResponse'
+        '400':
+          description: Erro de validação ou escola não encontrada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /schools/{schoolId}/courses/{courseId}/classes:
+    post:
+      tags:
+        - Schools
+      summary: Criar uma turma para um curso
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: schoolId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Identificador da escola.
+        - in: path
+          name: courseId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Identificador do curso.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCourseClassInput'
+      responses:
+        '201':
+          description: Turma criada com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseClassResponse'
+        '400':
+          description: Erro de validação ou curso não encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'

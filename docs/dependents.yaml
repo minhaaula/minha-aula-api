@@ -1,0 +1,27 @@
+paths:
+  /dependents:
+    post:
+      tags:
+        - Dependents
+      summary: Cadastrar um novo dependente para o usuário autenticado
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddDependentInput'
+      responses:
+        '201':
+          description: Dependente cadastrado com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DependentResponse'
+        '400':
+          description: Erro de validação ou usuário não encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'

@@ -1,6 +1,6 @@
 openapi: 3.0.3
 info:
-  title: Minha Escola API
+  title: Minha Aula API
   version: 1.0.0
   description: API para gerenciamento de pagamentos, autenticação de usuários.
 servers:
@@ -15,6 +15,12 @@ tags:
     description: Operações para criação e captura de pagamentos.
   - name: Health
     description: Monitoramento da saúde da aplicação.
+  - name: Schools
+    description: Gestão de escolas, cursos e turmas.
+  - name: Dependents
+    description: Cadastro de dependentes vinculados aos usuários.
+  - name: Enrollment Requests
+    description: Fluxo de solicitações e aprovações de matrícula.
 components:
   securitySchemes:
     bearerAuth:
@@ -179,3 +185,235 @@ components:
           type: boolean
       required:
         - ok
+    CreateSchoolInput:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          minLength: 3
+          example: Escola do Futuro
+    SchoolResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - createdAt
+    CreateCourseInput:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          minLength: 3
+          example: Curso de Inglês
+        description:
+          type: string
+          nullable: true
+          example: Curso focado em conversação.
+    CourseResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        schoolId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - schoolId
+        - name
+        - createdAt
+    CreateCourseClassInput:
+      type: object
+      required:
+        - label
+      properties:
+        label:
+          type: string
+          example: Turma A - Manhã
+        shift:
+          type: string
+          nullable: true
+          example: Manhã
+        capacity:
+          type: integer
+          format: int32
+          nullable: true
+          minimum: 1
+        startsAt:
+          type: string
+          format: date-time
+          nullable: true
+        endsAt:
+          type: string
+          format: date-time
+          nullable: true
+    CourseClassResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        courseId:
+          type: string
+          format: uuid
+        label:
+          type: string
+        shift:
+          type: string
+          nullable: true
+        capacity:
+          type: integer
+          format: int32
+          nullable: true
+        startsAt:
+          type: string
+          format: date-time
+          nullable: true
+        endsAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - courseId
+        - label
+        - createdAt
+    AddDependentInput:
+      type: object
+      required:
+        - fullName
+      properties:
+        fullName:
+          type: string
+          minLength: 3
+          example: João Pedro
+        birthDate:
+          type: string
+          format: date
+          nullable: true
+        relationship:
+          type: string
+          nullable: true
+          example: Filho
+    DependentResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        fullName:
+          type: string
+        birthDate:
+          type: string
+          format: date
+          nullable: true
+        relationship:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - userId
+        - fullName
+        - createdAt
+    CreateEnrollmentRequestInput:
+      type: object
+      required:
+        - requestedForUserId
+      properties:
+        requestedForUserId:
+          type: string
+          format: uuid
+        requestedForDependentId:
+          type: string
+          format: uuid
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+          maxLength: 255
+    EnrollmentRequestResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [PENDING, APPROVED, REJECTED, CANCELLED]
+        schoolId:
+          type: string
+          format: uuid
+        courseClassId:
+          type: string
+          format: uuid
+        requestedForUserId:
+          type: string
+          format: uuid
+        requestedForDependentId:
+          type: string
+          format: uuid
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - status
+        - schoolId
+        - courseClassId
+        - requestedForUserId
+        - createdAt
+    ApproveEnrollmentRequestInput:
+      type: object
+      properties:
+        notes:
+          type: string
+          nullable: true
+          maxLength: 255
+    ApproveEnrollmentRequestResponse:
+      type: object
+      properties:
+        requestId:
+          type: string
+          format: uuid
+        enrollmentId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [APPROVED]
+      required:
+        - requestId
+        - enrollmentId
+        - status

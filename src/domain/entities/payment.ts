@@ -12,6 +12,7 @@ export class Payment {
         public readonly metadata: Record<string,string> = {},
         public providerRef: string | null = null,
         public version: number = 0,
+        public enrollmentId: string | null = null
     ) {}
 
     static create(params: {
@@ -19,15 +20,18 @@ export class Payment {
         method: PaymentMethod; 
         customerId: string; 
         metadata?: Record<string,string>;
+        enrollmentId?: string | null;
     }) {
         return new Payment(
-            params.id, 
-            'CREATED', 
-            params.amount, 
-            params.method, 
-            params.customerId, 
-            params.metadata ?? 
-            {}
+            params.id,
+            'CREATED',
+            params.amount,
+            params.method,
+            params.customerId,
+            params.metadata ?? {},
+            null,
+            0,
+            params.enrollmentId ?? null
         );
     }
 

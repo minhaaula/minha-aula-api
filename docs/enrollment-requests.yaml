@@ -1,0 +1,76 @@
+paths:
+  /enrollment-requests/schools/{schoolId}/classes/{classId}/requests:
+    post:
+      tags:
+        - Enrollment Requests
+      summary: Criar uma solicitação de matrícula
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: schoolId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Identificador da escola responsável pela turma.
+        - in: path
+          name: classId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Identificador da turma desejada.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateEnrollmentRequestInput'
+      responses:
+        '201':
+          description: Solicitação criada com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnrollmentRequestResponse'
+        '400':
+          description: Erro de validação ou vínculos inválidos.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /enrollment-requests/{requestId}/approve:
+    post:
+      tags:
+        - Enrollment Requests
+      summary: Aprovar uma solicitação de matrícula
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: requestId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Identificador da solicitação.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApproveEnrollmentRequestInput'
+      responses:
+        '200':
+          description: Solicitação aprovada com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApproveEnrollmentRequestResponse'
+        '400':
+          description: Solicitação inválida ou não autorizada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
