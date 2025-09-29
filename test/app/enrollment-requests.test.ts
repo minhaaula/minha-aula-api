@@ -16,6 +16,7 @@ import { Email } from '../../src/domain/value-objects/email';
 import { Dependent } from '../../src/domain/entities/dependent';
 import { Enrollment } from '../../src/domain/entities/enrollment';
 import { EnrollmentRequest } from '../../src/domain/entities/enrollment-request';
+import { PostalAddress } from '../../src/domain/value-objects/postal-address';
 
 class InMemorySchools implements SchoolRepository {
     private readonly items = new Map<string, School>();
@@ -100,7 +101,13 @@ const makeUser = (id: string) => User.create({
     email: Email.create(`${id}@example.com`),
     phone: '1199999999',
     cpf: `${++cpfCounter}`.padStart(11, '0'),
-    address: 'Rua A, 123',
+    address: PostalAddress.create({
+        street: 'Rua A',
+        number: '123',
+        city: 'São Paulo',
+        state: 'SP',
+        zipCode: '01234000'
+    }),
     passwordHash: 'hash'
 });
 

@@ -4,8 +4,6 @@ paths:
       tags:
         - Schools
       summary: Criar uma nova escola
-      security:
-        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -20,7 +18,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/SchoolResponse'
         '400':
-          description: Erro de validação ou usuário sem permissão.
+          description: Erro de validação.
           content:
             application/json:
               schema:

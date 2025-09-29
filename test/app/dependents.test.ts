@@ -5,6 +5,7 @@ import { DependentRepository } from '../../src/ports/repositories/dependent.repo
 import { User } from '../../src/domain/entities/user';
 import { Email } from '../../src/domain/value-objects/email';
 import { Dependent } from '../../src/domain/entities/dependent';
+import { PostalAddress } from '../../src/domain/value-objects/postal-address';
 
 class InMemoryUserRepository implements UserRepository {
     private readonly users = new Map<string, User>();
@@ -57,7 +58,13 @@ const makeUser = () => User.create({
     email: Email.create('user@example.com'),
     phone: '1199999999',
     cpf: '12345678909',
-    address: 'Rua A, 123',
+    address: PostalAddress.create({
+        street: 'Rua A',
+        number: '123',
+        city: 'São Paulo',
+        state: 'SP',
+        zipCode: '01234000'
+    }),
     passwordHash: 'hash'
 });
 

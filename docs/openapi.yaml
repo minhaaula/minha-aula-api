@@ -65,12 +65,44 @@ components:
           description: Apenas dígitos.
           example: "12345678909"
         address:
-          type: string
-          example: Rua das Flores, 123, São Paulo - SP
+          $ref: '#/components/schemas/UserAddressInput'
         password:
           type: string
           format: password
           minLength: 8
+    UserAddressInput:
+      type: object
+      required:
+        - street
+        - number
+        - city
+        - state
+        - zipCode
+      properties:
+        street:
+          type: string
+          example: Rua das Flores
+        number:
+          type: string
+          example: '123'
+        complement:
+          type: string
+          nullable: true
+          example: Apto 45
+        district:
+          type: string
+          nullable: true
+          example: Centro
+        city:
+          type: string
+          example: São Paulo
+        state:
+          type: string
+          example: SP
+        zipCode:
+          type: string
+          description: Apenas dígitos.
+          example: '01234000'
     RegisterUserResponse:
       type: object
       properties:

@@ -11,13 +11,26 @@ const cpfSchema = z.string()
 export function authRouter({ registerUser, loginUser }: { registerUser: RegisterUser; loginUser: LoginUser; }) {
     const r = Router();
 
+    const addressSchema = z.object({
+        street: z.string().min(3),
+        number: z.string().min(1),
+        complement: z.string().min(1).optional(),
+        district: z.string().min(2).optional(),
+        city: z.string().min(2),
+        state: z.string().min(2),
+        zipCode: z.string().min(5)
+    }).transform((value) => ({
+        ...value,
+        zipCode: value.zipCode.replace(/[^\d]/g, '')
+    }));
+
     const registerSchema = z.object({
         fullName: z.string().min(3),
         birthDate: z.string().refine((value) => !Number.isNaN(new Date(value).getTime()), { message: 'Invalid birth date' }),
         email: z.string().email(),
         phone: z.string().min(8),
         cpf: cpfSchema,
-        address: z.string().min(5),
+        address: addressSchema,
         password: z.string().min(8)
     });
 

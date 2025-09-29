@@ -3,6 +3,7 @@ import { User } from '../../../domain/entities/user';
 import { UserRepository } from '../../../ports/repositories/user.repo';
 import { UserOrm } from './entities/user.orm';
 import { AppDataSource } from './datasource';
+import { PostalAddress } from '../../../domain/value-objects/postal-address';
 
 export class UserRepositoryAdapter implements UserRepository {
     private readonly repo = AppDataSource.getRepository(UserOrm);
@@ -28,6 +29,16 @@ export class UserRepositoryAdapter implements UserRepository {
     }
 
     private toDomain(row: UserOrm): User {
+        const address = PostalAddress.create({
+            street: row.addressStreet,
+            number: row.addressNumber,
+            complement: row.addressComplement,
+            district: row.addressDistrict,
+            city: row.addressCity,
+            state: row.addressState,
+            zipCode: row.addressZipCode
+        });
+
         return User.create({
             id: row.id,
             fullName: row.fullName,
@@ -35,7 +46,7 @@ export class UserRepositoryAdapter implements UserRepository {
             email: Email.create(row.email),
             phone: row.phone,
             cpf: row.cpf,
-            address: row.address,
+            address,
             passwordHash: row.passwordHash,
             createdAt: row.createdAt
         });
@@ -49,7 +60,13 @@ export class UserRepositoryAdapter implements UserRepository {
         row.email = user.email.value;
         row.phone = user.phone;
         row.cpf = user.cpf;
-        row.address = user.address;
+        row.addressStreet = user.address.street;
+        row.addressNumber = user.address.number;
+        row.addressComplement = user.address.complement;
+        row.addressDistrict = user.address.district;
+        row.addressCity = user.address.city;
+        row.addressState = user.address.state;
+        row.addressZipCode = user.address.zipCode;
         row.passwordHash = user.passwordHash;
         row.createdAt = user.createdAt;
         return row;

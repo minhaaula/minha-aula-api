@@ -3,6 +3,7 @@ import { PasswordHasherPort } from '../../ports/providers/password-hasher.port';
 import { Email } from '../../domain/value-objects/email';
 import { User } from '../../domain/entities/user';
 import { Uuid } from '../../shared/uuid';
+import { PostalAddress } from '../../domain/value-objects/postal-address';
 
 type RegisterInput = {
     fullName: string;
@@ -10,7 +11,15 @@ type RegisterInput = {
     email: string;
     phone: string;
     cpf: string;
-    address: string;
+    address: {
+        street: string;
+        number: string;
+        complement?: string | null;
+        district?: string | null;
+        city: string;
+        state: string;
+        zipCode: string;
+    };
     password: string;
 };
 
@@ -33,6 +42,16 @@ export class RegisterUser {
         const birthDate = new Date(input.birthDate);
         if (Number.isNaN(birthDate.getTime())) throw new Error('Invalid birth date');
 
+        const address = PostalAddress.create({
+            street: input.address.street,
+            number: input.address.number,
+            complement: input.address.complement ?? null,
+            district: input.address.district ?? null,
+            city: input.address.city,
+            state: input.address.state,
+            zipCode: input.address.zipCode
+        });
+
         const passwordHash = await this.hasher.hash(input.password);
         const user = User.create({
             id: Uuid(),
@@ -41,7 +60,7 @@ export class RegisterUser {
             email,
             phone: input.phone,
             cpf,
-            address: input.address,
+            address,
             passwordHash
         });
 

@@ -1,4 +1,5 @@
 import { Email } from '../value-objects/email';
+import { PostalAddress } from '../value-objects/postal-address';
 
 export class User {
     private constructor(
@@ -8,7 +9,7 @@ export class User {
         public readonly email: Email,
         public readonly phone: string,
         public readonly cpf: string,
-        public readonly address: string,
+        public readonly address: PostalAddress,
         private _passwordHash: string,
         public readonly createdAt: Date
     ) {}
@@ -20,7 +21,7 @@ export class User {
         email: Email;
         phone: string;
         cpf: string;
-        address: string;
+        address: PostalAddress;
         passwordHash: string;
         createdAt?: Date;
     }) {
@@ -33,8 +34,9 @@ export class User {
         if (!phone) throw new Error('Phone is required');
         const cpf = params.cpf.replace(/\D/g, '');
         if (cpf.length !== 11) throw new Error('Invalid CPF');
-        const address = params.address.trim();
-        if (!address) throw new Error('Address is required');
+        if (!(params.address instanceof PostalAddress)) {
+            throw new Error('Address is required');
+        }
         return new User(
             params.id,
             fullName,
@@ -42,7 +44,7 @@ export class User {
             params.email,
             phone,
             cpf,
-            address,
+            params.address,
             params.passwordHash,
             params.createdAt ?? new Date()
         );

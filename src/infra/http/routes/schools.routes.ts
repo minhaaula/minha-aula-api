@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, type RequestHandler } from 'express';
 import { z } from 'zod';
 import { CreateSchool } from '../../../app/use-cases/create-school';
 import { CreateCourse } from '../../../app/use-cases/create-course';
@@ -8,8 +8,10 @@ export function schoolsRouter(deps: {
     createSchool: CreateSchool;
     createCourse: CreateCourse;
     createCourseClass: CreateCourseClass;
+    authMiddleware?: RequestHandler;
 }) {
     const r = Router();
+    const requireAuth: RequestHandler = deps.authMiddleware ?? ((_req, _res, next) => next());
 
     r.post('/', async (req, res, next) => {
         try {
@@ -22,7 +24,7 @@ export function schoolsRouter(deps: {
         }
     });
 
-    r.post('/:schoolId/courses', async (req, res, next) => {
+    r.post('/:schoolId/courses', requireAuth, async (req, res, next) => {
         try {
             const paramsSchema = z.object({ schoolId: z.string().uuid() });
             const { schoolId } = paramsSchema.parse(req.params);
@@ -42,7 +44,7 @@ export function schoolsRouter(deps: {
         }
     });
 
-    r.post('/:schoolId/courses/:courseId/classes', async (req, res, next) => {
+    r.post('/:schoolId/courses/:courseId/classes', requireAuth, async (req, res, next) => {
         try {
             const paramsSchema = z.object({
                 schoolId: z.string().uuid(),

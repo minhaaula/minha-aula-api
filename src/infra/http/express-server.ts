@@ -61,8 +61,8 @@ export function makeServer(deps: any) {
     app.use(express.json());
     app.use(requestLogger);
 
-    const mount = (path: string, router: Router) => {
-        if (deps.authMiddleware) {
+    const mount = (path: string, router: Router, options?: { skipAuth?: boolean }) => {
+        if (deps.authMiddleware && !options?.skipAuth) {
             app.use(path, deps.authMiddleware, router);
         } else {
             app.use(path, router);
@@ -95,7 +95,8 @@ export function makeServer(deps: any) {
     mount('/payments', paymentsRoutes);
 
     if (deps.schoolsRouter && deps.createSchool) {
-        mount('/schools', deps.schoolsRouter(deps));
+        const router = deps.schoolsRouter(deps);
+        mount('/schools', router, { skipAuth: true });
     }
 
     if (deps.dependentsRouter && deps.addDependent) {
