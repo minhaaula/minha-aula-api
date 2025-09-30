@@ -30,6 +30,7 @@ import { ScryptPasswordHasher } from '../infra/auth/scrypt-password-hasher';
 import { HmacTokenProvider } from '../infra/auth/hmac-token-provider';
 import { makeAuthMiddleware } from '../infra/http/middlewares/auth';
 import { BASE_DOC_FILES, MODULE_DOC_FILES, MODULES_ORDER, type ModuleName } from './module-config';
+export type { ModuleName } from './module-config';
 
 export function resolveModules(modules: ModuleName[]): ModuleName[] {
     const initial = modules.length > 0 ? modules : MODULES_ORDER;
