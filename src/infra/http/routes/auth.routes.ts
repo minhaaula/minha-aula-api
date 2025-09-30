@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { RegisterUser } from '../../../app/use-cases/register-user';
 import { LoginUser } from '../../../app/use-cases/login-user';
+import { USER_PERSONAS } from '../../../domain/value-objects/user-persona';
 
 const cpfSchema = z.string()
     .min(11)
@@ -31,6 +32,7 @@ export function authRouter({ registerUser, loginUser }: { registerUser: Register
         phone: z.string().min(8),
         cpf: cpfSchema,
         address: addressSchema,
+        persona: z.enum(USER_PERSONAS),
         password: z.string().min(8)
     });
 

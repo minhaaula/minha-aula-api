@@ -17,6 +17,7 @@ export class UserOrm {
     @Column('varchar', { length: 128, name: 'address_city' }) addressCity!: string;
     @Column('varchar', { length: 64, name: 'address_state' }) addressState!: string;
     @Column('varchar', { length: 16, name: 'address_zip_code' }) addressZipCode!: string;
+    @Column('varchar', { length: 16 }) persona!: string;
     @Column('varchar', { length: 255, name: 'password_hash' }) passwordHash!: string;
     @CreateDateColumn({ name: 'created_at', type: 'datetime', default: () => 'CURRENT_TIMESTAMP' }) createdAt!: Date;
 }

@@ -4,6 +4,7 @@ import { Email } from '../../domain/value-objects/email';
 import { User } from '../../domain/entities/user';
 import { Uuid } from '../../shared/uuid';
 import { PostalAddress } from '../../domain/value-objects/postal-address';
+import { UserPersona, assertUserPersona } from '../../domain/value-objects/user-persona';
 
 type RegisterInput = {
     fullName: string;
@@ -20,6 +21,7 @@ type RegisterInput = {
         state: string;
         zipCode: string;
     };
+    persona: UserPersona;
     password: string;
 };
 
@@ -29,7 +31,7 @@ export class RegisterUser {
         private readonly hasher: PasswordHasherPort
     ) {}
 
-    async exec(input: RegisterInput): Promise<{ userId: string; fullName: string; email: string; cpf: string; createdAt: Date; }> {
+    async exec(input: RegisterInput): Promise<{ userId: string; fullName: string; email: string; cpf: string; persona: UserPersona; createdAt: Date; }> {
         const email = Email.create(input.email);
 
         const existingByEmail = await this.users.findByEmail(email.value);
@@ -41,6 +43,8 @@ export class RegisterUser {
 
         const birthDate = new Date(input.birthDate);
         if (Number.isNaN(birthDate.getTime())) throw new Error('Invalid birth date');
+
+        assertUserPersona(input.persona);
 
         const address = PostalAddress.create({
             street: input.address.street,
@@ -61,6 +65,7 @@ export class RegisterUser {
             phone: input.phone,
             cpf,
             address,
+            persona: input.persona,
             passwordHash
         });
 
@@ -71,6 +76,7 @@ export class RegisterUser {
             fullName: user.fullName,
             email: user.email.value,
             cpf: user.cpf,
+            persona: user.persona,
             createdAt: user.createdAt
         };
     }

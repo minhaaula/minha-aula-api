@@ -1,5 +1,6 @@
 import { Email } from '../value-objects/email';
 import { PostalAddress } from '../value-objects/postal-address';
+import { UserPersona, assertUserPersona } from '../value-objects/user-persona';
 
 export class User {
     private constructor(
@@ -10,6 +11,7 @@ export class User {
         public readonly phone: string,
         public readonly cpf: string,
         public readonly address: PostalAddress,
+        public readonly persona: UserPersona,
         private _passwordHash: string,
         public readonly createdAt: Date
     ) {}
@@ -22,6 +24,7 @@ export class User {
         phone: string;
         cpf: string;
         address: PostalAddress;
+        persona: string;
         passwordHash: string;
         createdAt?: Date;
     }) {
@@ -37,6 +40,8 @@ export class User {
         if (!(params.address instanceof PostalAddress)) {
             throw new Error('Address is required');
         }
+        assertUserPersona(params.persona);
+
         return new User(
             params.id,
             fullName,
@@ -45,6 +50,7 @@ export class User {
             phone,
             cpf,
             params.address,
+            params.persona,
             params.passwordHash,
             params.createdAt ?? new Date()
         );

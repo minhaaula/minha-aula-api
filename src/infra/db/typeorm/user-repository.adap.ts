@@ -4,6 +4,7 @@ import { UserRepository } from '../../../ports/repositories/user.repo';
 import { UserOrm } from './entities/user.orm';
 import { AppDataSource } from './datasource';
 import { PostalAddress } from '../../../domain/value-objects/postal-address';
+import { assertUserPersona } from '../../../domain/value-objects/user-persona';
 
 export class UserRepositoryAdapter implements UserRepository {
     private readonly repo = AppDataSource.getRepository(UserOrm);
@@ -47,6 +48,7 @@ export class UserRepositoryAdapter implements UserRepository {
             phone: row.phone,
             cpf: row.cpf,
             address,
+            persona: row.persona,
             passwordHash: row.passwordHash,
             createdAt: row.createdAt
         });
@@ -67,6 +69,8 @@ export class UserRepositoryAdapter implements UserRepository {
         row.addressCity = user.address.city;
         row.addressState = user.address.state;
         row.addressZipCode = user.address.zipCode;
+        assertUserPersona(user.persona);
+        row.persona = user.persona;
         row.passwordHash = user.passwordHash;
         row.createdAt = user.createdAt;
         return row;

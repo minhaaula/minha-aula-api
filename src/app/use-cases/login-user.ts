@@ -11,7 +11,7 @@ export class LoginUser {
         private readonly defaultTtl: number
     ) {}
 
-    async exec(input: { cpf: string; password: string; }): Promise<{ accessToken: string; userId: string; fullName: string; email: string; cpf: string; expiresIn: number; }> {
+    async exec(input: { cpf: string; password: string; }): Promise<{ accessToken: string; userId: string; fullName: string; email: string; cpf: string; persona: string; expiresIn: number; }> {
         const cpf = this.normalizeCpf(input.cpf);
         const user = await this.users.findByCpf(cpf);
 
@@ -25,7 +25,8 @@ export class LoginUser {
             sub: user.id,
             cpf: user.cpf,
             fullName: user.fullName,
-            email: user.email.value
+            email: user.email.value,
+            persona: user.persona
         };
         const accessToken = await this.tokens.sign(payload, { expiresIn });
 
@@ -35,6 +36,7 @@ export class LoginUser {
             fullName: user.fullName,
             email: user.email.value,
             cpf: user.cpf,
+            persona: user.persona,
             expiresIn
         };
     }

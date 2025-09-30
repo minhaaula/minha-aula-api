@@ -65,6 +65,7 @@ const makeUser = () => User.create({
         state: 'SP',
         zipCode: '01234000'
     }),
+    persona: 'STUDENT',
     passwordHash: 'hash'
 });
 

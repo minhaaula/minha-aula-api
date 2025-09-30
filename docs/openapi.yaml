@@ -44,6 +44,7 @@ components:
         - phone
         - cpf
         - address
+        - persona
         - password
       properties:
         fullName:
@@ -66,6 +67,14 @@ components:
           example: "12345678909"
         address:
           $ref: '#/components/schemas/UserAddressInput'
+        persona:
+          type: string
+          enum:
+            - ADMIN
+            - SCHOOL
+            - STUDENT
+            - OPERATION
+          example: STUDENT
         password:
           type: string
           format: password
@@ -116,6 +125,13 @@ components:
           format: email
         cpf:
           type: string
+        persona:
+          type: string
+          enum:
+            - ADMIN
+            - SCHOOL
+            - STUDENT
+            - OPERATION
         createdAt:
           type: string
           format: date-time
@@ -124,6 +140,7 @@ components:
         - fullName
         - email
         - cpf
+        - persona
         - createdAt
     LoginInput:
       type: object
@@ -153,6 +170,13 @@ components:
           format: email
         cpf:
           type: string
+        persona:
+          type: string
+          enum:
+            - ADMIN
+            - SCHOOL
+            - STUDENT
+            - OPERATION
         expiresIn:
           type: integer
           format: int32
@@ -162,6 +186,7 @@ components:
         - fullName
         - email
         - cpf
+        - persona
         - expiresIn
     CreatePaymentInput:
       type: object
