@@ -39,6 +39,16 @@ function parseYamlFile(filePath: string) {
     return YAML.parse(raw) ?? {};
 }
 
+function normalizeServerUrl(url: string | undefined): string | undefined {
+    if (!url) return undefined;
+    const trimmed = url.trim();
+    if (!trimmed) return undefined;
+    if (/^https?:\/\//i.test(trimmed)) {
+        return trimmed;
+    }
+    return `https://${trimmed}`;
+}
+
 type LoadOptions = {
     includeFiles?: string[];
     modules?: Array<string>;
@@ -72,7 +82,7 @@ export function loadOpenApiDocument(options?: LoadOptions) {
         document = deepMerge(document, partialDoc);
     }
 
-    const prodUrl = process.env.SWAGGER_PROD_URL ?? process.env.API_PROD_URL;
+    const prodUrl = normalizeServerUrl(process.env.SWAGGER_PROD_URL ?? process.env.API_PROD_URL);
     if (prodUrl) {
         if (!Array.isArray(document.servers)) {
             document.servers = [];
