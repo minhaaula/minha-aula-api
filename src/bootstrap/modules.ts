@@ -32,10 +32,20 @@ import { makeAuthMiddleware } from '../infra/http/middlewares/auth';
 
 export type ModuleName = 'auth' | 'payments' | 'schools' | 'students';
 
-const DEFAULT_MODULES: ModuleName[] = ['auth', 'payments', 'schools', 'students'];
+const MODULES_ORDER: ModuleName[] = ['auth', 'payments', 'schools', 'students'];
 
-export async function createServerForModules(modules: ModuleName[]): Promise<import('express').Application> {
-    const selected = modules.length > 0 ? Array.from(new Set(modules)) : DEFAULT_MODULES;
+export function resolveModules(modules: ModuleName[]): ModuleName[] {
+    const initial = modules.length > 0 ? modules : MODULES_ORDER;
+    const set = new Set<ModuleName>(initial);
+    const requiresAuth = set.has('schools') || set.has('students');
+    if (requiresAuth) {
+        set.add('auth');
+    }
+    return MODULES_ORDER.filter((module) => set.has(module));
+}
+
+export async function createServerForModules(modules: ModuleName[]): Promise<{ app: import('express').Application; modules: ModuleName[] }> {
+    const selected = resolveModules(modules);
 
     if (!AppDataSource.isInitialized) {
         await AppDataSource.initialize();
@@ -61,8 +71,7 @@ export async function createServerForModules(modules: ModuleName[]): Promise<imp
         authMiddleware
     };
 
-    const needsAuth = selected.some((module) => ['payments', 'students', 'schools'].includes(module));
-    const includeAuth = selected.includes('auth') || needsAuth || selected.length === 0;
+    const includeAuth = selected.includes('auth');
     const includePayments = selected.includes('payments');
     const includeSchools = selected.includes('schools');
     const includeStudents = selected.includes('students');
@@ -89,12 +98,6 @@ export async function createServerForModules(modules: ModuleName[]): Promise<imp
     }
 
     if (includeSchools) {
-        const registerUser = new RegisterUser(usersRepo, passwordHasher);
-        const loginUser = new LoginUser(usersRepo, passwordHasher, tokenProvider, tokenTtl);
-        serverDeps.authRouter = authRouter;
-        serverDeps.registerUser = registerUser;
-        serverDeps.loginUser = loginUser;
-
         const createSchool = new CreateSchool(schoolsRepo);
         const createCourse = new CreateCourse(schoolsRepo, coursesRepo);
         const createCourseClass = new CreateCourseClass(coursesRepo, classesRepo);
@@ -105,12 +108,6 @@ export async function createServerForModules(modules: ModuleName[]): Promise<imp
     }
 
     if (includeStudents) {
-        const registerUser = new RegisterUser(usersRepo, passwordHasher);
-        const loginUser = new LoginUser(usersRepo, passwordHasher, tokenProvider, tokenTtl);
-        serverDeps.authRouter = authRouter;
-        serverDeps.registerUser = registerUser;
-        serverDeps.loginUser = loginUser;
-        
         const addDependent = new AddDependent(usersRepo, dependentsRepo);
         const createEnrollmentRequest = new CreateEnrollmentRequest(
             schoolsRepo,
@@ -129,5 +126,5 @@ export async function createServerForModules(modules: ModuleName[]): Promise<imp
         serverDeps.approveEnrollmentRequest = approveEnrollmentRequest;
     }
 
-    return makeServer(serverDeps);
+    return { app: makeServer(serverDeps), modules: selected };
 }

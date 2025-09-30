@@ -18,10 +18,10 @@ function parseModules(value: string | undefined): ModuleName[] {
 
 (async () => {
     const modules = parseModules(process.env.APP_MODULES);
-    const app = await createServerForModules(modules);
+    const { app, modules: activeModules } = await createServerForModules(modules);
     const port = Number(process.env.PORT ?? 3000);
     app.listen(port, () => {
-        const activeModules = modules.length > 0 ? modules.join(', ') : 'auth, payments, schools, students';
-        console.log(`API (${activeModules}) on http://localhost:${port}`);
+        const label = activeModules.length > 0 ? activeModules.join(', ') : 'auth, payments, schools, students';
+        console.log(`API (${label}) on http://localhost:${port}`);
     });
 })();
