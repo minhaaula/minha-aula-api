@@ -2,6 +2,7 @@ import express, { type RequestHandler, type Router } from 'express';
 import swaggerUi from 'swagger-ui-express';
 import { requestLogger } from './middlewares/request-logger';
 import { loadOpenApiDocument } from './swagger/load-openapi';
+import type { ModuleName } from '../../bootstrap/module-config';
 
 const SWAGGER_REALM = 'Swagger UI';
 
@@ -76,6 +77,8 @@ interface AppDependencies {
     approveEnrollmentRequest?: any;
     authMiddleware?: RequestHandler;
     healthRouter: (deps: any) => Router;
+    activeModules?: ModuleName[];
+    openapiFiles?: string[];
 }
 
 export function makeServer(deps: AppDependencies & Record<string, any>) {
@@ -93,7 +96,10 @@ export function makeServer(deps: AppDependencies & Record<string, any>) {
 
     let openApiDocument: unknown;
     try {
-        openApiDocument = loadOpenApiDocument();
+        openApiDocument = loadOpenApiDocument({
+            includeFiles: deps.openapiFiles,
+            modules: deps.activeModules
+        });
     } catch (err) {
         console.warn('Swagger não pôde ser carregado:', err);
     }

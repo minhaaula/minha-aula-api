@@ -29,10 +29,7 @@ import { UserRepositoryAdapter } from '../infra/db/typeorm/user-repository.adap'
 import { ScryptPasswordHasher } from '../infra/auth/scrypt-password-hasher';
 import { HmacTokenProvider } from '../infra/auth/hmac-token-provider';
 import { makeAuthMiddleware } from '../infra/http/middlewares/auth';
-
-export type ModuleName = 'auth' | 'payments' | 'schools' | 'students';
-
-const MODULES_ORDER: ModuleName[] = ['auth', 'payments', 'schools', 'students'];
+import { BASE_DOC_FILES, MODULE_DOC_FILES, MODULES_ORDER, type ModuleName } from './module-config';
 
 export function resolveModules(modules: ModuleName[]): ModuleName[] {
     const initial = modules.length > 0 ? modules : MODULES_ORDER;
@@ -71,6 +68,8 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
         authMiddleware
     };
 
+    const docFiles = new Set<string>(BASE_DOC_FILES);
+
     const includeAuth = selected.includes('auth');
     const includePayments = selected.includes('payments');
     const includeSchools = selected.includes('schools');
@@ -82,6 +81,7 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
         serverDeps.authRouter = authRouter;
         serverDeps.registerUser = registerUser;
         serverDeps.loginUser = loginUser;
+        MODULE_DOC_FILES.auth.forEach((file) => docFiles.add(file));
     }
 
     if (includePayments) {
@@ -95,6 +95,7 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
         serverDeps.paymentsRouter = paymentsRouter;
         serverDeps.createPayment = createPayment;
         serverDeps.capturePayment = capturePayment;
+        MODULE_DOC_FILES.payments.forEach((file) => docFiles.add(file));
     }
 
     if (includeSchools) {
@@ -105,6 +106,7 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
         serverDeps.createSchool = createSchool;
         serverDeps.createCourse = createCourse;
         serverDeps.createCourseClass = createCourseClass;
+        MODULE_DOC_FILES.schools.forEach((file) => docFiles.add(file));
     }
 
     if (includeStudents) {
@@ -124,7 +126,11 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
         serverDeps.enrollmentRequestsRouter = enrollmentRequestsRouter;
         serverDeps.createEnrollmentRequest = createEnrollmentRequest;
         serverDeps.approveEnrollmentRequest = approveEnrollmentRequest;
+        MODULE_DOC_FILES.students.forEach((file) => docFiles.add(file));
     }
+
+    serverDeps.activeModules = selected;
+    serverDeps.openapiFiles = Array.from(docFiles);
 
     return { app: makeServer(serverDeps), modules: selected };
 }

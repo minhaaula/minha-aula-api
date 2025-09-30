@@ -39,7 +39,12 @@ function parseYamlFile(filePath: string) {
     return YAML.parse(raw) ?? {};
 }
 
-export function loadOpenApiDocument() {
+type LoadOptions = {
+    includeFiles?: string[];
+    modules?: Array<string>;
+};
+
+export function loadOpenApiDocument(options?: LoadOptions) {
     const docsDir = DOCS_DIR_CANDIDATES.find((dir) => fs.existsSync(dir));
     if (!docsDir) {
         throw new Error(`Diretório de documentação não encontrado. Caminhos verificados: ${DOCS_DIR_CANDIDATES.join(', ')}`);
@@ -55,13 +60,30 @@ export function loadOpenApiDocument() {
     const baseFile = BASE_FILENAMES.find((name) => filenames.includes(name)) ?? filenames[0];
     let document = parseYamlFile(path.join(docsDir, baseFile));
 
+    const allowed = options?.includeFiles ? new Set(options.includeFiles) : null;
+
     const otherFiles = filenames
         .filter((file) => file !== baseFile)
+        .filter((file) => !allowed || allowed.has(file))
         .sort();
 
     for (const file of otherFiles) {
         const partialDoc = parseYamlFile(path.join(docsDir, file));
         document = deepMerge(document, partialDoc);
+    }
+
+    const prodUrl = process.env.SWAGGER_PROD_URL ?? process.env.API_PROD_URL;
+    if (prodUrl) {
+        if (!Array.isArray(document.servers)) {
+            document.servers = [];
+        }
+        const servers = document.servers as Array<{ url?: string; description?: string }>;
+        const prodServer = servers.find((server) => typeof server.description === 'string' && /prod/i.test(server.description));
+        if (prodServer) {
+            prodServer.url = prodUrl;
+        } else {
+            servers.push({ url: prodUrl, description: 'Ambiente Prod' });
+        }
     }
 
     return document;
