@@ -56,12 +56,34 @@ function makeSwaggerAuthMiddleware(): RequestHandler[] {
     return [authMiddleware];
 }
 
-export function makeServer(deps: any) {
+type MountOptions = { skipAuth?: boolean };
+
+interface AppDependencies {
+    authRouter?: (deps: any) => Router;
+    registerUser?: any;
+    loginUser?: any;
+    paymentsRouter?: (deps: any) => Router;
+    createPayment?: any;
+    capturePayment?: any;
+    schoolsRouter?: (deps: any) => Router;
+    createSchool?: any;
+    createCourse?: any;
+    createCourseClass?: any;
+    dependentsRouter?: (deps: any) => Router;
+    addDependent?: any;
+    enrollmentRequestsRouter?: (deps: any) => Router;
+    createEnrollmentRequest?: any;
+    approveEnrollmentRequest?: any;
+    authMiddleware?: RequestHandler;
+    healthRouter: (deps: any) => Router;
+}
+
+export function makeServer(deps: AppDependencies & Record<string, any>) {
     const app = express();
     app.use(express.json());
     app.use(requestLogger);
 
-    const mount = (path: string, router: Router, options?: { skipAuth?: boolean }) => {
+    const mount = (path: string, router: Router, options?: MountOptions) => {
         if (deps.authMiddleware && !options?.skipAuth) {
             app.use(path, deps.authMiddleware, router);
         } else {
@@ -88,23 +110,41 @@ export function makeServer(deps: any) {
         });
     }
 
-    if (deps.authRouter) {
-        app.use('/auth', deps.authRouter(deps));
+    if (deps.authRouter && deps.registerUser && deps.loginUser) {
+        app.use('/auth', deps.authRouter({
+            registerUser: deps.registerUser,
+            loginUser: deps.loginUser
+        }));
     }
-    const paymentsRoutes = deps.paymentsRouter(deps);
-    mount('/payments', paymentsRoutes);
+    if (deps.paymentsRouter && deps.createPayment && deps.capturePayment) {
+        const paymentsRoutes = deps.paymentsRouter({
+            createPayment: deps.createPayment,
+            capturePayment: deps.capturePayment
+        });
+        mount('/payments', paymentsRoutes);
+    }
 
-    if (deps.schoolsRouter && deps.createSchool) {
-        const router = deps.schoolsRouter(deps);
+    if (deps.schoolsRouter && deps.createSchool && deps.createCourse && deps.createCourseClass) {
+        const router = deps.schoolsRouter({
+            createSchool: deps.createSchool,
+            createCourse: deps.createCourse,
+            createCourseClass: deps.createCourseClass,
+            authMiddleware: deps.authMiddleware
+        });
         mount('/schools', router, { skipAuth: true });
     }
 
     if (deps.dependentsRouter && deps.addDependent) {
-        mount('/dependents', deps.dependentsRouter(deps));
+        const router = deps.dependentsRouter({ addDependent: deps.addDependent });
+        mount('/dependents', router);
     }
 
-    if (deps.enrollmentRequestsRouter && deps.createEnrollmentRequest) {
-        mount('/enrollment-requests', deps.enrollmentRequestsRouter(deps));
+    if (deps.enrollmentRequestsRouter && deps.createEnrollmentRequest && deps.approveEnrollmentRequest) {
+        const router = deps.enrollmentRequestsRouter({
+            createEnrollmentRequest: deps.createEnrollmentRequest,
+            approveEnrollmentRequest: deps.approveEnrollmentRequest
+        });
+        mount('/enrollment-requests', router);
     }
     app.use('/health', deps.healthRouter(deps));
     app.use((err: any, _req: any, res: any, _next: any) => {
