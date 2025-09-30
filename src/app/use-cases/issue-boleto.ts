@@ -8,7 +8,7 @@ export type IssueBoletoResult = {
     dueDate: Date;
 };
 
-export class IssueBoletoService {
+export class IssueBoleto {
     constructor(private readonly provider: PaymentProviderPort) {}
 
     async exec(input: CreateBoletoChargeInput): Promise<IssueBoletoResult> {
@@ -16,7 +16,6 @@ export class IssueBoletoService {
             throw new Error('Boleto charge is not supported by the configured payment provider');
         }
 
-        const result = await this.provider.createBoletoCharge(input);
-        return result;
+        return this.provider.createBoletoCharge(input);
     }
 }

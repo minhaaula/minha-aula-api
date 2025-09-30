@@ -1,36 +1,25 @@
 import { AppDataSource } from '../infra/db/typeorm/datasource';
 import { makeServer } from '../infra/http/express-server';
-import { authRouter } from '../infra/http/routes/auth.routes';
-import { paymentsRouter } from '../infra/http/routes/payments.routes';
 import { healthRouter } from '../infra/http/routes/health.routes';
-import { schoolsRouter } from '../infra/http/routes/schools.routes';
-import { dependentsRouter } from '../infra/http/routes/dependents.routes';
-import { enrollmentRequestsRouter } from '../infra/http/routes/enrollment-requests.routes';
-import { RegisterUser } from '../app/use-cases/register-user';
-import { LoginUser } from '../app/use-cases/login-user';
-import { CreatePayment } from '../app/use-cases/create-payment';
-import { CapturePayment } from '../app/use-cases/CapturePayment';
-import { IssueBoletoService } from '../app/services/issue-boleto';
-import { CreateSchool } from '../app/use-cases/create-school';
-import { CreateCourse } from '../app/use-cases/create-course';
-import { CreateCourseClass } from '../app/use-cases/create-course-class';
-import { AddDependent } from '../app/use-cases/add-dependent';
-import { CreateEnrollmentRequest } from '../app/use-cases/create-enrollment-request';
-import { ApproveEnrollmentRequest } from '../app/use-cases/approve-enrollment-request';
+import { makeAuthMiddleware } from '../infra/http/middlewares/auth';
 import { PaymentRepositoryAdapter } from '../infra/db/typeorm/payment-repository.adap';
-import { OutboxProducer } from '../infra/messaging/bullmq/outbox-producer';
-import { AsaasProvider } from '../infra/providers/asaas/asaas-provider';
+import { UserRepositoryAdapter } from '../infra/db/typeorm/user-repository.adap';
 import { SchoolRepositoryAdapter } from '../infra/db/typeorm/school-repository.adap';
 import { CourseRepositoryAdapter } from '../infra/db/typeorm/course-repository.adap';
 import { CourseClassRepositoryAdapter } from '../infra/db/typeorm/course-class-repository.adap';
 import { DependentRepositoryAdapter } from '../infra/db/typeorm/dependent-repository.adap';
 import { EnrollmentRepositoryAdapter } from '../infra/db/typeorm/enrollment-repository.adap';
 import { EnrollmentRequestRepositoryAdapter } from '../infra/db/typeorm/enrollment-request-repository.adap';
-import { UserRepositoryAdapter } from '../infra/db/typeorm/user-repository.adap';
+import { OutboxProducer } from '../infra/messaging/bullmq/outbox-producer';
 import { ScryptPasswordHasher } from '../infra/auth/scrypt-password-hasher';
 import { HmacTokenProvider } from '../infra/auth/hmac-token-provider';
-import { makeAuthMiddleware } from '../infra/http/middlewares/auth';
-import { BASE_DOC_FILES, MODULE_DOC_FILES, MODULES_ORDER, type ModuleName } from './module-config';
+import { BASE_DOC_FILES, MODULES_ORDER, type ModuleName } from './module-config';
+import { buildAuthModule } from './modules/auth-module';
+import { buildPaymentsModule } from './modules/payments-module';
+import { buildSchoolsModule } from './modules/schools-module';
+import { buildStudentsModule } from './modules/students-module';
+import { ModuleSetupContext, ModuleBuildResult } from './modules/types';
+
 export type { ModuleName } from './module-config';
 
 export function resolveModules(modules: ModuleName[]): ModuleName[] {
@@ -41,6 +30,14 @@ export function resolveModules(modules: ModuleName[]): ModuleName[] {
         set.add('auth');
     }
     return MODULES_ORDER.filter((module) => set.has(module));
+}
+
+function mergeModuleResult(target: Record<string, unknown>, docs: Set<string>, result: ModuleBuildResult | undefined) {
+    if (!result) return;
+    Object.assign(target, result.deps);
+    if (result.docFiles) {
+        result.docFiles.forEach((file) => docs.add(file));
+    }
 }
 
 export async function createServerForModules(modules: ModuleName[]): Promise<{ app: import('express').Application; modules: ModuleName[] }> {
@@ -58,6 +55,7 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
     const dependentsRepo = new DependentRepositoryAdapter();
     const enrollmentsRepo = new EnrollmentRepositoryAdapter();
     const enrollmentRequestsRepo = new EnrollmentRequestRepositoryAdapter();
+    const outbox = new OutboxProducer();
 
     const passwordHasher = new ScryptPasswordHasher();
     const tokenProvider = new HmacTokenProvider(process.env.AUTH_TOKEN_SECRET ?? '');
@@ -65,76 +63,50 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
     const tokenTtl = Number.isFinite(parsedTtl) && parsedTtl > 0 ? parsedTtl : 3600;
     const authMiddleware = makeAuthMiddleware(tokenProvider);
 
-    const serverDeps: any = {
+    const serverDeps: Record<string, unknown> = {
         healthRouter,
         authMiddleware
     };
 
     const docFiles = new Set<string>(BASE_DOC_FILES);
+    const ctx: ModuleSetupContext = { authMiddleware };
 
-    const includeAuth = selected.includes('auth');
-    const includePayments = selected.includes('payments');
-    const includeSchools = selected.includes('schools');
-    const includeStudents = selected.includes('students');
-
-    if (includeAuth) {
-        const registerUser = new RegisterUser(usersRepo, passwordHasher);
-        const loginUser = new LoginUser(usersRepo, passwordHasher, tokenProvider, tokenTtl);
-        serverDeps.authRouter = authRouter;
-        serverDeps.registerUser = registerUser;
-        serverDeps.loginUser = loginUser;
-        MODULE_DOC_FILES.auth.forEach((file) => docFiles.add(file));
-    }
-
-    if (includePayments) {
-        const apiKey = process.env.ASAAS_API_KEY;
-        if (!apiKey) {
-            throw new Error('ASAAS_API_KEY is required when payments module is enabled');
+    for (const moduleName of selected) {
+        switch (moduleName) {
+            case 'auth': {
+                const result = buildAuthModule({ usersRepo, passwordHasher, tokenProvider, tokenTtl }, ctx);
+                mergeModuleResult(serverDeps, docFiles, result);
+                break;
+            }
+            case 'payments': {
+                const result = buildPaymentsModule({
+                    paymentsRepo,
+                    outbox,
+                    asaasApiKey: process.env.ASAAS_API_KEY ?? '',
+                    asaasBaseUrl: process.env.ASAAS_BASE_URL
+                }, ctx);
+                mergeModuleResult(serverDeps, docFiles, result);
+                break;
+            }
+            case 'schools': {
+                const result = buildSchoolsModule({ schoolsRepo, coursesRepo, classesRepo }, ctx);
+                mergeModuleResult(serverDeps, docFiles, result);
+                break;
+            }
+            case 'students': {
+                const result = buildStudentsModule({
+                    usersRepo,
+                    dependentsRepo,
+                    schoolsRepo,
+                    coursesRepo,
+                    classesRepo,
+                    enrollmentsRepo,
+                    enrollmentRequestsRepo
+                }, ctx);
+                mergeModuleResult(serverDeps, docFiles, result);
+                break;
+            }
         }
-        const outbox = new OutboxProducer();
-        const provider = new AsaasProvider({
-            apiKey,
-            baseUrl: process.env.ASAAS_BASE_URL
-        });
-        const createPayment = new CreatePayment(paymentsRepo, provider, outbox);
-        const capturePayment = new CapturePayment(paymentsRepo, provider, outbox);
-        const issueBoleto = new IssueBoletoService(provider);
-        serverDeps.paymentsRouter = paymentsRouter;
-        serverDeps.createPayment = createPayment;
-        serverDeps.capturePayment = capturePayment;
-        serverDeps.issueBoleto = issueBoleto;
-        MODULE_DOC_FILES.payments.forEach((file) => docFiles.add(file));
-    }
-
-    if (includeSchools) {
-        const createSchool = new CreateSchool(schoolsRepo);
-        const createCourse = new CreateCourse(schoolsRepo, coursesRepo);
-        const createCourseClass = new CreateCourseClass(coursesRepo, classesRepo);
-        serverDeps.schoolsRouter = schoolsRouter;
-        serverDeps.createSchool = createSchool;
-        serverDeps.createCourse = createCourse;
-        serverDeps.createCourseClass = createCourseClass;
-        MODULE_DOC_FILES.schools.forEach((file) => docFiles.add(file));
-    }
-
-    if (includeStudents) {
-        const addDependent = new AddDependent(usersRepo, dependentsRepo);
-        const createEnrollmentRequest = new CreateEnrollmentRequest(
-            schoolsRepo,
-            coursesRepo,
-            classesRepo,
-            usersRepo,
-            dependentsRepo,
-            enrollmentsRepo,
-            enrollmentRequestsRepo
-        );
-        const approveEnrollmentRequest = new ApproveEnrollmentRequest(enrollmentRequestsRepo, enrollmentsRepo);
-        serverDeps.dependentsRouter = dependentsRouter;
-        serverDeps.addDependent = addDependent;
-        serverDeps.enrollmentRequestsRouter = enrollmentRequestsRouter;
-        serverDeps.createEnrollmentRequest = createEnrollmentRequest;
-        serverDeps.approveEnrollmentRequest = approveEnrollmentRequest;
-        MODULE_DOC_FILES.students.forEach((file) => docFiles.add(file));
     }
 
     serverDeps.activeModules = selected;

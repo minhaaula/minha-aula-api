@@ -1,11 +1,11 @@
 import { Router } from 'express';
 import { CapturePayment } from '../../../app/use-cases/CapturePayment';
 import { CreatePayment } from '../../../app/use-cases/create-payment';
-import { IssueBoletoService } from '../../../app/services/issue-boleto';
+import { IssueBoleto } from '../../../app/use-cases/issue-boleto';
 import { Money } from '../../../domain/value-objects/money';
 import { z } from 'zod';
 
-export function paymentsRouter({ createPayment, capturePayment, issueBoleto }: { createPayment: CreatePayment; capturePayment: CapturePayment; issueBoleto: IssueBoletoService; }) {
+export function paymentsRouter({ createPayment, capturePayment, issueBoleto }: { createPayment: CreatePayment; capturePayment: CapturePayment; issueBoleto: IssueBoleto; }) {
     const r = Router();
 
     r.post('/', async (req, res, next) => {

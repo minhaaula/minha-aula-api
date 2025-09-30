@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { IssueBoletoService } from '../../src/app/services/issue-boleto';
+import { IssueBoleto } from '../../src/app/use-cases/issue-boleto';
 import { Money } from '../../src/domain/value-objects/money';
 import { CreateBoletoChargeInput, PaymentProviderPort } from '../../src/ports/providers/payment-provider.port';
 
@@ -17,7 +17,7 @@ const boletoInput: CreateBoletoChargeInput = {
     externalReference: 'ref-1'
 };
 
-describe('IssueBoletoService', () => {
+describe('IssueBoleto use case', () => {
     it('delegates boleto creation to provider', async () => {
         const createBoletoCharge = vi.fn().mockResolvedValue({
             providerRef: 'pay_1',
@@ -29,8 +29,8 @@ describe('IssueBoletoService', () => {
             createBoletoCharge
         };
 
-        const service = new IssueBoletoService(provider);
-        const result = await service.exec(boletoInput);
+        const useCase = new IssueBoleto(provider);
+        const result = await useCase.exec(boletoInput);
 
         expect(createBoletoCharge).toHaveBeenCalledWith(boletoInput);
         expect(result.providerRef).toBe('pay_1');
@@ -41,8 +41,8 @@ describe('IssueBoletoService', () => {
             authorize: vi.fn(),
             capture: vi.fn()
         };
-        const service = new IssueBoletoService(provider);
+        const useCase = new IssueBoleto(provider);
 
-        await expect(service.exec(boletoInput)).rejects.toThrow('Boleto charge is not supported');
+        await expect(useCase.exec(boletoInput)).rejects.toThrow('Boleto charge is not supported');
     });
 });
