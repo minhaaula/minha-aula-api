@@ -66,6 +66,7 @@ interface AppDependencies {
     paymentsRouter?: (deps: any) => Router;
     createPayment?: any;
     capturePayment?: any;
+    issueBoleto?: any;
     schoolsRouter?: (deps: any) => Router;
     createSchool?: any;
     createCourse?: any;
@@ -125,9 +126,10 @@ export function makeServer(deps: AppDependencies & Record<string, any>) {
     if (deps.paymentsRouter && deps.createPayment && deps.capturePayment) {
         const paymentsRoutes = deps.paymentsRouter({
             createPayment: deps.createPayment,
-            capturePayment: deps.capturePayment
+            capturePayment: deps.capturePayment,
+            issueBoleto: deps.issueBoleto
         });
-        mount('/payments', paymentsRoutes);
+        mount('/payments', paymentsRoutes, { skipAuth: true });
     }
 
     if (deps.schoolsRouter && deps.createSchool && deps.createCourse && deps.createCourseClass) {

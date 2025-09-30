@@ -4,8 +4,6 @@ paths:
       tags:
         - Payments
       summary: Criar um novo pagamento
-      security:
-        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -30,8 +28,6 @@ paths:
       tags:
         - Payments
       summary: Capturar um pagamento previamente autorizado
-      security:
-        - bearerAuth: []
       parameters:
         - in: path
           name: id
@@ -44,7 +40,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CapturePaymentInput'
+                $ref: '#/components/schemas/CapturePaymentInput'
       responses:
         '200':
           description: Pagamento capturado com sucesso.
@@ -54,6 +50,30 @@ paths:
                 $ref: '#/components/schemas/PaymentResponse'
         '400':
           description: Pagamento não encontrado ou erro de validação.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /payments/boletos:
+    post:
+      tags:
+        - Payments
+      summary: Emitir cobrança via boleto bancário
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssueBoletoInput'
+      responses:
+        '201':
+          description: Boleto emitido com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueBoletoResponse'
+        '400':
+          description: Erro de validação ou suporte indisponível para boletos.
           content:
             application/json:
               schema:

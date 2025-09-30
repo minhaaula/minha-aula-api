@@ -225,9 +225,107 @@ components:
           format: uuid
         status:
           type: string
+        method:
+          type: string
+        amount:
+          type: integer
+          format: int32
+        currency:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
       required:
         - paymentId
         - status
+        - method
+        - amount
+        - currency
+        - createdAt
+    IssueBoletoInput:
+      type: object
+      required:
+        - amount
+        - currency
+        - customer
+        - dueDate
+      properties:
+        amount:
+          type: integer
+          format: int32
+          minimum: 1
+          description: Valor em centavos.
+          example: 10000
+        currency:
+          type: string
+          example: BRL
+        customer:
+          type: object
+          required:
+            - name
+            - email
+            - cpfCnpj
+            - postalCode
+            - addressNumber
+          properties:
+            name:
+              type: string
+              example: João Silva
+            email:
+              type: string
+              format: email
+            cpfCnpj:
+              type: string
+              example: "12345678909"
+            postalCode:
+              type: string
+              example: "01234000"
+            addressNumber:
+              type: string
+              example: "123"
+            addressComplement:
+              type: string
+              nullable: true
+            phone:
+              type: string
+              nullable: true
+        dueDate:
+          type: string
+          format: date
+          example: 2024-12-01
+        description:
+          type: string
+          nullable: true
+          example: Mensalidade Turma A
+        externalReference:
+          type: string
+          nullable: true
+          example: matricula-123
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+    IssueBoletoResponse:
+      type: object
+      properties:
+        providerRef:
+          type: string
+        boletoUrl:
+          type: string
+          nullable: true
+          format: uri
+        digitableLine:
+          type: string
+          nullable: true
+        barcode:
+          type: string
+          nullable: true
+        dueDate:
+          type: string
+          format: date
+      required:
+        - providerRef
+        - dueDate
     CapturePaymentInput:
       type: object
       properties:

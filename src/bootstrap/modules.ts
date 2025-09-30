@@ -10,6 +10,7 @@ import { RegisterUser } from '../app/use-cases/register-user';
 import { LoginUser } from '../app/use-cases/login-user';
 import { CreatePayment } from '../app/use-cases/create-payment';
 import { CapturePayment } from '../app/use-cases/CapturePayment';
+import { IssueBoletoService } from '../app/services/issue-boleto';
 import { CreateSchool } from '../app/use-cases/create-school';
 import { CreateCourse } from '../app/use-cases/create-course';
 import { CreateCourseClass } from '../app/use-cases/create-course-class';
@@ -86,16 +87,22 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
     }
 
     if (includePayments) {
+        const apiKey = process.env.ASAAS_API_KEY;
+        if (!apiKey) {
+            throw new Error('ASAAS_API_KEY is required when payments module is enabled');
+        }
         const outbox = new OutboxProducer();
         const provider = new AsaasProvider({
-            apiKey: process.env.ASAAS_API_KEY!,
+            apiKey,
             baseUrl: process.env.ASAAS_BASE_URL
         });
         const createPayment = new CreatePayment(paymentsRepo, provider, outbox);
         const capturePayment = new CapturePayment(paymentsRepo, provider, outbox);
+        const issueBoleto = new IssueBoletoService(provider);
         serverDeps.paymentsRouter = paymentsRouter;
         serverDeps.createPayment = createPayment;
         serverDeps.capturePayment = capturePayment;
+        serverDeps.issueBoleto = issueBoleto;
         MODULE_DOC_FILES.payments.forEach((file) => docFiles.add(file));
     }
 
