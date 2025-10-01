@@ -20,6 +20,8 @@ import { buildSchoolsModule } from './modules/schools-module';
 import { buildStudentsModule } from './modules/students-module';
 import { ModuleSetupContext, ModuleBuildResult } from './modules/types';
 
+type ServerDeps = Parameters<typeof makeServer>[0];
+
 export type { ModuleName } from './module-config';
 
 export function resolveModules(modules: ModuleName[]): ModuleName[] {
@@ -63,7 +65,7 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
     const tokenTtl = Number.isFinite(parsedTtl) && parsedTtl > 0 ? parsedTtl : 3600;
     const authMiddleware = makeAuthMiddleware(tokenProvider);
 
-    const serverDeps: Record<string, unknown> = {
+    const serverDeps: ServerDeps = {
         healthRouter,
         authMiddleware
     };
