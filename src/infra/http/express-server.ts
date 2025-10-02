@@ -67,6 +67,8 @@ interface AppDependencies {
     createPayment?: any;
     capturePayment?: any;
     issueBoleto?: any;
+    studentsRouter?: (deps: any) => Router;
+    listStudents?: any;
     schoolsRouter?: (deps: any) => Router;
     createSchool?: any;
     listSchools?: any;
@@ -140,6 +142,13 @@ export function makeServer(deps: AppDependencies & Record<string, any>) {
             issueBoleto: deps.issueBoleto
         });
         mount('/payments', paymentsRoutes, { skipAuth: true });
+    }
+
+    if (deps.studentsRouter && deps.listStudents) {
+        const router = deps.studentsRouter({
+            listStudents: deps.listStudents
+        });
+        mount('/students', router);
     }
 
     if (deps.schoolsRouter && deps.createSchool && deps.listSchools && deps.createCourse && deps.createCourseClass) {

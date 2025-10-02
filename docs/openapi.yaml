@@ -21,6 +21,8 @@ tags:
     description: Cadastro de dependentes vinculados aos usuários.
   - name: Enrollment Requests
     description: Fluxo de solicitações e aprovações de matrícula.
+  - name: Students
+    description: Consulta de alunos e seus dependentes.
 components:
   securitySchemes:
     bearerAuth:
@@ -383,6 +385,55 @@ components:
             $ref: '#/components/schemas/SchoolResponse'
       required:
         - schools
+    StudentDependentResponse:
+      allOf:
+        - $ref: '#/components/schemas/DependentResponse'
+    StudentResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        fullName:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        cpf:
+          type: string
+        birthDate:
+          type: string
+          format: date
+        address:
+          $ref: '#/components/schemas/UserAddressInput'
+        dependents:
+          type: array
+          items:
+            $ref: '#/components/schemas/StudentDependentResponse'
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - fullName
+        - email
+        - phone
+        - cpf
+        - birthDate
+        - address
+        - dependents
+        - createdAt
+    StudentsListResponse:
+      type: object
+      properties:
+        students:
+          type: array
+          items:
+            $ref: '#/components/schemas/StudentResponse'
+      required:
+        - students
     SchoolAddress:
       type: object
       required:

@@ -25,6 +25,13 @@ export class UserRepositoryAdapter implements UserRepository {
         return row ? this.toDomain(row) : null;
     }
 
+    async findByPersona(persona: string): Promise<User[]> {
+        const normalized = persona.trim();
+        if (!normalized) return [];
+        const rows = await this.repo.find({ where: { persona: normalized } });
+        return rows.map((row) => this.toDomain(row));
+    }
+
     async save(user: User): Promise<void> {
         await this.repo.save(this.toOrm(user));
     }

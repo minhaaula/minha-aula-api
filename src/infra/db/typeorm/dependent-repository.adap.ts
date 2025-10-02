@@ -2,6 +2,7 @@ import { AppDataSource } from './datasource';
 import { DependentRepository } from '../../../ports/repositories/dependent.repo';
 import { Dependent } from '../../../domain/entities/dependent';
 import { DependentOrm } from './entities/dependent.orm';
+import { In } from 'typeorm';
 
 export class DependentRepositoryAdapter implements DependentRepository {
     private readonly repo = AppDataSource.getRepository(DependentOrm);
@@ -18,6 +19,12 @@ export class DependentRepositoryAdapter implements DependentRepository {
         return row ? this.toDomain(row) : null;
     }
 
+    async findByUserIds(userIds: string[]): Promise<Dependent[]> {
+        if (!userIds.length) return [];
+        const rows = await this.repo.find({ where: { userId: In(userIds) } });
+        return rows.map((row) => this.toDomain(row));
+    }
+
     async save(dependent: Dependent): Promise<void> {
         await this.repo.save(this.toOrm(dependent));
     }
@@ -27,9 +34,9 @@ export class DependentRepositoryAdapter implements DependentRepository {
             id: row.id,
             userId: row.userId,
             fullName: row.fullName,
-            birthDate: row.birthDate,
+            birthDate: row.birthDate ? new Date(row.birthDate) : null,
             relationship: row.relationship,
-            createdAt: row.createdAt
+            createdAt: new Date(row.createdAt)
         });
     }
 

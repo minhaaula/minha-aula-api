@@ -4,6 +4,7 @@ paths:
       tags:
         - Dependents
       summary: Cadastrar um novo dependente para o usuário autenticado
+      description: Disponível apenas para usuários com persona STUDENT.
       security:
         - bearerAuth: []
       requestBody:

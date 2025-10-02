@@ -11,6 +11,8 @@ import { CreateEnrollmentRequest } from '../../app/use-cases/create-enrollment-r
 import { ApproveEnrollmentRequest } from '../../app/use-cases/approve-enrollment-request';
 import { dependentsRouter } from '../../infra/http/routes/dependents.routes';
 import { enrollmentRequestsRouter } from '../../infra/http/routes/enrollment-requests.routes';
+import { ListStudents } from '../../app/use-cases/list-students';
+import { studentsRouter } from '../../infra/http/routes/students.routes';
 
 export type StudentsModuleDeps = {
     usersRepo: UserRepositoryAdapter;
@@ -24,6 +26,7 @@ export type StudentsModuleDeps = {
 
 export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupContext): ModuleBuildResult {
     const addDependent = new AddDependent(deps.usersRepo, deps.dependentsRepo);
+    const listStudents = new ListStudents(deps.usersRepo, deps.dependentsRepo);
     const createEnrollmentRequest = new CreateEnrollmentRequest(
         deps.schoolsRepo,
         deps.coursesRepo,
@@ -37,12 +40,14 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
 
     return {
         deps: {
+            studentsRouter,
+            listStudents,
             dependentsRouter,
             addDependent,
             enrollmentRequestsRouter,
             createEnrollmentRequest,
             approveEnrollmentRequest
         },
-        docFiles: ['dependents.yaml', 'enrollment-requests.yaml']
+        docFiles: ['students.yaml', 'dependents.yaml', 'enrollment-requests.yaml']
     };
 }

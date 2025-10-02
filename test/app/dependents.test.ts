@@ -22,6 +22,10 @@ class InMemoryUserRepository implements UserRepository {
         return this.users.get(id) ?? null;
     }
 
+    async findByPersona(): Promise<User[]> {
+        return Array.from(this.users.values());
+    }
+
     async save(user: User): Promise<void> {
         this.users.set(user.id, user);
     }
@@ -40,6 +44,11 @@ class InMemoryDependentRepository implements DependentRepository {
 
     async findByUserAndFullName(userId: string, fullName: string): Promise<Dependent | null> {
         return Array.from(this.dependents.values()).find((dep) => dep.userId === userId && dep.fullName === fullName.trim()) ?? null;
+    }
+
+    async findByUserIds(userIds: string[]): Promise<Dependent[]> {
+        const set = new Set(userIds);
+        return Array.from(this.dependents.values()).filter((dep) => set.has(dep.userId));
     }
 
     async save(dependent: Dependent): Promise<void> {

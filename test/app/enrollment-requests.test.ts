@@ -51,6 +51,9 @@ class InMemoryUsers implements UserRepository {
     async findByEmail() { return null; }
     async findByCpf() { return null; }
     async findById(id: string) { return this.items.get(id) ?? null; }
+    async findByPersona(persona: string) {
+        return Array.from(this.items.values()).filter((user) => user.persona === persona);
+    }
     async save(user: User) { this.items.set(user.id, user); }
     seed(user: User) { this.items.set(user.id, user); }
 }
@@ -60,6 +63,10 @@ class InMemoryDependents implements DependentRepository {
     async findById(id: string) { return this.items.get(id) ?? null; }
     async findByUserAndFullName(userId: string, fullName: string) {
         return Array.from(this.items.values()).find((dep) => dep.userId === userId && dep.fullName === fullName.trim()) ?? null;
+    }
+    async findByUserIds(userIds: string[]) {
+        const set = new Set(userIds);
+        return Array.from(this.items.values()).filter((dep) => set.has(dep.userId));
     }
     async save(dep: Dependent) { this.items.set(dep.id, dep); }
     seed(dep: Dependent) { this.items.set(dep.id, dep); }

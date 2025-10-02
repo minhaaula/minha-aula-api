@@ -1,0 +1,22 @@
+paths:
+  /students:
+    get:
+      tags:
+        - Students
+      summary: Listar alunos com dependentes
+      description: Requer persona ADMIN ou SCHOOL.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Lista de alunos cadastrados.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StudentsListResponse'
+        '400':
+          description: Erro na requisição.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
