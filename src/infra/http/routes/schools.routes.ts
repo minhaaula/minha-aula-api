@@ -3,9 +3,11 @@ import { z } from 'zod';
 import { CreateSchool } from '../../../app/use-cases/create-school';
 import { CreateCourse } from '../../../app/use-cases/create-course';
 import { CreateCourseClass } from '../../../app/use-cases/create-course-class';
+import { ListSchools } from '../../../app/use-cases/list-schools';
 
 export function schoolsRouter(deps: {
     createSchool: CreateSchool;
+    listSchools: ListSchools;
     createCourse: CreateCourse;
     createCourseClass: CreateCourseClass;
     authMiddleware?: RequestHandler;
@@ -13,11 +15,44 @@ export function schoolsRouter(deps: {
     const r = Router();
     const requireAuth: RequestHandler = deps.authMiddleware ?? ((_req, _res, next) => next());
 
+    r.get('/', async (_req, res, next) => {
+        try {
+            const schools = await deps.listSchools.exec();
+            res.json({ schools });
+        } catch (err) {
+            next(err);
+        }
+    });
+
     r.post('/', async (req, res, next) => {
         try {
-            const schema = z.object({ name: z.string().min(3) });
+            const addressSchema = z.object({
+                street: z.string().trim().min(1),
+                number: z.string().trim().min(1),
+                complement: z.string().trim().min(1).optional().nullable(),
+                district: z.string().trim().min(1).optional().nullable(),
+                city: z.string().trim().min(1),
+                state: z.string().trim().min(1),
+                zipCode: z.string().trim().min(1)
+            });
+
+            const schema = z.object({
+                name: z.string().trim().min(3),
+                addresses: z.array(addressSchema).optional()
+            });
             const data = schema.parse(req.body);
-            const school = await deps.createSchool.exec({ name: data.name });
+            const school = await deps.createSchool.exec({
+                name: data.name,
+                addresses: data.addresses?.map((address) => ({
+                    street: address.street,
+                    number: address.number,
+                    complement: address.complement ?? null,
+                    district: address.district ?? null,
+                    city: address.city,
+                    state: address.state,
+                    zipCode: address.zipCode
+                }))
+            });
             res.status(201).json(school);
         } catch (err) {
             next(err);

@@ -349,6 +349,11 @@ components:
           type: string
           minLength: 3
           example: Escola do Futuro
+        addresses:
+          type: array
+          description: Lista de endereços físicos da escola.
+          items:
+            $ref: '#/components/schemas/SchoolAddress'
     SchoolResponse:
       type: object
       properties:
@@ -357,13 +362,60 @@ components:
           format: uuid
         name:
           type: string
+        addresses:
+          type: array
+          items:
+            $ref: '#/components/schemas/SchoolAddress'
         createdAt:
           type: string
           format: date-time
       required:
         - id
         - name
+        - addresses
         - createdAt
+    SchoolsListResponse:
+      type: object
+      properties:
+        schools:
+          type: array
+          items:
+            $ref: '#/components/schemas/SchoolResponse'
+      required:
+        - schools
+    SchoolAddress:
+      type: object
+      required:
+        - street
+        - number
+        - city
+        - state
+        - zipCode
+      properties:
+        street:
+          type: string
+          example: Rua das Palmeiras
+        number:
+          type: string
+          example: '120'
+        complement:
+          type: string
+          nullable: true
+          example: Bloco B
+        district:
+          type: string
+          nullable: true
+          example: Centro
+        city:
+          type: string
+          example: São Paulo
+        state:
+          type: string
+          example: SP
+        zipCode:
+          type: string
+          description: Apenas dígitos.
+          example: '01234000'
     CreateCourseInput:
       type: object
       required:

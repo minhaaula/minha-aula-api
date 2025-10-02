@@ -12,6 +12,7 @@ import { DependentOrm } from './entities/dependent.orm';
 import { EnrollmentOrm } from './entities/enrollment.orm';
 import { NotificationOrm } from './entities/notification.orm';
 import { EnrollmentRequestOrm } from './entities/enrollment-request.orm';
+import { SchoolAddressOrm } from './entities/school-address.orm';
 
 export const AppDataSource = new DataSource({
     type: 'mysql',
@@ -26,6 +27,7 @@ export const AppDataSource = new DataSource({
         IdempotencyOrm,
         UserOrm,
         SchoolOrm,
+        SchoolAddressOrm,
         CourseOrm,
         CourseClassOrm,
         DependentOrm,

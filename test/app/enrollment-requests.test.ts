@@ -21,6 +21,7 @@ import { PostalAddress } from '../../src/domain/value-objects/postal-address';
 class InMemorySchools implements SchoolRepository {
     private readonly items = new Map<string, School>();
     async findById(id: string) { return this.items.get(id) ?? null; }
+    async findAll() { return Array.from(this.items.values()); }
     async save(school: School) { this.items.set(school.id, school); }
     seed(school: School) { this.items.set(school.id, school); }
 }

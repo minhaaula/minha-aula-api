@@ -1,5 +1,22 @@
 paths:
   /schools:
+    get:
+      tags:
+        - Schools
+      summary: Listar escolas
+      responses:
+        '200':
+          description: Lista de escolas cadastradas.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchoolsListResponse'
+        '400':
+          description: Erro de validação.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     post:
       tags:
         - Schools

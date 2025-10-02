@@ -2,18 +2,24 @@ import { describe, expect, it } from 'vitest';
 import { CreateSchool } from '../../src/app/use-cases/create-school';
 import { CreateCourse } from '../../src/app/use-cases/create-course';
 import { CreateCourseClass } from '../../src/app/use-cases/create-course-class';
+import { ListSchools } from '../../src/app/use-cases/list-schools';
 import { SchoolRepository } from '../../src/ports/repositories/school.repo';
 import { CourseRepository } from '../../src/ports/repositories/course.repo';
 import { CourseClassRepository } from '../../src/ports/repositories/course-class.repo';
 import { School } from '../../src/domain/entities/school';
 import { Course } from '../../src/domain/entities/course';
 import { CourseClass } from '../../src/domain/entities/course-class';
+import { PostalAddress } from '../../src/domain/value-objects/postal-address';
 
 class InMemorySchoolRepository implements SchoolRepository {
     private readonly items = new Map<string, School>();
 
     async findById(id: string): Promise<School | null> {
         return this.items.get(id) ?? null;
+    }
+
+    async findAll(): Promise<School[]> {
+        return Array.from(this.items.values()).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
     }
 
     async save(school: School): Promise<void> {
@@ -63,22 +69,96 @@ class InMemoryCourseClassRepository implements CourseClassRepository {
 }
 
 describe('School creation flow', () => {
-    it('creates and persists a new school', async () => {
+    it('creates and persists a new school with addresses', async () => {
         const repo = new InMemorySchoolRepository();
         const useCase = new CreateSchool(repo);
 
-        const result = await useCase.exec({ name: '  Escola Central  ' });
+        const result = await useCase.exec({
+            name: '  Escola Central  ',
+            addresses: [{
+                street: 'Rua Central',
+                number: '100',
+                city: 'São Paulo',
+                state: 'SP',
+                zipCode: '01234-000'
+            }]
+        });
 
         expect(result.id).toBeTruthy();
+        expect(result.addresses).toHaveLength(1);
+        expect(result.addresses[0]).toMatchObject({
+            street: 'Rua Central',
+            number: '100',
+            city: 'São Paulo',
+            state: 'SP',
+            zipCode: '01234000'
+        });
         const stored = await repo.findById(result.id);
         expect(stored).toBeTruthy();
         expect(stored?.name).toBe('Escola Central');
+        expect(stored?.addresses).toHaveLength(1);
+        expect(stored?.addresses[0].zipCode).toBe('01234000');
+    });
+
+    it('creates a school without addresses when none are provided', async () => {
+        const repo = new InMemorySchoolRepository();
+        const useCase = new CreateSchool(repo);
+
+        const result = await useCase.exec({ name: 'Escola Sem Endereço' });
+
+        expect(result.addresses).toHaveLength(0);
+        const stored = await repo.findById(result.id);
+        expect(stored?.addresses).toHaveLength(0);
+    });
+
+    it('lists schools with addresses ordered by creation date', async () => {
+        const repo = new InMemorySchoolRepository();
+        const listSchools = new ListSchools(repo);
+
+        const older = School.create({
+            id: 'school-older',
+            name: 'Escola Antiga',
+            addresses: [PostalAddress.create({
+                street: 'Rua 1',
+                number: '10',
+                city: 'Rio',
+                state: 'RJ',
+                zipCode: '20000-000'
+            })],
+            createdAt: new Date('2023-01-01')
+        });
+
+        const newer = School.create({
+            id: 'school-new',
+            name: 'Escola Nova',
+            addresses: [PostalAddress.create({
+                street: 'Rua 2',
+                number: '20',
+                city: 'São Paulo',
+                state: 'SP',
+                zipCode: '01234-000'
+            })],
+            createdAt: new Date('2024-01-01')
+        });
+
+        repo.seed(older);
+        repo.seed(newer);
+
+        const result = await listSchools.exec();
+        expect(result).toHaveLength(2);
+        expect(result[0].id).toBe('school-new');
+        expect(result[0].addresses[0].zipCode).toBe('01234000');
+        expect(result[1].id).toBe('school-older');
     });
 
     it('creates a course for an existing school and prevents duplicates', async () => {
         const schools = new InMemorySchoolRepository();
         const courses = new InMemoryCourseRepository();
-        const school = School.create({ id: 'school-1', name: 'Escola XPTO', createdAt: new Date('2024-01-01') });
+        const school = School.create({
+            id: 'school-1',
+            name: 'Escola XPTO',
+            createdAt: new Date('2024-01-01')
+        });
         schools.seed(school);
         const useCase = new CreateCourse(schools, courses);
 
