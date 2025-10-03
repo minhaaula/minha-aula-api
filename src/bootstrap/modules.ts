@@ -91,7 +91,13 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
                 break;
             }
             case 'schools': {
-                const result = buildSchoolsModule({ schoolsRepo, coursesRepo, classesRepo }, ctx);
+                const result = buildSchoolsModule({
+                    schoolsRepo,
+                    coursesRepo,
+                    classesRepo,
+                    usersRepo,
+                    dependentsRepo
+                }, ctx);
                 mergeModuleResult(serverDeps, docFiles, result);
                 break;
             }

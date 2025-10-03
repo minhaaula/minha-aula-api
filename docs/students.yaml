@@ -7,6 +7,14 @@ paths:
       description: Requer persona ADMIN ou SCHOOL.
       security:
         - bearerAuth: []
+      parameters:
+        - in: query
+          name: cpf
+          required: false
+          schema:
+            type: string
+            example: '12345678909'
+          description: Filtrar pelo CPF de um aluno específico.
       responses:
         '200':
           description: Lista de alunos cadastrados.

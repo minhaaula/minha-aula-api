@@ -160,6 +160,17 @@ export function makeServer(deps: AppDependencies & Record<string, any>) {
             authMiddleware: deps.authMiddleware
         });
         mount('/schools', router, { skipAuth: true });
+    } else if (deps.listSchools) {
+        const router = express.Router();
+        router.get('/', async (_req, res, next) => {
+            try {
+                const schools = await deps.listSchools.exec();
+                res.json({ schools });
+            } catch (err) {
+                next(err);
+            }
+        });
+        mount('/schools', router, { skipAuth: true });
     }
 
     if (deps.dependentsRouter && deps.addDependent) {

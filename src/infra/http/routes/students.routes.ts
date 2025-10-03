@@ -8,9 +8,10 @@ export function studentsRouter(deps: { listStudents: ListStudents; }) {
 
     const canListStudents = requirePersona(UserPersonaEnum.ADMIN, UserPersonaEnum.SCHOOL);
 
-    r.get('/', canListStudents, async (_req, res, next) => {
+    r.get('/', canListStudents, async (req, res, next) => {
         try {
-            const students = await deps.listStudents.exec();
+            const cpf = typeof req.query.cpf === 'string' ? req.query.cpf : undefined;
+            const students = await deps.listStudents.exec({ cpf });
             res.json({ students });
         } catch (err) {
             next(err);

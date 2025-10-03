@@ -1,0 +1,20 @@
+paths:
+  /schools:
+    get:
+      tags:
+        - Schools
+      summary: Listar escolas
+      description: Endpoint de leitura para seleção de escolas por alunos.
+      responses:
+        '200':
+          description: Lista de escolas cadastradas.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchoolsListResponse'
+        '400':
+          description: Erro de validação.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'

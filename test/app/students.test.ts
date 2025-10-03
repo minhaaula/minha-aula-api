@@ -14,8 +14,9 @@ class InMemoryUserRepository implements UserRepository {
         return null;
     }
 
-    async findByCpf(): Promise<User | null> {
-        return null;
+    async findByCpf(cpf: string): Promise<User | null> {
+        const normalized = cpf.replace(/\D/g, '');
+        return Array.from(this.items.values()).find((user) => user.cpf === normalized) ?? null;
     }
 
     async findById(id: string): Promise<User | null> {
@@ -118,5 +119,60 @@ describe('ListStudents use case', () => {
 
         const result = await useCase.exec();
         expect(result).toEqual([]);
+    });
+
+    it('filters by CPF when provided', async () => {
+        const users = new InMemoryUserRepository();
+        const dependents = new InMemoryDependentRepository();
+        const studentA = makeStudent('student-1', '12345678901', new Date('2024-01-01T10:00:00Z'));
+        const studentB = makeStudent('student-2', '12345678902', new Date('2024-02-01T10:00:00Z'));
+        users.seed(studentA);
+        users.seed(studentB);
+        dependents.seed(makeDependent('dep-1', studentA.id, new Date('2024-03-01T10:00:00Z')));
+
+        const useCase = new ListStudents(users, dependents);
+        const result = await useCase.exec({ cpf: '123.456.789-01' });
+
+        expect(result).toHaveLength(1);
+        expect(result[0].id).toBe(studentA.id);
+        expect(result[0].dependents).toHaveLength(1);
+        expect(result[0].dependents[0].id).toBe('dep-1');
+    });
+
+    it('returns empty array when CPF belongs to a non-student user', async () => {
+        const users = new InMemoryUserRepository();
+        const dependents = new InMemoryDependentRepository();
+        const nonStudent = User.create({
+            id: 'user-1',
+            fullName: 'Usuário comum',
+            birthDate: new Date('1990-01-01'),
+            email: Email.create('user@example.com'),
+            phone: '11988887777',
+            cpf: '12345678903',
+            address: PostalAddress.create({
+                street: 'Rua Teste',
+                number: '50',
+                city: 'São Paulo',
+                state: 'SP',
+                zipCode: '01234000'
+            }),
+            persona: 'SCHOOL',
+            passwordHash: 'hash',
+            createdAt: new Date('2024-01-01T10:00:00Z')
+        });
+        users.seed(nonStudent);
+
+        const useCase = new ListStudents(users, dependents);
+        const result = await useCase.exec({ cpf: '12345678903' });
+
+        expect(result).toHaveLength(0);
+    });
+
+    it('throws when CPF format is invalid', async () => {
+        const users = new InMemoryUserRepository();
+        const dependents = new InMemoryDependentRepository();
+        const useCase = new ListStudents(users, dependents);
+
+        await expect(useCase.exec({ cpf: '123' })).rejects.toThrow('Invalid CPF');
     });
 });

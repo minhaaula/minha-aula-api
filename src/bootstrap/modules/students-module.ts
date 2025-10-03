@@ -13,6 +13,7 @@ import { dependentsRouter } from '../../infra/http/routes/dependents.routes';
 import { enrollmentRequestsRouter } from '../../infra/http/routes/enrollment-requests.routes';
 import { ListStudents } from '../../app/use-cases/list-students';
 import { studentsRouter } from '../../infra/http/routes/students.routes';
+import { ListSchools } from '../../app/use-cases/list-schools';
 
 export type StudentsModuleDeps = {
     usersRepo: UserRepositoryAdapter;
@@ -27,6 +28,7 @@ export type StudentsModuleDeps = {
 export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupContext): ModuleBuildResult {
     const addDependent = new AddDependent(deps.usersRepo, deps.dependentsRepo);
     const listStudents = new ListStudents(deps.usersRepo, deps.dependentsRepo);
+    const listSchools = new ListSchools(deps.schoolsRepo);
     const createEnrollmentRequest = new CreateEnrollmentRequest(
         deps.schoolsRepo,
         deps.coursesRepo,
@@ -46,8 +48,9 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
             addDependent,
             enrollmentRequestsRouter,
             createEnrollmentRequest,
-            approveEnrollmentRequest
+            approveEnrollmentRequest,
+            listSchools
         },
-        docFiles: ['students.yaml', 'dependents.yaml', 'enrollment-requests.yaml']
+        docFiles: ['students.yaml', 'dependents.yaml', 'enrollment-requests.yaml', 'schools-public.yaml']
     };
 }
