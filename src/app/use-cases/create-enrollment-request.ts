@@ -26,15 +26,7 @@ export class CreateEnrollmentRequest {
         requestedForUserId: string;
         requestedForDependentId?: string | null;
         notes?: string | null;
-    }): Promise<{
-        id: string;
-        status: string;
-        schoolId: string;
-        courseClassId: string;
-        requestedForUserId: string;
-        requestedForDependentId: string | null;
-        createdAt: Date;
-    }> {
+    }): Promise<EnrollmentRequest> {
         const schoolId = input.schoolId.trim();
         const courseClassId = input.courseClassId.trim();
 
@@ -82,14 +74,6 @@ export class CreateEnrollmentRequest {
 
         await this.requests.save(request);
 
-        return {
-            id: request.id,
-            status: request.status,
-            schoolId: request.schoolId,
-            courseClassId: request.courseClassId,
-            requestedForUserId: request.requestedForUserId,
-            requestedForDependentId: request.requestedForDependentId,
-            createdAt: request.createdAt
-        };
+        return request;
     }
 }
