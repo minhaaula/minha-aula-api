@@ -79,6 +79,8 @@ interface AppDependencies {
     enrollmentRequestsRouter?: (deps: any) => Router;
     createEnrollmentRequest?: any;
     approveEnrollmentRequest?: any;
+    listEnrollmentRequests?: any;
+    getEnrollmentRequest?: any;
     authMiddleware?: RequestHandler;
     healthRouter: (deps: any) => Router;
     activeModules?: ModuleName[];
@@ -178,10 +180,18 @@ export function makeServer(deps: AppDependencies & Record<string, any>) {
         mount('/dependents', router);
     }
 
-    if (deps.enrollmentRequestsRouter && deps.createEnrollmentRequest && deps.approveEnrollmentRequest) {
+    if (
+        deps.enrollmentRequestsRouter &&
+        deps.createEnrollmentRequest &&
+        deps.approveEnrollmentRequest &&
+        deps.listEnrollmentRequests &&
+        deps.getEnrollmentRequest
+    ) {
         const router = deps.enrollmentRequestsRouter({
             createEnrollmentRequest: deps.createEnrollmentRequest,
-            approveEnrollmentRequest: deps.approveEnrollmentRequest
+            approveEnrollmentRequest: deps.approveEnrollmentRequest,
+            listEnrollmentRequests: deps.listEnrollmentRequests,
+            getEnrollmentRequest: deps.getEnrollmentRequest
         });
         mount('/enrollment-requests', router);
     }

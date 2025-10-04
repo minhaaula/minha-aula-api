@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { CreateEnrollmentRequest } from '../../src/app/use-cases/create-enrollment-request';
 import { ApproveEnrollmentRequest } from '../../src/app/use-cases/approve-enrollment-request';
+import { ListEnrollmentRequests } from '../../src/app/use-cases/list-enrollment-requests';
+import { GetEnrollmentRequest } from '../../src/app/use-cases/get-enrollment-request';
 import { SchoolRepository } from '../../src/ports/repositories/school.repo';
 import { CourseRepository } from '../../src/ports/repositories/course.repo';
 import { CourseClassRepository } from '../../src/ports/repositories/course-class.repo';
@@ -15,7 +17,7 @@ import { User } from '../../src/domain/entities/user';
 import { Email } from '../../src/domain/value-objects/email';
 import { Dependent } from '../../src/domain/entities/dependent';
 import { Enrollment } from '../../src/domain/entities/enrollment';
-import { EnrollmentRequest } from '../../src/domain/entities/enrollment-request';
+import { EnrollmentRequest, EnrollmentRequestStatus } from '../../src/domain/entities/enrollment-request';
 import { PostalAddress } from '../../src/domain/value-objects/postal-address';
 
 class InMemorySchools implements SchoolRepository {
@@ -95,6 +97,29 @@ class InMemoryRequests implements EnrollmentRequestRepository {
             request.requestedForUserId === params.userId &&
             request.requestedForDependentId === params.dependentId
         ) ?? null;
+    }
+    async findMany(params: {
+        schoolId?: string;
+        courseClassId?: string;
+        status?: EnrollmentRequestStatus;
+        requestedForUserId?: string;
+        requestedForDependentId?: string | null;
+        limit?: number;
+        offset?: number;
+    }) {
+        const filtered = Array.from(this.items.values()).filter((request) => {
+            if (params.schoolId && request.schoolId !== params.schoolId) return false;
+            if (params.courseClassId && request.courseClassId !== params.courseClassId) return false;
+            if (params.status && request.status !== params.status) return false;
+            if (params.requestedForUserId && request.requestedForUserId !== params.requestedForUserId) return false;
+            if (params.requestedForDependentId === null && request.requestedForDependentId !== null) return false;
+            if (params.requestedForDependentId && request.requestedForDependentId !== params.requestedForDependentId) return false;
+            return true;
+        });
+        const ordered = filtered.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+        const offset = params.offset ?? 0;
+        const limit = params.limit ?? ordered.length;
+        return ordered.slice(offset, offset + limit);
     }
     async save(request: EnrollmentRequest) { this.items.set(request.id, request); }
     seed(request: EnrollmentRequest) { this.items.set(request.id, request); }
@@ -252,5 +277,71 @@ describe('ApproveEnrollmentRequest', () => {
 
         (request as any)._status = 'APPROVED';
         await expect(useCase.exec({ requestId: request.id, approverUserId: 'owner' })).rejects.toThrow('Enrollment request already decided');
+    });
+});
+
+describe('ListEnrollmentRequests', () => {
+    it('filters by class, status and dependent', async () => {
+        const requests = new InMemoryRequests();
+        const first = EnrollmentRequest.create({
+            id: 'req-1',
+            schoolId: 'school-1',
+            courseClassId: 'class-1',
+            requestedForUserId: 'user-1',
+            createdAt: new Date('2024-01-01T10:00:00Z')
+        });
+        const second = EnrollmentRequest.create({
+            id: 'req-2',
+            schoolId: 'school-1',
+            courseClassId: 'class-1',
+            requestedForUserId: 'user-1',
+            requestedForDependentId: 'dep-1',
+            createdAt: new Date('2024-02-01T10:00:00Z')
+        });
+        (second as any)._status = 'APPROVED';
+        const other = EnrollmentRequest.create({
+            id: 'req-3',
+            schoolId: 'school-2',
+            courseClassId: 'class-2',
+            requestedForUserId: 'user-2',
+            createdAt: new Date('2024-03-01T10:00:00Z')
+        });
+
+        requests.seed(first);
+        requests.seed(second);
+        requests.seed(other);
+
+        const useCase = new ListEnrollmentRequests(requests);
+        const items = await useCase.exec({ schoolId: 'school-1', courseClassId: 'class-1' });
+        expect(items.map(({ id }) => id)).toEqual(['req-2', 'req-1']);
+
+        const approvedOnly = await useCase.exec({ schoolId: 'school-1', courseClassId: 'class-1', status: 'APPROVED' });
+        expect(approvedOnly).toHaveLength(1);
+        expect(approvedOnly[0].id).toBe('req-2');
+
+        const withoutDependent = await useCase.exec({ schoolId: 'school-1', courseClassId: 'class-1', requestedForDependentId: null });
+        expect(withoutDependent).toHaveLength(1);
+        expect(withoutDependent[0].id).toBe('req-1');
+    });
+});
+
+describe('GetEnrollmentRequest', () => {
+    it('returns the request when it exists', async () => {
+        const requests = new InMemoryRequests();
+        const request = EnrollmentRequest.create({
+            id: 'req-10',
+            schoolId: 'school-1',
+            courseClassId: 'class-1',
+            requestedForUserId: 'user-1'
+        });
+        requests.seed(request);
+
+        const useCase = new GetEnrollmentRequest(requests);
+        const found = await useCase.exec({ requestId: request.id });
+        expect(found).not.toBeNull();
+        expect(found?.id).toBe(request.id);
+
+        const missing = await useCase.exec({ requestId: 'missing-id' });
+        expect(missing).toBeNull();
     });
 });

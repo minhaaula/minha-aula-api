@@ -14,6 +14,8 @@ import { enrollmentRequestsRouter } from '../../infra/http/routes/enrollment-req
 import { ListStudents } from '../../app/use-cases/list-students';
 import { studentsRouter } from '../../infra/http/routes/students.routes';
 import { ListSchools } from '../../app/use-cases/list-schools';
+import { ListEnrollmentRequests } from '../../app/use-cases/list-enrollment-requests';
+import { GetEnrollmentRequest } from '../../app/use-cases/get-enrollment-request';
 
 export type StudentsModuleDeps = {
     usersRepo: UserRepositoryAdapter;
@@ -39,6 +41,8 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
         deps.enrollmentRequestsRepo
     );
     const approveEnrollmentRequest = new ApproveEnrollmentRequest(deps.enrollmentRequestsRepo, deps.enrollmentsRepo);
+    const listEnrollmentRequests = new ListEnrollmentRequests(deps.enrollmentRequestsRepo);
+    const getEnrollmentRequest = new GetEnrollmentRequest(deps.enrollmentRequestsRepo);
 
     return {
         deps: {
@@ -49,6 +53,8 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
             enrollmentRequestsRouter,
             createEnrollmentRequest,
             approveEnrollmentRequest,
+            listEnrollmentRequests,
+            getEnrollmentRequest,
             listSchools
         },
         docFiles: ['students.yaml', 'dependents.yaml', 'enrollment-requests.yaml', 'schools-public.yaml']

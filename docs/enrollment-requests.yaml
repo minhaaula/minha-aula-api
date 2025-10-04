@@ -1,5 +1,77 @@
 paths:
   /enrollment-requests/schools/{schoolId}/classes/{classId}/requests:
+    get:
+      tags:
+        - Enrollment Requests
+      summary: Listar solicitações de matrícula de uma turma
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: schoolId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Identificador da escola responsável pela turma.
+        - in: path
+          name: classId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Identificador da turma desejada.
+        - in: query
+          name: status
+          required: false
+          schema:
+            type: string
+            enum: [PENDING, APPROVED, REJECTED, CANCELLED]
+          description: Filtra solicitações por status.
+        - in: query
+          name: requestedForUserId
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Filtra solicitações para um usuário específico.
+        - in: query
+          name: requestedForDependentId
+          required: false
+          schema:
+            type: string
+            format: uuid
+            nullable: true
+          description: Filtra solicitações para um dependente específico ou solicitações sem dependentes quando enviado como `null`.
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+          description: Quantidade máxima de registros retornados (default 50).
+        - in: query
+          name: offset
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+          description: Quantidade de registros a pular para paginação.
+      responses:
+        '200':
+          description: Solicitações encontradas.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - requests
+                properties:
+                  requests:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/EnrollmentRequestResponse'
     post:
       tags:
         - Enrollment Requests
@@ -70,6 +142,34 @@ paths:
                 $ref: '#/components/schemas/ApproveEnrollmentRequestResponse'
         '400':
           description: Solicitação inválida ou não autorizada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /enrollment-requests/{requestId}:
+    get:
+      tags:
+        - Enrollment Requests
+      summary: Obter detalhes de uma solicitação de matrícula
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: requestId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Identificador da solicitação.
+      responses:
+        '200':
+          description: Solicitação encontrada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnrollmentRequestResponse'
+        '404':
+          description: Solicitação não encontrada.
           content:
             application/json:
               schema:

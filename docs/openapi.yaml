@@ -642,6 +642,22 @@ components:
           type: string
           format: uuid
           nullable: true
+        decidedAt:
+          type: string
+          format: date-time
+          nullable: true
+        decidedByUserId:
+          type: string
+          format: uuid
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+          maxLength: 255
+        enrollmentId:
+          type: string
+          format: uuid
+          nullable: true
         createdAt:
           type: string
           format: date-time

@@ -1,6 +1,6 @@
 import { AppDataSource } from './datasource';
 import { EnrollmentRequestRepository } from '../../../ports/repositories/enrollment-request.repo';
-import { EnrollmentRequest } from '../../../domain/entities/enrollment-request';
+import { EnrollmentRequest, EnrollmentRequestStatus } from '../../../domain/entities/enrollment-request';
 import { EnrollmentRequestOrm } from './entities/enrollment-request.orm';
 
 export class EnrollmentRequestRepositoryAdapter implements EnrollmentRequestRepository {
@@ -24,6 +24,51 @@ export class EnrollmentRequestRepositoryAdapter implements EnrollmentRequestRepo
 
         const row = await qb.getOne();
         return row ? this.toDomain(row) : null;
+    }
+
+    async findMany(params: {
+        schoolId?: string;
+        courseClassId?: string;
+        status?: EnrollmentRequestStatus;
+        requestedForUserId?: string;
+        requestedForDependentId?: string | null;
+        limit?: number;
+        offset?: number;
+    }): Promise<EnrollmentRequest[]> {
+        const qb = this.repo.createQueryBuilder('request');
+
+        if (params.schoolId) {
+            qb.andWhere('request.schoolId = :schoolId', { schoolId: params.schoolId });
+        }
+
+        if (params.courseClassId) {
+            qb.andWhere('request.courseClassId = :courseClassId', { courseClassId: params.courseClassId });
+        }
+
+        if (params.status) {
+            qb.andWhere('request.status = :status', { status: params.status });
+        }
+
+        if (params.requestedForUserId) {
+            qb.andWhere('request.requestedForUserId = :requestedForUserId', { requestedForUserId: params.requestedForUserId });
+        }
+
+        if (params.requestedForDependentId === null) {
+            qb.andWhere('request.requestedForDependentId IS NULL');
+        } else if (params.requestedForDependentId) {
+            qb.andWhere('request.requestedForDependentId = :requestedForDependentId', { requestedForDependentId: params.requestedForDependentId });
+        }
+
+        const limit = params.limit ?? 50;
+        qb.orderBy('request.createdAt', 'DESC');
+        qb.take(Math.max(1, Math.min(limit, 100)));
+
+        if (typeof params.offset === 'number' && params.offset > 0) {
+            qb.skip(params.offset);
+        }
+
+        const rows = await qb.getMany();
+        return rows.map((row) => this.toDomain(row));
     }
 
     async save(request: EnrollmentRequest): Promise<void> {
