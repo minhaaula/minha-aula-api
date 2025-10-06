@@ -346,11 +346,26 @@ components:
       type: object
       required:
         - name
+        - email
+        - phone
+        - cnpj
       properties:
         name:
           type: string
           minLength: 3
           example: Escola do Futuro
+        email:
+          type: string
+          format: email
+          example: contato@escoladofuturo.com.br
+        phone:
+          type: string
+          example: '11987654321'
+        cnpj:
+          type: string
+          minLength: 14
+          maxLength: 14
+          example: '12345678000190'
         addresses:
           type: array
           description: Lista de endereços físicos da escola.
@@ -364,6 +379,13 @@ components:
           format: uuid
         name:
           type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        cnpj:
+          type: string
         addresses:
           type: array
           items:
@@ -374,6 +396,9 @@ components:
       required:
         - id
         - name
+        - email
+        - phone
+        - cnpj
         - addresses
         - createdAt
     SchoolsListResponse:

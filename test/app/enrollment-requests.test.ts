@@ -146,7 +146,14 @@ const makeUser = (id: string) => User.create({
 });
 
 const setupCourseStructure = () => {
-    const school = School.create({ id: 'school-1', name: 'Escola 1', createdAt: new Date('2024-01-01') });
+    const school = School.create({
+        id: 'school-1',
+        name: 'Escola 1',
+        email: 'contato@escola1.com',
+        phone: '11988887777',
+        cnpj: '00987654000100',
+        createdAt: new Date('2024-01-01')
+    });
     const course = Course.create({ id: 'course-1', schoolId: school.id, name: 'Curso 1', description: null, isActive: true, createdAt: new Date('2024-01-02') });
     const courseClass = CourseClass.create({ id: 'class-1', courseId: course.id, label: 'Turma A', capacity: 10 });
     return { school, course, courseClass };

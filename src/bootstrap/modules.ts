@@ -76,7 +76,7 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
     for (const moduleName of selected) {
         switch (moduleName) {
             case 'auth': {
-                const result = buildAuthModule({ usersRepo, passwordHasher, tokenProvider, tokenTtl }, ctx);
+                const result = buildAuthModule({ usersRepo, passwordHasher, tokenProvider, tokenTtl, activeModules: selected }, ctx);
                 mergeModuleResult(serverDeps, docFiles, result);
                 break;
             }

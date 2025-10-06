@@ -8,6 +8,9 @@ export class CreateSchool {
 
     async exec(input: {
         name: string;
+        email: string;
+        phone: string;
+        cnpj: string;
         addresses?: Array<{
             street: string;
             number: string;
@@ -17,7 +20,7 @@ export class CreateSchool {
             state: string;
             zipCode: string;
         }>;
-    }): Promise<{ id: string; name: string; addresses: PostalAddressProps[]; createdAt: Date; }> {
+    }): Promise<{ id: string; name: string; email: string; phone: string; cnpj: string; addresses: PostalAddressProps[]; createdAt: Date; }> {
         const addresses = (input.addresses ?? []).map((address) => PostalAddress.create({
             street: address.street,
             number: address.number,
@@ -28,11 +31,21 @@ export class CreateSchool {
             zipCode: address.zipCode
         }));
 
-        const school = School.create({ id: Uuid(), name: input.name, addresses });
+        const school = School.create({
+            id: Uuid(),
+            name: input.name,
+            addresses,
+            email: input.email,
+            phone: input.phone,
+            cnpj: input.cnpj
+        });
         await this.schools.save(school);
         return {
             id: school.id,
             name: school.name,
+            email: school.email,
+            phone: school.phone,
+            cnpj: school.cnpj,
             addresses: school.addresses.map((address) => address.toPrimitives()),
             createdAt: school.createdAt
         };

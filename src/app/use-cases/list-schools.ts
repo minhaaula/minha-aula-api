@@ -4,6 +4,9 @@ import { type PostalAddressProps } from '../../domain/value-objects/postal-addre
 type SchoolSummary = {
     id: string;
     name: string;
+    email: string;
+    phone: string;
+    cnpj: string;
     addresses: PostalAddressProps[];
     createdAt: Date;
 };
@@ -16,6 +19,9 @@ export class ListSchools {
         return list.map((school) => ({
             id: school.id,
             name: school.name,
+            email: school.email,
+            phone: school.phone,
+            cnpj: school.cnpj,
             addresses: school.addresses.map((address) => address.toPrimitives()),
             createdAt: school.createdAt
         }));

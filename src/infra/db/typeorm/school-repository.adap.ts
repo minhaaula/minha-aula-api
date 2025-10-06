@@ -37,7 +37,15 @@ export class SchoolRepositoryAdapter implements SchoolRepository {
             zipCode: address.zipCode
         }));
 
-        return School.create({ id: row.id, name: row.name, addresses, createdAt: row.createdAt });
+        return School.create({
+            id: row.id,
+            name: row.name,
+            addresses,
+            createdAt: row.createdAt,
+            email: row.email,
+            phone: row.phone,
+            cnpj: row.cnpj
+        });
     }
 
     private toOrm(school: School): SchoolOrm {
@@ -45,6 +53,9 @@ export class SchoolRepositoryAdapter implements SchoolRepository {
         row.id = school.id;
         row.name = school.name;
         row.createdAt = school.createdAt;
+        row.email = school.email;
+        row.phone = school.phone;
+        row.cnpj = school.cnpj;
         row.addresses = school.addresses.map((address) => {
             const item = new SchoolAddressOrm();
             item.id = Uuid();

@@ -10,6 +10,12 @@ export class SchoolOrm {
 
     @Column('varchar', { length: 191 }) name!: string;
 
+    @Column('varchar', { length: 191 }) email!: string;
+
+    @Column('varchar', { length: 32 }) phone!: string;
+
+    @Column('char', { length: 14 }) cnpj!: string;
+
     @OneToMany(() => SchoolAddressOrm, (address) => address.school, {
         cascade: ['insert', 'update'],
         orphanedRowAction: 'delete'

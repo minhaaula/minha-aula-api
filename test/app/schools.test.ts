@@ -75,6 +75,9 @@ describe('School creation flow', () => {
 
         const result = await useCase.exec({
             name: '  Escola Central  ',
+            email: 'contato@central.com',
+            phone: '(11) 99876-5432',
+            cnpj: '12.345.678/0001-90',
             addresses: [{
                 street: 'Rua Central',
                 number: '100',
@@ -98,17 +101,26 @@ describe('School creation flow', () => {
         expect(stored?.name).toBe('Escola Central');
         expect(stored?.addresses).toHaveLength(1);
         expect(stored?.addresses[0].zipCode).toBe('01234000');
+        expect(stored?.email).toBe('contato@central.com');
+        expect(stored?.phone).toBe('11998765432');
+        expect(stored?.cnpj).toBe('12345678000190');
     });
 
     it('creates a school without addresses when none are provided', async () => {
         const repo = new InMemorySchoolRepository();
         const useCase = new CreateSchool(repo);
 
-        const result = await useCase.exec({ name: 'Escola Sem Endereço' });
+        const result = await useCase.exec({
+            name: 'Escola Sem Endereço',
+            email: 'contato@semendereco.com',
+            phone: '11912345678',
+            cnpj: '11.222.333/0001-44'
+        });
 
         expect(result.addresses).toHaveLength(0);
         const stored = await repo.findById(result.id);
         expect(stored?.addresses).toHaveLength(0);
+        expect(stored?.phone).toBe('11912345678');
     });
 
     it('lists schools with addresses ordered by creation date', async () => {
@@ -118,6 +130,9 @@ describe('School creation flow', () => {
         const older = School.create({
             id: 'school-older',
             name: 'Escola Antiga',
+            email: 'antiga@escola.com',
+            phone: '1133334444',
+            cnpj: '12345678000190',
             addresses: [PostalAddress.create({
                 street: 'Rua 1',
                 number: '10',
@@ -131,6 +146,9 @@ describe('School creation flow', () => {
         const newer = School.create({
             id: 'school-new',
             name: 'Escola Nova',
+            email: 'nova@escola.com',
+            phone: '1144445555',
+            cnpj: '12345678000199',
             addresses: [PostalAddress.create({
                 street: 'Rua 2',
                 number: '20',
@@ -149,6 +167,7 @@ describe('School creation flow', () => {
         expect(result[0].id).toBe('school-new');
         expect(result[0].addresses[0].zipCode).toBe('01234000');
         expect(result[1].id).toBe('school-older');
+        expect(result[0].email).toBe('nova@escola.com');
     });
 
     it('creates a course for an existing school and prevents duplicates', async () => {
@@ -157,6 +176,9 @@ describe('School creation flow', () => {
         const school = School.create({
             id: 'school-1',
             name: 'Escola XPTO',
+            email: 'contato@xpto.com',
+            phone: '1199998888',
+            cnpj: '55667788000111',
             createdAt: new Date('2024-01-01')
         });
         schools.seed(school);
@@ -174,7 +196,14 @@ describe('School creation flow', () => {
         const courses = new InMemoryCourseRepository();
         const courseClasses = new InMemoryCourseClassRepository();
 
-        const school = School.create({ id: 'school-1', name: 'Escola XPTO', createdAt: new Date('2024-01-01') });
+        const school = School.create({
+            id: 'school-1',
+            name: 'Escola XPTO',
+            email: 'contato@xpto.com',
+            phone: '1199998888',
+            cnpj: '55667788000111',
+            createdAt: new Date('2024-01-01')
+        });
         const course = Course.create({ id: 'course-1', schoolId: school.id, name: 'Curso A', description: null, isActive: true, createdAt: new Date('2024-01-02') });
         schools.seed(school);
         courses.seed(course);

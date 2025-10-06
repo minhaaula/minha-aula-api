@@ -38,11 +38,19 @@ export function schoolsRouter(deps: {
 
             const schema = z.object({
                 name: z.string().trim().min(3),
+                email: z.string().trim().email(),
+                phone: z.string().trim().min(8)
+                    .refine((value) => value.replace(/[^\d]/g, '').length >= 10, { message: 'Invalid phone' }),
+                cnpj: z.string().trim().min(3)
+                    .refine((value) => value.replace(/[^\d]/g, '').length === 14, { message: 'Invalid CNPJ' }),
                 addresses: z.array(addressSchema).optional()
             });
             const data = schema.parse(req.body);
             const school = await deps.createSchool.exec({
                 name: data.name,
+                email: data.email,
+                phone: data.phone,
+                cnpj: data.cnpj,
                 addresses: data.addresses?.map((address) => ({
                     street: address.street,
                     number: address.number,
