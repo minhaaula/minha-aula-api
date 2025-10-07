@@ -9,10 +9,11 @@ export class School {
         public readonly createdAt: Date,
         private readonly _email: Email,
         private readonly _phone: string,
-        private readonly _cnpj: string
+        private readonly _cnpj: string,
+        private readonly _ownerUserId: string | null
     ) {}
 
-    static create(params: { id: string; name: string; email: string; phone: string; cnpj: string; addresses?: PostalAddress[]; createdAt?: Date; }) {
+    static create(params: { id: string; name: string; email: string; phone: string; cnpj: string; addresses?: PostalAddress[]; ownerUserId?: string | null; createdAt?: Date; }) {
         const name = params.name.trim();
         if (!name) throw new Error('School name is required');
 
@@ -28,7 +29,18 @@ export class School {
         const phone = School.normalizePhone(params.phone);
         const cnpj = School.normalizeCnpj(params.cnpj);
 
-        return new School(params.id, name, [...addresses], params.createdAt ?? new Date(), email, phone, cnpj);
+        const ownerUserId = params.ownerUserId ? params.ownerUserId.trim() : null;
+
+        return new School(
+            params.id,
+            name,
+            [...addresses],
+            params.createdAt ?? new Date(),
+            email,
+            phone,
+            cnpj,
+            ownerUserId && ownerUserId.length ? ownerUserId : null
+        );
     }
 
     get addresses(): PostalAddress[] {
@@ -45,6 +57,10 @@ export class School {
 
     get cnpj(): string {
         return this._cnpj;
+    }
+
+    get ownerUserId(): string | null {
+        return this._ownerUserId;
     }
 
     private static normalizePhone(value: string) {

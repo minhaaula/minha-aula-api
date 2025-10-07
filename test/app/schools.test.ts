@@ -18,6 +18,22 @@ class InMemorySchoolRepository implements SchoolRepository {
         return this.items.get(id) ?? null;
     }
 
+    async findByEmail(email: string): Promise<School | null> {
+        const normalized = email.trim().toLowerCase();
+        if (!normalized) return null;
+        return (
+            Array.from(this.items.values()).find((item) => item.email === normalized) ?? null
+        );
+    }
+
+    async findByOwnerUserId(userId: string): Promise<School | null> {
+        const normalized = userId.trim();
+        if (!normalized) return null;
+        return (
+            Array.from(this.items.values()).find((item) => item.ownerUserId === normalized) ?? null
+        );
+    }
+
     async findAll(): Promise<School[]> {
         return Array.from(this.items.values()).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
     }
@@ -88,6 +104,7 @@ describe('School creation flow', () => {
         });
 
         expect(result.id).toBeTruthy();
+        expect(result.ownerUserId).toBeNull();
         expect(result.addresses).toHaveLength(1);
         expect(result.addresses[0]).toMatchObject({
             street: 'Rua Central',

@@ -23,6 +23,16 @@ import { PostalAddress } from '../../src/domain/value-objects/postal-address';
 class InMemorySchools implements SchoolRepository {
     private readonly items = new Map<string, School>();
     async findById(id: string) { return this.items.get(id) ?? null; }
+    async findByEmail(email: string) {
+        const normalized = email.trim().toLowerCase();
+        if (!normalized) return null;
+        return Array.from(this.items.values()).find((item) => item.email === normalized) ?? null;
+    }
+    async findByOwnerUserId(userId: string) {
+        const normalized = userId.trim();
+        if (!normalized) return null;
+        return Array.from(this.items.values()).find((item) => item.ownerUserId === normalized) ?? null;
+    }
     async findAll() { return Array.from(this.items.values()); }
     async save(school: School) { this.items.set(school.id, school); }
     seed(school: School) { this.items.set(school.id, school); }

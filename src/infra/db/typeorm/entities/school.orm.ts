@@ -1,8 +1,9 @@
-import { Column, CreateDateColumn, Entity, OneToMany, PrimaryColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryColumn } from 'typeorm';
 import { CourseOrm } from './course.orm';
 import { NotificationOrm } from './notification.orm';
 import { EnrollmentRequestOrm } from './enrollment-request.orm';
 import { SchoolAddressOrm } from './school-address.orm';
+import { UserOrm } from './user.orm';
 
 @Entity('schools')
 export class SchoolOrm {
@@ -15,6 +16,12 @@ export class SchoolOrm {
     @Column('varchar', { length: 32 }) phone!: string;
 
     @Column('char', { length: 14 }) cnpj!: string;
+
+    @Column('char', { length: 36, name: 'owner_user_id', nullable: true }) ownerUserId!: string | null;
+
+    @ManyToOne(() => UserOrm, (user) => user.schools, { nullable: true, onDelete: 'SET NULL' })
+    @JoinColumn({ name: 'owner_user_id' })
+    ownerUser?: UserOrm | null;
 
     @OneToMany(() => SchoolAddressOrm, (address) => address.school, {
         cascade: ['insert', 'update'],

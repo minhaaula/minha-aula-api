@@ -7,7 +7,6 @@ import { DependentRepositoryAdapter } from '../../infra/db/typeorm/dependent-rep
 import { CreateSchool } from '../../app/use-cases/create-school';
 import { CreateCourse } from '../../app/use-cases/create-course';
 import { CreateCourseClass } from '../../app/use-cases/create-course-class';
-import { ListSchools } from '../../app/use-cases/list-schools';
 import { schoolsRouter } from '../../infra/http/routes/schools.routes';
 import { ListStudents } from '../../app/use-cases/list-students';
 import { studentsRouter } from '../../infra/http/routes/students.routes';
@@ -22,7 +21,6 @@ export type SchoolsModuleDeps = {
 
 export function buildSchoolsModule(deps: SchoolsModuleDeps, _ctx: ModuleSetupContext): ModuleBuildResult {
     const createSchool = new CreateSchool(deps.schoolsRepo);
-    const listSchools = new ListSchools(deps.schoolsRepo);
     const createCourse = new CreateCourse(deps.schoolsRepo, deps.coursesRepo);
     const createCourseClass = new CreateCourseClass(deps.coursesRepo, deps.classesRepo);
     const listStudents = new ListStudents(deps.usersRepo, deps.dependentsRepo);
@@ -31,11 +29,11 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, _ctx: ModuleSetupCon
         deps: {
             schoolsRouter,
             createSchool,
-            listSchools,
             createCourse,
             createCourseClass,
             studentsRouter,
-            listStudents
+            listStudents,
+            schoolsRepo: deps.schoolsRepo
         },
         docFiles: ['schools.yaml', 'students.yaml']
     };

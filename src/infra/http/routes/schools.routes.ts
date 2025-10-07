@@ -1,30 +1,65 @@
-import { Router, type RequestHandler } from 'express';
+import { Router, type RequestHandler, type Response } from 'express';
 import { z } from 'zod';
 import { CreateSchool } from '../../../app/use-cases/create-school';
 import { CreateCourse } from '../../../app/use-cases/create-course';
 import { CreateCourseClass } from '../../../app/use-cases/create-course-class';
-import { ListSchools } from '../../../app/use-cases/list-schools';
+import { requirePersona } from '../middlewares/require-persona';
+import { UserPersonaEnum } from '../../../domain/value-objects/user-persona';
+import { AuthenticatedRequest } from '../middlewares/auth';
+import { SchoolRepository } from '../../../ports/repositories/school.repo';
 
 export function schoolsRouter(deps: {
     createSchool: CreateSchool;
-    listSchools: ListSchools;
     createCourse: CreateCourse;
     createCourseClass: CreateCourseClass;
     authMiddleware?: RequestHandler;
+    schoolsRepo?: SchoolRepository;
 }) {
     const r = Router();
     const requireAuth: RequestHandler = deps.authMiddleware ?? ((_req, _res, next) => next());
-
-    r.get('/', async (_req, res, next) => {
-        try {
-            const schools = await deps.listSchools.exec();
-            res.json({ schools });
-        } catch (err) {
-            next(err);
+    const optionalAuth: RequestHandler = deps.authMiddleware
+        ? (req, res, next) => {
+            if (!req.headers.authorization) {
+                return next();
+            }
+            deps.authMiddleware?.(req, res, next);
         }
-    });
+        : (_req, _res, next) => next();
+    const requireSchoolPersona = requirePersona(UserPersonaEnum.SCHOOL);
 
-    r.post('/', async (req, res, next) => {
+    const resolveRequestSchoolId = async (req: AuthenticatedRequest, res: Response): Promise<string | undefined> => {
+        const payload = req.user;
+        const schoolIdFromToken = typeof payload?.schoolId === 'string' ? payload.schoolId.trim() : '';
+        if (schoolIdFromToken) return schoolIdFromToken;
+
+        const repo = deps.schoolsRepo;
+        if (repo) {
+            const email = typeof payload?.email === 'string' ? payload.email.trim().toLowerCase() : '';
+            if (email && repo.findByEmail) {
+                const school = await repo.findByEmail(email);
+                if (school) return school.id;
+            }
+            const userId = typeof payload?.sub === 'string' ? payload.sub.trim() : '';
+            if (userId) {
+                const school = repo.findByOwnerUserId
+                    ? await repo.findByOwnerUserId(userId)
+                    : await repo.findById(userId);
+                if (school) return school.id;
+            }
+        }
+
+        console.warn('School context not resolved for user', {
+            userId: payload?.sub ?? null,
+            email: payload?.email ?? null,
+            hasTokenSchoolId: Boolean(payload?.schoolId),
+            resolvedFromToken: Boolean(schoolIdFromToken),
+            repoAvailable: Boolean(repo)
+        });
+        res.status(403).json({ error: 'School context not found for user' });
+        return undefined;
+    };
+
+    r.post('/', optionalAuth, async (req, res, next) => {
         try {
             const addressSchema = z.object({
                 street: z.string().trim().min(1),
@@ -45,7 +80,11 @@ export function schoolsRouter(deps: {
                     .refine((value) => value.replace(/[^\d]/g, '').length === 14, { message: 'Invalid CNPJ' }),
                 addresses: z.array(addressSchema).optional()
             });
+
             const data = schema.parse(req.body);
+            const authReq = req as AuthenticatedRequest;
+            const ownerUserId = authReq.user?.persona === UserPersonaEnum.SCHOOL ? authReq.user.sub : null;
+
             const school = await deps.createSchool.exec({
                 name: data.name,
                 email: data.email,
@@ -59,7 +98,8 @@ export function schoolsRouter(deps: {
                     city: address.city,
                     state: address.state,
                     zipCode: address.zipCode
-                }))
+                })),
+                ownerUserId
             });
             res.status(201).json(school);
         } catch (err) {
@@ -67,10 +107,10 @@ export function schoolsRouter(deps: {
         }
     });
 
-    r.post('/:schoolId/courses', requireAuth, async (req, res, next) => {
+    r.post('/courses', requireAuth, requireSchoolPersona, async (req, res, next) => {
         try {
-            const paramsSchema = z.object({ schoolId: z.string().uuid() });
-            const { schoolId } = paramsSchema.parse(req.params);
+            const schoolId = await resolveRequestSchoolId(req as AuthenticatedRequest, res);
+            if (!schoolId) return;
             const bodySchema = z.object({
                 name: z.string().min(3),
                 description: z.string().min(1).optional()
@@ -87,23 +127,45 @@ export function schoolsRouter(deps: {
         }
     });
 
-    r.post('/:schoolId/courses/:courseId/classes', requireAuth, async (req, res, next) => {
+    r.post('/courses/:courseId/classes', requireAuth, requireSchoolPersona, async (req, res, next) => {
         try {
             const paramsSchema = z.object({
-                schoolId: z.string().uuid(),
                 courseId: z.string().uuid()
             });
-            const { schoolId, courseId } = paramsSchema.parse(req.params);
+            const { courseId } = paramsSchema.parse(req.params);
             const bodySchema = z.object({
                 label: z.string().min(1),
                 shift: z.string().min(1).optional(),
                 capacity: z.number().int().positive().optional(),
                 startsAt: z.string().datetime().optional(),
                 endsAt: z.string().datetime().optional()
+            }).superRefine((value, ctx) => {
+                const { startsAt, endsAt } = value;
+                if (!startsAt || !endsAt) return;
+
+                const starts = new Date(startsAt);
+                const ends = new Date(endsAt);
+
+                let hasStartIssue = false;
+                let hasEndIssue = false;
+
+                if (Number.isNaN(starts.getTime())) {
+                    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['startsAt'], message: 'Invalid start date' });
+                    hasStartIssue = true;
+                }
+                if (Number.isNaN(ends.getTime())) {
+                    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['endsAt'], message: 'Invalid end date' });
+                    hasEndIssue = true;
+                }
+                if (!hasStartIssue && !hasEndIssue && ends <= starts) {
+                    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['endsAt'], message: 'End date must be after start date' });
+                }
             });
             const data = bodySchema.parse(req.body);
             const startsAt = data.startsAt ? new Date(data.startsAt) : null;
             const endsAt = data.endsAt ? new Date(data.endsAt) : null;
+            const schoolId = await resolveRequestSchoolId(req as AuthenticatedRequest, res);
+            if (!schoolId) return;
             const courseClass = await deps.createCourseClass.exec({
                 schoolId,
                 courseId,

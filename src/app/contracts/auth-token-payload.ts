@@ -6,5 +6,6 @@ export interface AuthTokenPayload {
     fullName: string;
     email: string;
     persona: UserPersona;
+    schoolId?: string;
     [key: string]: unknown;
 }

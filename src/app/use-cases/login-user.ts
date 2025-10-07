@@ -3,6 +3,7 @@ import { PasswordHasherPort } from '../../ports/providers/password-hasher.port';
 import { TokenProviderPort } from '../../ports/providers/token-provider.port';
 import { AuthTokenPayload } from '../contracts/auth-token-payload';
 import { UserPersonaEnum } from '../../domain/value-objects/user-persona';
+import { SchoolRepository } from '../../ports/repositories/school.repo';
 
 export class LoginUser {
     private readonly allowedPersonas?: Set<string>;
@@ -12,12 +13,13 @@ export class LoginUser {
         private readonly hasher: PasswordHasherPort,
         private readonly tokens: TokenProviderPort,
         private readonly defaultTtl: number,
-        activeModules: readonly string[] = []
+        activeModules: readonly string[] = [],
+        private readonly schools?: SchoolRepository
     ) {
         this.allowedPersonas = this.resolveAllowedPersonas(activeModules);
     }
 
-    async exec(input: { cpf: string; password: string; }): Promise<{ accessToken: string; userId: string; fullName: string; email: string; cpf: string; persona: string; expiresIn: number; }> {
+    async exec(input: { cpf: string; password: string; }): Promise<{ accessToken: string; userId: string; fullName: string; email: string; cpf: string; persona: string; expiresIn: number; schoolId?: string; }> {
         const cpf = this.normalizeCpf(input.cpf);
         const user = await this.users.findByCpf(cpf);
 
@@ -38,6 +40,13 @@ export class LoginUser {
             email: user.email.value,
             persona: user.persona
         };
+
+        if (user.persona === UserPersonaEnum.SCHOOL) {
+            const schoolId = await this.resolveSchoolIdForUser(user.id, user.email.value);
+            if (schoolId) {
+                payload.schoolId = schoolId;
+            }
+        }
         const accessToken = await this.tokens.sign(payload, { expiresIn });
 
         return {
@@ -47,7 +56,8 @@ export class LoginUser {
             email: user.email.value,
             cpf: user.cpf,
             persona: user.persona,
-            expiresIn
+            expiresIn,
+            schoolId: payload.schoolId
         };
     }
 
@@ -78,5 +88,19 @@ export class LoginUser {
         }
 
         return allowed.size > 0 ? allowed : undefined;
+    }
+
+    private async resolveSchoolIdForUser(userId: string, email: string): Promise<string | undefined> {
+        const schoolsRepo = this.schools;
+        if (!schoolsRepo) return undefined;
+        if (schoolsRepo.findByOwnerUserId) {
+            const owned = await schoolsRepo.findByOwnerUserId(userId);
+            if (owned) return owned.id;
+        }
+        const schoolByEmail = await schoolsRepo.findByEmail?.(email);
+        if (schoolByEmail) return schoolByEmail.id;
+
+        const schoolById = await schoolsRepo.findById(userId);
+        return schoolById?.id;
     }
 }

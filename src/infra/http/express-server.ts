@@ -63,6 +63,7 @@ interface AppDependencies {
     authRouter?: (deps: any) => Router;
     registerUser?: any;
     loginUser?: any;
+    updateUserPassword?: any;
     paymentsRouter?: (deps: any) => Router;
     createPayment?: any;
     capturePayment?: any;
@@ -74,6 +75,7 @@ interface AppDependencies {
     listSchools?: any;
     createCourse?: any;
     createCourseClass?: any;
+    schoolsRepo?: any;
     dependentsRouter?: (deps: any) => Router;
     addDependent?: any;
     enrollmentRequestsRouter?: (deps: any) => Router;
@@ -131,10 +133,12 @@ export function makeServer(deps: AppDependencies & Record<string, any>) {
         });
     }
 
-    if (deps.authRouter && deps.registerUser && deps.loginUser) {
+    if (deps.authRouter && deps.registerUser && deps.loginUser && deps.updateUserPassword) {
         app.use('/auth', deps.authRouter({
             registerUser: deps.registerUser,
-            loginUser: deps.loginUser
+            loginUser: deps.loginUser,
+            updateUserPassword: deps.updateUserPassword,
+            authMiddleware: deps.authMiddleware
         }));
     }
     if (deps.paymentsRouter && deps.createPayment && deps.capturePayment) {
@@ -153,13 +157,13 @@ export function makeServer(deps: AppDependencies & Record<string, any>) {
         mount('/students', router);
     }
 
-    if (deps.schoolsRouter && deps.createSchool && deps.listSchools && deps.createCourse && deps.createCourseClass) {
+    if (deps.schoolsRouter && deps.createSchool && deps.createCourse && deps.createCourseClass) {
         const router = deps.schoolsRouter({
             createSchool: deps.createSchool,
-            listSchools: deps.listSchools,
             createCourse: deps.createCourse,
             createCourseClass: deps.createCourseClass,
-            authMiddleware: deps.authMiddleware
+            authMiddleware: deps.authMiddleware,
+            schoolsRepo: deps.schoolsRepo
         });
         mount('/schools', router, { skipAuth: true });
     } else if (deps.listSchools) {

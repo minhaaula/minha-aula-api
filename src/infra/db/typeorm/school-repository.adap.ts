@@ -14,6 +14,20 @@ export class SchoolRepositoryAdapter implements SchoolRepository {
         return row ? this.toDomain(row) : null;
     }
 
+    async findByEmail(email: string): Promise<School | null> {
+        const normalized = email.trim().toLowerCase();
+        if (!normalized) return null;
+        const row = await this.repo.findOne({ where: { email: normalized }, relations: { addresses: true } });
+        return row ? this.toDomain(row) : null;
+    }
+
+    async findByOwnerUserId(userId: string): Promise<School | null> {
+        const normalized = userId.trim();
+        if (!normalized) return null;
+        const row = await this.repo.findOne({ where: { ownerUserId: normalized }, relations: { addresses: true } });
+        return row ? this.toDomain(row) : null;
+    }
+
     async findAll(): Promise<School[]> {
         const rows = await this.repo.find({
             relations: { addresses: true },
@@ -44,7 +58,8 @@ export class SchoolRepositoryAdapter implements SchoolRepository {
             createdAt: row.createdAt,
             email: row.email,
             phone: row.phone,
-            cnpj: row.cnpj
+            cnpj: row.cnpj,
+            ownerUserId: row.ownerUserId ?? null
         });
     }
 
@@ -56,6 +71,7 @@ export class SchoolRepositoryAdapter implements SchoolRepository {
         row.email = school.email;
         row.phone = school.phone;
         row.cnpj = school.cnpj;
+        row.ownerUserId = school.ownerUserId;
         row.addresses = school.addresses.map((address) => {
             const item = new SchoolAddressOrm();
             item.id = Uuid();

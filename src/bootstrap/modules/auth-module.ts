@@ -5,7 +5,9 @@ import { authRouter } from '../../infra/http/routes/auth.routes';
 import { ScryptPasswordHasher } from '../../infra/auth/scrypt-password-hasher';
 import { HmacTokenProvider } from '../../infra/auth/hmac-token-provider';
 import { UserRepositoryAdapter } from '../../infra/db/typeorm/user-repository.adap';
+import { SchoolRepositoryAdapter } from '../../infra/db/typeorm/school-repository.adap';
 import type { ModuleName } from '../module-config';
+import { UpdateUserPassword } from '../../app/use-cases/update-user-password';
 
 export type AuthModuleDeps = {
     usersRepo: UserRepositoryAdapter;
@@ -13,6 +15,7 @@ export type AuthModuleDeps = {
     tokenProvider: HmacTokenProvider;
     tokenTtl: number;
     activeModules?: readonly ModuleName[];
+    schoolsRepo: SchoolRepositoryAdapter;
 };
 
 export function buildAuthModule(deps: AuthModuleDeps, _ctx: ModuleSetupContext): ModuleBuildResult {
@@ -22,14 +25,17 @@ export function buildAuthModule(deps: AuthModuleDeps, _ctx: ModuleSetupContext):
         deps.passwordHasher,
         deps.tokenProvider,
         deps.tokenTtl,
-        deps.activeModules
+        deps.activeModules,
+        deps.schoolsRepo
     );
+    const updateUserPassword = new UpdateUserPassword(deps.usersRepo, deps.passwordHasher);
 
     return {
         deps: {
             authRouter,
             registerUser,
-            loginUser
+            loginUser,
+            updateUserPassword
         },
         docFiles: ['auth.yaml']
     };

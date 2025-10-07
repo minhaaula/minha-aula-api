@@ -157,6 +157,20 @@ components:
           type: string
           format: password
           minLength: 8
+    UpdatePasswordInput:
+      type: object
+      required:
+        - currentPassword
+        - newPassword
+      properties:
+        currentPassword:
+          type: string
+          format: password
+          minLength: 8
+        newPassword:
+          type: string
+          format: password
+          minLength: 8
     LoginResponse:
       type: object
       properties:
@@ -182,6 +196,10 @@ components:
         expiresIn:
           type: integer
           format: int32
+        schoolId:
+          type: string
+          format: uuid
+          nullable: true
       required:
         - accessToken
         - userId
@@ -393,6 +411,10 @@ components:
         createdAt:
           type: string
           format: date-time
+        ownerUserId:
+          type: string
+          format: uuid
+          nullable: true
       required:
         - id
         - name
