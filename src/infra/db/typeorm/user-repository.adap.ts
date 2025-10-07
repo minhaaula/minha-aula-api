@@ -32,6 +32,23 @@ export class UserRepositoryAdapter implements UserRepository {
         return rows.map((row) => this.toDomain(row));
     }
 
+    async findBySchoolId(schoolId: string): Promise<User[]> {
+        const normalized = schoolId.trim();
+        if (!normalized) return [];
+
+        const rows = await this.repo
+            .createQueryBuilder('user')
+            .distinct(true)
+            .innerJoin('enrollments', 'enrollment', 'enrollment.student_user_id = user.id')
+            .innerJoin('course_classes', 'class', 'class.id = enrollment.course_class_id')
+            .innerJoin('courses', 'course', 'course.id = class.course_id')
+            .where('course.school_id = :schoolId', { schoolId: normalized })
+            .andWhere('user.persona = :persona', { persona: 'STUDENT' })
+            .getMany();
+
+        return rows.map((row) => this.toDomain(row));
+    }
+
     async save(user: User): Promise<void> {
         await this.repo.save(this.toOrm(user));
     }

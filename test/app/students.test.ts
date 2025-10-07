@@ -9,6 +9,7 @@ import { Dependent } from '../../src/domain/entities/dependent';
 
 class InMemoryUserRepository implements UserRepository {
     private readonly items = new Map<string, User>();
+    private readonly membership = new Map<string, string>();
 
     async findByEmail(): Promise<User | null> {
         return null;
@@ -27,12 +28,20 @@ class InMemoryUserRepository implements UserRepository {
         return Array.from(this.items.values()).filter((user) => user.persona === persona);
     }
 
+    async findBySchoolId(schoolId: string): Promise<User[]> {
+        return Array.from(this.items.values()).filter((user) => this.membership.get(user.id) === schoolId);
+    }
+
     async save(user: User): Promise<void> {
         this.items.set(user.id, user);
     }
 
     seed(user: User) {
         this.items.set(user.id, user);
+    }
+
+    assignStudentToSchool(studentId: string, schoolId: string) {
+        this.membership.set(studentId, schoolId);
     }
 }
 
@@ -174,5 +183,22 @@ describe('ListStudents use case', () => {
         const useCase = new ListStudents(users, dependents);
 
         await expect(useCase.exec({ cpf: '123' })).rejects.toThrow('Invalid CPF');
+    });
+
+    it('filters students by school when schoolId is provided', async () => {
+        const users = new InMemoryUserRepository();
+        const dependents = new InMemoryDependentRepository();
+        const studentA = makeStudent('student-1', '12345678901', new Date('2024-01-01T10:00:00Z'));
+        const studentB = makeStudent('student-2', '12345678902', new Date('2024-02-01T10:00:00Z'));
+        users.seed(studentA);
+        users.seed(studentB);
+        users.assignStudentToSchool(studentA.id, 'school-1');
+        users.assignStudentToSchool(studentB.id, 'school-2');
+
+        const useCase = new ListStudents(users, dependents);
+        const result = await useCase.exec({ schoolId: 'school-1' });
+
+        expect(result).toHaveLength(1);
+        expect(result[0].id).toBe(studentA.id);
     });
 });

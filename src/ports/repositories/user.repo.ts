@@ -5,5 +5,6 @@ export interface UserRepository {
     findByCpf(cpf: string): Promise<User | null>;
     findById(id: string): Promise<User | null>;
     findByPersona(persona: string): Promise<User[]>;
+    findBySchoolId?(schoolId: string): Promise<User[]>;
     save(user: User): Promise<void>;
 }

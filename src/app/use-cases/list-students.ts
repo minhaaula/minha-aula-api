@@ -10,8 +10,10 @@ export class ListStudents {
         private readonly dependents: DependentRepository
     ) {}
 
-    async exec(filters?: { cpf?: string | null }): Promise<StudentSummary[]> {
+    async exec(filters?: { cpf?: string | null; schoolId?: string | null }): Promise<StudentSummary[]> {
         const cpfFilter = filters?.cpf?.trim();
+        const schoolId = filters?.schoolId?.trim() || null;
+
         if (cpfFilter) {
             const normalizedCpf = this.normalizeCpf(cpfFilter);
             const student = await this.users.findByCpf(normalizedCpf);
@@ -19,12 +21,28 @@ export class ListStudents {
                 return [];
             }
 
+            if (schoolId && !(await this.studentBelongsToSchool(student.id, schoolId))) {
+                return [];
+            }
+
             const dependents = await this.dependents.findByUserIds([student.id]);
             return [buildStudentSummary(student, dependents)];
         }
 
+        if (schoolId && !this.users.findBySchoolId) {
+            return [];
+        }
+
         const students = await this.users.findByPersona(UserPersonaEnum.STUDENT);
         if (students.length === 0) return [];
+
+        let schoolLookup = new Set<string>();
+        if (schoolId) {
+            const studentsForSchool = await this.users.findBySchoolId?.(schoolId);
+            if (studentsForSchool) {
+                schoolLookup = new Set(studentsForSchool.map((student) => student.id));
+            }
+        }
 
         const dependents = await this.dependents.findByUserIds(students.map((student) => student.id));
         const dependentsByUser = new Map<string, Dependent[]>();
@@ -37,6 +55,7 @@ export class ListStudents {
         return students
             .slice()
             .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+            .filter((student) => !schoolId || schoolLookup.has(student.id))
             .map((student) => buildStudentSummary(student, dependentsByUser.get(student.id) ?? []));
     }
 
@@ -46,5 +65,11 @@ export class ListStudents {
             throw new Error('Invalid CPF');
         }
         return digits;
+    }
+
+    private async studentBelongsToSchool(studentId: string, schoolId: string): Promise<boolean> {
+        if (!this.users.findBySchoolId) return false;
+        const students = await this.users.findBySchoolId(schoolId);
+        return students.some((student) => student.id === studentId);
     }
 }
