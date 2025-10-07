@@ -9,6 +9,7 @@ type SchoolSummary = {
     cnpj: string;
     addresses: PostalAddressProps[];
     createdAt: Date;
+    categories: Array<{ categoryId: string; subcategoryIds: string[] }>;
 };
 
 export class ListSchools {
@@ -23,7 +24,8 @@ export class ListSchools {
             phone: school.phone,
             cnpj: school.cnpj,
             addresses: school.addresses.map((address) => address.toPrimitives()),
-            createdAt: school.createdAt
+            createdAt: school.createdAt,
+            categories: school.categories
         }));
     }
 }

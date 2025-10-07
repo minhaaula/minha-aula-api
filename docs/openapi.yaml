@@ -389,6 +389,11 @@ components:
           description: Lista de endereços físicos da escola.
           items:
             $ref: '#/components/schemas/SchoolAddress'
+        categories:
+          type: array
+          description: Categorias vinculadas à escola com suas subcategorias.
+          items:
+            $ref: '#/components/schemas/SchoolCategoryLinkInput'
     SchoolResponse:
       type: object
       properties:
@@ -415,6 +420,10 @@ components:
           type: string
           format: uuid
           nullable: true
+        categories:
+          type: array
+          items:
+            $ref: '#/components/schemas/SchoolCategoryLink'
       required:
         - id
         - name
@@ -423,6 +432,26 @@ components:
         - cnpj
         - addresses
         - createdAt
+        - categories
+    SchoolCategoryLinkInput:
+      type: object
+      properties:
+        categoryId:
+          type: string
+          format: uuid
+          minLength: 1
+        subcategoryIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+      required:
+        - categoryId
+    SchoolCategoryLink:
+      allOf:
+        - $ref: '#/components/schemas/SchoolCategoryLinkInput'
+      required:
+        - subcategoryIds
     SchoolsListResponse:
       type: object
       properties:

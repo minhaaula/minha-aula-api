@@ -21,7 +21,18 @@ export class CreateSchool {
             zipCode: string;
         }>;
         ownerUserId?: string | null;
-    }): Promise<{ id: string; name: string; email: string; phone: string; cnpj: string; addresses: PostalAddressProps[]; createdAt: Date; ownerUserId: string | null; }> {
+        categories?: Array<{ categoryId: string; subcategoryIds?: string[] }>;
+    }): Promise<{
+        id: string;
+        name: string;
+        email: string;
+        phone: string;
+        cnpj: string;
+        addresses: PostalAddressProps[];
+        createdAt: Date;
+        ownerUserId: string | null;
+        categories: Array<{ categoryId: string; subcategoryIds: string[] }>;
+    }> {
         const addresses = (input.addresses ?? []).map((address) => PostalAddress.create({
             street: address.street,
             number: address.number,
@@ -39,7 +50,8 @@ export class CreateSchool {
             email: input.email,
             phone: input.phone,
             cnpj: input.cnpj,
-            ownerUserId: input.ownerUserId ?? null
+            ownerUserId: input.ownerUserId ?? null,
+            categories: input.categories
         });
         await this.schools.save(school);
         return {
@@ -50,7 +62,8 @@ export class CreateSchool {
             cnpj: school.cnpj,
             addresses: school.addresses.map((address) => address.toPrimitives()),
             createdAt: school.createdAt,
-            ownerUserId: school.ownerUserId
+            ownerUserId: school.ownerUserId,
+            categories: school.categories
         };
     }
 }

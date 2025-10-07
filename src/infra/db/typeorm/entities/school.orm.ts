@@ -4,6 +4,7 @@ import { NotificationOrm } from './notification.orm';
 import { EnrollmentRequestOrm } from './enrollment-request.orm';
 import { SchoolAddressOrm } from './school-address.orm';
 import { UserOrm } from './user.orm';
+import { SchoolCategoryOrm } from './school-category.orm';
 
 @Entity('schools')
 export class SchoolOrm {
@@ -28,6 +29,12 @@ export class SchoolOrm {
         orphanedRowAction: 'delete'
     })
     addresses!: SchoolAddressOrm[];
+
+    @OneToMany(() => SchoolCategoryOrm, (category) => category.school, {
+        cascade: ['insert', 'update'],
+        orphanedRowAction: 'delete'
+    })
+    categories!: SchoolCategoryOrm[];
 
     @CreateDateColumn({ name: 'created_at', type: 'datetime', default: () => 'CURRENT_TIMESTAMP' }) createdAt!: Date;
 

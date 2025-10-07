@@ -71,6 +71,11 @@ export function schoolsRouter(deps: {
                 zipCode: z.string().trim().min(1)
             });
 
+            const categorySchema = z.object({
+                categoryId: z.string().trim().min(1),
+                subcategoryIds: z.array(z.string().trim().min(1)).optional()
+            });
+
             const schema = z.object({
                 name: z.string().trim().min(3),
                 email: z.string().trim().email(),
@@ -78,7 +83,8 @@ export function schoolsRouter(deps: {
                     .refine((value) => value.replace(/[^\d]/g, '').length >= 10, { message: 'Invalid phone' }),
                 cnpj: z.string().trim().min(3)
                     .refine((value) => value.replace(/[^\d]/g, '').length === 14, { message: 'Invalid CNPJ' }),
-                addresses: z.array(addressSchema).optional()
+                addresses: z.array(addressSchema).optional(),
+                categories: z.array(categorySchema).optional()
             });
 
             const data = schema.parse(req.body);
@@ -90,6 +96,10 @@ export function schoolsRouter(deps: {
                 email: data.email,
                 phone: data.phone,
                 cnpj: data.cnpj,
+                categories: data.categories?.map((category) => ({
+                    categoryId: category.categoryId,
+                    subcategoryIds: category.subcategoryIds ?? []
+                })),
                 addresses: data.addresses?.map((address) => ({
                     street: address.street,
                     number: address.number,

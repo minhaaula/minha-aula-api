@@ -13,6 +13,10 @@ import { EnrollmentOrm } from './entities/enrollment.orm';
 import { NotificationOrm } from './entities/notification.orm';
 import { EnrollmentRequestOrm } from './entities/enrollment-request.orm';
 import { SchoolAddressOrm } from './entities/school-address.orm';
+import { SchoolCategoryOrm } from './entities/school-category.orm';
+import { SchoolCategorySubcategoryOrm } from './entities/school-subcategory.orm';
+import { CategoryOrm } from './entities/category.orm';
+import { SubcategoryOrm } from './entities/subcategory.orm';
 
 export const AppDataSource = new DataSource({
     type: 'mysql',
@@ -28,6 +32,10 @@ export const AppDataSource = new DataSource({
         UserOrm,
         SchoolOrm,
         SchoolAddressOrm,
+        CategoryOrm,
+        SubcategoryOrm,
+        SchoolCategoryOrm,
+        SchoolCategorySubcategoryOrm,
         CourseOrm,
         CourseClassOrm,
         DependentOrm,

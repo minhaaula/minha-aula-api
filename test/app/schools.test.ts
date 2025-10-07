@@ -94,6 +94,16 @@ describe('School creation flow', () => {
             email: 'contato@central.com',
             phone: '(11) 99876-5432',
             cnpj: '12.345.678/0001-90',
+            categories: [
+                {
+                    categoryId: ' cat-1 ',
+                    subcategoryIds: [' sub-1 ', 'sub-2', 'sub-1']
+                },
+                {
+                    categoryId: 'cat-2',
+                    subcategoryIds: ['sub-3']
+                }
+            ],
             addresses: [{
                 street: 'Rua Central',
                 number: '100',
@@ -106,6 +116,10 @@ describe('School creation flow', () => {
         expect(result.id).toBeTruthy();
         expect(result.ownerUserId).toBeNull();
         expect(result.addresses).toHaveLength(1);
+        expect(result.categories).toEqual([
+            { categoryId: 'cat-1', subcategoryIds: ['sub-1', 'sub-2'] },
+            { categoryId: 'cat-2', subcategoryIds: ['sub-3'] }
+        ]);
         expect(result.addresses[0]).toMatchObject({
             street: 'Rua Central',
             number: '100',
@@ -121,6 +135,10 @@ describe('School creation flow', () => {
         expect(stored?.email).toBe('contato@central.com');
         expect(stored?.phone).toBe('11998765432');
         expect(stored?.cnpj).toBe('12345678000190');
+        expect(stored?.categories).toEqual([
+            { categoryId: 'cat-1', subcategoryIds: ['sub-1', 'sub-2'] },
+            { categoryId: 'cat-2', subcategoryIds: ['sub-3'] }
+        ]);
     });
 
     it('creates a school without addresses when none are provided', async () => {
@@ -185,6 +203,8 @@ describe('School creation flow', () => {
         expect(result[0].addresses[0].zipCode).toBe('01234000');
         expect(result[1].id).toBe('school-older');
         expect(result[0].email).toBe('nova@escola.com');
+        expect(result[0].categories).toEqual([]);
+        expect(result[1].categories).toEqual([]);
     });
 
     it('creates a course for an existing school and prevents duplicates', async () => {
