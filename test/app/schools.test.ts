@@ -10,6 +10,9 @@ import { School } from '../../src/domain/entities/school';
 import { Course } from '../../src/domain/entities/course';
 import { CourseClass } from '../../src/domain/entities/course-class';
 import { PostalAddress } from '../../src/domain/value-objects/postal-address';
+import { PasswordHasherPort } from '../../src/ports/providers/password-hasher.port';
+import { LoginSchool } from '../../src/app/use-cases/login-school';
+import { TokenProviderPort } from '../../src/ports/providers/token-provider.port';
 
 class InMemorySchoolRepository implements SchoolRepository {
     private readonly items = new Map<string, School>();
@@ -31,6 +34,14 @@ class InMemorySchoolRepository implements SchoolRepository {
         if (!normalized) return null;
         return (
             Array.from(this.items.values()).find((item) => item.ownerUserId === normalized) ?? null
+        );
+    }
+
+    async findByOwnerEmail(email: string): Promise<School | null> {
+        const normalized = email.trim().toLowerCase();
+        if (!normalized) return null;
+        return (
+            Array.from(this.items.values()).find((item) => item.ownerEmail === normalized) ?? null
         );
     }
 
@@ -84,26 +95,37 @@ class InMemoryCourseClassRepository implements CourseClassRepository {
     }
 }
 
+class TestPasswordHasher implements PasswordHasherPort {
+    async hash(plain: string): Promise<string> {
+        return `hashed:${plain}`;
+    }
+
+    async compare(plain: string, hashed: string): Promise<boolean> {
+        return hashed === `hashed:${plain}`;
+    }
+}
+
+class TestTokenProvider implements TokenProviderPort {
+    async sign(payload: Record<string, unknown>): Promise<string> {
+        const schoolId = typeof payload.schoolId === 'string' ? payload.schoolId : String(payload.sub ?? 'unknown');
+        return `token-${schoolId}`;
+    }
+
+    async verify<T = Record<string, unknown>>(_token: string): Promise<T> {
+        throw new Error('Not implemented');
+    }
+}
+
 describe('School creation flow', () => {
     it('creates and persists a new school with addresses', async () => {
         const repo = new InMemorySchoolRepository();
-        const useCase = new CreateSchool(repo);
+        const useCase = new CreateSchool(repo, new TestPasswordHasher());
 
         const result = await useCase.exec({
             name: '  Escola Central  ',
             email: 'contato@central.com',
             phone: '(11) 99876-5432',
             cnpj: '12.345.678/0001-90',
-            categories: [
-                {
-                    categoryId: ' cat-1 ',
-                    subcategoryIds: [' sub-1 ', 'sub-2', 'sub-1']
-                },
-                {
-                    categoryId: 'cat-2',
-                    subcategoryIds: ['sub-3']
-                }
-            ],
             addresses: [{
                 street: 'Rua Central',
                 number: '100',
@@ -116,10 +138,9 @@ describe('School creation flow', () => {
         expect(result.id).toBeTruthy();
         expect(result.ownerUserId).toBeNull();
         expect(result.addresses).toHaveLength(1);
-        expect(result.categories).toEqual([
-            { categoryId: 'cat-1', subcategoryIds: ['sub-1', 'sub-2'] },
-            { categoryId: 'cat-2', subcategoryIds: ['sub-3'] }
-        ]);
+        expect(result.ownerName).toBeNull();
+        expect(result.ownerCpf).toBeNull();
+        expect(result.ownerEmail).toBeNull();
         expect(result.addresses[0]).toMatchObject({
             street: 'Rua Central',
             number: '100',
@@ -135,15 +156,11 @@ describe('School creation flow', () => {
         expect(stored?.email).toBe('contato@central.com');
         expect(stored?.phone).toBe('11998765432');
         expect(stored?.cnpj).toBe('12345678000190');
-        expect(stored?.categories).toEqual([
-            { categoryId: 'cat-1', subcategoryIds: ['sub-1', 'sub-2'] },
-            { categoryId: 'cat-2', subcategoryIds: ['sub-3'] }
-        ]);
     });
 
     it('creates a school without addresses when none are provided', async () => {
         const repo = new InMemorySchoolRepository();
-        const useCase = new CreateSchool(repo);
+        const useCase = new CreateSchool(repo, new TestPasswordHasher());
 
         const result = await useCase.exec({
             name: 'Escola Sem Endereço',
@@ -156,6 +173,7 @@ describe('School creation flow', () => {
         const stored = await repo.findById(result.id);
         expect(stored?.addresses).toHaveLength(0);
         expect(stored?.phone).toBe('11912345678');
+        expect(stored?.ownerName).toBeNull();
     });
 
     it('lists schools with addresses ordered by creation date', async () => {
@@ -203,8 +221,9 @@ describe('School creation flow', () => {
         expect(result[0].addresses[0].zipCode).toBe('01234000');
         expect(result[1].id).toBe('school-older');
         expect(result[0].email).toBe('nova@escola.com');
-        expect(result[0].categories).toEqual([]);
-        expect(result[1].categories).toEqual([]);
+        expect(result[0].ownerName).toBeNull();
+        expect(result[0].ownerCpf).toBeNull();
+        expect(result[0].ownerEmail).toBeNull();
     });
 
     it('creates a course for an existing school and prevents duplicates', async () => {
@@ -221,11 +240,23 @@ describe('School creation flow', () => {
         schools.seed(school);
         const useCase = new CreateCourse(schools, courses);
 
-        const course = await useCase.exec({ schoolId: school.id, name: 'Curso A', description: null });
+        const course = await useCase.exec({
+            schoolId: school.id,
+            name: 'Curso A',
+            description: null,
+            categories: [{ categoryId: 'infantil', subcategoryIds: ['alfabetizacao'] }]
+        });
         expect(course.schoolId).toBe(school.id);
         expect(course.name).toBe('Curso A');
+        expect(course.categories).toEqual([
+            { categoryId: 'infantil', subcategoryIds: ['alfabetizacao'] }
+        ]);
 
-        await expect(useCase.exec({ schoolId: school.id, name: 'Curso A' })).rejects.toThrow('Course name already in use for this school');
+        await expect(useCase.exec({
+            schoolId: school.id,
+            name: 'Curso A',
+            categories: [{ categoryId: 'infantil', subcategoryIds: ['alfabetizacao'] }]
+        })).rejects.toThrow('Course name already in use for this school');
     });
 
     it('creates a course class when course belongs to the school', async () => {
@@ -241,7 +272,16 @@ describe('School creation flow', () => {
             cnpj: '55667788000111',
             createdAt: new Date('2024-01-01')
         });
-        const course = Course.create({ id: 'course-1', schoolId: school.id, name: 'Curso A', description: null, isActive: true, createdAt: new Date('2024-01-02') });
+        const course = Course.create({
+            id: 'course-1',
+            schoolId: school.id,
+            name: 'Curso A',
+            description: null,
+            categoryId: 'infantil',
+            subcategoryId: 'alfabetizacao',
+            isActive: true,
+            createdAt: new Date('2024-01-02')
+        });
         schools.seed(school);
         courses.seed(course);
 
@@ -269,6 +309,8 @@ describe('School creation flow', () => {
             schoolId: 'school-2',
             name: 'Curso B',
             description: null,
+            categoryId: 'infantil',
+            subcategoryId: 'alfabetizacao',
             isActive: true,
             createdAt: new Date('2024-01-03')
         });
@@ -283,5 +325,53 @@ describe('School creation flow', () => {
 
         expect(result.courseId).toBe(course.id);
         expect(result.label).toBe('Turma B');
+    });
+
+    it('logs in a school owner with valid credentials', async () => {
+        const repo = new InMemorySchoolRepository();
+        const hasher = new TestPasswordHasher();
+        const tokens = new TestTokenProvider();
+        const createSchool = new CreateSchool(repo, hasher);
+
+        const created = await createSchool.exec({
+            name: 'Colégio Login',
+            email: 'contato@colegio.com',
+            phone: '11987654321',
+            cnpj: '12.345.678/0001-90',
+            ownerName: 'Ana Silva',
+            ownerCpf: '123.456.789-01',
+            ownerEmail: 'ana@colegio.com',
+            ownerPassword: 'senha-forte-123'
+        });
+
+        const login = new LoginSchool(repo, hasher, tokens, 3600);
+        const result = await login.exec({ email: 'ana@colegio.com', password: 'senha-forte-123' });
+
+        expect(result.schoolId).toBe(created.id);
+        expect(result.ownerName).toBe('Ana Silva');
+        expect(result.ownerEmail).toBe('ana@colegio.com');
+        expect(result.accessToken).toBe(`token-${created.id}`);
+        expect(result.expiresIn).toBe(3600);
+    });
+
+    it('rejects login with invalid credentials', async () => {
+        const repo = new InMemorySchoolRepository();
+        const hasher = new TestPasswordHasher();
+        const tokens = new TestTokenProvider();
+        const createSchool = new CreateSchool(repo, hasher);
+
+        await createSchool.exec({
+            name: 'Colégio Login 2',
+            email: 'contato2@colegio.com',
+            phone: '11987654321',
+            cnpj: '12.345.678/0001-91',
+            ownerName: 'Bruno Lima',
+            ownerCpf: '123.456.789-02',
+            ownerEmail: 'bruno@colegio.com',
+            ownerPassword: 'senha-forte-123'
+        });
+
+        const login = new LoginSchool(repo, hasher, tokens, 3600);
+        await expect(login.exec({ email: 'bruno@colegio.com', password: 'senha-errada' })).rejects.toThrow('Invalid credentials');
     });
 });

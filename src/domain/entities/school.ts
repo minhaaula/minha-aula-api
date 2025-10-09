@@ -1,11 +1,6 @@
 import { PostalAddress } from '../value-objects/postal-address';
 import { Email } from '../value-objects/email';
 
-export type SchoolCategory = {
-    categoryId: string;
-    subcategoryIds: string[];
-};
-
 export class School {
     private constructor(
         public readonly id: string,
@@ -16,7 +11,10 @@ export class School {
         private readonly _phone: string,
         private readonly _cnpj: string,
         private readonly _ownerUserId: string | null,
-        private readonly _categories: SchoolCategory[]
+        private readonly _ownerName: string | null,
+        private readonly _ownerCpf: string | null,
+        private readonly _ownerEmail: Email | null,
+        private readonly _ownerPasswordHash: string | null
     ) {}
 
     static create(params: {
@@ -27,8 +25,11 @@ export class School {
         cnpj: string;
         addresses?: PostalAddress[];
         ownerUserId?: string | null;
-        categories?: Array<{ categoryId: string; subcategoryIds?: string[] }>;
         createdAt?: Date;
+        ownerName?: string | null;
+        ownerCpf?: string | null;
+        ownerEmail?: string | null;
+        ownerPasswordHash?: string | null;
     }) {
         const name = params.name.trim();
         if (!name) throw new Error('School name is required');
@@ -46,7 +47,10 @@ export class School {
         const cnpj = School.normalizeCnpj(params.cnpj);
 
         const ownerUserId = params.ownerUserId ? params.ownerUserId.trim() : null;
-        const categories = School.normalizeCategories(params.categories);
+        const ownerName = School.normalizeOwnerName(params.ownerName);
+        const ownerCpf = School.normalizeOwnerCpf(params.ownerCpf);
+        const ownerEmail = School.normalizeOwnerEmail(params.ownerEmail);
+        const ownerPasswordHash = School.normalizeOwnerPasswordHash(params.ownerPasswordHash);
 
         return new School(
             params.id,
@@ -57,7 +61,10 @@ export class School {
             phone,
             cnpj,
             ownerUserId && ownerUserId.length ? ownerUserId : null,
-            categories
+            ownerName,
+            ownerCpf,
+            ownerEmail,
+            ownerPasswordHash
         );
     }
 
@@ -81,11 +88,20 @@ export class School {
         return this._ownerUserId;
     }
 
-    get categories(): SchoolCategory[] {
-        return this._categories.map((category) => ({
-            categoryId: category.categoryId,
-            subcategoryIds: [...category.subcategoryIds]
-        }));
+    get ownerName(): string | null {
+        return this._ownerName;
+    }
+
+    get ownerCpf(): string | null {
+        return this._ownerCpf;
+    }
+
+    get ownerEmail(): string | null {
+        return this._ownerEmail ? this._ownerEmail.value : null;
+    }
+
+    get ownerPasswordHash(): string | null {
+        return this._ownerPasswordHash;
     }
 
     private static normalizePhone(value: string) {
@@ -104,65 +120,47 @@ export class School {
         return digits;
     }
 
-    private static normalizeCategories(values: unknown): SchoolCategory[] {
-        if (values === undefined) return [];
-        if (!Array.isArray(values)) {
-            throw new Error('School categories must be an array');
+    private static normalizeOwnerName(value: unknown): string | null {
+        if (value === undefined || value === null) return null;
+        if (typeof value !== 'string') {
+            throw new Error('School owner name must be a string');
         }
-
-        const normalized: SchoolCategory[] = [];
-        const seenCategories = new Set<string>();
-
-        for (const item of values) {
-            if (typeof item !== 'object' || item === null) {
-                throw new Error('School categories must be objects');
-            }
-
-            const rawCategoryId = typeof (item as { categoryId?: unknown }).categoryId === 'string'
-                ? (item as { categoryId: string }).categoryId.trim()
-                : '';
-            if (!rawCategoryId) {
-                throw new Error('School category id is required');
-            }
-
-            const key = rawCategoryId.toLowerCase();
-            if (seenCategories.has(key)) continue;
-            seenCategories.add(key);
-
-            const subcategoriesInput = (item as { subcategoryIds?: unknown }).subcategoryIds;
-            const subcategoryIds = School.normalizeSubcategories(subcategoriesInput, rawCategoryId);
-
-            normalized.push({ categoryId: rawCategoryId, subcategoryIds });
+        const trimmed = value.trim();
+        if (!trimmed) {
+            throw new Error('School owner name cannot be empty');
         }
-
-        return normalized;
+        return trimmed;
     }
 
-    private static normalizeSubcategories(values: unknown, categoryId: string): string[] {
-        if (values === undefined) return [];
-        if (!Array.isArray(values)) {
-            throw new Error(`School category "${categoryId}" subcategories must be an array`);
+    private static normalizeOwnerCpf(value: unknown): string | null {
+        if (value === undefined || value === null) return null;
+        if (typeof value !== 'string') {
+            throw new Error('School owner CPF must be a string');
         }
-
-        const normalized: string[] = [];
-        const seen = new Set<string>();
-
-        for (const value of values) {
-            if (typeof value !== 'string') {
-                throw new Error(`School category "${categoryId}" subcategories must contain strings`);
-            }
-
-            const trimmed = value.trim();
-            if (!trimmed) {
-                throw new Error(`School category "${categoryId}" subcategories cannot contain empty values`);
-            }
-
-            const key = trimmed.toLowerCase();
-            if (seen.has(key)) continue;
-            seen.add(key);
-            normalized.push(trimmed);
+        const digits = value.replace(/\D/g, '');
+        if (digits.length !== 11) {
+            throw new Error('Invalid school owner CPF');
         }
+        return digits;
+    }
 
-        return normalized;
+    private static normalizeOwnerEmail(value: unknown): Email | null {
+        if (value === undefined || value === null) return null;
+        if (typeof value !== 'string') {
+            throw new Error('School owner email must be a string');
+        }
+        return Email.create(value);
+    }
+
+    private static normalizeOwnerPasswordHash(value: unknown): string | null {
+        if (value === undefined || value === null) return null;
+        if (typeof value !== 'string') {
+            throw new Error('School owner password hash must be a string');
+        }
+        const trimmed = value.trim();
+        if (!trimmed) {
+            throw new Error('School owner password hash cannot be empty');
+        }
+        return trimmed;
     }
 }

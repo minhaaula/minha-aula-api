@@ -10,6 +10,7 @@ import { CourseClassRepositoryAdapter } from '../infra/db/typeorm/course-class-r
 import { DependentRepositoryAdapter } from '../infra/db/typeorm/dependent-repository.adap';
 import { EnrollmentRepositoryAdapter } from '../infra/db/typeorm/enrollment-repository.adap';
 import { EnrollmentRequestRepositoryAdapter } from '../infra/db/typeorm/enrollment-request-repository.adap';
+import { ClassSessionRepositoryAdapter } from '../infra/db/typeorm/class-session-repository.adap';
 import { OutboxProducer } from '../infra/messaging/bullmq/outbox-producer';
 import { ScryptPasswordHasher } from '../infra/auth/scrypt-password-hasher';
 import { HmacTokenProvider } from '../infra/auth/hmac-token-provider';
@@ -27,7 +28,7 @@ export type { ModuleName } from './module-config';
 export function resolveModules(modules: ModuleName[]): ModuleName[] {
     const initial = modules.length > 0 ? modules : MODULES_ORDER;
     const set = new Set<ModuleName>(initial);
-    const requiresAuth = set.has('schools') || set.has('students');
+    const requiresAuth = set.has('students');
     if (requiresAuth) {
         set.add('auth');
     }
@@ -55,6 +56,7 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
     const coursesRepo = new CourseRepositoryAdapter();
     const classesRepo = new CourseClassRepositoryAdapter();
     const dependentsRepo = new DependentRepositoryAdapter();
+    const classSessionsRepo = new ClassSessionRepositoryAdapter();
     const enrollmentsRepo = new EnrollmentRepositoryAdapter();
     const enrollmentRequestsRepo = new EnrollmentRequestRepositoryAdapter();
     const outbox = new OutboxProducer();
@@ -103,7 +105,11 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
                     coursesRepo,
                     classesRepo,
                     usersRepo,
-                    dependentsRepo
+                    dependentsRepo,
+                    classSessionsRepo,
+                    passwordHasher,
+                    tokenProvider,
+                    tokenTtl
                 }, ctx);
                 mergeModuleResult(serverDeps, docFiles, result);
                 break;

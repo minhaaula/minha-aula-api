@@ -4,7 +4,7 @@ import { NotificationOrm } from './notification.orm';
 import { EnrollmentRequestOrm } from './enrollment-request.orm';
 import { SchoolAddressOrm } from './school-address.orm';
 import { UserOrm } from './user.orm';
-import { SchoolCategoryOrm } from './school-category.orm';
+import { ClassSessionOrm } from './class-session.orm';
 
 @Entity('schools')
 export class SchoolOrm {
@@ -24,17 +24,26 @@ export class SchoolOrm {
     @JoinColumn({ name: 'owner_user_id' })
     ownerUser?: UserOrm | null;
 
+    @Column('varchar', { length: 191, name: 'owner_name', nullable: true })
+    ownerName!: string | null;
+
+    @Column('char', { length: 11, name: 'owner_cpf', nullable: true })
+    ownerCpf!: string | null;
+
+    @Column('varchar', { length: 191, name: 'owner_email', nullable: true })
+    ownerEmail!: string | null;
+
+    @Column('varchar', { length: 255, name: 'owner_password_hash', nullable: true })
+    ownerPasswordHash!: string | null;
+
     @OneToMany(() => SchoolAddressOrm, (address) => address.school, {
         cascade: ['insert', 'update'],
         orphanedRowAction: 'delete'
     })
     addresses!: SchoolAddressOrm[];
 
-    @OneToMany(() => SchoolCategoryOrm, (category) => category.school, {
-        cascade: ['insert', 'update'],
-        orphanedRowAction: 'delete'
-    })
-    categories!: SchoolCategoryOrm[];
+    @OneToMany(() => ClassSessionOrm, (session) => session.school)
+    classSessions!: ClassSessionOrm[];
 
     @CreateDateColumn({ name: 'created_at', type: 'datetime', default: () => 'CURRENT_TIMESTAMP' }) createdAt!: Date;
 

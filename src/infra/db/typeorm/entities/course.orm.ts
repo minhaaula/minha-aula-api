@@ -1,6 +1,8 @@
 import { Column, CreateDateColumn, Entity, Index, JoinColumn, ManyToOne, OneToMany, PrimaryColumn } from 'typeorm';
 import { SchoolOrm } from './school.orm';
 import { CourseClassOrm } from './course-class.orm';
+import { CourseCategoryOrm } from './course-category.orm';
+import { CourseCategorySubcategoryOrm } from './course-category-subcategory.orm';
 
 @Entity('courses')
 @Index('idx_courses_school', ['schoolId'])
@@ -23,4 +25,13 @@ export class CourseOrm {
 
     @OneToMany(() => CourseClassOrm, (courseClass) => courseClass.course)
     classes!: CourseClassOrm[];
+
+    @OneToMany(() => CourseCategoryOrm, (category) => category.course, {
+        cascade: ['insert', 'update'],
+        orphanedRowAction: 'delete'
+    })
+    categories!: CourseCategoryOrm[];
+
+    @OneToMany(() => CourseCategorySubcategoryOrm, (link) => link.courseCategory)
+    categorySubcategories!: CourseCategorySubcategoryOrm[];
 }

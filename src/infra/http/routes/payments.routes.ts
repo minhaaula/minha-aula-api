@@ -4,6 +4,11 @@ import { CreatePayment } from '../../../app/use-cases/create-payment';
 import { IssueBoleto } from '../../../app/use-cases/issue-boleto';
 import { Money } from '../../../domain/value-objects/money';
 import { z } from 'zod';
+import {
+    cpfOrCnpjNumberSchema,
+    phoneNumberSchema,
+    zipCodeNumberSchema
+} from '../validators/numeric-fields';
 
 export function paymentsRouter({ createPayment, capturePayment, issueBoleto }: { createPayment: CreatePayment; capturePayment: CapturePayment; issueBoleto: IssueBoleto; }) {
     const r = Router();
@@ -42,11 +47,11 @@ export function paymentsRouter({ createPayment, capturePayment, issueBoleto }: {
                 customer: z.object({
                     name: z.string().min(3),
                     email: z.string().email(),
-                    cpfCnpj: z.string().min(11),
-                    postalCode: z.string().min(8),
+                    cpfCnpj: cpfOrCnpjNumberSchema(),
+                    postalCode: zipCodeNumberSchema(),
                     addressNumber: z.string().min(1),
                     addressComplement: z.string().optional(),
-                    phone: z.string().optional()
+                    phone: phoneNumberSchema().optional()
                 }),
                 dueDate: z.string().refine((value) => !Number.isNaN(new Date(value).getTime()), { message: 'Invalid due date' }),
                 description: z.string().max(255).optional(),
@@ -61,8 +66,8 @@ export function paymentsRouter({ createPayment, capturePayment, issueBoleto }: {
                 customer: {
                     name: dto.customer.name,
                     email: dto.customer.email,
-                    cpfCnpj: dto.customer.cpfCnpj.replace(/[^\d]/g, ''),
-                    postalCode: dto.customer.postalCode.replace(/[^\d]/g, ''),
+                    cpfCnpj: dto.customer.cpfCnpj,
+                    postalCode: dto.customer.postalCode,
                     addressNumber: dto.customer.addressNumber,
                     addressComplement: dto.customer.addressComplement ?? null,
                     phone: dto.customer.phone ?? null

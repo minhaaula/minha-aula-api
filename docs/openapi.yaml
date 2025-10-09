@@ -367,6 +367,10 @@ components:
         - email
         - phone
         - cnpj
+        - ownerName
+        - ownerCpf
+        - ownerEmail
+        - ownerPassword
       properties:
         name:
           type: string
@@ -384,16 +388,64 @@ components:
           minLength: 14
           maxLength: 14
           example: '12345678000190'
+        ownerName:
+          type: string
+          minLength: 3
+          example: Maria Silva
+        ownerCpf:
+          type: string
+          minLength: 11
+          maxLength: 11
+          example: '12345678901'
+        ownerEmail:
+          type: string
+          format: email
+          example: diretoria@escoladofuturo.com.br
+        ownerPassword:
+          type: string
+          format: password
+          minLength: 8
         addresses:
           type: array
           description: Lista de endereços físicos da escola.
           items:
             $ref: '#/components/schemas/SchoolAddress'
-        categories:
-          type: array
-          description: Categorias vinculadas à escola com suas subcategorias.
-          items:
-            $ref: '#/components/schemas/SchoolCategoryLinkInput'
+    SchoolLoginInput:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: diretoria@escola.com
+        password:
+          type: string
+          format: password
+          minLength: 8
+    SchoolLoginResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        schoolId:
+          type: string
+          format: uuid
+        ownerName:
+          type: string
+        ownerEmail:
+          type: string
+          format: email
+        expiresIn:
+          type: integer
+          format: int32
+      required:
+        - accessToken
+        - schoolId
+        - ownerName
+        - ownerEmail
+        - expiresIn
     SchoolResponse:
       type: object
       properties:
@@ -420,10 +472,16 @@ components:
           type: string
           format: uuid
           nullable: true
-        categories:
-          type: array
-          items:
-            $ref: '#/components/schemas/SchoolCategoryLink'
+        ownerName:
+          type: string
+          nullable: true
+        ownerCpf:
+          type: string
+          nullable: true
+        ownerEmail:
+          type: string
+          format: email
+          nullable: true
       required:
         - id
         - name
@@ -432,26 +490,77 @@ components:
         - cnpj
         - addresses
         - createdAt
-        - categories
-    SchoolCategoryLinkInput:
+    CreateClassSessionInput:
+      type: object
+      required:
+        - startsAt
+        - endsAt
+      properties:
+        startsAt:
+          type: string
+          format: date-time
+        endsAt:
+          type: string
+          format: date-time
+        location:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+    ClassSessionResponse:
       type: object
       properties:
-        categoryId:
+        id:
           type: string
           format: uuid
-          minLength: 1
-        subcategoryIds:
+        schoolId:
+          type: string
+          format: uuid
+        courseClassId:
+          type: string
+          format: uuid
+        startsAt:
+          type: string
+          format: date-time
+        endsAt:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum:
+            - SCHEDULED
+            - CANCELLED
+        location:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - schoolId
+        - courseClassId
+        - startsAt
+        - endsAt
+        - status
+        - createdAt
+        - updatedAt
+    ClassSessionsResponse:
+      type: object
+      properties:
+        sessions:
           type: array
           items:
-            type: string
-            format: uuid
+            $ref: '#/components/schemas/ClassSessionResponse'
       required:
-        - categoryId
-    SchoolCategoryLink:
-      allOf:
-        - $ref: '#/components/schemas/SchoolCategoryLinkInput'
-      required:
-        - subcategoryIds
+        - sessions
     SchoolsListResponse:
       type: object
       properties:
@@ -556,6 +665,11 @@ components:
           type: string
           nullable: true
           example: Curso focado em conversação.
+        categories:
+          type: array
+          description: Categorias vinculadas ao curso com suas subcategorias.
+          items:
+            $ref: '#/components/schemas/SchoolCategoryLinkInput'
     CourseResponse:
       type: object
       properties:
@@ -570,6 +684,10 @@ components:
         description:
           type: string
           nullable: true
+        categories:
+          type: array
+          items:
+            $ref: '#/components/schemas/SchoolCategoryLink'
         createdAt:
           type: string
           format: date-time
@@ -578,6 +696,23 @@ components:
         - schoolId
         - name
         - createdAt
+    SchoolCategoryLinkInput:
+      type: object
+      properties:
+        categoryId:
+          type: string
+          minLength: 1
+          example: infantil
+        subcategoryIds:
+          type: array
+          items:
+            type: string
+            minLength: 1
+      required:
+        - categoryId
+    SchoolCategoryLink:
+      allOf:
+        - $ref: '#/components/schemas/SchoolCategoryLinkInput'
     CreateCourseClassInput:
       type: object
       required:

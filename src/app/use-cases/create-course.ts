@@ -9,7 +9,19 @@ export class CreateCourse {
         private readonly courses: CourseRepository
     ) {}
 
-    async exec(input: { schoolId: string; name: string; description?: string | null; }): Promise<{ id: string; schoolId: string; name: string; description: string | null; createdAt: Date; }> {
+    async exec(input: {
+        schoolId: string;
+        name: string;
+        description?: string | null;
+        categories?: Array<{ categoryId: string; subcategoryIds?: string[] }>;
+    }): Promise<{
+        id: string;
+        schoolId: string;
+        name: string;
+        description: string | null;
+        categories: Array<{ categoryId: string; subcategoryIds: string[] }>;
+        createdAt: Date;
+    }> {
         const school = await this.schools.findById(input.schoolId);
         if (!school) throw new Error('School not found');
 
@@ -20,7 +32,8 @@ export class CreateCourse {
             id: Uuid(),
             schoolId: school.id,
             name: input.name,
-            description: input.description ?? null
+            description: input.description ?? null,
+            categories: input.categories
         });
 
         await this.courses.save(course);
@@ -30,6 +43,7 @@ export class CreateCourse {
             schoolId: course.schoolId,
             name: course.name,
             description: course.description,
+            categories: course.categories,
             createdAt: course.createdAt
         };
     }

@@ -7,11 +7,25 @@ import { requirePersona } from '../middlewares/require-persona';
 import { UserPersonaEnum } from '../../../domain/value-objects/user-persona';
 import { AuthenticatedRequest } from '../middlewares/auth';
 import { SchoolRepository } from '../../../ports/repositories/school.repo';
+import { ScheduleClassSession } from '../../../app/use-cases/schedule-class-session';
+import { ListClassSessions } from '../../../app/use-cases/list-class-sessions';
+import { CancelClassSession } from '../../../app/use-cases/cancel-class-session';
+import { LoginSchool } from '../../../app/use-cases/login-school';
+import {
+    cnpjNumberSchema,
+    cpfNumberSchema,
+    phoneNumberSchema,
+    zipCodeNumberSchema
+} from '../validators/numeric-fields';
 
 export function schoolsRouter(deps: {
     createSchool: CreateSchool;
     createCourse: CreateCourse;
     createCourseClass: CreateCourseClass;
+    scheduleClassSession: ScheduleClassSession;
+    listClassSessions: ListClassSessions;
+    cancelClassSession: CancelClassSession;
+    loginSchool?: LoginSchool;
     authMiddleware?: RequestHandler;
     schoolsRepo?: SchoolRepository;
 }) {
@@ -59,6 +73,26 @@ export function schoolsRouter(deps: {
         return undefined;
     };
 
+    r.post('/login', async (req, res, next) => {
+        try {
+            if (!deps.loginSchool) {
+                return res.status(501).json({ error: 'School login not configured' });
+            }
+            const schema = z.object({
+                email: z.string().trim().email(),
+                password: z.string().min(8)
+            });
+            const data = schema.parse(req.body);
+            const result = await deps.loginSchool.exec({
+                email: data.email,
+                password: data.password
+            });
+            res.json(result);
+        } catch (err) {
+            next(err);
+        }
+    });
+
     r.post('/', optionalAuth, async (req, res, next) => {
         try {
             const addressSchema = z.object({
@@ -68,23 +102,19 @@ export function schoolsRouter(deps: {
                 district: z.string().trim().min(1).optional().nullable(),
                 city: z.string().trim().min(1),
                 state: z.string().trim().min(1),
-                zipCode: z.string().trim().min(1)
-            });
-
-            const categorySchema = z.object({
-                categoryId: z.string().trim().min(1),
-                subcategoryIds: z.array(z.string().trim().min(1)).optional()
+                zipCode: zipCodeNumberSchema()
             });
 
             const schema = z.object({
                 name: z.string().trim().min(3),
                 email: z.string().trim().email(),
-                phone: z.string().trim().min(8)
-                    .refine((value) => value.replace(/[^\d]/g, '').length >= 10, { message: 'Invalid phone' }),
-                cnpj: z.string().trim().min(3)
-                    .refine((value) => value.replace(/[^\d]/g, '').length === 14, { message: 'Invalid CNPJ' }),
-                addresses: z.array(addressSchema).optional(),
-                categories: z.array(categorySchema).optional()
+                phone: phoneNumberSchema(),
+                cnpj: cnpjNumberSchema(),
+                ownerName: z.string().trim().min(3),
+                ownerCpf: cpfNumberSchema(),
+                ownerEmail: z.string().trim().email(),
+                ownerPassword: z.string().min(8),
+                addresses: z.array(addressSchema).optional()
             });
 
             const data = schema.parse(req.body);
@@ -96,10 +126,6 @@ export function schoolsRouter(deps: {
                 email: data.email,
                 phone: data.phone,
                 cnpj: data.cnpj,
-                categories: data.categories?.map((category) => ({
-                    categoryId: category.categoryId,
-                    subcategoryIds: category.subcategoryIds ?? []
-                })),
                 addresses: data.addresses?.map((address) => ({
                     street: address.street,
                     number: address.number,
@@ -109,7 +135,11 @@ export function schoolsRouter(deps: {
                     state: address.state,
                     zipCode: address.zipCode
                 })),
-                ownerUserId
+                ownerUserId,
+                ownerName: data.ownerName,
+                ownerCpf: data.ownerCpf,
+                ownerEmail: data.ownerEmail,
+                ownerPassword: data.ownerPassword
             });
             res.status(201).json(school);
         } catch (err) {
@@ -121,15 +151,25 @@ export function schoolsRouter(deps: {
         try {
             const schoolId = await resolveRequestSchoolId(req as AuthenticatedRequest, res);
             if (!schoolId) return;
+            const categorySchema = z.object({
+                categoryId: z.string().trim().min(1),
+                subcategoryIds: z.array(z.string().trim().min(1)).optional()
+            });
+
             const bodySchema = z.object({
                 name: z.string().min(3),
-                description: z.string().min(1).optional()
+                description: z.string().min(1).optional(),
+                categories: z.array(categorySchema).optional()
             });
             const data = bodySchema.parse(req.body);
             const course = await deps.createCourse.exec({
                 schoolId,
                 name: data.name,
-                description: data.description ?? null
+                description: data.description ?? null,
+                categories: data.categories?.map((category) => ({
+                    categoryId: category.categoryId,
+                    subcategoryIds: category.subcategoryIds ?? []
+                }))
             });
             res.status(201).json(course);
         } catch (err) {
@@ -186,6 +226,105 @@ export function schoolsRouter(deps: {
                 endsAt
             });
             res.status(201).json(courseClass);
+        } catch (err) {
+            next(err);
+        }
+    });
+
+    r.post('/courses/:courseId/classes/:classId/sessions', requireAuth, requireSchoolPersona, async (req, res, next) => {
+        try {
+            const paramsSchema = z.object({
+                courseId: z.string().uuid(),
+                classId: z.string().uuid()
+            });
+            const { classId } = paramsSchema.parse(req.params);
+            const bodySchema = z.object({
+                startsAt: z.string().datetime(),
+                endsAt: z.string().datetime(),
+                location: z.string().trim().min(1).optional(),
+                notes: z.string().trim().min(1).optional()
+            });
+            const data = bodySchema.parse(req.body);
+            const schoolId = await resolveRequestSchoolId(req as AuthenticatedRequest, res);
+            if (!schoolId) return;
+
+            const startsAt = new Date(data.startsAt);
+            const endsAt = new Date(data.endsAt);
+
+            const session = await deps.scheduleClassSession.exec({
+                schoolId,
+                courseClassId: classId,
+                startsAt,
+                endsAt,
+                location: data.location ?? null,
+                notes: data.notes ?? null
+            });
+            res.status(201).json(session);
+        } catch (err) {
+            next(err);
+        }
+    });
+
+    r.get('/courses/:courseId/classes/:classId/sessions', requireAuth, requireSchoolPersona, async (req, res, next) => {
+        try {
+            const paramsSchema = z.object({
+                courseId: z.string().uuid(),
+                classId: z.string().uuid()
+            });
+            const { classId } = paramsSchema.parse(req.params);
+            const querySchema = z.object({
+                from: z.string().datetime(),
+                to: z.string().datetime()
+            });
+            const { from, to } = querySchema.parse(req.query);
+            const schoolId = await resolveRequestSchoolId(req as AuthenticatedRequest, res);
+            if (!schoolId) return;
+
+            const sessions = await deps.listClassSessions.exec({
+                schoolId,
+                courseClassId: classId,
+                from: new Date(from),
+                to: new Date(to)
+            });
+            res.json({ sessions });
+        } catch (err) {
+            next(err);
+        }
+    });
+
+    r.get('/sessions', requireAuth, requireSchoolPersona, async (req, res, next) => {
+        try {
+            const querySchema = z.object({
+                from: z.string().datetime(),
+                to: z.string().datetime(),
+                courseClassId: z.string().uuid().optional()
+            });
+            const { from, to, courseClassId } = querySchema.parse(req.query);
+            const schoolId = await resolveRequestSchoolId(req as AuthenticatedRequest, res);
+            if (!schoolId) return;
+
+            const sessions = await deps.listClassSessions.exec({
+                schoolId,
+                from: new Date(from),
+                to: new Date(to),
+                courseClassId: courseClassId ?? null
+            });
+            res.json({ sessions });
+        } catch (err) {
+            next(err);
+        }
+    });
+
+    r.delete('/sessions/:sessionId', requireAuth, requireSchoolPersona, async (req, res, next) => {
+        try {
+            const paramsSchema = z.object({
+                sessionId: z.string().uuid()
+            });
+            const { sessionId } = paramsSchema.parse(req.params);
+            const schoolId = await resolveRequestSchoolId(req as AuthenticatedRequest, res);
+            if (!schoolId) return;
+            await deps.cancelClassSession.exec({ schoolId, sessionId });
+            res.status(204).send();
         } catch (err) {
             next(err);
         }

@@ -2,9 +2,13 @@ import { SchoolRepository } from '../../ports/repositories/school.repo';
 import { School } from '../../domain/entities/school';
 import { Uuid } from '../../shared/uuid';
 import { PostalAddress, type PostalAddressProps } from '../../domain/value-objects/postal-address';
+import { PasswordHasherPort } from '../../ports/providers/password-hasher.port';
 
 export class CreateSchool {
-    constructor(private readonly schools: SchoolRepository) {}
+    constructor(
+        private readonly schools: SchoolRepository,
+        private readonly passwordHasher: PasswordHasherPort
+    ) {}
 
     async exec(input: {
         name: string;
@@ -21,7 +25,10 @@ export class CreateSchool {
             zipCode: string;
         }>;
         ownerUserId?: string | null;
-        categories?: Array<{ categoryId: string; subcategoryIds?: string[] }>;
+        ownerName?: string | null;
+        ownerCpf?: string | null;
+        ownerEmail?: string | null;
+        ownerPassword?: string | null;
     }): Promise<{
         id: string;
         name: string;
@@ -31,7 +38,9 @@ export class CreateSchool {
         addresses: PostalAddressProps[];
         createdAt: Date;
         ownerUserId: string | null;
-        categories: Array<{ categoryId: string; subcategoryIds: string[] }>;
+        ownerName: string | null;
+        ownerCpf: string | null;
+        ownerEmail: string | null;
     }> {
         const addresses = (input.addresses ?? []).map((address) => PostalAddress.create({
             street: address.street,
@@ -43,6 +52,18 @@ export class CreateSchool {
             zipCode: address.zipCode
         }));
 
+        const ownerFieldsProvided = [input.ownerName, input.ownerCpf, input.ownerEmail, input.ownerPassword]
+            .some((value) => value !== undefined && value !== null);
+        if (ownerFieldsProvided) {
+            if (!input.ownerName || !input.ownerCpf || !input.ownerEmail || !input.ownerPassword) {
+                throw new Error('School owner information is incomplete');
+            }
+        }
+
+        const ownerPasswordHash = input.ownerPassword
+            ? await this.passwordHasher.hash(input.ownerPassword)
+            : null;
+
         const school = School.create({
             id: Uuid(),
             name: input.name,
@@ -51,7 +72,10 @@ export class CreateSchool {
             phone: input.phone,
             cnpj: input.cnpj,
             ownerUserId: input.ownerUserId ?? null,
-            categories: input.categories
+            ownerName: input.ownerName ?? null,
+            ownerCpf: input.ownerCpf ?? null,
+            ownerEmail: input.ownerEmail ?? null,
+            ownerPasswordHash
         });
         await this.schools.save(school);
         return {
@@ -63,7 +87,9 @@ export class CreateSchool {
             addresses: school.addresses.map((address) => address.toPrimitives()),
             createdAt: school.createdAt,
             ownerUserId: school.ownerUserId,
-            categories: school.categories
+            ownerName: school.ownerName,
+            ownerCpf: school.ownerCpf,
+            ownerEmail: school.ownerEmail
         };
     }
 }

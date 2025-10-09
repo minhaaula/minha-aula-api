@@ -13,10 +13,11 @@ import { EnrollmentOrm } from './entities/enrollment.orm';
 import { NotificationOrm } from './entities/notification.orm';
 import { EnrollmentRequestOrm } from './entities/enrollment-request.orm';
 import { SchoolAddressOrm } from './entities/school-address.orm';
-import { SchoolCategoryOrm } from './entities/school-category.orm';
-import { SchoolCategorySubcategoryOrm } from './entities/school-subcategory.orm';
+import { ClassSessionOrm } from './entities/class-session.orm';
 import { CategoryOrm } from './entities/category.orm';
 import { SubcategoryOrm } from './entities/subcategory.orm';
+import { CourseCategoryOrm } from './entities/course-category.orm';
+import { CourseCategorySubcategoryOrm } from './entities/course-category-subcategory.orm';
 
 export const AppDataSource = new DataSource({
     type: 'mysql',
@@ -32,10 +33,11 @@ export const AppDataSource = new DataSource({
         UserOrm,
         SchoolOrm,
         SchoolAddressOrm,
+        ClassSessionOrm,
         CategoryOrm,
         SubcategoryOrm,
-        SchoolCategoryOrm,
-        SchoolCategorySubcategoryOrm,
+        CourseCategoryOrm,
+        CourseCategorySubcategoryOrm,
         CourseOrm,
         CourseClassOrm,
         DependentOrm,

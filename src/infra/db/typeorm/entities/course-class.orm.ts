@@ -3,6 +3,7 @@ import { CourseOrm } from './course.orm';
 import { EnrollmentOrm } from './enrollment.orm';
 import { NotificationOrm } from './notification.orm';
 import { EnrollmentRequestOrm } from './enrollment-request.orm';
+import { ClassSessionOrm } from './class-session.orm';
 
 @Entity('course_classes')
 @Index('idx_course_classes_course', ['courseId'])
@@ -36,4 +37,7 @@ export class CourseClassOrm {
 
     @OneToMany(() => EnrollmentRequestOrm, (request) => request.courseClass)
     enrollmentRequests!: EnrollmentRequestOrm[];
+
+    @OneToMany(() => ClassSessionOrm, (session) => session.courseClass)
+    sessions!: ClassSessionOrm[];
 }

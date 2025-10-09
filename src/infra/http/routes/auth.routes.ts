@@ -5,11 +5,9 @@ import { LoginUser } from '../../../app/use-cases/login-user';
 import { USER_PERSONAS } from '../../../domain/value-objects/user-persona';
 import { UpdateUserPassword } from '../../../app/use-cases/update-user-password';
 import { AuthenticatedRequest } from '../middlewares/auth';
+import { cpfNumberSchema, phoneNumberSchema, zipCodeNumberSchema } from '../validators/numeric-fields';
 
-const cpfSchema = z.string()
-    .min(11)
-    .transform((value) => value.replace(/[^\d]/g, ''))
-    .refine((value) => value.length === 11, { message: 'Invalid CPF' });
+const cpfSchema = cpfNumberSchema();
 
 export function authRouter({
     registerUser,
@@ -34,17 +32,14 @@ export function authRouter({
         district: z.string().min(2).optional(),
         city: z.string().min(2),
         state: z.string().min(2),
-        zipCode: z.string().min(5)
-    }).transform((value) => ({
-        ...value,
-        zipCode: value.zipCode.replace(/[^\d]/g, '')
-    }));
+        zipCode: zipCodeNumberSchema()
+    });
 
     const registerSchema = z.object({
         fullName: z.string().min(3),
         birthDate: z.string().refine((value) => !Number.isNaN(new Date(value).getTime()), { message: 'Invalid birth date' }),
         email: z.string().email(),
-        phone: z.string().min(8),
+        phone: phoneNumberSchema(),
         cpf: cpfSchema,
         address: addressSchema,
         persona: z.enum(USER_PERSONAS),
