@@ -1,10 +1,11 @@
-import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, OneToMany, OneToOne, PrimaryColumn } from 'typeorm';
 import { CourseOrm } from './course.orm';
 import { NotificationOrm } from './notification.orm';
 import { EnrollmentRequestOrm } from './enrollment-request.orm';
 import { SchoolAddressOrm } from './school-address.orm';
 import { UserOrm } from './user.orm';
 import { ClassSessionOrm } from './class-session.orm';
+import { SchoolPlanFinanceOrm } from './school-plan-finance.orm';
 
 @Entity('schools')
 export class SchoolOrm {
@@ -55,4 +56,7 @@ export class SchoolOrm {
 
     @OneToMany(() => EnrollmentRequestOrm, (request) => request.school)
     enrollmentRequests!: EnrollmentRequestOrm[];
+
+    @OneToOne(() => SchoolPlanFinanceOrm, (finance) => finance.school, { cascade: ['insert', 'update'] })
+    planFinance?: SchoolPlanFinanceOrm | null;
 }

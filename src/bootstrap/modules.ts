@@ -11,6 +11,9 @@ import { DependentRepositoryAdapter } from '../infra/db/typeorm/dependent-reposi
 import { EnrollmentRepositoryAdapter } from '../infra/db/typeorm/enrollment-repository.adap';
 import { EnrollmentRequestRepositoryAdapter } from '../infra/db/typeorm/enrollment-request-repository.adap';
 import { ClassSessionRepositoryAdapter } from '../infra/db/typeorm/class-session-repository.adap';
+import { SchoolPlanFinanceRepositoryAdapter } from '../infra/db/typeorm/school-plan-finance-repository.adap';
+import { SubscriptionPlanRepositoryAdapter } from '../infra/db/typeorm/subscription-plan-repository.adap';
+import { CategoryRepositoryAdapter } from '../infra/db/typeorm/category-repository.adap';
 import { OutboxProducer } from '../infra/messaging/bullmq/outbox-producer';
 import { ScryptPasswordHasher } from '../infra/auth/scrypt-password-hasher';
 import { HmacTokenProvider } from '../infra/auth/hmac-token-provider';
@@ -55,6 +58,9 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
     const schoolsRepo = new SchoolRepositoryAdapter();
     const coursesRepo = new CourseRepositoryAdapter();
     const classesRepo = new CourseClassRepositoryAdapter();
+    const schoolPlanFinancesRepo = new SchoolPlanFinanceRepositoryAdapter();
+    const subscriptionPlansRepo = new SubscriptionPlanRepositoryAdapter();
+    const categoriesRepo = new CategoryRepositoryAdapter();
     const dependentsRepo = new DependentRepositoryAdapter();
     const classSessionsRepo = new ClassSessionRepositoryAdapter();
     const enrollmentsRepo = new EnrollmentRepositoryAdapter();
@@ -106,6 +112,9 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
                     classesRepo,
                     usersRepo,
                     dependentsRepo,
+                    subscriptionPlansRepo,
+                    categoriesRepo,
+                    planFinancesRepo: schoolPlanFinancesRepo,
                     classSessionsRepo,
                     passwordHasher,
                     tokenProvider,

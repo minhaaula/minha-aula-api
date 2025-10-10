@@ -11,6 +11,10 @@ import { ScheduleClassSession } from '../../../app/use-cases/schedule-class-sess
 import { ListClassSessions } from '../../../app/use-cases/list-class-sessions';
 import { CancelClassSession } from '../../../app/use-cases/cancel-class-session';
 import { LoginSchool } from '../../../app/use-cases/login-school';
+import { GetActiveSchoolPlan } from '../../../app/use-cases/get-active-school-plan';
+import { ListSubscriptionPlans } from '../../../app/use-cases/list-subscription-plans';
+import { AssignSchoolPlan } from '../../../app/use-cases/assign-school-plan';
+import { ListCategories } from '../../../app/use-cases/list-categories';
 import {
     cnpjNumberSchema,
     cpfNumberSchema,
@@ -26,6 +30,10 @@ export function schoolsRouter(deps: {
     listClassSessions: ListClassSessions;
     cancelClassSession: CancelClassSession;
     loginSchool?: LoginSchool;
+    getActiveSchoolPlan?: GetActiveSchoolPlan;
+    listSubscriptionPlans?: ListSubscriptionPlans;
+    assignSchoolPlan?: AssignSchoolPlan;
+    listCategories?: ListCategories;
     authMiddleware?: RequestHandler;
     schoolsRepo?: SchoolRepository;
 }) {
@@ -88,6 +96,53 @@ export function schoolsRouter(deps: {
                 password: data.password
             });
             res.json(result);
+        } catch (err) {
+            next(err);
+        }
+    });
+
+    r.get('/categories', async (_req, res, next) => {
+        try {
+            if (!deps.listCategories) {
+                return res.status(501).json({ error: 'School categories listing not configured' });
+            }
+            const result = await deps.listCategories.exec();
+            res.json(result);
+        } catch (err) {
+            next(err);
+        }
+    });
+
+    r.get('/plans', async (_req, res, next) => {
+        try {
+            if (!deps.listSubscriptionPlans) {
+                return res.status(501).json({ error: 'School plans listing not configured' });
+            }
+            const result = await deps.listSubscriptionPlans.exec();
+            res.json(result);
+        } catch (err) {
+            next(err);
+        }
+    });
+
+    r.post('/plan', requireAuth, requireSchoolPersona, async (req, res, next) => {
+        try {
+            if (!deps.assignSchoolPlan) {
+                return res.status(501).json({ error: 'School plan assignment not configured' });
+            }
+            const bodySchema = z.object({
+                planId: z.string().uuid(),
+                notes: z.string().trim().min(1).optional()
+            });
+            const data = bodySchema.parse(req.body);
+            const schoolId = await resolveRequestSchoolId(req as AuthenticatedRequest, res);
+            if (!schoolId) return;
+            const result = await deps.assignSchoolPlan.exec({
+                schoolId,
+                planId: data.planId,
+                notes: data.notes ?? null
+            });
+            res.status(200).json(result);
         } catch (err) {
             next(err);
         }
@@ -310,6 +365,23 @@ export function schoolsRouter(deps: {
                 courseClassId: courseClassId ?? null
             });
             res.json({ sessions });
+        } catch (err) {
+            next(err);
+        }
+    });
+
+    r.get('/plan', requireAuth, requireSchoolPersona, async (req, res, next) => {
+        try {
+            if (!deps.getActiveSchoolPlan) {
+                return res.status(501).json({ error: 'School plan feature not configured' });
+            }
+            const schoolId = await resolveRequestSchoolId(req as AuthenticatedRequest, res);
+            if (!schoolId) return;
+            const plan = await deps.getActiveSchoolPlan.exec({ schoolId });
+            if (!plan) {
+                return res.status(404).json({ error: 'Active plan not found for school' });
+            }
+            res.json(plan);
         } catch (err) {
             next(err);
         }

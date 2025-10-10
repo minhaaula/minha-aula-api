@@ -17,6 +17,13 @@ import { CancelClassSession } from '../../app/use-cases/cancel-class-session';
 import { PasswordHasherPort } from '../../ports/providers/password-hasher.port';
 import { TokenProviderPort } from '../../ports/providers/token-provider.port';
 import { LoginSchool } from '../../app/use-cases/login-school';
+import { SchoolPlanFinanceRepositoryAdapter } from '../../infra/db/typeorm/school-plan-finance-repository.adap';
+import { GetActiveSchoolPlan } from '../../app/use-cases/get-active-school-plan';
+import { SubscriptionPlanRepositoryAdapter } from '../../infra/db/typeorm/subscription-plan-repository.adap';
+import { ListSubscriptionPlans } from '../../app/use-cases/list-subscription-plans';
+import { AssignSchoolPlan } from '../../app/use-cases/assign-school-plan';
+import { CategoryRepositoryAdapter } from '../../infra/db/typeorm/category-repository.adap';
+import { ListCategories } from '../../app/use-cases/list-categories';
 
 export type SchoolsModuleDeps = {
     schoolsRepo: SchoolRepositoryAdapter;
@@ -24,6 +31,9 @@ export type SchoolsModuleDeps = {
     classesRepo: CourseClassRepositoryAdapter;
     usersRepo: UserRepositoryAdapter;
     dependentsRepo: DependentRepositoryAdapter;
+    subscriptionPlansRepo: SubscriptionPlanRepositoryAdapter;
+    categoriesRepo: CategoryRepositoryAdapter;
+    planFinancesRepo: SchoolPlanFinanceRepositoryAdapter;
     classSessionsRepo: ClassSessionRepositoryAdapter;
     passwordHasher: PasswordHasherPort;
     tokenProvider: TokenProviderPort;
@@ -39,6 +49,10 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, _ctx: ModuleSetupCon
     const listClassSessions = new ListClassSessions(deps.classSessionsRepo, deps.classesRepo, deps.coursesRepo);
     const cancelClassSession = new CancelClassSession(deps.classSessionsRepo);
     const loginSchool = new LoginSchool(deps.schoolsRepo, deps.passwordHasher, deps.tokenProvider, deps.tokenTtl);
+    const getActiveSchoolPlan = new GetActiveSchoolPlan(deps.planFinancesRepo);
+    const listSubscriptionPlans = new ListSubscriptionPlans(deps.subscriptionPlansRepo);
+    const assignSchoolPlan = new AssignSchoolPlan(deps.schoolsRepo, deps.subscriptionPlansRepo, deps.planFinancesRepo);
+    const listCategories = new ListCategories(deps.categoriesRepo);
 
     return {
         deps: {
@@ -52,7 +66,11 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, _ctx: ModuleSetupCon
             listClassSessions,
             cancelClassSession,
             schoolsRepo: deps.schoolsRepo,
-            loginSchool
+            loginSchool,
+            getActiveSchoolPlan,
+            listSubscriptionPlans,
+            assignSchoolPlan,
+            listCategories
         },
         docFiles: ['schools.yaml', 'students.yaml']
     };

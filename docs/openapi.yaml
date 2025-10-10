@@ -490,6 +490,142 @@ components:
         - cnpj
         - addresses
         - createdAt
+    SubscriptionPlanSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+          example: BASIC
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        amountCents:
+          type: integer
+          format: int32
+          example: 15000
+        currency:
+          type: string
+          example: BRL
+        billingCycle:
+          type: string
+          enum:
+            - MONTHLY
+            - ANNUAL
+        isActive:
+          type: boolean
+      required:
+        - id
+        - code
+        - name
+        - amountCents
+        - currency
+        - billingCycle
+        - isActive
+    SchoolPlanResponse:
+      type: object
+      properties:
+        schoolId:
+          type: string
+          format: uuid
+        plan:
+          $ref: '#/components/schemas/SubscriptionPlanSummary'
+        status:
+          type: string
+          enum:
+            - TRIAL
+            - ACTIVE
+            - PAST_DUE
+            - SUSPENDED
+            - CANCELLED
+          example: ACTIVE
+        isPaid:
+          type: boolean
+        lastPaymentAt:
+          type: string
+          format: date-time
+          nullable: true
+        nextDueAt:
+          type: string
+          format: date-time
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - schoolId
+        - plan
+        - status
+        - isPaid
+        - createdAt
+        - updatedAt
+    SubscriptionPlanListResponse:
+      type: object
+      properties:
+        plans:
+          type: array
+          items:
+            $ref: '#/components/schemas/SubscriptionPlanSummary'
+      required:
+        - plans
+    AssignSchoolPlanInput:
+      type: object
+      required:
+        - planId
+      properties:
+        planId:
+          type: string
+          format: uuid
+        notes:
+          type: string
+          nullable: true
+          description: Observações internas para o plano selecionado.
+    SubcategorySummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+      required:
+        - id
+        - name
+    CategoryWithSubcategories:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        subcategories:
+          type: array
+          items:
+            $ref: '#/components/schemas/SubcategorySummary'
+      required:
+        - id
+        - name
+        - subcategories
+    CategoryListResponse:
+      type: object
+      properties:
+        categories:
+          type: array
+          items:
+            $ref: '#/components/schemas/CategoryWithSubcategories'
+      required:
+        - categories
     CreateClassSessionInput:
       type: object
       required:

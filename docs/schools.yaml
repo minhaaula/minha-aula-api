@@ -229,6 +229,103 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /schools/plans:
+    get:
+      tags:
+        - Schools
+      summary: Listar planos disponíveis para escolas
+      description: Retorna todos os planos de assinatura ativos que podem ser contratados pelas escolas.
+      responses:
+        '200':
+          description: Planos disponíveis encontrados.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubscriptionPlanListResponse'
+        '501':
+          description: Funcionalidade de planos não configurada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /schools/categories:
+    get:
+      tags:
+        - Schools
+      summary: Listar categorias e subcategorias disponíveis
+      description: Retorna as categorias de cursos e suas respectivas subcategorias para auxiliar na criação de cursos.
+      responses:
+        '200':
+          description: Categorias encontradas.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryListResponse'
+        '501':
+          description: Funcionalidade de categorias não configurada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /schools/plan:
+    post:
+      tags:
+        - Schools
+      summary: Selecionar plano para a escola
+      description: Atualiza o plano de assinatura da escola autenticada. A data de vencimento é calculada automaticamente para o próximo ciclo.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignSchoolPlanInput'
+      responses:
+        '200':
+          description: Plano atribuído com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchoolPlanResponse'
+        '400':
+          description: Dados inválidos ou plano indisponível.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '501':
+          description: Funcionalidade de planos não configurada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    get:
+      tags:
+        - Schools
+      summary: Consultar plano ativo da escola
+      description: Retorna o plano de assinatura vigente, status de pagamento e datas de cobrança.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Plano ativo encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchoolPlanResponse'
+        '404':
+          description: Nenhum plano ativo configurado para a escola.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '501':
+          description: Funcionalidade de planos não configurada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /schools/sessions/{sessionId}:
     delete:
       tags:
