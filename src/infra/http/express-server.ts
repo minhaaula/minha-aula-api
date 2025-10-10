@@ -162,7 +162,14 @@ export function makeServer(deps: AppDependencies & Record<string, any>) {
             createSchool: deps.createSchool,
             createCourse: deps.createCourse,
             createCourseClass: deps.createCourseClass,
+            scheduleClassSession: deps.scheduleClassSession,
+            listClassSessions: deps.listClassSessions,
+            cancelClassSession: deps.cancelClassSession,
             loginSchool: deps.loginSchool,
+            getActiveSchoolPlan: deps.getActiveSchoolPlan,
+            listSubscriptionPlans: deps.listSubscriptionPlans,
+            assignSchoolPlan: deps.assignSchoolPlan,
+            listCategories: deps.listCategories,
             authMiddleware: deps.authMiddleware,
             schoolsRepo: deps.schoolsRepo
         });
