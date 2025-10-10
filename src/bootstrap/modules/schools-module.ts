@@ -30,6 +30,7 @@ import { ListCourseClasses } from '../../app/use-cases/list-course-classes';
 import { GetCourseClass } from '../../app/use-cases/get-course-class';
 import { GetSchoolProfile } from '../../app/use-cases/get-school-profile';
 import { UpdateSchool } from '../../app/use-cases/update-school';
+import { UpdateCourse } from '../../app/use-cases/update-course';
 
 export type SchoolsModuleDeps = {
     schoolsRepo: SchoolRepositoryAdapter;
@@ -52,6 +53,7 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, _ctx: ModuleSetupCon
     const createCourseClass = new CreateCourseClass(deps.coursesRepo, deps.classesRepo);
     const listSchoolCourses = new ListSchoolCourses(deps.coursesRepo);
     const getSchoolCourse = new GetSchoolCourse(deps.coursesRepo);
+    const updateCourse = new UpdateCourse(deps.schoolsRepo, deps.coursesRepo);
     const listCourseClasses = new ListCourseClasses(deps.coursesRepo, deps.classesRepo);
     const getCourseClass = new GetCourseClass(deps.coursesRepo, deps.classesRepo);
     const getSchoolProfile = new GetSchoolProfile(deps.schoolsRepo);
@@ -74,6 +76,7 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, _ctx: ModuleSetupCon
             createCourseClass,
             listSchoolCourses,
             getSchoolCourse,
+            updateCourse,
             listCourseClasses,
             getCourseClass,
             getSchoolProfile,

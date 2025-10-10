@@ -856,6 +856,22 @@ components:
           description: Categorias vinculadas ao curso com suas subcategorias.
           items:
             $ref: '#/components/schemas/SchoolCategoryLinkInput'
+    UpdateCourseInput:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 3
+          example: Curso de Inglês Avançado
+        description:
+          type: string
+          nullable: true
+          example: Curso com foco em conversação avançada.
+        categories:
+          type: array
+          description: Categorias vinculadas ao curso com suas subcategorias.
+          items:
+            $ref: '#/components/schemas/SchoolCategoryLinkInput'
     CourseResponse:
       type: object
       properties:

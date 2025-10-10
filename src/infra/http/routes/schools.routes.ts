@@ -21,6 +21,7 @@ import { ListCourseClasses } from '../../../app/use-cases/list-course-classes';
 import { GetCourseClass } from '../../../app/use-cases/get-course-class';
 import { GetSchoolProfile } from '../../../app/use-cases/get-school-profile';
 import { UpdateSchool } from '../../../app/use-cases/update-school';
+import { UpdateCourse } from '../../../app/use-cases/update-course';
 import {
     cnpjNumberSchema,
     cpfNumberSchema,
@@ -42,6 +43,7 @@ export function schoolsRouter(deps: {
     listCategories?: ListCategories;
     listSchoolCourses?: ListSchoolCourses;
     getSchoolCourse?: GetSchoolCourse;
+    updateCourse?: UpdateCourse;
     listCourseClasses?: ListCourseClasses;
     getCourseClass?: GetCourseClass;
     getSchoolProfile?: GetSchoolProfile;
@@ -324,6 +326,49 @@ export function schoolsRouter(deps: {
                 return res.status(404).json({ error: 'Course not found' });
             }
             res.json(course);
+        } catch (err) {
+            next(err);
+        }
+    });
+
+    r.put('/courses/:courseId', requireAuth, requireSchoolPersona, async (req, res, next) => {
+        try {
+            if (!deps.updateCourse) {
+                return res.status(501).json({ error: 'School course update not configured' });
+            }
+
+            const paramsSchema = z.object({
+                courseId: z.string().uuid()
+            });
+            const { courseId } = paramsSchema.parse(req.params);
+
+            const categorySchema = z.object({
+                categoryId: z.string().trim().min(1),
+                subcategoryIds: z.array(z.string().trim().min(1)).optional()
+            });
+
+            const bodySchema = z.object({
+                name: z.string().trim().min(3).optional(),
+                description: z.string().trim().min(1).optional().nullable(),
+                categories: z.array(categorySchema).optional()
+            });
+
+            const data = bodySchema.parse(req.body ?? {});
+            const schoolId = await resolveRequestSchoolId(req as AuthenticatedRequest, res);
+            if (!schoolId) return;
+
+            const result = await deps.updateCourse.exec({
+                schoolId,
+                courseId,
+                name: data.name,
+                description: data.description === undefined ? undefined : data.description,
+                categories: data.categories?.map((category) => ({
+                    categoryId: category.categoryId,
+                    subcategoryIds: category.subcategoryIds ?? []
+                }))
+            });
+
+            res.json(result);
         } catch (err) {
             next(err);
         }

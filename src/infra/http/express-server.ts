@@ -87,6 +87,7 @@ interface AppDependencies {
     listSchoolCourses?: any;
     getSchoolProfile?: any;
     getSchoolCourse?: any;
+    updateCourse?: any;
     listCourseClasses?: any;
     getCourseClass?: any;
     updateSchool?: any;
@@ -175,6 +176,7 @@ export function makeServer(deps: AppDependencies & Record<string, any>) {
         const router = deps.schoolsRouter({
             createSchool: deps.createSchool,
             createCourse: deps.createCourse,
+            updateCourse: deps.updateCourse,
             createCourseClass: deps.createCourseClass,
             getSchoolProfile: deps.getSchoolProfile,
             updateSchool: deps.updateSchool,

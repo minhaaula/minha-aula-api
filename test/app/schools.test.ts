@@ -9,6 +9,7 @@ import { ListCourseClasses } from '../../src/app/use-cases/list-course-classes';
 import { GetCourseClass } from '../../src/app/use-cases/get-course-class';
 import { GetSchoolProfile } from '../../src/app/use-cases/get-school-profile';
 import { UpdateSchool } from '../../src/app/use-cases/update-school';
+import { UpdateCourse } from '../../src/app/use-cases/update-course';
 import { SchoolRepository } from '../../src/ports/repositories/school.repo';
 import { CourseRepository } from '../../src/ports/repositories/course.repo';
 import { CourseClassRepository } from '../../src/ports/repositories/course-class.repo';
@@ -279,6 +280,65 @@ describe('School creation flow', () => {
             schoolId: school.id,
             name: 'Curso A',
             categories: [{ categoryId: 'infantil', subcategoryIds: ['alfabetizacao'] }]
+        })).rejects.toThrow('Course name already in use for this school');
+    });
+
+    it('updates a course details and categories', async () => {
+        const schools = new InMemorySchoolRepository();
+        const courses = new InMemoryCourseRepository();
+
+        const school = School.create({
+            id: 'school-2',
+            name: 'Escola XPTO',
+            email: 'contato@xpto.com',
+            phone: '1199998888',
+            cnpj: '55667788000111',
+            createdAt: new Date('2024-01-01')
+        });
+        const course = Course.create({
+            id: 'course-2',
+            schoolId: school.id,
+            name: 'Curso B',
+            description: 'Descrição original',
+            categories: [{ categoryId: 'infantil', subcategoryIds: ['alfabetizacao'] }],
+            isActive: true,
+            createdAt: new Date('2024-01-02')
+        });
+        const otherCourse = Course.create({
+            id: 'course-3',
+            schoolId: school.id,
+            name: 'Curso C',
+            description: null,
+            categories: [],
+            isActive: true,
+            createdAt: new Date('2024-01-03')
+        });
+        schools.seed(school);
+        courses.seed(course);
+        courses.seed(otherCourse);
+
+        const updateCourse = new UpdateCourse(schools, courses);
+
+        const updated = await updateCourse.exec({
+            schoolId: school.id,
+            courseId: course.id,
+            name: 'Curso B Atualizado',
+            description: 'Nova descrição',
+            categories: [{ categoryId: 'juvenil', subcategoryIds: [] }]
+        });
+
+        expect(updated.name).toBe('Curso B Atualizado');
+        expect(updated.description).toBe('Nova descrição');
+        expect(updated.categories).toEqual([{ categoryId: 'juvenil', subcategoryIds: [] }]);
+
+        const stored = await courses.findById(course.id);
+        expect(stored?.name).toBe('Curso B Atualizado');
+        expect(stored?.description).toBe('Nova descrição');
+
+        await expect(updateCourse.exec({
+            schoolId: school.id,
+            courseId: course.id,
+            name: 'Curso C'
         })).rejects.toThrow('Course name already in use for this school');
     });
 
