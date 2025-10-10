@@ -8,6 +8,7 @@ import { CourseRepository } from '../../src/ports/repositories/course.repo';
 import { CourseClassRepository } from '../../src/ports/repositories/course-class.repo';
 import { Course } from '../../src/domain/entities/course';
 import { CourseClass } from '../../src/domain/entities/course-class';
+import { equalUuid } from '../../src/shared/normalize-uuid';
 
 class InMemoryClassSessionRepository implements ClassSessionRepository {
     private readonly sessions = new Map<string, ClassSession>();
@@ -20,7 +21,7 @@ class InMemoryClassSessionRepository implements ClassSessionRepository {
         const from = params.from.getTime();
         const to = params.to.getTime();
         return Array.from(this.sessions.values()).filter((session) => {
-            if (session.courseClassId !== params.courseClassId) return false;
+            if (!equalUuid(session.courseClassId, params.courseClassId)) return false;
             if (session.status === 'CANCELLED') return false;
             const start = session.startsAt.getTime();
             const end = session.endsAt.getTime();
@@ -32,9 +33,9 @@ class InMemoryClassSessionRepository implements ClassSessionRepository {
         const from = params.from.getTime();
         const to = params.to.getTime();
         return Array.from(this.sessions.values()).filter((session) => {
-            if (session.schoolId !== params.schoolId) return false;
+            if (!equalUuid(session.schoolId, params.schoolId)) return false;
             if (session.status === 'CANCELLED') return false;
-            if (params.courseClassId && session.courseClassId !== params.courseClassId) return false;
+            if (params.courseClassId && !equalUuid(session.courseClassId, params.courseClassId)) return false;
             const start = session.startsAt.getTime();
             const end = session.endsAt.getTime();
             return start < to && end > from;
@@ -61,6 +62,12 @@ class InMemoryCourseRepository implements CourseRepository {
         return null;
     }
 
+    async findBySchoolId(schoolId: string): Promise<Course[]> {
+        return Array.from(this.items.values())
+            .filter((course) => equalUuid(course.schoolId, schoolId))
+            .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    }
+
     async save(course: Course): Promise<void> {
         this.items.set(course.id, course);
     }
@@ -79,6 +86,12 @@ class InMemoryCourseClassRepository implements CourseClassRepository {
 
     async findByCourseAndLabel(_courseId: string, _label: string): Promise<CourseClass | null> {
         return null;
+    }
+
+    async findByCourseId(courseId: string): Promise<CourseClass[]> {
+        return Array.from(this.items.values())
+            .filter((cls) => equalUuid(cls.courseId, courseId))
+            .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
     }
 
     async save(courseClass: CourseClass): Promise<void> {

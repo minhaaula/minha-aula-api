@@ -44,6 +44,11 @@ class InMemoryCourses implements CourseRepository {
     async findBySchoolAndName(schoolId: string, name: string) {
         return Array.from(this.items.values()).find((course) => course.schoolId === schoolId && course.name === name.trim()) ?? null;
     }
+    async findBySchoolId(schoolId: string) {
+        return Array.from(this.items.values())
+            .filter((course) => course.schoolId === schoolId)
+            .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    }
     async save(course: Course) { this.items.set(course.id, course); }
     seed(course: Course) { this.items.set(course.id, course); }
 }
@@ -53,6 +58,11 @@ class InMemoryClasses implements CourseClassRepository {
     async findById(id: string) { return this.items.get(id) ?? null; }
     async findByCourseAndLabel(courseId: string, label: string) {
         return Array.from(this.items.values()).find((cls) => cls.courseId === courseId && cls.label === label) ?? null;
+    }
+    async findByCourseId(courseId: string) {
+        return Array.from(this.items.values())
+            .filter((cls) => cls.courseId === courseId)
+            .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
     }
     async save(cls: CourseClass) { this.items.set(cls.id, cls); }
     seed(cls: CourseClass) { this.items.set(cls.id, cls); }

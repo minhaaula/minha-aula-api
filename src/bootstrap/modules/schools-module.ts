@@ -24,6 +24,12 @@ import { ListSubscriptionPlans } from '../../app/use-cases/list-subscription-pla
 import { AssignSchoolPlan } from '../../app/use-cases/assign-school-plan';
 import { CategoryRepositoryAdapter } from '../../infra/db/typeorm/category-repository.adap';
 import { ListCategories } from '../../app/use-cases/list-categories';
+import { ListSchoolCourses } from '../../app/use-cases/list-school-courses';
+import { GetSchoolCourse } from '../../app/use-cases/get-school-course';
+import { ListCourseClasses } from '../../app/use-cases/list-course-classes';
+import { GetCourseClass } from '../../app/use-cases/get-course-class';
+import { GetSchoolProfile } from '../../app/use-cases/get-school-profile';
+import { UpdateSchool } from '../../app/use-cases/update-school';
 
 export type SchoolsModuleDeps = {
     schoolsRepo: SchoolRepositoryAdapter;
@@ -44,6 +50,12 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, _ctx: ModuleSetupCon
     const createSchool = new CreateSchool(deps.schoolsRepo, deps.passwordHasher);
     const createCourse = new CreateCourse(deps.schoolsRepo, deps.coursesRepo);
     const createCourseClass = new CreateCourseClass(deps.coursesRepo, deps.classesRepo);
+    const listSchoolCourses = new ListSchoolCourses(deps.coursesRepo);
+    const getSchoolCourse = new GetSchoolCourse(deps.coursesRepo);
+    const listCourseClasses = new ListCourseClasses(deps.coursesRepo, deps.classesRepo);
+    const getCourseClass = new GetCourseClass(deps.coursesRepo, deps.classesRepo);
+    const getSchoolProfile = new GetSchoolProfile(deps.schoolsRepo);
+    const updateSchool = new UpdateSchool(deps.schoolsRepo, deps.passwordHasher);
     const listStudents = new ListStudents(deps.usersRepo, deps.dependentsRepo);
     const scheduleClassSession = new ScheduleClassSession(deps.classSessionsRepo, deps.classesRepo, deps.coursesRepo);
     const listClassSessions = new ListClassSessions(deps.classSessionsRepo, deps.classesRepo, deps.coursesRepo);
@@ -60,6 +72,12 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, _ctx: ModuleSetupCon
             createSchool,
             createCourse,
             createCourseClass,
+            listSchoolCourses,
+            getSchoolCourse,
+            listCourseClasses,
+            getCourseClass,
+            getSchoolProfile,
+            updateSchool,
             studentsRouter,
             listStudents,
             scheduleClassSession,

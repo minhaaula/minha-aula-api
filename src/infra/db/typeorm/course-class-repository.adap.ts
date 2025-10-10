@@ -16,6 +16,14 @@ export class CourseClassRepositoryAdapter implements CourseClassRepository {
         return row ? this.toDomain(row) : null;
     }
 
+    async findByCourseId(courseId: string): Promise<CourseClass[]> {
+        const rows = await this.repo.find({
+            where: { courseId },
+            order: { createdAt: 'DESC' }
+        });
+        return rows.map((row) => this.toDomain(row));
+    }
+
     async save(courseClass: CourseClass): Promise<void> {
         await this.repo.save(this.toOrm(courseClass));
     }

@@ -410,6 +410,56 @@ components:
           description: Lista de endereços físicos da escola.
           items:
             $ref: '#/components/schemas/SchoolAddress'
+    UpdateSchoolInput:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 3
+          example: Escola do Futuro Atualizada
+        email:
+          type: string
+          format: email
+          example: contato@escoladofuturo.com.br
+        phone:
+          type: string
+          example: '11987654321'
+        cnpj:
+          type: string
+          minLength: 14
+          maxLength: 14
+          example: '12345678000190'
+        ownerName:
+          type: string
+          nullable: true
+          minLength: 3
+          example: Maria Silva
+        ownerCpf:
+          type: string
+          nullable: true
+          minLength: 11
+          maxLength: 11
+          example: '12345678901'
+        ownerEmail:
+          type: string
+          nullable: true
+          format: email
+          example: diretoria@escoladofuturo.com.br
+        ownerUserId:
+          type: string
+          nullable: true
+          format: uuid
+          example: '9f17b6f3-7af8-45be-8f4a-4d982f5a9f0c'
+        ownerPassword:
+          type: string
+          nullable: true
+          format: password
+          minLength: 8
+        addresses:
+          type: array
+          description: Lista de endereços físicos da escola.
+          items:
+            $ref: '#/components/schemas/SchoolAddress'
     SchoolLoginInput:
       type: object
       required:
@@ -832,6 +882,15 @@ components:
         - schoolId
         - name
         - createdAt
+    CourseListResponse:
+      type: object
+      properties:
+        courses:
+          type: array
+          items:
+            $ref: '#/components/schemas/CourseResponse'
+      required:
+        - courses
     SchoolCategoryLinkInput:
       type: object
       properties:
@@ -908,6 +967,15 @@ components:
         - courseId
         - label
         - createdAt
+    CourseClassListResponse:
+      type: object
+      properties:
+        classes:
+          type: array
+          items:
+            $ref: '#/components/schemas/CourseClassResponse'
+      required:
+        - classes
     AddDependentInput:
       type: object
       required:

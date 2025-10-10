@@ -15,6 +15,12 @@ import { GetActiveSchoolPlan } from '../../../app/use-cases/get-active-school-pl
 import { ListSubscriptionPlans } from '../../../app/use-cases/list-subscription-plans';
 import { AssignSchoolPlan } from '../../../app/use-cases/assign-school-plan';
 import { ListCategories } from '../../../app/use-cases/list-categories';
+import { ListSchoolCourses } from '../../../app/use-cases/list-school-courses';
+import { GetSchoolCourse } from '../../../app/use-cases/get-school-course';
+import { ListCourseClasses } from '../../../app/use-cases/list-course-classes';
+import { GetCourseClass } from '../../../app/use-cases/get-course-class';
+import { GetSchoolProfile } from '../../../app/use-cases/get-school-profile';
+import { UpdateSchool } from '../../../app/use-cases/update-school';
 import {
     cnpjNumberSchema,
     cpfNumberSchema,
@@ -34,6 +40,12 @@ export function schoolsRouter(deps: {
     listSubscriptionPlans?: ListSubscriptionPlans;
     assignSchoolPlan?: AssignSchoolPlan;
     listCategories?: ListCategories;
+    listSchoolCourses?: ListSchoolCourses;
+    getSchoolCourse?: GetSchoolCourse;
+    listCourseClasses?: ListCourseClasses;
+    getCourseClass?: GetCourseClass;
+    getSchoolProfile?: GetSchoolProfile;
+    updateSchool?: UpdateSchool;
     authMiddleware?: RequestHandler;
     schoolsRepo?: SchoolRepository;
 }) {
@@ -125,6 +137,86 @@ export function schoolsRouter(deps: {
         }
     });
 
+    r.get('/me', requireAuth, requireSchoolPersona, async (req, res, next) => {
+        try {
+            if (!deps.getSchoolProfile) {
+                return res.status(501).json({ error: 'School profile retrieval not configured' });
+            }
+            const schoolId = await resolveRequestSchoolId(req as AuthenticatedRequest, res);
+            if (!schoolId) return;
+
+            const profile = await deps.getSchoolProfile.exec({ schoolId });
+            if (!profile) {
+                return res.status(404).json({ error: 'School not found' });
+            }
+
+            res.json(profile);
+        } catch (err) {
+            next(err);
+        }
+    });
+
+    r.put('/me', requireAuth, requireSchoolPersona, async (req, res, next) => {
+        try {
+            if (!deps.updateSchool) {
+                return res.status(501).json({ error: 'School update not configured' });
+            }
+
+            const addressSchema = z.object({
+                street: z.string().trim().min(1),
+                number: z.string().trim().min(1),
+                complement: z.string().trim().min(1).optional().nullable(),
+                district: z.string().trim().min(1).optional().nullable(),
+                city: z.string().trim().min(1),
+                state: z.string().trim().min(1),
+                zipCode: zipCodeNumberSchema()
+            });
+
+            const bodySchema = z.object({
+                name: z.string().trim().min(3).optional(),
+                email: z.string().trim().email().optional(),
+                phone: phoneNumberSchema().optional(),
+                cnpj: cnpjNumberSchema().optional(),
+                ownerName: z.string().trim().min(3).nullable().optional(),
+                ownerCpf: cpfNumberSchema().nullable().optional(),
+                ownerEmail: z.string().trim().email().nullable().optional(),
+                ownerUserId: z.string().trim().min(1).nullable().optional(),
+                ownerPassword: z.string().min(8).nullable().optional(),
+                addresses: z.array(addressSchema).optional()
+            });
+
+            const data = bodySchema.parse(req.body ?? {});
+            const schoolId = await resolveRequestSchoolId(req as AuthenticatedRequest, res);
+            if (!schoolId) return;
+
+            const result = await deps.updateSchool.exec({
+                schoolId,
+                name: data.name,
+                email: data.email,
+                phone: data.phone,
+                cnpj: data.cnpj,
+                addresses: data.addresses?.map((address) => ({
+                    street: address.street,
+                    number: address.number,
+                    complement: address.complement ?? null,
+                    district: address.district ?? null,
+                    city: address.city,
+                    state: address.state,
+                    zipCode: address.zipCode
+                })),
+                ownerName: data.ownerName === undefined ? undefined : data.ownerName,
+                ownerCpf: data.ownerCpf === undefined ? undefined : data.ownerCpf,
+                ownerEmail: data.ownerEmail === undefined ? undefined : data.ownerEmail,
+                ownerUserId: data.ownerUserId === undefined ? undefined : data.ownerUserId,
+                ownerPassword: data.ownerPassword === undefined ? undefined : data.ownerPassword
+            });
+
+            res.json(result);
+        } catch (err) {
+            next(err);
+        }
+    });
+
     r.post('/plan', requireAuth, requireSchoolPersona, async (req, res, next) => {
         try {
             if (!deps.assignSchoolPlan) {
@@ -202,6 +294,41 @@ export function schoolsRouter(deps: {
         }
     });
 
+    r.get('/courses', requireAuth, requireSchoolPersona, async (req, res, next) => {
+        try {
+            if (!deps.listSchoolCourses) {
+                return res.status(501).json({ error: 'School course listing not configured' });
+            }
+            const schoolId = await resolveRequestSchoolId(req as AuthenticatedRequest, res);
+            if (!schoolId) return;
+            const courses = await deps.listSchoolCourses.exec({ schoolId });
+            res.json({ courses });
+        } catch (err) {
+            next(err);
+        }
+    });
+
+    r.get('/courses/:courseId', requireAuth, requireSchoolPersona, async (req, res, next) => {
+        try {
+            if (!deps.getSchoolCourse) {
+                return res.status(501).json({ error: 'School course retrieval not configured' });
+            }
+            const paramsSchema = z.object({
+                courseId: z.string().uuid()
+            });
+            const { courseId } = paramsSchema.parse(req.params);
+            const schoolId = await resolveRequestSchoolId(req as AuthenticatedRequest, res);
+            if (!schoolId) return;
+            const course = await deps.getSchoolCourse.exec({ schoolId, courseId });
+            if (!course) {
+                return res.status(404).json({ error: 'Course not found' });
+            }
+            res.json(course);
+        } catch (err) {
+            next(err);
+        }
+    });
+
     r.post('/courses', requireAuth, requireSchoolPersona, async (req, res, next) => {
         try {
             const schoolId = await resolveRequestSchoolId(req as AuthenticatedRequest, res);
@@ -227,6 +354,27 @@ export function schoolsRouter(deps: {
                 }))
             });
             res.status(201).json(course);
+        } catch (err) {
+            next(err);
+        }
+    });
+
+    r.get('/courses/:courseId/classes', requireAuth, requireSchoolPersona, async (req, res, next) => {
+        try {
+            if (!deps.listCourseClasses) {
+                return res.status(501).json({ error: 'Course classes listing not configured' });
+            }
+            const paramsSchema = z.object({
+                courseId: z.string().uuid()
+            });
+            const { courseId } = paramsSchema.parse(req.params);
+            const schoolId = await resolveRequestSchoolId(req as AuthenticatedRequest, res);
+            if (!schoolId) return;
+            const classes = await deps.listCourseClasses.exec({ schoolId, courseId });
+            if (!classes) {
+                return res.status(404).json({ error: 'Course not found' });
+            }
+            res.json({ classes });
         } catch (err) {
             next(err);
         }
@@ -281,6 +429,28 @@ export function schoolsRouter(deps: {
                 endsAt
             });
             res.status(201).json(courseClass);
+        } catch (err) {
+            next(err);
+        }
+    });
+
+    r.get('/courses/:courseId/classes/:classId', requireAuth, requireSchoolPersona, async (req, res, next) => {
+        try {
+            if (!deps.getCourseClass) {
+                return res.status(501).json({ error: 'Course class retrieval not configured' });
+            }
+            const paramsSchema = z.object({
+                courseId: z.string().uuid(),
+                classId: z.string().uuid()
+            });
+            const { courseId, classId } = paramsSchema.parse(req.params);
+            const schoolId = await resolveRequestSchoolId(req as AuthenticatedRequest, res);
+            if (!schoolId) return;
+            const courseClass = await deps.getCourseClass.exec({ schoolId, courseId, classId });
+            if (!courseClass) {
+                return res.status(404).json({ error: 'Course class not found' });
+            }
+            res.json(courseClass);
         } catch (err) {
             next(err);
         }

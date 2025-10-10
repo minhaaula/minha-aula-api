@@ -76,6 +76,20 @@ interface AppDependencies {
     createCourse?: any;
     createCourseClass?: any;
     schoolsRepo?: any;
+    scheduleClassSession?: any;
+    listClassSessions?: any;
+    cancelClassSession?: any;
+    loginSchool?: any;
+    getActiveSchoolPlan?: any;
+    listSubscriptionPlans?: any;
+    assignSchoolPlan?: any;
+    listCategories?: any;
+    listSchoolCourses?: any;
+    getSchoolProfile?: any;
+    getSchoolCourse?: any;
+    listCourseClasses?: any;
+    getCourseClass?: any;
+    updateSchool?: any;
     dependentsRouter?: (deps: any) => Router;
     addDependent?: any;
     enrollmentRequestsRouter?: (deps: any) => Router;
@@ -162,6 +176,12 @@ export function makeServer(deps: AppDependencies & Record<string, any>) {
             createSchool: deps.createSchool,
             createCourse: deps.createCourse,
             createCourseClass: deps.createCourseClass,
+            getSchoolProfile: deps.getSchoolProfile,
+            updateSchool: deps.updateSchool,
+            listSchoolCourses: deps.listSchoolCourses,
+            getSchoolCourse: deps.getSchoolCourse,
+            listCourseClasses: deps.listCourseClasses,
+            getCourseClass: deps.getCourseClass,
             scheduleClassSession: deps.scheduleClassSession,
             listClassSessions: deps.listClassSessions,
             cancelClassSession: deps.cancelClassSession,
