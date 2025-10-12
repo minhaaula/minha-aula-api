@@ -9,6 +9,20 @@ export class SchoolPlanFinanceRepositoryAdapter implements SchoolPlanFinanceRepo
     private readonly repo = AppDataSource.getRepository(SchoolPlanFinanceOrm);
     private readonly planRepo = AppDataSource.getRepository(SubscriptionPlanOrm);
 
+    async findById(id: string): Promise<SchoolPlanFinance | null> {
+        const normalized = id.trim();
+        if (!normalized) return null;
+
+        const row = await this.repo.findOne({
+            where: { id: normalized },
+            relations: {
+                plan: true
+            }
+        });
+
+        return row ? this.toDomain(row) : null;
+    }
+
     async findActiveBySchoolId(schoolId: string): Promise<SchoolPlanFinance | null> {
         const normalized = schoolId.trim();
         if (!normalized) return null;
@@ -22,6 +36,15 @@ export class SchoolPlanFinanceRepositoryAdapter implements SchoolPlanFinanceRepo
 
         if (!row) return null;
 
+        return this.toDomain(row);
+    }
+
+    async save(finance: SchoolPlanFinance): Promise<void> {
+        const row = await this.toOrm(finance);
+        await this.repo.save(row);
+    }
+
+    private toDomain(row: SchoolPlanFinanceOrm): SchoolPlanFinance {
         const plan = this.toPlanDomain(row.plan);
         return SchoolPlanFinance.create({
             id: row.id,
@@ -35,11 +58,6 @@ export class SchoolPlanFinanceRepositoryAdapter implements SchoolPlanFinanceRepo
             createdAt: row.createdAt,
             updatedAt: row.updatedAt
         });
-    }
-
-    async save(finance: SchoolPlanFinance): Promise<void> {
-        const row = await this.toOrm(finance);
-        await this.repo.save(row);
     }
 
     private toPlanDomain(row: SubscriptionPlanOrm): SubscriptionPlan {
@@ -81,4 +99,3 @@ export class SchoolPlanFinanceRepositoryAdapter implements SchoolPlanFinanceRepo
         return row;
     }
 }
-

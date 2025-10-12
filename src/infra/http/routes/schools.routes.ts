@@ -9,6 +9,8 @@ import type { LoginSchool } from '../../../app/use-cases/login-school';
 import type { GetActiveSchoolPlan } from '../../../app/use-cases/get-active-school-plan';
 import type { ListSubscriptionPlans } from '../../../app/use-cases/list-subscription-plans';
 import type { AssignSchoolPlan } from '../../../app/use-cases/assign-school-plan';
+import type { IssueSchoolPlanInvoice } from '../../../app/use-cases/issue-school-plan-invoice';
+import type { ListSchoolPlanInvoices } from '../../../app/use-cases/list-school-plan-invoices';
 import type { ListCategories } from '../../../app/use-cases/list-categories';
 import type { ListSchoolCourses } from '../../../app/use-cases/list-school-courses';
 import type { GetSchoolCourse } from '../../../app/use-cases/get-school-course';
@@ -39,6 +41,8 @@ export type SchoolsRouterDeps = {
     getActiveSchoolPlan?: GetActiveSchoolPlan;
     listSubscriptionPlans?: ListSubscriptionPlans;
     assignSchoolPlan?: AssignSchoolPlan;
+    issueSchoolPlanInvoice?: IssueSchoolPlanInvoice;
+    listSchoolPlanInvoices?: ListSchoolPlanInvoices;
     listCategories?: ListCategories;
     listSchoolCourses?: ListSchoolCourses;
     getSchoolCourse?: GetSchoolCourse;
@@ -76,7 +80,9 @@ export function schoolsRouter(deps: SchoolsRouterDeps) {
 
     router.use(buildPlansRoutes({
         assignSchoolPlan: deps.assignSchoolPlan,
-        getActiveSchoolPlan: deps.getActiveSchoolPlan
+        getActiveSchoolPlan: deps.getActiveSchoolPlan,
+        issueSchoolPlanInvoice: deps.issueSchoolPlanInvoice,
+        listSchoolPlanInvoices: deps.listSchoolPlanInvoices
     }, guards));
 
     router.use('/courses', buildCoursesRoutes({

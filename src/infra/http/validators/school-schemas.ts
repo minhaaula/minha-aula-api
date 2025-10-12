@@ -127,3 +127,8 @@ export const assignSchoolPlanSchema = z.object({
     planId: z.string().uuid(),
     notes: z.string().trim().min(1).optional()
 });
+
+export const issuePlanInvoiceSchema = z.object({
+    dueDate: z.string().datetime().optional(),
+    description: z.string().trim().min(1).optional()
+});

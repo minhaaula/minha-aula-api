@@ -1,0 +1,9 @@
+import { SchoolPlanInvoice } from '../../domain/entities/school-plan-invoice';
+
+export interface SchoolPlanInvoiceRepository {
+    findByFinanceIdAndDueDate(financeId: string, dueDate: Date): Promise<SchoolPlanInvoice | null>;
+    findByProviderRef(providerRef: string): Promise<SchoolPlanInvoice | null>;
+    findByExternalReference(externalReference: string): Promise<SchoolPlanInvoice | null>;
+    findByFinanceId(financeId: string): Promise<SchoolPlanInvoice[]>;
+    save(invoice: SchoolPlanInvoice): Promise<void>;
+}

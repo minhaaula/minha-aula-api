@@ -31,6 +31,12 @@ import { GetCourseClass } from '../../app/use-cases/get-course-class';
 import { GetSchoolProfile } from '../../app/use-cases/get-school-profile';
 import { UpdateSchool } from '../../app/use-cases/update-school';
 import { UpdateCourse } from '../../app/use-cases/update-course';
+import { SchoolPlanInvoiceRepositoryAdapter } from '../../infra/db/typeorm/school-plan-invoice-repository.adap';
+import { IssueSchoolPlanInvoice } from '../../app/use-cases/issue-school-plan-invoice';
+import { PaymentProviderPort } from '../../ports/providers/payment-provider.port';
+import { HandleAsaasPaymentWebhook } from '../../app/use-cases/handle-asaas-payment-webhook';
+import { asaasWebhookRouter } from '../../infra/http/routes/webhooks/asaas.routes';
+import { ListSchoolPlanInvoices } from '../../app/use-cases/list-school-plan-invoices';
 
 export type SchoolsModuleDeps = {
     schoolsRepo: SchoolRepositoryAdapter;
@@ -41,10 +47,12 @@ export type SchoolsModuleDeps = {
     subscriptionPlansRepo: SubscriptionPlanRepositoryAdapter;
     categoriesRepo: CategoryRepositoryAdapter;
     planFinancesRepo: SchoolPlanFinanceRepositoryAdapter;
+    planInvoicesRepo: SchoolPlanInvoiceRepositoryAdapter;
     classSessionsRepo: ClassSessionRepositoryAdapter;
     passwordHasher: PasswordHasherPort;
     tokenProvider: TokenProviderPort;
     tokenTtl: number;
+    paymentProvider: PaymentProviderPort;
 };
 
 export function buildSchoolsModule(deps: SchoolsModuleDeps, _ctx: ModuleSetupContext): ModuleBuildResult {
@@ -65,7 +73,26 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, _ctx: ModuleSetupCon
     const loginSchool = new LoginSchool(deps.schoolsRepo, deps.passwordHasher, deps.tokenProvider, deps.tokenTtl);
     const getActiveSchoolPlan = new GetActiveSchoolPlan(deps.planFinancesRepo);
     const listSubscriptionPlans = new ListSubscriptionPlans(deps.subscriptionPlansRepo);
-    const assignSchoolPlan = new AssignSchoolPlan(deps.schoolsRepo, deps.subscriptionPlansRepo, deps.planFinancesRepo);
+    const issueSchoolPlanInvoice = new IssueSchoolPlanInvoice(
+        deps.schoolsRepo,
+        deps.planFinancesRepo,
+        deps.planInvoicesRepo,
+        deps.paymentProvider
+    );
+    const listSchoolPlanInvoices = new ListSchoolPlanInvoices(
+        deps.planFinancesRepo,
+        deps.planInvoicesRepo
+    );
+    const handleAsaasPaymentWebhook = new HandleAsaasPaymentWebhook(
+        deps.planInvoicesRepo,
+        deps.planFinancesRepo
+    );
+    const assignSchoolPlan = new AssignSchoolPlan(
+        deps.schoolsRepo,
+        deps.subscriptionPlansRepo,
+        deps.planFinancesRepo,
+        issueSchoolPlanInvoice
+    );
     const listCategories = new ListCategories(deps.categoriesRepo);
 
     return {
@@ -91,7 +118,11 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, _ctx: ModuleSetupCon
             getActiveSchoolPlan,
             listSubscriptionPlans,
             assignSchoolPlan,
-            listCategories
+            listCategories,
+            issueSchoolPlanInvoice,
+            handleAsaasPaymentWebhook,
+            asaasWebhookRouter,
+            listSchoolPlanInvoices
         },
         docFiles: ['schools.yaml', 'students.yaml']
     };

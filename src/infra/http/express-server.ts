@@ -83,6 +83,8 @@ interface AppDependencies {
     getActiveSchoolPlan?: any;
     listSubscriptionPlans?: any;
     assignSchoolPlan?: any;
+    issueSchoolPlanInvoice?: any;
+    listSchoolPlanInvoices?: any;
     listCategories?: any;
     listSchoolCourses?: any;
     getSchoolProfile?: any;
@@ -91,6 +93,8 @@ interface AppDependencies {
     listCourseClasses?: any;
     getCourseClass?: any;
     updateSchool?: any;
+    asaasWebhookRouter?: (deps: any) => Router;
+    handleAsaasPaymentWebhook?: any;
     dependentsRouter?: (deps: any) => Router;
     addDependent?: any;
     enrollmentRequestsRouter?: (deps: any) => Router;
@@ -191,6 +195,8 @@ export function makeServer(deps: AppDependencies & Record<string, any>) {
             getActiveSchoolPlan: deps.getActiveSchoolPlan,
             listSubscriptionPlans: deps.listSubscriptionPlans,
             assignSchoolPlan: deps.assignSchoolPlan,
+            issueSchoolPlanInvoice: deps.issueSchoolPlanInvoice,
+            listSchoolPlanInvoices: deps.listSchoolPlanInvoices,
             listCategories: deps.listCategories,
             authMiddleware: deps.authMiddleware,
             schoolsRepo: deps.schoolsRepo
@@ -207,6 +213,13 @@ export function makeServer(deps: AppDependencies & Record<string, any>) {
             }
         });
         mount('/schools', router, { skipAuth: true });
+    }
+
+    if (deps.asaasWebhookRouter && deps.handleAsaasPaymentWebhook) {
+        const router = deps.asaasWebhookRouter({
+            handleAsaasPaymentWebhook: deps.handleAsaasPaymentWebhook
+        });
+        mount('/integrations/asaas', router, { skipAuth: true });
     }
 
     if (deps.dependentsRouter && deps.addDependent) {

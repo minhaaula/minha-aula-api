@@ -503,7 +503,7 @@ paths:
       tags:
         - Schools
       summary: Selecionar plano para a escola
-      description: Atualiza o plano de assinatura da escola autenticada. A data de vencimento é calculada automaticamente para o próximo ciclo.
+      description: Atualiza o plano de assinatura da escola autenticada. A primeira fatura vence no próximo dia útil e as demais seguem o ciclo de cobrança do plano.
       security:
         - bearerAuth: []
       requestBody:
@@ -553,6 +553,65 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '501':
           description: Funcionalidade de planos não configurada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /schools/plan/invoices:
+    post:
+      tags:
+        - Schools
+      summary: Gerar fatura do plano vigente
+      description: Emite uma nova fatura para o plano ativo da escola. Caso já exista uma fatura para a mesma data de vencimento, ela é reutilizada.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssueSchoolPlanInvoiceInput'
+      responses:
+        '201':
+          description: Fatura criada com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueSchoolPlanInvoiceResponse'
+        '200':
+          description: Fatura já existente reaproveitada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueSchoolPlanInvoiceResponse'
+        '400':
+          description: Solicitação inválida ou plano inexistente para a escola.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '501':
+          description: Funcionalidade de faturamento não configurada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    get:
+      tags:
+        - Schools
+      summary: Listar faturas do plano
+      description: Retorna todas as faturas associadas ao plano ativo da escola autenticada.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Faturas encontradas.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchoolPlanInvoicesResponse'
+        '501':
+          description: Funcionalidade de faturamento não configurada.
           content:
             application/json:
               schema:

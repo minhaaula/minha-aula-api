@@ -93,5 +93,30 @@ export class SchoolPlanFinance {
     get notes(): string | null {
         return this._notes;
     }
-}
 
+    withChanges(changes: {
+        status?: SchoolPlanStatus;
+        isPaid?: boolean;
+        lastPaymentAt?: Date | null;
+        nextDueAt?: Date | null;
+        notes?: string | null;
+        updatedAt?: Date;
+    }): SchoolPlanFinance {
+        if (changes.status && !VALID_STATUSES.includes(changes.status)) {
+            throw new Error('School plan finance status is invalid');
+        }
+
+        return SchoolPlanFinance.create({
+            id: this.id,
+            schoolId: this.schoolId,
+            plan: this._plan,
+            status: changes.status ?? this._status,
+            isPaid: changes.isPaid ?? this._isPaid,
+            lastPaymentAt: changes.lastPaymentAt === undefined ? this._lastPaymentAt : changes.lastPaymentAt,
+            nextDueAt: changes.nextDueAt === undefined ? this._nextDueAt : changes.nextDueAt,
+            notes: changes.notes === undefined ? this._notes : (changes.notes?.trim() ?? null),
+            createdAt: this.createdAt,
+            updatedAt: changes.updatedAt ?? new Date()
+        });
+    }
+}

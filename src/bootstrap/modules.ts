@@ -12,6 +12,7 @@ import { EnrollmentRepositoryAdapter } from '../infra/db/typeorm/enrollment-repo
 import { EnrollmentRequestRepositoryAdapter } from '../infra/db/typeorm/enrollment-request-repository.adap';
 import { ClassSessionRepositoryAdapter } from '../infra/db/typeorm/class-session-repository.adap';
 import { SchoolPlanFinanceRepositoryAdapter } from '../infra/db/typeorm/school-plan-finance-repository.adap';
+import { SchoolPlanInvoiceRepositoryAdapter } from '../infra/db/typeorm/school-plan-invoice-repository.adap';
 import { SubscriptionPlanRepositoryAdapter } from '../infra/db/typeorm/subscription-plan-repository.adap';
 import { CategoryRepositoryAdapter } from '../infra/db/typeorm/category-repository.adap';
 import { OutboxProducer } from '../infra/messaging/bullmq/outbox-producer';
@@ -23,6 +24,8 @@ import { buildPaymentsModule } from './modules/payments-module';
 import { buildSchoolsModule } from './modules/schools-module';
 import { buildStudentsModule } from './modules/students-module';
 import { ModuleSetupContext, ModuleBuildResult } from './modules/types';
+import { AsaasProvider } from '../infra/providers/asaas/asaas-provider';
+import { PaymentProviderPort } from '../ports/providers/payment-provider.port';
 
 type ServerDeps = Parameters<typeof makeServer>[0];
 
@@ -59,6 +62,7 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
     const coursesRepo = new CourseRepositoryAdapter();
     const classesRepo = new CourseClassRepositoryAdapter();
     const schoolPlanFinancesRepo = new SchoolPlanFinanceRepositoryAdapter();
+    const schoolPlanInvoicesRepo = new SchoolPlanInvoiceRepositoryAdapter();
     const subscriptionPlansRepo = new SubscriptionPlanRepositoryAdapter();
     const categoriesRepo = new CategoryRepositoryAdapter();
     const dependentsRepo = new DependentRepositoryAdapter();
@@ -81,6 +85,18 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
     const docFiles = new Set<string>(BASE_DOC_FILES);
     const ctx: ModuleSetupContext = { authMiddleware };
 
+    const asaasApiKey = process.env.ASAAS_API_KEY ?? '';
+    const asaasBaseUrl = process.env.ASAAS_BASE_URL;
+    const needsPaymentProvider = selected.includes('payments') || selected.includes('schools');
+
+    let paymentProvider: PaymentProviderPort | undefined;
+    if (needsPaymentProvider) {
+        if (!asaasApiKey) {
+            throw new Error('ASAAS_API_KEY is required when payments or schools module is enabled');
+        }
+        paymentProvider = new AsaasProvider({ apiKey: asaasApiKey, baseUrl: asaasBaseUrl });
+    }
+
     for (const moduleName of selected) {
         switch (moduleName) {
             case 'auth': {
@@ -96,16 +112,21 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
                 break;
             }
             case 'payments': {
+                if (!paymentProvider) {
+                    throw new Error('Payment provider is not configured');
+                }
                 const result = buildPaymentsModule({
                     paymentsRepo,
                     outbox,
-                    asaasApiKey: process.env.ASAAS_API_KEY ?? '',
-                    asaasBaseUrl: process.env.ASAAS_BASE_URL
+                    paymentProvider
                 }, ctx);
                 mergeModuleResult(serverDeps, docFiles, result);
                 break;
             }
             case 'schools': {
+                if (!paymentProvider) {
+                    throw new Error('Payment provider is not configured');
+                }
                 const result = buildSchoolsModule({
                     schoolsRepo,
                     coursesRepo,
@@ -115,10 +136,12 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
                     subscriptionPlansRepo,
                     categoriesRepo,
                     planFinancesRepo: schoolPlanFinancesRepo,
+                    planInvoicesRepo: schoolPlanInvoicesRepo,
                     classSessionsRepo,
                     passwordHasher,
                     tokenProvider,
-                    tokenTtl
+                    tokenTtl,
+                    paymentProvider
                 }, ctx);
                 mergeModuleResult(serverDeps, docFiles, result);
                 break;

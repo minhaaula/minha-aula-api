@@ -3,6 +3,10 @@ import { SubscriptionPlanRepository } from '../../ports/repositories/subscriptio
 import { SchoolRepository } from '../../ports/repositories/school.repo';
 import { SchoolPlanFinance } from '../../domain/entities/school-plan-finance';
 import { Uuid } from '../../shared/uuid';
+import { calculateNextBillingDate } from '../utils/billing-cycle';
+import { presentSchoolPlanFinance, SchoolPlanFinanceView } from '../presenters/school-plan-finance.presenter';
+import { IssueSchoolPlanInvoice } from './issue-school-plan-invoice';
+import { presentSchoolPlanInvoice, SchoolPlanInvoiceView } from '../presenters/school-plan-invoice.presenter';
 
 type AssignSchoolPlanInput = {
     schoolId: string;
@@ -10,32 +14,17 @@ type AssignSchoolPlanInput = {
     notes?: string | null;
 };
 
-type AssignSchoolPlanOutput = {
-    schoolId: string;
-    plan: {
-        id: string;
-        code: string;
-        name: string;
-        description: string | null;
-        amountCents: number;
-        currency: string;
-        billingCycle: 'MONTHLY' | 'ANNUAL';
-        isActive: boolean;
-    };
-    status: 'TRIAL' | 'ACTIVE' | 'PAST_DUE' | 'SUSPENDED' | 'CANCELLED';
-    isPaid: boolean;
-    lastPaymentAt: Date | null;
-    nextDueAt: Date | null;
-    notes: string | null;
-    createdAt: Date;
-    updatedAt: Date;
+type AssignSchoolPlanOutput = SchoolPlanFinanceView & {
+    invoice?: SchoolPlanInvoiceView;
+    invoiceAlreadyExists?: boolean;
 };
 
 export class AssignSchoolPlan {
     constructor(
         private readonly schools: SchoolRepository,
         private readonly plans: SubscriptionPlanRepository,
-        private readonly finances: SchoolPlanFinanceRepository
+        private readonly finances: SchoolPlanFinanceRepository,
+        private readonly invoiceIssuer?: IssueSchoolPlanInvoice
     ) {}
 
     async exec(input: AssignSchoolPlanInput): Promise<AssignSchoolPlanOutput> {
@@ -52,14 +41,18 @@ export class AssignSchoolPlan {
 
         const current = await this.finances.findActiveBySchoolId(schoolId);
         const createdAt = current?.createdAt ?? new Date();
+        const baseNextDueAt = current?.nextDueAt ?? addDays(new Date(), 1);
+        const nextDueAt = this.invoiceIssuer
+            ? baseNextDueAt
+            : (current?.nextDueAt ?? calculateNextBillingDate(plan.billingCycle, baseNextDueAt));
         const finance = SchoolPlanFinance.create({
             id: current?.id ?? Uuid(),
             schoolId,
             plan,
             status: 'ACTIVE',
-            isPaid: false,
-            lastPaymentAt: null,
-            nextDueAt: this.calculateNextDue(plan.billingCycle),
+            isPaid: current?.isPaid ?? false,
+            lastPaymentAt: current?.lastPaymentAt ?? null,
+            nextDueAt,
             notes: input.notes ?? null,
             createdAt,
             updatedAt: new Date()
@@ -67,36 +60,30 @@ export class AssignSchoolPlan {
 
         await this.finances.save(finance);
 
+        let financeForOutput = finance;
+        let invoiceView: SchoolPlanInvoiceView | undefined;
+        let invoiceAlreadyExists: boolean | undefined;
+
+        if (this.invoiceIssuer) {
+            const issued = await this.invoiceIssuer.exec({
+                schoolId,
+                dueDate: finance.nextDueAt ?? undefined
+            });
+            financeForOutput = issued.finance;
+            invoiceView = presentSchoolPlanInvoice(issued.invoice);
+            invoiceAlreadyExists = issued.alreadyExists;
+        }
+
         return {
-            schoolId: finance.schoolId,
-            plan: {
-                id: plan.id,
-                code: plan.code,
-                name: plan.name,
-                description: plan.description,
-                amountCents: plan.amountCents,
-                currency: plan.currency,
-                billingCycle: plan.billingCycle,
-                isActive: plan.isActive
-            },
-            status: finance.status,
-            isPaid: finance.isPaid,
-            lastPaymentAt: finance.lastPaymentAt,
-            nextDueAt: finance.nextDueAt,
-            notes: finance.notes,
-            createdAt: finance.createdAt,
-            updatedAt: finance.updatedAt
+            ...presentSchoolPlanFinance(financeForOutput),
+            invoice: invoiceView,
+            invoiceAlreadyExists
         };
     }
+}
 
-    private calculateNextDue(billingCycle: 'MONTHLY' | 'ANNUAL'): Date {
-        const now = new Date();
-        const due = new Date(now);
-        if (billingCycle === 'ANNUAL') {
-            due.setFullYear(due.getFullYear() + 1);
-        } else {
-            due.setMonth(due.getMonth() + 1);
-        }
-        return due;
-    }
+function addDays(date: Date, days: number): Date {
+    const copy = new Date(date);
+    copy.setDate(copy.getDate() + days);
+    return copy;
 }
