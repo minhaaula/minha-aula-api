@@ -619,6 +619,119 @@ components:
         - isPaid
         - createdAt
         - updatedAt
+    IssueSchoolPlanInvoiceInput:
+      type: object
+      properties:
+        dueDate:
+          type: string
+          format: date-time
+          nullable: true
+          description: Data de vencimento desejada para a fatura.
+        description:
+          type: string
+          nullable: true
+          description: Texto exibido na cobrança gerada.
+      example:
+        dueDate: '2024-07-15T00:00:00.000Z'
+        description: Assinatura Minha Aula - Julho
+    SchoolPlanInvoice:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        financeId:
+          type: string
+          format: uuid
+        schoolId:
+          type: string
+          format: uuid
+        planId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum:
+            - ISSUED
+            - PAID
+            - FAILED
+            - CANCELLED
+        amountCents:
+          type: integer
+          format: int32
+        currency:
+          type: string
+          example: BRL
+        dueDate:
+          type: string
+          format: date-time
+        description:
+          type: string
+          nullable: true
+        providerRef:
+          type: string
+          nullable: true
+        boletoUrl:
+          type: string
+          nullable: true
+        digitableLine:
+          type: string
+          nullable: true
+        barcode:
+          type: string
+          nullable: true
+        externalReference:
+          type: string
+          nullable: true
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+        paidAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - financeId
+        - schoolId
+        - planId
+        - status
+        - amountCents
+        - currency
+        - dueDate
+        - metadata
+        - createdAt
+        - updatedAt
+    IssueSchoolPlanInvoiceResponse:
+      type: object
+      properties:
+        finance:
+          $ref: '#/components/schemas/SchoolPlanResponse'
+        invoice:
+          $ref: '#/components/schemas/SchoolPlanInvoice'
+        alreadyExists:
+          type: boolean
+          description: Indica se uma fatura existente foi reutilizada.
+      required:
+        - finance
+        - invoice
+        - alreadyExists
+    SchoolPlanInvoicesResponse:
+      type: object
+      properties:
+        invoices:
+          type: array
+          items:
+            $ref: '#/components/schemas/SchoolPlanInvoice'
+      required:
+        - invoices
     SubscriptionPlanListResponse:
       type: object
       properties:

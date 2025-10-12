@@ -503,7 +503,11 @@ paths:
       tags:
         - Schools
       summary: Selecionar plano para a escola
-      description: Atualiza o plano de assinatura da escola autenticada. A primeira fatura vence no próximo dia útil e as demais seguem o ciclo de cobrança do plano.
+      description: >-
+        Atualiza o plano de assinatura da escola autenticada. O plano fica em
+        estado pendente até que uma fatura seja paga com sucesso. A primeira
+        fatura vence no próximo dia útil e as demais seguem o ciclo de cobrança
+        do plano.
       security:
         - bearerAuth: []
       requestBody:
@@ -562,15 +566,38 @@ paths:
       tags:
         - Schools
       summary: Gerar fatura do plano vigente
-      description: Emite uma nova fatura para o plano ativo da escola. Caso já exista uma fatura para a mesma data de vencimento, ela é reutilizada.
+      description: >-
+        Emite uma nova fatura para o plano ativo da escola. Caso já exista uma
+        fatura para a mesma data de vencimento, ela é reutilizada. Use este
+        endpoint apenas quando precisar gerar ou reenviar uma cobrança; para
+        listar faturas existentes utilize o GET correspondente.
       security:
         - bearerAuth: []
+      x-codeSamples:
+        - lang: curl
+          label: cURL
+          source: |
+            curl -X POST \
+              'https://api.exemplo.com/schools/plan/invoices' \
+              -H 'accept: application/json' \
+              -H 'Authorization: Bearer {{token_escola}}' \
+              -H 'Content-Type: application/json' \
+              -d '{
+                "dueDate": "2024-07-15T00:00:00.000Z",
+                "description": "Assinatura Minha Aula - Julho"
+              }'
       requestBody:
         required: false
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/IssueSchoolPlanInvoiceInput'
+            examples:
+              manualBoleto:
+                summary: Gerar cobrança para o próximo ciclo
+                value:
+                  dueDate: '2024-07-15T00:00:00.000Z'
+                  description: Assinatura Minha Aula - Julho
       responses:
         '201':
           description: Fatura criada com sucesso.
@@ -600,9 +627,20 @@ paths:
       tags:
         - Schools
       summary: Listar faturas do plano
-      description: Retorna todas as faturas associadas ao plano ativo da escola autenticada.
+      description: >-
+        Retorna todas as faturas associadas ao plano atual da escola, incluindo
+        os status ABERTA, PAGA ou CANCELADA. Utilize esta listagem para checar
+        cobranças pendentes antes de efetuar o pagamento.
       security:
         - bearerAuth: []
+      x-codeSamples:
+        - lang: curl
+          label: cURL
+          source: |
+            curl -X GET \
+              'https://api.exemplo.com/schools/plan/invoices' \
+              -H 'accept: application/json' \
+              -H 'Authorization: Bearer {{token_escola}}'
       responses:
         '200':
           description: Faturas encontradas.
@@ -610,6 +648,47 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SchoolPlanInvoicesResponse'
+              examples:
+                default:
+                  summary: Exemplo de faturas abertas e pagas
+                  value:
+                    invoices:
+                      - id: 19d086d4-8282-41a2-8b1f-66a4d7f0f420
+                        financeId: 0a799f1f-6a6b-4f9b-92c4-16e9c0d57fb2
+                        schoolId: a585a342-650a-4ab7-a606-07ae09bb72e1
+                        planId: 5f592b7f-7c42-4bae-9cd4-c6099436f893
+                        status: ISSUED
+                        amountCents: 9900
+                        currency: BRL
+                        dueDate: '2024-07-15T00:00:00.000Z'
+                        description: Plano Premium Julho
+                        providerRef: ASAAS-INV-1200
+                        boletoUrl: https://sandbox.asaas.com/boleto/123
+                        digitableLine: '12345678901234567890123456789012345678901234'
+                        barcode: null
+                        externalReference: null
+                        metadata: {}
+                        paidAt: null
+                        createdAt: '2024-07-01T12:00:00.000Z'
+                        updatedAt: '2024-07-01T12:00:00.000Z'
+                      - id: 6f2d2b31-6dfb-4a60-bf2d-3a3f5c8df8d9
+                        financeId: 0a799f1f-6a6b-4f9b-92c4-16e9c0d57fb2
+                        schoolId: a585a342-650a-4ab7-a606-07ae09bb72e1
+                        planId: 5f592b7f-7c42-4bae-9cd4-c6099436f893
+                        status: PAID
+                        amountCents: 9900
+                        currency: BRL
+                        dueDate: '2024-06-15T00:00:00.000Z'
+                        paidAt: '2024-06-14T15:30:00.000Z'
+                        description: Plano Premium Junho
+                        providerRef: ASAAS-INV-1199
+                        boletoUrl: https://sandbox.asaas.com/boleto/456
+                        digitableLine: '43210987654321098765432109876543210987654321'
+                        barcode: null
+                        externalReference: null
+                        metadata: {}
+                        createdAt: '2024-06-01T12:00:00.000Z'
+                        updatedAt: '2024-06-14T15:30:00.000Z'
         '501':
           description: Funcionalidade de faturamento não configurada.
           content:

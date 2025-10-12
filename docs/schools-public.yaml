@@ -1,5 +1,32 @@
 paths:
   /schools:
+    post:
+      tags:
+        - Schools
+      summary: Criar uma nova escola
+      description: >-
+        Cria uma escola e o usuário responsável. Se um token Bearer de uma
+        escola já existente for enviado, essa escola será definida como
+        proprietária.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSchoolInput'
+      responses:
+        '201':
+          description: Escola criada com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchoolResponse'
+        '400':
+          description: Erro de validação.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     get:
       tags:
         - Schools
@@ -14,6 +41,200 @@ paths:
                 $ref: '#/components/schemas/SchoolsListResponse'
         '400':
           description: Erro de validação.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /schools/login:
+    post:
+      tags:
+        - Schools
+      summary: Autenticar uma escola
+      description: Retorna um token de acesso para a escola.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SchoolLoginInput'
+      responses:
+        '200':
+          description: Login realizado com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchoolLoginResponse'
+        '400':
+          description: Erro de validação ou credenciais inválidas.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /schools/categories:
+    get:
+      tags:
+        - Schools
+      summary: Listar categorias e subcategorias disponíveis
+      description: Retorna as categorias de cursos e suas respectivas subcategorias.
+      responses:
+        '200':
+          description: Categorias encontradas.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryListResponse'
+        '501':
+          description: Funcionalidade de categorias não configurada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /schools/plans:
+    get:
+      tags:
+        - Schools
+      summary: Listar planos disponíveis para escolas
+      description: Retorna os planos de assinatura disponíveis para contratação.
+      responses:
+        '200':
+          description: Planos disponíveis encontrados.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubscriptionPlanListResponse'
+        '501':
+          description: Funcionalidade de planos não configurada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /schools/plan/invoices:
+    post:
+      tags:
+        - Schools
+      summary: Gerar fatura do plano vigente
+      description: >-
+        Emite uma nova fatura para o plano atual da escola. Informe
+        opcionalmente uma data de vencimento específica ou uma descrição para o
+        boleto. Se já existir uma fatura na mesma data, ela será reutilizada.
+      security:
+        - bearerAuth: []
+      x-codeSamples:
+        - lang: curl
+          label: cURL
+          source: |
+            curl -X POST \
+              'https://api.exemplo.com/schools/plan/invoices' \
+              -H 'accept: application/json' \
+              -H 'Authorization: Bearer {{token_escola}}' \
+              -H 'Content-Type: application/json' \
+              -d '{
+                "dueDate": "2024-07-15T00:00:00.000Z",
+                "description": "Assinatura Minha Aula - Julho"
+              }'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssueSchoolPlanInvoiceInput'
+            examples:
+              manualBoleto:
+                summary: Gerar cobrança para o próximo ciclo
+                value:
+                  dueDate: '2024-07-15T00:00:00.000Z'
+                  description: Assinatura Minha Aula - Julho
+      responses:
+        '201':
+          description: Fatura criada com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueSchoolPlanInvoiceResponse'
+        '200':
+          description: Fatura já existente reaproveitada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueSchoolPlanInvoiceResponse'
+        '400':
+          description: Solicitação inválida ou plano inexistente para a escola.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '501':
+          description: Funcionalidade de faturamento não configurada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    get:
+      tags:
+        - Schools
+      summary: Listar faturas do plano
+      description: >-
+        Retorna todas as faturas geradas para o plano da escola, incluindo
+        cobranças pendentes (status ISSUED) e quitadas (status PAID). Use este
+        endpoint antes de realizar o pagamento de um boleto.
+      security:
+        - bearerAuth: []
+      x-codeSamples:
+        - lang: curl
+          label: cURL
+          source: |
+            curl -X GET \
+              'https://api.exemplo.com/schools/plan/invoices' \
+              -H 'accept: application/json' \
+              -H 'Authorization: Bearer {{token_escola}}'
+      responses:
+        '200':
+          description: Faturas encontradas.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchoolPlanInvoicesResponse'
+              examples:
+                default:
+                  summary: Exemplo de faturas pendente e paga
+                  value:
+                    invoices:
+                      - id: 19d086d4-8282-41a2-8b1f-66a4d7f0f420
+                        financeId: 0a799f1f-6a6b-4f9b-92c4-16e9c0d57fb2
+                        schoolId: a585a342-650a-4ab7-a606-07ae09bb72e1
+                        planId: 5f592b7f-7c42-4bae-9cd4-c6099436f893
+                        status: ISSUED
+                        amountCents: 9900
+                        currency: BRL
+                        dueDate: '2024-07-15T00:00:00.000Z'
+                        description: Plano Premium Julho
+                        boletoUrl: https://sandbox.asaas.com/boleto/123
+                        digitableLine: '12345678901234567890123456789012345678901234'
+                        barcode: null
+                        externalReference: null
+                        metadata: {}
+                        paidAt: null
+                        createdAt: '2024-07-01T12:00:00.000Z'
+                        updatedAt: '2024-07-01T12:00:00.000Z'
+                      - id: 6f2d2b31-6dfb-4a60-bf2d-3a3f5c8df8d9
+                        financeId: 0a799f1f-6a6b-4f9b-92c4-16e9c0d57fb2
+                        schoolId: a585a342-650a-4ab7-a606-07ae09bb72e1
+                        planId: 5f592b7f-7c42-4bae-9cd4-c6099436f893
+                        status: PAID
+                        amountCents: 9900
+                        currency: BRL
+                        dueDate: '2024-06-15T00:00:00.000Z'
+                        paidAt: '2024-06-14T15:30:00.000Z'
+                        description: Plano Premium Junho
+                        boletoUrl: https://sandbox.asaas.com/boleto/456
+                        digitableLine: '43210987654321098765432109876543210987654321'
+                        barcode: null
+                        externalReference: null
+                        metadata: {}
+                        createdAt: '2024-06-01T12:00:00.000Z'
+                        updatedAt: '2024-06-14T15:30:00.000Z'
+        '501':
+          description: Funcionalidade de faturamento não configurada.
           content:
             application/json:
               schema:
