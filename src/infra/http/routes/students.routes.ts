@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { z } from 'zod';
 import { ListStudents } from '../../../app/use-cases/list-students';
 import { requirePersona } from '../middlewares/require-persona';
 import { UserPersonaEnum } from '../../../domain/value-objects/user-persona';
@@ -11,7 +12,6 @@ export function studentsRouter(deps: { listStudents: ListStudents; }) {
 
     r.get('/', canListStudents, async (req, res, next) => {
         try {
-            const cpf = typeof req.query.cpf === 'string' ? req.query.cpf : undefined;
             const authReq = req as AuthenticatedRequest;
             const persona = authReq.user?.persona;
             const schoolId = persona === UserPersonaEnum.SCHOOL && typeof authReq.user?.schoolId === 'string'
@@ -22,7 +22,23 @@ export function studentsRouter(deps: { listStudents: ListStudents; }) {
                 return res.status(403).json({ error: 'School context not found for user' });
             }
 
-            const students = await deps.listStudents.exec({ cpf, schoolId });
+            const querySchema = z.object({
+                cpf: z.string().trim().min(1).optional(),
+                name: z.string().trim().min(1).optional(),
+                courseId: z.string().uuid().optional()
+            });
+            const parsedQuery = querySchema.parse({
+                cpf: typeof req.query.cpf === 'string' ? req.query.cpf : undefined,
+                name: typeof req.query.name === 'string' ? req.query.name : undefined,
+                courseId: typeof req.query.courseId === 'string' ? req.query.courseId : undefined
+            });
+
+            const students = await deps.listStudents.exec({
+                cpf: parsedQuery.cpf,
+                name: parsedQuery.name,
+                courseId: parsedQuery.courseId,
+                schoolId
+            });
             res.json({ students });
         } catch (err) {
             next(err);

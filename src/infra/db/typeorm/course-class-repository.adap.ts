@@ -33,10 +33,8 @@ export class CourseClassRepositoryAdapter implements CourseClassRepository {
             id: row.id,
             courseId: row.courseId,
             label: row.label,
-            shift: row.shift,
+            schedule: row.schedule ?? [],
             capacity: row.capacity,
-            startsAt: row.startsAt,
-            endsAt: row.endsAt,
             createdAt: row.createdAt
         });
     }
@@ -46,10 +44,8 @@ export class CourseClassRepositoryAdapter implements CourseClassRepository {
         row.id = courseClass.id;
         row.courseId = courseClass.courseId;
         row.label = courseClass.label;
-        row.shift = courseClass.shift;
+        row.schedule = courseClass.schedule.map((entry) => ({ ...entry }));
         row.capacity = courseClass.capacity;
-        row.startsAt = courseClass.startsAt;
-        row.endsAt = courseClass.endsAt;
         row.createdAt = courseClass.createdAt;
         return row;
     }

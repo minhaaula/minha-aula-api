@@ -58,33 +58,23 @@ export const updateCourseSchema = z.object({
     categories: z.array(courseCategorySchema).optional()
 });
 
+const classScheduleSchema = z.object({
+    day: z.string().trim().min(1, 'Informe o dia da semana'),
+    start: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Informe o horário inicial no formato HH:MM'),
+    end: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Informe o horário final no formato HH:MM')
+}).superRefine((value, ctx) => {
+    const [startHours, startMinutes] = value.start.split(':').map((part) => Number(part));
+    const [endHours, endMinutes] = value.end.split(':').map((part) => Number(part));
+
+    if ((endHours * 60 + endMinutes) <= (startHours * 60 + startMinutes)) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['end'], message: 'Horário final deve ser após o inicial' });
+    }
+});
+
 export const createCourseClassSchema = z.object({
     label: z.string().min(1),
-    shift: z.string().min(1).optional(),
     capacity: z.number().int().positive().optional(),
-    startsAt: z.string().datetime().optional(),
-    endsAt: z.string().datetime().optional()
-}).superRefine((value, ctx) => {
-    const { startsAt, endsAt } = value;
-    if (!startsAt || !endsAt) return;
-
-    const starts = new Date(startsAt);
-    const ends = new Date(endsAt);
-
-    let hasStartIssue = false;
-    let hasEndIssue = false;
-
-    if (Number.isNaN(starts.getTime())) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['startsAt'], message: 'Invalid start date' });
-        hasStartIssue = true;
-    }
-    if (Number.isNaN(ends.getTime())) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['endsAt'], message: 'Invalid end date' });
-        hasEndIssue = true;
-    }
-    if (!hasStartIssue && !hasEndIssue && ends <= starts) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['endsAt'], message: 'End date must be after start date' });
-    }
+    classes: z.array(classScheduleSchema).min(1, 'Informe pelo menos um horário padrão')
 });
 
 export const scheduleClassSessionSchema = z.object({

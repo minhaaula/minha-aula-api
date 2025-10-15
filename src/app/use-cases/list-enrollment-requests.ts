@@ -6,7 +6,7 @@ export class ListEnrollmentRequests {
 
     async exec(params: {
         schoolId: string;
-        courseClassId: string;
+        courseClassId?: string;
         status?: EnrollmentRequestStatus;
         requestedForUserId?: string;
         requestedForDependentId?: string | null;
@@ -14,11 +14,11 @@ export class ListEnrollmentRequests {
         offset?: number;
     }): Promise<EnrollmentRequest[]> {
         const schoolId = params.schoolId.trim();
-        const courseClassId = params.courseClassId.trim();
-        if (!schoolId || !courseClassId) {
+        if (!schoolId) {
             throw new Error('Invalid enrollment request filters');
         }
 
+        const courseClassId = params.courseClassId?.trim();
         const limit = Math.min(Math.max(params.limit ?? 50, 1), 100);
         const offset = Math.max(0, params.offset ?? 0);
 

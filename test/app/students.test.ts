@@ -2,10 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { ListStudents } from '../../src/app/use-cases/list-students';
 import { UserRepository } from '../../src/ports/repositories/user.repo';
 import { DependentRepository } from '../../src/ports/repositories/dependent.repo';
+import { CourseClassRepository } from '../../src/ports/repositories/course-class.repo';
+import { EnrollmentRepository } from '../../src/ports/repositories/enrollment.repo';
 import { User } from '../../src/domain/entities/user';
 import { Email } from '../../src/domain/value-objects/email';
 import { PostalAddress } from '../../src/domain/value-objects/postal-address';
 import { Dependent } from '../../src/domain/entities/dependent';
+import { CourseClass } from '../../src/domain/entities/course-class';
+import { Enrollment } from '../../src/domain/entities/enrollment';
 
 class InMemoryUserRepository implements UserRepository {
     private readonly items = new Map<string, User>();
@@ -70,9 +74,62 @@ class InMemoryDependentRepository implements DependentRepository {
     }
 }
 
-const makeStudent = (id: string, cpf: string, createdAt: Date) => User.create({
+class InMemoryCourseClassRepository implements CourseClassRepository {
+    private readonly items = new Map<string, CourseClass>();
+
+    async findById(id: string): Promise<CourseClass | null> {
+        return this.items.get(id) ?? null;
+    }
+
+    async findByCourseAndLabel(courseId: string, label: string): Promise<CourseClass | null> {
+        return Array.from(this.items.values()).find((cls) => cls.courseId === courseId && cls.label === label) ?? null;
+    }
+
+    async findByCourseId(courseId: string): Promise<CourseClass[]> {
+        return Array.from(this.items.values()).filter((cls) => cls.courseId === courseId);
+    }
+
+    async save(courseClass: CourseClass): Promise<void> {
+        this.items.set(courseClass.id, courseClass);
+    }
+
+    seed(courseClass: CourseClass) {
+        this.items.set(courseClass.id, courseClass);
+    }
+}
+
+class InMemoryEnrollmentRepository implements EnrollmentRepository {
+    private readonly items = new Map<string, Enrollment>();
+
+    async findById(id: string): Promise<Enrollment | null> {
+        return this.items.get(id) ?? null;
+    }
+
+    async findByClassAndUser(classId: string, userId: string): Promise<Enrollment | null> {
+        return Array.from(this.items.values()).find((enrollment) => enrollment.courseClassId === classId && enrollment.studentUserId === userId) ?? null;
+    }
+
+    async findByClassAndDependent(classId: string, dependentId: string): Promise<Enrollment | null> {
+        return Array.from(this.items.values()).find((enrollment) => enrollment.courseClassId === classId && enrollment.dependentId === dependentId) ?? null;
+    }
+
+    async findActiveByClassIds(classIds: string[]): Promise<Enrollment[]> {
+        const lookup = new Set(classIds);
+        return Array.from(this.items.values()).filter((enrollment) => lookup.has(enrollment.courseClassId) && enrollment.status === 'ACTIVE');
+    }
+
+    async save(enrollment: Enrollment): Promise<void> {
+        this.items.set(enrollment.id, enrollment);
+    }
+
+    seed(enrollment: Enrollment) {
+        this.items.set(enrollment.id, enrollment);
+    }
+}
+
+const makeStudent = (id: string, cpf: string, createdAt: Date, fullName?: string) => User.create({
     id,
-    fullName: `Estudante ${id}`,
+    fullName: fullName ?? `Estudante ${id}`,
     birthDate: new Date('2000-01-01'),
     email: Email.create(`${id}@example.com`),
     phone: '11999990000',
@@ -102,6 +159,8 @@ describe('ListStudents use case', () => {
     it('returns students with their dependents ordered by creation date', async () => {
         const users = new InMemoryUserRepository();
         const dependents = new InMemoryDependentRepository();
+        const classes = new InMemoryCourseClassRepository();
+        const enrollments = new InMemoryEnrollmentRepository();
         const newer = makeStudent('student-2', '12345678902', new Date('2024-01-01T10:00:00Z'));
         const older = makeStudent('student-1', '12345678901', new Date('2023-01-01T10:00:00Z'));
         users.seed(newer);
@@ -110,7 +169,7 @@ describe('ListStudents use case', () => {
         dependents.seed(makeDependent('dep-2', 'student-2', new Date('2024-03-01T10:00:00Z')));
         dependents.seed(makeDependent('dep-3', 'student-1', new Date('2023-02-01T10:00:00Z')));
 
-        const useCase = new ListStudents(users, dependents);
+        const useCase = new ListStudents(users, dependents, classes, enrollments);
         const result = await useCase.exec();
 
         expect(result).toHaveLength(2);
@@ -124,7 +183,9 @@ describe('ListStudents use case', () => {
     it('returns empty list when no students are registered', async () => {
         const users = new InMemoryUserRepository();
         const dependents = new InMemoryDependentRepository();
-        const useCase = new ListStudents(users, dependents);
+        const classes = new InMemoryCourseClassRepository();
+        const enrollments = new InMemoryEnrollmentRepository();
+        const useCase = new ListStudents(users, dependents, classes, enrollments);
 
         const result = await useCase.exec();
         expect(result).toEqual([]);
@@ -138,8 +199,10 @@ describe('ListStudents use case', () => {
         users.seed(studentA);
         users.seed(studentB);
         dependents.seed(makeDependent('dep-1', studentA.id, new Date('2024-03-01T10:00:00Z')));
+        const classes = new InMemoryCourseClassRepository();
+        const enrollments = new InMemoryEnrollmentRepository();
 
-        const useCase = new ListStudents(users, dependents);
+        const useCase = new ListStudents(users, dependents, classes, enrollments);
         const result = await useCase.exec({ cpf: '123.456.789-01' });
 
         expect(result).toHaveLength(1);
@@ -151,6 +214,8 @@ describe('ListStudents use case', () => {
     it('returns empty array when CPF belongs to a non-student user', async () => {
         const users = new InMemoryUserRepository();
         const dependents = new InMemoryDependentRepository();
+        const classes = new InMemoryCourseClassRepository();
+        const enrollments = new InMemoryEnrollmentRepository();
         const nonStudent = User.create({
             id: 'user-1',
             fullName: 'Usuário comum',
@@ -171,7 +236,7 @@ describe('ListStudents use case', () => {
         });
         users.seed(nonStudent);
 
-        const useCase = new ListStudents(users, dependents);
+        const useCase = new ListStudents(users, dependents, classes, enrollments);
         const result = await useCase.exec({ cpf: '12345678903' });
 
         expect(result).toHaveLength(0);
@@ -180,7 +245,9 @@ describe('ListStudents use case', () => {
     it('throws when CPF format is invalid', async () => {
         const users = new InMemoryUserRepository();
         const dependents = new InMemoryDependentRepository();
-        const useCase = new ListStudents(users, dependents);
+        const classes = new InMemoryCourseClassRepository();
+        const enrollments = new InMemoryEnrollmentRepository();
+        const useCase = new ListStudents(users, dependents, classes, enrollments);
 
         await expect(useCase.exec({ cpf: '123' })).rejects.toThrow('Invalid CPF');
     });
@@ -194,9 +261,59 @@ describe('ListStudents use case', () => {
         users.seed(studentB);
         users.assignStudentToSchool(studentA.id, 'school-1');
         users.assignStudentToSchool(studentB.id, 'school-2');
+        const classes = new InMemoryCourseClassRepository();
+        const enrollments = new InMemoryEnrollmentRepository();
 
-        const useCase = new ListStudents(users, dependents);
+        const useCase = new ListStudents(users, dependents, classes, enrollments);
         const result = await useCase.exec({ schoolId: 'school-1' });
+
+        expect(result).toHaveLength(1);
+        expect(result[0].id).toBe(studentA.id);
+    });
+
+    it('filters students by name fragment', async () => {
+        const users = new InMemoryUserRepository();
+        const dependents = new InMemoryDependentRepository();
+        const classes = new InMemoryCourseClassRepository();
+        const enrollments = new InMemoryEnrollmentRepository();
+        const studentA = makeStudent('student-1', '12345678901', new Date('2024-01-01T10:00:00Z'));
+        const studentB = makeStudent('student-2', '12345678902', new Date('2024-02-01T10:00:00Z'), 'Outro Nome');
+        users.seed(studentA);
+        users.seed(studentB);
+
+        const useCase = new ListStudents(users, dependents, classes, enrollments);
+        const result = await useCase.exec({ name: 'estudante' });
+
+        expect(result).toHaveLength(1);
+        expect(result[0].id).toBe('student-1');
+    });
+
+    it('filters students by course enrollment', async () => {
+        const users = new InMemoryUserRepository();
+        const dependents = new InMemoryDependentRepository();
+        const classes = new InMemoryCourseClassRepository();
+        const enrollments = new InMemoryEnrollmentRepository();
+        const studentA = makeStudent('student-1', '12345678901', new Date('2024-01-01T10:00:00Z'));
+        const studentB = makeStudent('student-2', '12345678902', new Date('2024-02-01T10:00:00Z'));
+        users.seed(studentA);
+        users.seed(studentB);
+
+        const classForCourse = CourseClass.create({
+            id: 'class-1',
+            courseId: 'course-1',
+            label: 'Turma A',
+            schedule: [{ day: 'Segunda', start: '08:00', end: '09:00' }]
+        });
+        classes.seed(classForCourse);
+        enrollments.seed(Enrollment.createForUser({
+            id: 'enroll-1',
+            courseClassId: classForCourse.id,
+            ownerUserId: studentA.id,
+            studentUserId: studentA.id
+        }));
+
+        const useCase = new ListStudents(users, dependents, classes, enrollments);
+        const result = await useCase.exec({ courseId: 'course-1' });
 
         expect(result).toHaveLength(1);
         expect(result[0].id).toBe(studentA.id);

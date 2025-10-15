@@ -275,6 +275,93 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /schools/courses/{courseId}/classes/{classId}/requests:
+    get:
+      tags:
+        - Schools
+      summary: Listar solicitações de matrícula de uma turma
+      description: Retorna as solicitações de matrícula da turma, pendentes por padrão.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: courseId
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: path
+          name: classId
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: query
+          name: status
+          required: false
+          schema:
+            type: string
+            enum: [PENDING, APPROVED, REJECTED, CANCELLED]
+          description: Quando omitido, são retornadas apenas solicitações pendentes.
+      responses:
+        '200':
+          description: Solicitações encontradas.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - requests
+                properties:
+                  requests:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/EnrollmentRequestResponse'
+        '400':
+          description: Erro de validação.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /schools/courses/{courseId}/classes/{classId}/enrollments:
+    post:
+      tags:
+        - Schools
+      summary: Matricular aluno diretamente na turma
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: courseId
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: path
+          name: classId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnrollStudentInput'
+      responses:
+        '201':
+          description: Matrícula criada com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnrollmentResponse'
+        '400':
+          description: Erro de validação ou vínculos inválidos.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /schools/courses/{courseId}/classes/{classId}/sessions:
     post:
       tags:

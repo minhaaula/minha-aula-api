@@ -37,6 +37,10 @@ import { PaymentProviderPort } from '../../ports/providers/payment-provider.port
 import { HandleAsaasPaymentWebhook } from '../../app/use-cases/handle-asaas-payment-webhook';
 import { asaasWebhookRouter } from '../../infra/http/routes/webhooks/asaas.routes';
 import { ListSchoolPlanInvoices } from '../../app/use-cases/list-school-plan-invoices';
+import { EnrollmentRepositoryAdapter } from '../../infra/db/typeorm/enrollment-repository.adap';
+import { EnrollmentRequestRepositoryAdapter } from '../../infra/db/typeorm/enrollment-request-repository.adap';
+import { EnrollStudent } from '../../app/use-cases/enroll-student';
+import { ListEnrollmentRequests } from '../../app/use-cases/list-enrollment-requests';
 
 export type SchoolsModuleDeps = {
     schoolsRepo: SchoolRepositoryAdapter;
@@ -44,6 +48,8 @@ export type SchoolsModuleDeps = {
     classesRepo: CourseClassRepositoryAdapter;
     usersRepo: UserRepositoryAdapter;
     dependentsRepo: DependentRepositoryAdapter;
+    enrollmentsRepo: EnrollmentRepositoryAdapter;
+    enrollmentRequestsRepo: EnrollmentRequestRepositoryAdapter;
     subscriptionPlansRepo: SubscriptionPlanRepositoryAdapter;
     categoriesRepo: CategoryRepositoryAdapter;
     planFinancesRepo: SchoolPlanFinanceRepositoryAdapter;
@@ -66,7 +72,9 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, _ctx: ModuleSetupCon
     const getCourseClass = new GetCourseClass(deps.coursesRepo, deps.classesRepo);
     const getSchoolProfile = new GetSchoolProfile(deps.schoolsRepo);
     const updateSchool = new UpdateSchool(deps.schoolsRepo, deps.passwordHasher);
-    const listStudents = new ListStudents(deps.usersRepo, deps.dependentsRepo);
+    const listStudents = new ListStudents(deps.usersRepo, deps.dependentsRepo, deps.classesRepo, deps.enrollmentsRepo);
+    const enrollStudent = new EnrollStudent(deps.coursesRepo, deps.classesRepo, deps.usersRepo, deps.dependentsRepo, deps.enrollmentsRepo);
+    const listEnrollmentRequests = new ListEnrollmentRequests(deps.enrollmentRequestsRepo);
     const scheduleClassSession = new ScheduleClassSession(deps.classSessionsRepo, deps.classesRepo, deps.coursesRepo);
     const listClassSessions = new ListClassSessions(deps.classSessionsRepo, deps.classesRepo, deps.coursesRepo);
     const cancelClassSession = new CancelClassSession(deps.classSessionsRepo);
@@ -110,6 +118,8 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, _ctx: ModuleSetupCon
             updateSchool,
             studentsRouter,
             listStudents,
+            enrollStudent,
+            listEnrollmentRequests,
             scheduleClassSession,
             listClassSessions,
             cancelClassSession,
@@ -124,6 +134,6 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, _ctx: ModuleSetupCon
             asaasWebhookRouter,
             listSchoolPlanInvoices
         },
-        docFiles: ['schools.yaml', 'students.yaml']
+        docFiles: ['schools.yaml', 'students.yaml', 'enrollment-requests.yaml']
     };
 }

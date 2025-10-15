@@ -560,14 +560,25 @@ describe('School creation flow', () => {
             schoolId: school.id,
             courseId: course.id,
             label: 'Turma A',
-            capacity: 20
+            capacity: 20,
+            classes: [{ day: 'Segunda', start: '08:00', end: '09:00' }]
         });
 
         expect(result.courseId).toBe(course.id);
         expect(result.label).toBe('Turma A');
 
-        await expect(useCase.exec({ schoolId: school.id, courseId: course.id, label: 'Turma A' })).rejects.toThrow('Class label already in use for this course');
-        await expect(useCase.exec({ schoolId: 'other-school', courseId: course.id, label: 'Turma B' })).rejects.toThrow('Course not found for this school');
+        await expect(useCase.exec({
+            schoolId: school.id,
+            courseId: course.id,
+            label: 'Turma A',
+            classes: [{ day: 'Segunda', start: '10:00', end: '11:00' }]
+        })).rejects.toThrow('Class label already in use for this course');
+        await expect(useCase.exec({
+            schoolId: 'other-school',
+            courseId: course.id,
+            label: 'Turma B',
+            classes: [{ day: 'Segunda', start: '10:00', end: '11:00' }]
+        })).rejects.toThrow('Course not found for this school');
     });
 
     it('accepts school identifiers with different casing when creating a course class', async () => {
@@ -590,7 +601,8 @@ describe('School creation flow', () => {
         const result = await useCase.exec({
             schoolId: 'SCHOOL-2',
             courseId: course.id,
-            label: 'Turma B'
+            label: 'Turma B',
+            classes: [{ day: 'Terça', start: '09:00', end: '10:00' }]
         });
 
         expect(result.courseId).toBe(course.id);
@@ -615,12 +627,14 @@ describe('School creation flow', () => {
             id: 'class-old',
             courseId: course.id,
             label: 'Turma B',
+            schedule: [{ day: 'Quarta', start: '14:00', end: '15:00' }],
             createdAt: new Date('2024-01-11')
         });
         const newer = CourseClass.create({
             id: 'class-new',
             courseId: course.id,
             label: 'Turma A',
+            schedule: [{ day: 'Segunda', start: '08:00', end: '09:00' }],
             createdAt: new Date('2024-02-11')
         });
         courseClasses.seed(older);
@@ -655,6 +669,7 @@ describe('School creation flow', () => {
             id: 'class-target',
             courseId: course.id,
             label: 'Turma C',
+            schedule: [{ day: 'Sexta', start: '16:00', end: '17:00' }],
             createdAt: new Date('2024-03-02')
         });
         courseClasses.seed(courseClass);

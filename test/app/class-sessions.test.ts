@@ -119,7 +119,12 @@ describe('Class session scheduling', () => {
             categoryId: 'infantil',
             subcategoryId: 'alfabetizacao'
         }));
-        classesRepo.seed(CourseClass.create({ id: classId, courseId, label: 'A' }));
+        classesRepo.seed(CourseClass.create({
+            id: classId,
+            courseId,
+            label: 'A',
+            schedule: [{ day: 'Segunda', start: '08:00', end: '09:00' }]
+        }));
         const schedule = new ScheduleClassSession(sessionsRepo, classesRepo, coursesRepo);
         const list = new ListClassSessions(sessionsRepo, classesRepo, coursesRepo);
         const cancel = new CancelClassSession(sessionsRepo);

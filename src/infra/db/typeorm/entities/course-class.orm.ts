@@ -15,13 +15,9 @@ export class CourseClassOrm {
 
     @Column('varchar', { length: 191 }) label!: string;
 
-    @Column('varchar', { length: 64, nullable: true }) shift!: string | null;
+    @Column('json') schedule!: Array<{ day: string; start: string; end: string }>;
 
     @Column('int', { nullable: true }) capacity!: number | null;
-
-    @Column('datetime', { name: 'starts_at', nullable: true }) startsAt!: Date | null;
-
-    @Column('datetime', { name: 'ends_at', nullable: true }) endsAt!: Date | null;
 
     @CreateDateColumn({ name: 'created_at', type: 'datetime', default: () => 'CURRENT_TIMESTAMP' }) createdAt!: Date;
 

@@ -3,16 +3,41 @@ import { DependentRepository } from '../../ports/repositories/dependent.repo';
 import { UserPersonaEnum } from '../../domain/value-objects/user-persona';
 import { Dependent } from '../../domain/entities/dependent';
 import { buildStudentSummary, type StudentSummary } from './student-summary';
+import { CourseClassRepository } from '../../ports/repositories/course-class.repo';
+import { EnrollmentRepository } from '../../ports/repositories/enrollment.repo';
+
+type ListStudentsFilters = {
+    cpf?: string | null;
+    schoolId?: string | null;
+    name?: string | null;
+    courseId?: string | null;
+};
 
 export class ListStudents {
     constructor(
         private readonly users: UserRepository,
-        private readonly dependents: DependentRepository
+        private readonly dependents: DependentRepository,
+        private readonly classes: CourseClassRepository,
+        private readonly enrollments: EnrollmentRepository
     ) {}
 
-    async exec(filters?: { cpf?: string | null; schoolId?: string | null }): Promise<StudentSummary[]> {
+    async exec(filters?: ListStudentsFilters): Promise<StudentSummary[]> {
         const cpfFilter = filters?.cpf?.trim();
         const schoolId = filters?.schoolId?.trim() || null;
+        const nameFilter = filters?.name?.trim().toLowerCase() || null;
+        const courseId = filters?.courseId?.trim() || null;
+
+        let courseStudentIds: Set<string> | null = null;
+        if (courseId) {
+            const classes = await this.classes.findByCourseId(courseId);
+            if (classes.length === 0) return [];
+            const enrollments = await this.enrollments.findActiveByClassIds(classes.map((cls) => cls.id));
+            const studentIds = enrollments
+                .map((enrollment) => enrollment.studentUserId)
+                .filter((id): id is string => Boolean(id));
+            if (studentIds.length === 0) return [];
+            courseStudentIds = new Set(studentIds);
+        }
 
         if (cpfFilter) {
             const normalizedCpf = this.normalizeCpf(cpfFilter);
@@ -25,8 +50,16 @@ export class ListStudents {
                 return [];
             }
 
+            if (courseStudentIds && !courseStudentIds.has(student.id)) {
+                return [];
+            }
+
             const dependents = await this.dependents.findByUserIds([student.id]);
-            return [buildStudentSummary(student, dependents)];
+            const summary = buildStudentSummary(student, dependents);
+            if (nameFilter && !summary.fullName.toLowerCase().includes(nameFilter)) {
+                return [];
+            }
+            return [summary];
         }
 
         if (schoolId && !this.users.findBySchoolId) {
@@ -56,7 +89,9 @@ export class ListStudents {
             .slice()
             .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
             .filter((student) => !schoolId || schoolLookup.has(student.id))
-            .map((student) => buildStudentSummary(student, dependentsByUser.get(student.id) ?? []));
+            .filter((student) => !courseStudentIds || courseStudentIds.has(student.id))
+            .map((student) => buildStudentSummary(student, dependentsByUser.get(student.id) ?? []))
+            .filter((student) => !nameFilter || student.fullName.toLowerCase().includes(nameFilter));
     }
 
     private normalizeCpf(input: string): string {

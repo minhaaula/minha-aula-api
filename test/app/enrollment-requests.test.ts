@@ -103,6 +103,10 @@ class InMemoryEnrollments implements EnrollmentRepository {
     async findByClassAndDependent(classId: string, dependentId: string) {
         return Array.from(this.items.values()).find((enrollment) => enrollment.courseClassId === classId && enrollment.dependentId === dependentId) ?? null;
     }
+    async findActiveByClassIds(classIds: string[]): Promise<Enrollment[]> {
+        const lookup = new Set(classIds);
+        return Array.from(this.items.values()).filter((enrollment) => lookup.has(enrollment.courseClassId) && enrollment.status === 'ACTIVE');
+    }
     async save(enrollment: Enrollment) { this.items.set(enrollment.id, enrollment); }
     all() { return Array.from(this.items.values()); }
     seed(enrollment: Enrollment) { this.items.set(enrollment.id, enrollment); }
@@ -184,7 +188,13 @@ const setupCourseStructure = () => {
         isActive: true,
         createdAt: new Date('2024-01-02')
     });
-    const courseClass = CourseClass.create({ id: 'class-1', courseId: course.id, label: 'Turma A', capacity: 10 });
+    const courseClass = CourseClass.create({
+        id: 'class-1',
+        courseId: course.id,
+        label: 'Turma A',
+        capacity: 10,
+        schedule: [{ day: 'Segunda', start: '08:00', end: '09:00' }]
+    });
     return { school, course, courseClass };
 };
 
@@ -358,6 +368,35 @@ describe('ListEnrollmentRequests', () => {
         const withoutDependent = await useCase.exec({ schoolId: 'school-1', courseClassId: 'class-1', requestedForDependentId: null });
         expect(withoutDependent).toHaveLength(1);
         expect(withoutDependent[0].id).toBe('req-1');
+    });
+
+    it('lists requests for a school without class filter', async () => {
+        const requests = new InMemoryRequests();
+        const first = EnrollmentRequest.create({
+            id: 'req-10',
+            schoolId: 'school-1',
+            courseClassId: 'class-1',
+            requestedForUserId: 'user-1'
+        });
+        const second = EnrollmentRequest.create({
+            id: 'req-11',
+            schoolId: 'school-1',
+            courseClassId: 'class-2',
+            requestedForUserId: 'user-2'
+        });
+        const other = EnrollmentRequest.create({
+            id: 'req-12',
+            schoolId: 'school-2',
+            courseClassId: 'class-3',
+            requestedForUserId: 'user-3'
+        });
+        requests.seed(first);
+        requests.seed(second);
+        requests.seed(other);
+
+        const useCase = new ListEnrollmentRequests(requests);
+        const result = await useCase.exec({ schoolId: 'school-1' });
+        expect(result.map(({ id }) => id).sort()).toEqual(['req-10', 'req-11']);
     });
 });
 

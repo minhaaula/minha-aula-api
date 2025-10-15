@@ -29,10 +29,8 @@ export class CreateSchoolStructure1000000000003 implements MigrationInterface {
                 id CHAR(36) PRIMARY KEY,
                 course_id CHAR(36) NOT NULL,
                 label VARCHAR(191) NOT NULL,
-                shift VARCHAR(64) NULL,
+                schedule JSON NOT NULL,
                 capacity INT NULL,
-                starts_at DATETIME NULL,
-                ends_at DATETIME NULL,
                 created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 CONSTRAINT fk_course_classes_course FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE,
                 CONSTRAINT uq_course_classes_course_label UNIQUE (course_id, label)

@@ -1037,31 +1037,43 @@ components:
     SchoolCategoryLink:
       allOf:
         - $ref: '#/components/schemas/SchoolCategoryLinkInput'
+    CourseClassScheduleEntry:
+      type: object
+      required:
+        - day
+        - start
+        - end
+      properties:
+        day:
+          type: string
+          example: Segunda
+        start:
+          type: string
+          pattern: '^([01]\\d|2[0-3]):[0-5]\\d$'
+          example: '12:00'
+        end:
+          type: string
+          pattern: '^([01]\\d|2[0-3]):[0-5]\\d$'
+          example: '13:00'
     CreateCourseClassInput:
       type: object
       required:
         - label
+        - classes
       properties:
         label:
           type: string
           example: Turma A - Manhã
-        shift:
-          type: string
-          nullable: true
-          example: Manhã
         capacity:
           type: integer
           format: int32
           nullable: true
           minimum: 1
-        startsAt:
-          type: string
-          format: date-time
-          nullable: true
-        endsAt:
-          type: string
-          format: date-time
-          nullable: true
+        classes:
+          type: array
+          items:
+            $ref: '#/components/schemas/CourseClassScheduleEntry'
+          minItems: 1
     CourseClassResponse:
       type: object
       properties:
@@ -1073,20 +1085,13 @@ components:
           format: uuid
         label:
           type: string
-        shift:
-          type: string
-          nullable: true
+        classes:
+          type: array
+          items:
+            $ref: '#/components/schemas/CourseClassScheduleEntry'
         capacity:
           type: integer
           format: int32
-          nullable: true
-        startsAt:
-          type: string
-          format: date-time
-          nullable: true
-        endsAt:
-          type: string
-          format: date-time
           nullable: true
         createdAt:
           type: string
@@ -1095,6 +1100,7 @@ components:
         - id
         - courseId
         - label
+        - classes
         - createdAt
     CourseClassListResponse:
       type: object
@@ -1105,6 +1111,60 @@ components:
             $ref: '#/components/schemas/CourseClassResponse'
       required:
         - classes
+    EnrollStudentInput:
+      type: object
+      required:
+        - studentUserId
+      properties:
+        studentUserId:
+          type: string
+          format: uuid
+          description: Identificador do usuário responsável pela matrícula (o próprio aluno quando não há dependente).
+        dependentId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Identificador do dependente a ser matriculado, quando aplicável.
+    EnrollmentResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        courseClassId:
+          type: string
+          format: uuid
+        ownerUserId:
+          type: string
+          format: uuid
+        studentType:
+          type: string
+          enum: [USER, DEPENDENT]
+        studentUserId:
+          type: string
+          format: uuid
+          nullable: true
+        dependentId:
+          type: string
+          format: uuid
+          nullable: true
+        status:
+          type: string
+          enum: [PENDING, ACTIVE, COMPLETED, CANCELLED]
+        enrolledAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - courseClassId
+        - ownerUserId
+        - studentType
+        - status
+        - enrolledAt
+        - updatedAt
     AddDependentInput:
       type: object
       required:

@@ -1,6 +1,6 @@
 import { CourseRepository } from '../../ports/repositories/course.repo';
 import { CourseClassRepository } from '../../ports/repositories/course-class.repo';
-import { CourseClass } from '../../domain/entities/course-class';
+import { CourseClass, type CourseClassScheduleEntry } from '../../domain/entities/course-class';
 import { Uuid } from '../../shared/uuid';
 import { equalUuid } from '../../shared/normalize-uuid';
 
@@ -14,18 +14,14 @@ export class CreateCourseClass {
         schoolId: string;
         courseId: string;
         label: string;
-        shift?: string | null;
+        classes: CourseClassScheduleEntry[];
         capacity?: number | null;
-        startsAt?: Date | null;
-        endsAt?: Date | null;
     }): Promise<{
         id: string;
         courseId: string;
         label: string;
-        shift: string | null;
+        classes: ReadonlyArray<CourseClassScheduleEntry>;
         capacity: number | null;
-        startsAt: Date | null;
-        endsAt: Date | null;
         createdAt: Date;
     }> {
         const courseId = input.courseId.trim();
@@ -44,10 +40,8 @@ export class CreateCourseClass {
             id: Uuid(),
             courseId: course.id,
             label,
-            shift: input.shift ?? null,
-            capacity: input.capacity ?? null,
-            startsAt: input.startsAt ?? null,
-            endsAt: input.endsAt ?? null
+            schedule: input.classes,
+            capacity: input.capacity ?? null
         });
 
         await this.classes.save(courseClass);
@@ -56,10 +50,8 @@ export class CreateCourseClass {
             id: courseClass.id,
             courseId: courseClass.courseId,
             label: courseClass.label,
-            shift: courseClass.shift,
+            classes: courseClass.schedule.map((entry) => ({ ...entry })),
             capacity: courseClass.capacity,
-            startsAt: courseClass.startsAt,
-            endsAt: courseClass.endsAt,
             createdAt: courseClass.createdAt
         };
     }

@@ -1,3 +1,4 @@
+import { CourseClassScheduleEntry } from '../../domain/entities/course-class';
 import { CourseClassRepository } from '../../ports/repositories/course-class.repo';
 import { CourseRepository } from '../../ports/repositories/course.repo';
 import { equalUuid } from '../../shared/normalize-uuid';
@@ -12,10 +13,8 @@ export class GetCourseClass {
         id: string;
         courseId: string;
         label: string;
-        shift: string | null;
+        classes: ReadonlyArray<CourseClassScheduleEntry>;
         capacity: number | null;
-        startsAt: Date | null;
-        endsAt: Date | null;
         createdAt: Date;
     } | null> {
         const schoolId = input.schoolId.trim();
@@ -40,10 +39,8 @@ export class GetCourseClass {
             id: courseClass.id,
             courseId: courseClass.courseId,
             label: courseClass.label,
-            shift: courseClass.shift,
+            classes: courseClass.schedule.map((entry) => ({ ...entry })),
             capacity: courseClass.capacity,
-            startsAt: courseClass.startsAt,
-            endsAt: courseClass.endsAt,
             createdAt: courseClass.createdAt
         };
     }

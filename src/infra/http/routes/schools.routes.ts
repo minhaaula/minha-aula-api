@@ -19,6 +19,8 @@ import type { GetCourseClass } from '../../../app/use-cases/get-course-class';
 import type { GetSchoolProfile } from '../../../app/use-cases/get-school-profile';
 import type { UpdateSchool } from '../../../app/use-cases/update-school';
 import type { UpdateCourse } from '../../../app/use-cases/update-course';
+import type { EnrollStudent } from '../../../app/use-cases/enroll-student';
+import type { ListEnrollmentRequests } from '../../../app/use-cases/list-enrollment-requests';
 import { requirePersona } from '../middlewares/require-persona';
 import { UserPersonaEnum } from '../../../domain/value-objects/user-persona';
 import type { SchoolRepository } from '../../../ports/repositories/school.repo';
@@ -51,6 +53,8 @@ export type SchoolsRouterDeps = {
     getCourseClass?: GetCourseClass;
     getSchoolProfile?: GetSchoolProfile;
     updateSchool?: UpdateSchool;
+    enrollStudent?: EnrollStudent;
+    listEnrollmentRequests?: ListEnrollmentRequests;
     authMiddleware?: RequestHandler;
     schoolsRepo?: SchoolRepository;
 };
@@ -94,7 +98,9 @@ export function schoolsRouter(deps: SchoolsRouterDeps) {
         listCourseClasses: deps.listCourseClasses,
         getCourseClass: deps.getCourseClass,
         scheduleClassSession: deps.scheduleClassSession,
-        listClassSessions: deps.listClassSessions
+        listClassSessions: deps.listClassSessions,
+        enrollStudent: deps.enrollStudent,
+        listEnrollmentRequests: deps.listEnrollmentRequests
     }, guards));
 
     router.use(buildSessionsRoutes({

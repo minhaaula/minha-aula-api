@@ -29,7 +29,7 @@ export type StudentsModuleDeps = {
 
 export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupContext): ModuleBuildResult {
     const addDependent = new AddDependent(deps.usersRepo, deps.dependentsRepo);
-    const listStudents = new ListStudents(deps.usersRepo, deps.dependentsRepo);
+    const listStudents = new ListStudents(deps.usersRepo, deps.dependentsRepo, deps.classesRepo, deps.enrollmentsRepo);
     const listSchools = new ListSchools(deps.schoolsRepo);
     const createEnrollmentRequest = new CreateEnrollmentRequest(
         deps.schoolsRepo,
