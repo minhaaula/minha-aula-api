@@ -12,6 +12,7 @@ import { UpdateSchool } from '../../src/app/use-cases/update-school';
 import { UpdateCourse } from '../../src/app/use-cases/update-course';
 import { SchoolRepository } from '../../src/ports/repositories/school.repo';
 import { CourseRepository } from '../../src/ports/repositories/course.repo';
+import { CategoryRepository } from '../../src/ports/repositories/category.repo';
 import { CourseClassRepository } from '../../src/ports/repositories/course-class.repo';
 import { School } from '../../src/domain/entities/school';
 import { Course } from '../../src/domain/entities/course';
@@ -90,6 +91,29 @@ class InMemoryCourseRepository implements CourseRepository {
 
     seed(course: Course) {
         this.items.set(course.id, course);
+    }
+}
+
+class InMemoryCategoryRepository implements CategoryRepository {
+    private readonly items = new Map<string, { name: string; subcategories: Array<{ id: string; name: string }> }>();
+
+    async findAllWithSubcategories(): Promise<Array<{
+        id: string;
+        name: string;
+        subcategories: Array<{ id: string; name: string }>;
+    }>> {
+        return Array.from(this.items.entries()).map(([id, category]) => ({
+            id,
+            name: category.name,
+            subcategories: category.subcategories.map((sub) => ({ ...sub }))
+        }));
+    }
+
+    seed(category: { id: string; name: string; subcategories?: Array<{ id: string; name: string }> }) {
+        this.items.set(category.id, {
+            name: category.name,
+            subcategories: category.subcategories ? category.subcategories.map((sub) => ({ ...sub })) : []
+        });
     }
 }
 
@@ -344,14 +368,22 @@ describe('School creation flow', () => {
 
     it('lists courses for a school ordered by creation date', async () => {
         const courses = new InMemoryCourseRepository();
-        const listCourses = new ListSchoolCourses(courses);
+        const categories = new InMemoryCategoryRepository();
+        categories.seed({
+            id: 'infantil',
+            name: 'Infantil',
+            subcategories: [
+                { id: 'criancas', name: 'Crianças' }
+            ]
+        });
+        const listCourses = new ListSchoolCourses(courses, categories);
 
         const older = Course.create({
             id: 'course-old',
             schoolId: 'school-1',
             name: 'Curso Antigo',
             description: null,
-            categories: [{ categoryId: 'infantil', subcategoryIds: [] }],
+            categories: [{ categoryId: 'infantil', subcategoryIds: ['criancas'] }],
             createdAt: new Date('2024-01-01')
         });
         const newer = Course.create({
@@ -371,6 +403,11 @@ describe('School creation flow', () => {
         expect(result[0].id).toBe('course-new');
         expect(result[1].id).toBe('course-old');
         expect(result[0].description).toBe('Descrição');
+        expect(result[1].categories[0]).toEqual({
+            id: 'infantil',
+            name: 'Infantil',
+            subcategories: [{ id: 'criancas', name: 'Crianças' }]
+        });
     });
 
     it('retrieves a specific course when it belongs to the school', async () => {
