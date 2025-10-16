@@ -36,6 +36,7 @@ import { DeleteCourse } from '../../app/use-cases/delete-course';
 import { SchoolPlanInvoiceRepositoryAdapter } from '../../infra/db/typeorm/school-plan-invoice-repository.adap';
 import { IssueSchoolPlanInvoice } from '../../app/use-cases/issue-school-plan-invoice';
 import { PaymentProviderPort } from '../../ports/providers/payment-provider.port';
+import { AsaasProviderPort } from '../../ports/providers/asaas-port';
 import { HandleAsaasPaymentWebhook } from '../../app/use-cases/handle-asaas-payment-webhook';
 import { asaasWebhookRouter } from '../../infra/http/routes/webhooks/asaas.routes';
 import { ListSchoolPlanInvoices } from '../../app/use-cases/list-school-plan-invoices';
@@ -61,7 +62,7 @@ export type SchoolsModuleDeps = {
     passwordHasher: PasswordHasherPort;
     tokenProvider: TokenProviderPort;
     tokenTtl: number;
-    paymentProvider: PaymentProviderPort;
+    paymentProvider: PaymentProviderPort & Partial<AsaasProviderPort>;
 };
 
 export function buildSchoolsModule(deps: SchoolsModuleDeps, _ctx: ModuleSetupContext): ModuleBuildResult {
@@ -97,9 +98,15 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, _ctx: ModuleSetupCon
         deps.planFinancesRepo,
         deps.planInvoicesRepo
     );
+    const asaasProvider = typeof deps.paymentProvider.createSubAccount === 'function'
+        ? deps.paymentProvider as AsaasProviderPort
+        : undefined;
+
     const handleAsaasPaymentWebhook = new HandleAsaasPaymentWebhook(
         deps.planInvoicesRepo,
-        deps.planFinancesRepo
+        deps.planFinancesRepo,
+        deps.schoolsRepo,
+        asaasProvider
     );
     const assignSchoolPlan = new AssignSchoolPlan(
         deps.schoolsRepo,

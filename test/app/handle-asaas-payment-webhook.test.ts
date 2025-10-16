@@ -5,6 +5,10 @@ import { SchoolPlanInvoice } from '../../src/domain/entities/school-plan-invoice
 import { SchoolPlanFinanceRepository } from '../../src/ports/repositories/school-plan-finance.repo';
 import { SchoolPlanFinance } from '../../src/domain/entities/school-plan-finance';
 import { SubscriptionPlan } from '../../src/domain/entities/subscription-plan';
+import { SchoolRepository } from '../../src/ports/repositories/school.repo';
+import { School } from '../../src/domain/entities/school';
+import { PostalAddress } from '../../src/domain/value-objects/postal-address';
+import { AsaasProviderPort, CreateAsaasSubAccountInput, AsaasSubAccount } from '../../src/ports/providers/asaas-port';
 
 class InMemoryInvoiceRepo implements SchoolPlanInvoiceRepository {
     private readonly items = new Map<string, SchoolPlanInvoice>();
@@ -55,6 +59,53 @@ class InMemoryFinanceRepo implements SchoolPlanFinanceRepository {
     }
 }
 
+class InMemorySchoolRepo implements SchoolRepository {
+    private readonly items = new Map<string, School>();
+
+    async findById(id: string): Promise<School | null> {
+        return this.items.get(id) ?? null;
+    }
+
+    async findAll(): Promise<School[]> {
+        return Array.from(this.items.values());
+    }
+
+    async save(school: School): Promise<void> {
+        this.items.set(school.id, school);
+    }
+
+    seed(school: School) {
+        this.items.set(school.id, school);
+    }
+}
+
+class FakeAsaasProvider implements AsaasProviderPort {
+    public readonly payloads: CreateAsaasSubAccountInput[] = [];
+
+    createBoletoCharge(): Promise<any> {
+        throw new Error('Not implemented');
+    }
+
+    authorizeCharge(): Promise<{ providerRef: string; }> {
+        throw new Error('Not implemented');
+    }
+
+    captureCharge(): Promise<void> {
+        throw new Error('Not implemented');
+    }
+
+    async createSubAccount(input: CreateAsaasSubAccountInput): Promise<AsaasSubAccount> {
+        this.payloads.push(input);
+        return {
+            id: 'sub-123',
+            name: input.name,
+            email: input.email,
+            status: 'PENDING',
+            externalReference: input.externalReference ?? null
+        };
+    }
+}
+
 function makePlan() {
     return SubscriptionPlan.create({
         id: 'plan-1',
@@ -70,6 +121,7 @@ describe('HandleAsaasPaymentWebhook', () => {
     it('marks invoice as paid when payment is confirmed', async () => {
         const invoices = new InMemoryInvoiceRepo();
         const finances = new InMemoryFinanceRepo();
+        const schools = new InMemorySchoolRepo();
         const plan = makePlan();
 
         const finance = SchoolPlanFinance.create({
@@ -95,7 +147,24 @@ describe('HandleAsaasPaymentWebhook', () => {
         });
         invoices.seed(invoice);
 
-        const useCase = new HandleAsaasPaymentWebhook(invoices, finances);
+        schools.seed(School.create({
+            id: finance.schoolId,
+            name: 'Escola Teste',
+            email: 'school@example.com',
+            phone: '47999999999',
+            cnpj: '12345678000100',
+            addresses: [
+                PostalAddress.create({
+                    street: 'Rua Central',
+                    number: '123',
+                    city: 'Joinville',
+                    state: 'SC',
+                    zipCode: '89200000'
+                })
+            ]
+        }));
+
+        const useCase = new HandleAsaasPaymentWebhook(invoices, finances, schools);
         const result = await useCase.exec({
             event: 'PAYMENT_CONFIRMED',
             payment: {
@@ -120,6 +189,7 @@ describe('HandleAsaasPaymentWebhook', () => {
     it('marks invoice as cancelled when payment is deleted', async () => {
         const invoices = new InMemoryInvoiceRepo();
         const finances = new InMemoryFinanceRepo();
+        const schools = new InMemorySchoolRepo();
         const plan = makePlan();
 
         const finance = SchoolPlanFinance.create({
@@ -143,7 +213,24 @@ describe('HandleAsaasPaymentWebhook', () => {
         });
         invoices.seed(invoice);
 
-        const useCase = new HandleAsaasPaymentWebhook(invoices, finances);
+        schools.seed(School.create({
+            id: finance.schoolId,
+            name: 'Escola Teste 2',
+            email: 'school2@example.com',
+            phone: '47999999998',
+            cnpj: '12345678000101',
+            addresses: [
+                PostalAddress.create({
+                    street: 'Rua Secundária',
+                    number: '456',
+                    city: 'Joinville',
+                    state: 'SC',
+                    zipCode: '89200001'
+                })
+            ]
+        }));
+
+        const useCase = new HandleAsaasPaymentWebhook(invoices, finances, schools);
         const result = await useCase.exec({
             event: 'PAYMENT_DELETED',
             payment: {
@@ -160,5 +247,84 @@ describe('HandleAsaasPaymentWebhook', () => {
         const updatedFinance = await finances.findById(finance.id);
         expect(updatedFinance?.status).toBe('SUSPENDED');
         expect(updatedFinance?.isPaid).toBe(false);
+    });
+
+    it('creates an Asaas subaccount when invoice is confirmed and none exists', async () => {
+        const invoices = new InMemoryInvoiceRepo();
+        const finances = new InMemoryFinanceRepo();
+        const schools = new InMemorySchoolRepo();
+        const provider = new FakeAsaasProvider();
+        const plan = makePlan();
+
+        const finance = SchoolPlanFinance.create({
+            id: 'finance-3',
+            schoolId: 'school-3',
+            plan,
+            status: 'ACTIVE',
+            isPaid: false,
+            nextDueAt: new Date('2024-07-05T00:00:00Z')
+        });
+        finances.seed(finance);
+
+        schools.seed(School.create({
+            id: finance.schoolId,
+            name: 'Escola Conta',
+            email: 'conta@example.com',
+            phone: '47911110000',
+            cnpj: '12345678000102',
+            addresses: [
+                PostalAddress.create({
+                    street: 'Rua Mercado',
+                    number: '789',
+                    city: 'Joinville',
+                    state: 'SC',
+                    zipCode: '89200002'
+                })
+            ]
+        }));
+
+        const invoice = SchoolPlanInvoice.create({
+            id: 'invoice-3',
+            financeId: finance.id,
+            schoolId: finance.schoolId,
+            planId: plan.id,
+            amountCents: plan.amountCents,
+            currency: plan.currency,
+            dueDate: new Date('2024-06-05T00:00:00Z'),
+            providerRef: 'pay-789',
+            metadata: {}
+        });
+        invoices.seed(invoice);
+
+        const useCase = new HandleAsaasPaymentWebhook(invoices, finances, schools, provider);
+        const result = await useCase.exec({
+            event: 'PAYMENT_CONFIRMED',
+            payment: {
+                id: 'pay-789',
+                status: 'RECEIVED',
+                paymentDate: '2024-06-06T10:00:00Z'
+            }
+        });
+
+        expect(result.handled).toBe(true);
+        expect(provider.payloads).toHaveLength(1);
+        const payload = provider.payloads[0];
+        expect(payload?.externalReference).toBe(finance.schoolId);
+        expect(payload?.address).toBe('Rua Mercado');
+        expect(payload?.addressNumber).toBe('789');
+        expect(payload?.province).toBeNull();
+        expect(payload?.companyType).toBe('LIMITED');
+        expect(payload?.incomeValue).toBe(5000);
+
+        const updatedInvoice = await invoices.findByProviderRef('pay-789');
+        expect(updatedInvoice?.metadata['accountId']).toBe('sub-123');
+        expect(updatedInvoice?.metadata['accountStatus']).toBe('PENDING');
+        expect(updatedInvoice?.metadata['accountLinkedAt']).toBeDefined();
+        expect(updatedInvoice?.metadata['accountCompanyType']).toBe('LIMITED');
+        expect(updatedInvoice?.metadata['accountIncomeValue']).toBe('5000');
+
+        const storedSchool = await schools.findById(finance.schoolId);
+        expect(storedSchool?.accountId).toBe('sub-123');
+        expect(storedSchool?.incomeValue).toBe(5000);
     });
 });

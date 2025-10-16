@@ -29,6 +29,7 @@ export class UpdateSchool {
         ownerEmail?: string | null;
         ownerUserId?: string | null;
         ownerPassword?: string | null;
+        incomeValue?: number;
     }): Promise<{
         id: string;
         name: string;
@@ -41,6 +42,7 @@ export class UpdateSchool {
         ownerName: string | null;
         ownerCpf: string | null;
         ownerEmail: string | null;
+        incomeValue: number;
     }> {
         const schoolId = input.schoolId.trim();
         if (!schoolId) {
@@ -83,6 +85,8 @@ export class UpdateSchool {
             }
         }
 
+        const incomeValue = input.incomeValue !== undefined ? input.incomeValue : school.incomeValue;
+
         const ownerFields = [ownerName ?? null, ownerCpf ?? null, ownerEmail ?? null];
         const ownerInfoProvided = ownerFields.some((value) => value !== null);
         if (ownerInfoProvided) {
@@ -109,7 +113,9 @@ export class UpdateSchool {
             ownerCpf,
             ownerEmail,
             ownerPasswordHash,
-            createdAt: school.createdAt
+            createdAt: school.createdAt,
+            accountId: school.accountId,
+            incomeValue
         });
 
         await this.schools.save(updated);
@@ -125,7 +131,8 @@ export class UpdateSchool {
             ownerUserId: updated.ownerUserId,
             ownerName: updated.ownerName,
             ownerCpf: updated.ownerCpf,
-            ownerEmail: updated.ownerEmail
+            ownerEmail: updated.ownerEmail,
+            incomeValue: updated.incomeValue
         };
     }
 }

@@ -43,7 +43,8 @@ export function buildProfileRoutes(deps: ProfileRoutesDeps, guards: SchoolRouteG
                 ownerCpf: data.ownerCpf === undefined ? undefined : data.ownerCpf,
                 ownerEmail: data.ownerEmail === undefined ? undefined : data.ownerEmail,
                 ownerUserId: data.ownerUserId === undefined ? undefined : data.ownerUserId,
-                ownerPassword: data.ownerPassword === undefined ? undefined : data.ownerPassword
+                ownerPassword: data.ownerPassword === undefined ? undefined : data.ownerPassword,
+                incomeValue: data.incomeValue === undefined ? undefined : data.incomeValue
             });
 
             res.json(result);

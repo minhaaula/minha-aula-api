@@ -1,5 +1,6 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
 import { AsaasCreateBoletoPayload, AsaasCreateChargeResponse } from './dto/boleto-charge';
+import { AsaasCreateSubAccountPayload, AsaasSubAccountResponse } from './dto/subaccount';
 
 export class AsaasClient {
     private http: AxiosInstance;
@@ -16,6 +17,15 @@ export class AsaasClient {
     async createBoletoCharge(payload: AsaasCreateBoletoPayload): Promise<AsaasCreateChargeResponse> {
         try {
             const { data } = await this.http.post<AsaasCreateChargeResponse>('/payments', payload);
+            return data;
+        } catch (error) {
+            throw this.toDomainError(error);
+        }
+    }
+
+    async createSubAccount(payload: AsaasCreateSubAccountPayload): Promise<AsaasSubAccountResponse> {
+        try {
+            const { data } = await this.http.post<AsaasSubAccountResponse>('/accounts', payload);
             return data;
         } catch (error) {
             throw this.toDomainError(error);

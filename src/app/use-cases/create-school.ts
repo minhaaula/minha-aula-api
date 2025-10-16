@@ -15,6 +15,7 @@ export class CreateSchool {
         email: string;
         phone: string;
         cnpj: string;
+        incomeValue?: number;
         addresses?: Array<{
             street: string;
             number: string;
@@ -41,6 +42,7 @@ export class CreateSchool {
         ownerName: string | null;
         ownerCpf: string | null;
         ownerEmail: string | null;
+        incomeValue: number;
     }> {
         const addresses = (input.addresses ?? []).map((address) => PostalAddress.create({
             street: address.street,
@@ -75,7 +77,8 @@ export class CreateSchool {
             ownerName: input.ownerName ?? null,
             ownerCpf: input.ownerCpf ?? null,
             ownerEmail: input.ownerEmail ?? null,
-            ownerPasswordHash
+            ownerPasswordHash,
+            incomeValue: input.incomeValue
         });
         await this.schools.save(school);
         return {
@@ -89,7 +92,8 @@ export class CreateSchool {
             ownerUserId: school.ownerUserId,
             ownerName: school.ownerName,
             ownerCpf: school.ownerCpf,
-            ownerEmail: school.ownerEmail
+            ownerEmail: school.ownerEmail,
+            incomeValue: school.incomeValue
         };
     }
 }

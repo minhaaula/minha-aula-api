@@ -12,6 +12,7 @@ type SchoolSummary = {
     ownerName: string | null;
     ownerCpf: string | null;
     ownerEmail: string | null;
+    incomeValue: number;
 };
 
 export class ListSchools {
@@ -29,7 +30,8 @@ export class ListSchools {
             createdAt: school.createdAt,
             ownerName: school.ownerName,
             ownerCpf: school.ownerCpf,
-            ownerEmail: school.ownerEmail
+            ownerEmail: school.ownerEmail,
+            incomeValue: school.incomeValue
         }));
     }
 }

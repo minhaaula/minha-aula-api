@@ -14,7 +14,9 @@ export class School {
         private readonly _ownerName: string | null,
         private readonly _ownerCpf: string | null,
         private readonly _ownerEmail: Email | null,
-        private readonly _ownerPasswordHash: string | null
+        private readonly _ownerPasswordHash: string | null,
+        private readonly _accountId: string | null,
+        private readonly _incomeValue: number
     ) {}
 
     static create(params: {
@@ -30,6 +32,8 @@ export class School {
         ownerCpf?: string | null;
         ownerEmail?: string | null;
         ownerPasswordHash?: string | null;
+        accountId?: string | null;
+        incomeValue?: number;
     }) {
         const name = params.name.trim();
         if (!name) throw new Error('School name is required');
@@ -51,6 +55,8 @@ export class School {
         const ownerCpf = School.normalizeOwnerCpf(params.ownerCpf);
         const ownerEmail = School.normalizeOwnerEmail(params.ownerEmail);
         const ownerPasswordHash = School.normalizeOwnerPasswordHash(params.ownerPasswordHash);
+        const accountId = School.normalizeAccountId(params.accountId);
+        const incomeValue = School.normalizeIncomeValue(params.incomeValue);
 
         return new School(
             params.id,
@@ -64,7 +70,9 @@ export class School {
             ownerName,
             ownerCpf,
             ownerEmail,
-            ownerPasswordHash
+            ownerPasswordHash,
+            accountId,
+            incomeValue
         );
     }
 
@@ -102,6 +110,14 @@ export class School {
 
     get ownerPasswordHash(): string | null {
         return this._ownerPasswordHash;
+    }
+
+    get accountId(): string | null {
+        return this._accountId;
+    }
+
+    get incomeValue(): number {
+        return this._incomeValue;
     }
 
     private static normalizePhone(value: string) {
@@ -162,5 +178,49 @@ export class School {
             throw new Error('School owner password hash cannot be empty');
         }
         return trimmed;
+    }
+
+    private static normalizeAccountId(value: unknown): string | null {
+        if (value === undefined || value === null) return null;
+        if (typeof value !== 'string') {
+            throw new Error('School account id must be a string');
+        }
+        const trimmed = value.trim();
+        if (!trimmed) {
+            throw new Error('School account id cannot be empty');
+        }
+        return trimmed;
+    }
+
+    private static normalizeIncomeValue(value: unknown): number {
+        const DEFAULT_INCOME = 5000;
+        if (value === undefined || value === null) {
+            return DEFAULT_INCOME;
+        }
+        const numeric = typeof value === 'string' ? Number(value) : value;
+        if (typeof numeric !== 'number' || Number.isNaN(numeric) || numeric <= 0) {
+            throw new Error('School income value must be a positive number');
+        }
+        return Math.round(numeric);
+    }
+
+    withAccountId(accountId: string): School {
+        const normalized = School.normalizeAccountId(accountId);
+        return School.create({
+            id: this.id,
+            name: this.name,
+            email: this.email,
+            phone: this.phone,
+            cnpj: this.cnpj,
+            addresses: this.addresses,
+            ownerUserId: this.ownerUserId,
+            ownerName: this.ownerName,
+            ownerCpf: this.ownerCpf,
+            ownerEmail: this.ownerEmail,
+            ownerPasswordHash: this.ownerPasswordHash,
+            createdAt: this.createdAt,
+            accountId: normalized,
+            incomeValue: this._incomeValue
+        });
     }
 }

@@ -16,6 +16,7 @@ export class GetSchoolProfile {
         ownerName: string | null;
         ownerCpf: string | null;
         ownerEmail: string | null;
+        incomeValue: number;
     } | null> {
         const schoolId = input.schoolId.trim();
         if (!schoolId) return null;
@@ -36,7 +37,8 @@ export class GetSchoolProfile {
             ownerUserId: school.ownerUserId,
             ownerName: school.ownerName,
             ownerCpf: school.ownerCpf,
-            ownerEmail: school.ownerEmail
+            ownerEmail: school.ownerEmail,
+            incomeValue: school.incomeValue
         };
     }
 }

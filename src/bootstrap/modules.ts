@@ -26,6 +26,7 @@ import { buildStudentsModule } from './modules/students-module';
 import { ModuleSetupContext, ModuleBuildResult } from './modules/types';
 import { AsaasProvider } from '../infra/providers/asaas/asaas-provider';
 import { PaymentProviderPort } from '../ports/providers/payment-provider.port';
+import { AsaasProviderPort } from '../ports/providers/asaas-port';
 
 type ServerDeps = Parameters<typeof makeServer>[0];
 
@@ -89,7 +90,7 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
     const asaasBaseUrl = process.env.ASAAS_BASE_URL;
     const needsPaymentProvider = selected.includes('payments') || selected.includes('schools');
 
-    let paymentProvider: PaymentProviderPort | undefined;
+    let paymentProvider: (PaymentProviderPort & Partial<AsaasProviderPort>) | undefined;
     if (needsPaymentProvider) {
         if (!asaasApiKey) {
             throw new Error('ASAAS_API_KEY is required when payments or schools module is enabled');

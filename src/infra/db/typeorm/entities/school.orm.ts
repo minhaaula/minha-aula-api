@@ -37,6 +37,12 @@ export class SchoolOrm {
     @Column('varchar', { length: 255, name: 'owner_password_hash', nullable: true })
     ownerPasswordHash!: string | null;
 
+    @Column('varchar', { length: 191, name: 'account_id', nullable: true })
+    accountId!: string | null;
+
+    @Column('int', { name: 'income_value', default: 5000 })
+    incomeValue!: number;
+
     @OneToMany(() => SchoolAddressOrm, (address) => address.school, {
         cascade: ['insert', 'update'],
         orphanedRowAction: 'delete'

@@ -92,12 +92,21 @@ export class SchoolRepositoryAdapter implements SchoolRepository {
             ownerName: row.ownerName ?? null,
             ownerCpf: row.ownerCpf ?? null,
             ownerEmail: row.ownerEmail ?? null,
-            ownerPasswordHash: row.ownerPasswordHash ?? null
+            ownerPasswordHash: row.ownerPasswordHash ?? null,
+            accountId: row.accountId ?? null,
+            incomeValue: typeof row.incomeValue === 'number' ? row.incomeValue : 5000
         });
     }
 
     private async toOrm(school: School): Promise<SchoolOrm> {
-        const row = new SchoolOrm();
+        const existing = await this.repo.findOne({
+            where: { id: school.id },
+            relations: {
+                addresses: true
+            }
+        });
+
+        const row = existing ?? new SchoolOrm();
         row.id = school.id;
         row.name = school.name;
         row.createdAt = school.createdAt;
@@ -109,6 +118,16 @@ export class SchoolRepositoryAdapter implements SchoolRepository {
         row.ownerCpf = school.ownerCpf;
         row.ownerEmail = school.ownerEmail;
         row.ownerPasswordHash = school.ownerPasswordHash;
+        row.accountId = school.accountId;
+        row.incomeValue = school.incomeValue;
+        if (existing) {
+            await this.repo.manager.createQueryBuilder()
+                .delete()
+                .from(SchoolAddressOrm)
+                .where('school_id = :id', { id: school.id })
+                .execute();
+        }
+
         row.addresses = school.addresses.map((address) => {
             const item = new SchoolAddressOrm();
             item.id = Uuid();
@@ -120,6 +139,7 @@ export class SchoolRepositoryAdapter implements SchoolRepository {
             item.state = address.state;
             item.zipCode = address.zipCode;
             item.school = row;
+            (item as any).schoolId = row.id;
             return item;
         });
         return row;

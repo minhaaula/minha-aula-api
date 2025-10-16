@@ -55,6 +55,7 @@ export function buildPublicSchoolRoutes(deps: PublicSchoolRoutesDeps, optionalAu
             email: data.email,
             phone: data.phone,
             cnpj: data.cnpj,
+            incomeValue: data.incomeValue,
             addresses: mapAddresses(data.addresses),
             ownerUserId,
             ownerName: data.ownerName,

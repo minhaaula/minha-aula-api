@@ -1,7 +1,9 @@
 import { SchoolPlanInvoiceRepository } from '../../ports/repositories/school-plan-invoice.repo';
 import { SchoolPlanFinanceRepository } from '../../ports/repositories/school-plan-finance.repo';
-import { SchoolPlanInvoiceStatus } from '../../domain/entities/school-plan-invoice';
+import { SchoolPlanInvoiceStatus, SchoolPlanInvoice } from '../../domain/entities/school-plan-invoice';
 import { SchoolPlanStatus } from '../../domain/entities/school-plan-finance';
+import { SchoolRepository } from '../../ports/repositories/school.repo';
+import { AsaasProviderPort } from '../../ports/providers/asaas-port';
 
 type AsaasPaymentPayload = {
     id: string;
@@ -35,7 +37,9 @@ const CANCELLED_STATUSES = new Set(['CANCELLED', 'REFUNDED', 'CHARGEBACK']);
 export class HandleAsaasPaymentWebhook {
     constructor(
         private readonly invoices: SchoolPlanInvoiceRepository,
-        private readonly finances: SchoolPlanFinanceRepository
+        private readonly finances: SchoolPlanFinanceRepository,
+        private readonly schools: SchoolRepository,
+        private readonly asaasProvider?: AsaasProviderPort
     ) {}
 
     async exec(input: HandleAsaasPaymentWebhookInput): Promise<HandleAsaasPaymentWebhookOutput> {
@@ -67,6 +71,9 @@ export class HandleAsaasPaymentWebhook {
         const metadata: Record<string, string> = { ...invoice.metadata };
         if (eventName) metadata.lastWebhookEvent = eventName;
         if (status) metadata.lastWebhookStatus = status;
+        if (outcome.status === 'PAID') {
+            await this.ensureSchoolSubAccount(invoice, metadata);
+        }
 
         const updatedInvoice = invoice.withChanges({
             status: outcome.status,
@@ -122,5 +129,94 @@ export class HandleAsaasPaymentWebhook {
             }
         }
         return new Date();
+    }
+
+    private async ensureSchoolSubAccount(invoice: SchoolPlanInvoice, metadata: Record<string, string>): Promise<void> {
+        if (!this.asaasProvider?.createSubAccount) return;
+        const school = await this.schools.findById(invoice.schoolId);
+        if (!school) {
+            throw new Error(`School ${invoice.schoolId} not found when creating Asaas subaccount`);
+        }
+
+        const metadataAccountId = metadata.accountId ?? metadata.asaasSubAccountId ?? metadata.paymentAccountId;
+        const metadataStatus = metadata.accountStatus ?? metadata.asaasSubAccountStatus ?? metadata.paymentAccountStatus;
+        const rawCompanyType = metadata.accountCompanyType ?? metadata.companyType;
+        const normalizedCompanyType = typeof rawCompanyType === 'string'
+            ? rawCompanyType.trim().toUpperCase()
+            : undefined;
+        const rawIncomeValue = metadata.accountIncomeValue ?? metadata.incomeValue;
+        const parsedIncomeValue = typeof rawIncomeValue === 'string'
+            ? Number(rawIncomeValue.trim())
+            : typeof rawIncomeValue === 'number'
+                ? rawIncomeValue
+                : undefined;
+        const defaultIncomeValue = school.incomeValue > 0 ? school.incomeValue : 5000;
+        const incomeValue = Number.isFinite(parsedIncomeValue) && (parsedIncomeValue as number) > 0
+            ? Math.round(parsedIncomeValue as number)
+            : defaultIncomeValue;
+
+        const allowedCompanyTypes = new Set(['MEI', 'LIMITED', 'INDIVIDUAL', 'ASSOCIATION']);
+        const companyType = normalizedCompanyType && allowedCompanyTypes.has(normalizedCompanyType)
+            ? normalizedCompanyType
+            : 'LIMITED';
+
+        if (school.accountId) {
+            metadata.accountId = school.accountId;
+            if (metadataStatus) {
+                metadata.accountStatus = metadataStatus;
+            }
+            if (!metadata.accountLinkedAt) {
+                metadata.accountLinkedAt = new Date().toISOString();
+            }
+            metadata.accountCompanyType = companyType;
+            metadata.accountIncomeValue = String(incomeValue);
+            return;
+        }
+
+        if (metadataAccountId) {
+            const updatedFromMetadata = school.withAccountId(metadataAccountId);
+            await this.schools.save(updatedFromMetadata);
+            metadata.accountId = metadataAccountId;
+            if (metadataStatus) {
+                metadata.accountStatus = metadataStatus;
+            }
+            if (!metadata.accountLinkedAt) {
+                metadata.accountLinkedAt = new Date().toISOString();
+            }
+            metadata.accountCompanyType = companyType;
+            metadata.accountIncomeValue = String(incomeValue);
+            return;
+        }
+
+        const mainAddress = school.addresses[0];
+        if (!mainAddress) {
+            throw new Error(`School ${school.id} has no address to create Asaas subaccount`);
+        }
+
+        const subAccount = await this.asaasProvider.createSubAccount({
+            name: school.name,
+            email: school.email,
+            cpfCnpj: school.cnpj,
+            phone: school.phone,
+            externalReference: school.id,
+            companyType,
+            incomeValue,
+            address: mainAddress.street,
+            addressNumber: mainAddress.number,
+            complement: mainAddress.complement ?? null,
+            province: mainAddress.district ?? null,
+            postalCode: mainAddress.zipCode
+        });
+
+        const updatedSchool = school.withAccountId(subAccount.id);
+        await this.schools.save(updatedSchool);
+
+        metadata.accountId = subAccount.id;
+        if (subAccount.status) {
+            metadata.accountStatus = subAccount.status;
+        }
+        metadata.accountLinkedAt = new Date().toISOString();
+        metadata.accountCompanyType = companyType;
+        metadata.accountIncomeValue = String(incomeValue);
     }
 }
