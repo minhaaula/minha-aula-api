@@ -18,6 +18,7 @@ export type AsaasCreateSubAccountPayload = {
     municipalInscription?: string | null;
     stateInscription?: string | null;
     notificationDisabled?: boolean;
+    webhooks?: AsaasCreateSubAccountWebhookPayload[];
 };
 
 export type AsaasSubAccountResponse = {
@@ -29,4 +30,18 @@ export type AsaasSubAccountResponse = {
     companyType?: string;
     status?: string;
     externalReference?: string;
+    apiKey?: string
+    walletId?: string
+};
+
+export type AsaasCreateSubAccountWebhookPayload = {
+    name: string;
+    url: string;
+    email?: string | null;
+    sendType?: 'SIMULTANEOUSLY' | 'SEQUENTIALLY';
+    interrupted?: boolean;
+    enabled?: boolean;
+    apiVersion?: number;
+    authToken?: string | null;
+    events?: string[];
 };

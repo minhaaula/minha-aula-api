@@ -74,6 +74,10 @@ class InMemoryCourseRepository implements CourseRepository {
         return this.items.get(id) ?? null;
     }
 
+    async findByIdIncludingDeleted(id: string): Promise<Course | null> {
+        return this.items.get(id) ?? null;
+    }
+
     async findBySchoolAndName(schoolId: string, name: string): Promise<Course | null> {
         const normalized = name.trim();
         return Array.from(this.items.values()).find((course) => equalUuid(course.schoolId, schoolId) && course.name === normalized) ?? null;

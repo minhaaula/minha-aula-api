@@ -12,6 +12,7 @@ export class ListCourseClasses {
     async exec(input: { schoolId: string; courseId?: string | null }): Promise<Array<{
         id: string;
         courseId: string;
+        courseName: string;
         label: string;
         classes: ReadonlyArray<CourseClassScheduleEntry>;
         capacity: number | null;
@@ -38,6 +39,7 @@ export class ListCourseClasses {
                 .map((courseClass) => ({
                     id: courseClass.id,
                     courseId: courseClass.courseId,
+                    courseName: course.name,
                     label: courseClass.label,
                     classes: courseClass.schedule.map((entry) => ({ ...entry })),
                     capacity: courseClass.capacity,
@@ -52,18 +54,25 @@ export class ListCourseClasses {
 
         const courseIds = courses.map((course) => course.id);
         const classList = await this.classes.findByCourseIds(courseIds);
-        const belongsToCourse = new Set(courseIds.map((id) => id.trim().toLowerCase()));
+        const courseMap = new Map(courses.map((course) => [course.id.trim().toLowerCase(), course]));
 
         return classList
-            .filter((courseClass) => belongsToCourse.has(courseClass.courseId.trim().toLowerCase()))
+            .filter((courseClass) => {
+                const course = courseMap.get(courseClass.courseId.trim().toLowerCase());
+                return course && course.isActive && equalUuid(course.schoolId, schoolId);
+            })
             .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
-            .map((courseClass) => ({
-                id: courseClass.id,
-                courseId: courseClass.courseId,
-                label: courseClass.label,
-                classes: courseClass.schedule.map((entry) => ({ ...entry })),
-                capacity: courseClass.capacity,
-                createdAt: courseClass.createdAt
-            }));
+            .map((courseClass) => {
+                const course = courseMap.get(courseClass.courseId.trim().toLowerCase());
+                return {
+                    id: courseClass.id,
+                    courseId: courseClass.courseId,
+                    courseName: course?.name ?? '',
+                    label: courseClass.label,
+                    classes: courseClass.schedule.map((entry) => ({ ...entry })),
+                    capacity: courseClass.capacity,
+                    createdAt: courseClass.createdAt
+                };
+            });
     }
 }

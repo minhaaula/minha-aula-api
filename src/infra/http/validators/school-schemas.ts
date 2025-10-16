@@ -86,7 +86,7 @@ export const updateCourseClassSchema = z.object({
 });
 
 export const listCourseClassesQuerySchema = z.object({
-    courseId: z.string().uuid().optional()
+    courseId: z.any().optional()
 });
 
 export const scheduleClassSessionSchema = z.object({

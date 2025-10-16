@@ -16,7 +16,21 @@ export class CourseRepositoryAdapter implements CourseRepository {
 
     async findById(id: string): Promise<Course | null> {
         const row = await this.repo.findOne({
+            where: { id, deletedAt: null as any },
+            relations: {
+                categories: {
+                    category: true,
+                    subcategories: { subcategory: { category: true } }
+                }
+            }
+        });
+        return row ? this.toDomain(row) : null;
+    }
+
+    async findByIdIncludingDeleted(id: string): Promise<Course | null> {
+        const row = await this.repo.findOne({
             where: { id },
+            withDeleted: true,
             relations: {
                 categories: {
                     category: true,
@@ -29,7 +43,7 @@ export class CourseRepositoryAdapter implements CourseRepository {
 
     async findBySchoolAndName(schoolId: string, name: string): Promise<Course | null> {
         const row = await this.repo.findOne({
-            where: { schoolId, name, isActive: true },
+            where: { schoolId, name, isActive: true, deletedAt: null as any },
             relations: {
                 categories: {
                     category: true,
@@ -42,7 +56,7 @@ export class CourseRepositoryAdapter implements CourseRepository {
 
     async findBySchoolId(schoolId: string): Promise<Course[]> {
         const rows = await this.repo.find({
-            where: { schoolId, isActive: true },
+            where: { schoolId, isActive: true, deletedAt: null as any },
             order: { createdAt: 'DESC' },
             relations: {
                 categories: {
@@ -74,18 +88,44 @@ export class CourseRepositoryAdapter implements CourseRepository {
                 }))
                 : [],
             isActive: row.isActive,
+            deletedAt: row.deletedAt,
             createdAt: row.createdAt
         });
     }
 
     private async toOrm(course: Course): Promise<CourseOrm> {
-        const row = new CourseOrm();
+        const existing = await this.repo.findOne({
+            where: { id: course.id },
+            relations: {
+                categories: { subcategories: true }
+            }
+        });
+
+        const row = existing ?? new CourseOrm();
         row.id = course.id;
         row.schoolId = course.schoolId;
         row.name = course.name;
         row.description = course.description;
         row.isActive = course.isActive;
-        row.createdAt = course.createdAt;
+        row.createdAt = existing?.createdAt ?? course.createdAt;
+        row.deletedAt = course.deletedAt;
+
+        if (existing) {
+            const categoryIds = existing.categories?.map((link) => link.id) ?? [];
+            if (categoryIds.length > 0) {
+                await this.repo.manager.createQueryBuilder()
+                    .delete()
+                    .from(CourseCategorySubcategoryOrm)
+                    .where('course_category_id IN (:...ids)', { ids: categoryIds })
+                    .execute();
+            }
+            await this.repo.manager.createQueryBuilder()
+                .delete()
+                .from(CourseCategoryOrm)
+                .where('course_id = :id', { id: course.id })
+                .execute();
+        }
+
         row.categories = await this.createCategoryLinks(row, course.categories);
         return row;
     }

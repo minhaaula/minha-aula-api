@@ -29,6 +29,17 @@ export type CreateAsaasSubAccountInput = {
     postalCode?: string | null;
     municipalInscription?: string | null;
     stateInscription?: string | null;
+    webhooks?: Array<{
+        name: string;
+        url: string;
+        email?: string | null;
+        sendType?: 'SIMULTANEOUSLY' | 'SEQUENTIALLY';
+        interrupted?: boolean;
+        enabled?: boolean;
+        apiVersion?: number;
+        authToken?: string | null;
+        events?: string[];
+    }>;
 };
 
 export type AsaasSubAccount = {
@@ -37,6 +48,8 @@ export type AsaasSubAccount = {
     email: string;
     status?: string;
     externalReference?: string | null;
+    apiKey?: string;
+    walletId?: string;
 };
 
 export interface AsaasProviderPort {

@@ -18,6 +18,10 @@ class InMemoryCourseRepository implements CourseRepository {
     async findById(id: string): Promise<Course | null> {
         return this.items.get(id) ?? null;
     }
+
+    async findByIdIncludingDeleted(id: string): Promise<Course | null> {
+        return this.items.get(id) ?? null;
+    }
     async findBySchoolAndName(): Promise<Course | null> {
         return null;
     }

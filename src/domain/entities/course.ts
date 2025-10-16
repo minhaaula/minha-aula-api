@@ -11,6 +11,7 @@ export class Course {
         public readonly description: string | null,
         private readonly _categories: CourseCategory[],
         private _isActive: boolean,
+        private _deletedAt: Date | null,
         public readonly createdAt: Date
     ) {}
 
@@ -21,6 +22,7 @@ export class Course {
         description?: string | null;
         categories?: Array<{ categoryId: string; subcategoryIds?: string[] }>;
         isActive?: boolean;
+        deletedAt?: Date | null;
         createdAt?: Date;
     }) {
         const name = params.name.trim();
@@ -29,13 +31,17 @@ export class Course {
         if (!schoolId) throw new Error('School id is required');
         const description = params.description?.trim() ?? null;
         const categories = Course.normalizeCategories(params.categories);
+        const deletedAt = params.deletedAt ?? null;
+        const isActive = deletedAt ? false : (params.isActive ?? true);
+
         return new Course(
             params.id,
             schoolId,
             name,
             description,
             categories,
-            params.isActive ?? true,
+            isActive,
+            deletedAt,
             params.createdAt ?? new Date()
         );
     }
@@ -51,12 +57,22 @@ export class Course {
         return this._isActive;
     }
 
+    get deletedAt(): Date | null {
+        return this._deletedAt;
+    }
+
     deactivate() {
         this._isActive = false;
     }
 
     activate() {
         this._isActive = true;
+        this._deletedAt = null;
+    }
+
+    markAsDeleted(): void {
+        this._isActive = false;
+        this._deletedAt = new Date();
     }
 
     private static normalizeCategories(values: unknown): CourseCategory[] {

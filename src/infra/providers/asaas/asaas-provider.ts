@@ -69,16 +69,50 @@ export class AsaasProvider implements PaymentProviderPort {
             province: input.province ?? undefined,
             postalCode: input.postalCode ?? undefined,
             municipalInscription: input.municipalInscription ?? undefined,
-            stateInscription: input.stateInscription ?? undefined
+            stateInscription: input.stateInscription ?? undefined,
+            webhooks: input.webhooks ?? this.resolveDefaultWebhooks(input.email)
         };
 
         const response = await this.client.createSubAccount(payload);
+        console.log(response)
         return {
             id: response.id,
             name: response.name,
             email: response.email,
             status: response.status,
-            externalReference: response.externalReference ?? null
+            externalReference: response.externalReference ?? null,
+            apiKey: response.apiKey,
+            walletId: response.walletId
         };
+    }
+
+    private resolveDefaultWebhooks(fallbackEmail: string): CreateAsaasSubAccountInput['webhooks'] | undefined {
+        const url = process.env.ASAAS_SUBACCOUNT_WEBHOOK_URL?.trim();
+        const email = process.env.ASAAS_SUBACCOUNT_WEBHOOK_EMAIL?.trim() || fallbackEmail;
+        if (!url) {
+            return undefined;
+        }
+
+        const name = process.env.ASAAS_SUBACCOUNT_WEBHOOK_NAME?.trim() || 'Webhook para cobranças';
+        const sendType = (process.env.ASAAS_SUBACCOUNT_WEBHOOK_SEND_TYPE?.trim()?.toUpperCase() === 'SIMULTANEOUSLY')
+            ? 'SIMULTANEOUSLY'
+            : 'SEQUENTIALLY';
+        const authToken = process.env.ASAAS_SUBACCOUNT_WEBHOOK_AUTH_TOKEN?.trim() || undefined;
+        const eventsEnv = process.env.ASAAS_SUBACCOUNT_WEBHOOK_EVENTS?.trim();
+        const events = eventsEnv && eventsEnv.length
+            ? eventsEnv.split(',').map((event) => event.trim()).filter(Boolean)
+            : ['PAYMENT_CREATED', 'PAYMENT_UPDATED', 'PAYMENT_CONFIRMED', 'PAYMENT_RECEIVED'];
+
+        return [{
+            name,
+            url,
+            email,
+            sendType,
+            interrupted: false,
+            enabled: true,
+            apiVersion: Number(process.env.ASAAS_SUBACCOUNT_WEBHOOK_API_VERSION ?? 3) || 3,
+            authToken,
+            events
+        }];
     }
 }

@@ -22,7 +22,6 @@ import {
     createCourseClassSchema,
     createCourseSchema,
     updateCourseClassSchema,
-    listCourseClassesQuerySchema,
     scheduleClassSessionSchema,
     updateCourseSchema
 } from '../../validators/school-schemas';
@@ -80,6 +79,51 @@ export function buildCoursesRoutes(deps: CoursesRoutesDeps, guards: SchoolRouteG
         }));
     }
 
+    router.post('/', ...protectedMiddleware, asyncHandler(async (req, res) => {
+        const schoolId = (req as SchoolContextRequest).schoolId as string;
+
+        const data = createCourseSchema.parse(req.body);
+        const course = await deps.createCourse.exec({
+            schoolId,
+            name: data.name,
+            description: data.description ?? null,
+            categories: mapCourseCategories(data.categories)
+        });
+        res.status(201).json(course);
+    }));
+
+    if (deps.listCourseClasses) {
+        router.get('/classes', ...protectedMiddleware, asyncHandler(async (req, res) => {
+            const courseId = normalizeCourseId(req.query.courseId);
+            const schoolId = (req as SchoolContextRequest).schoolId as string;
+
+            const classes = await deps.listCourseClasses!.exec({
+                schoolId,
+                courseId: courseId ?? null
+            });
+
+            if (classes === null) {
+                res.status(404).json({ error: 'Course not found' });
+                return;
+            }
+
+            res.json({ classes });
+        }));
+
+        router.get('/:courseId/classes', ...protectedMiddleware, asyncHandler(async (req, res) => {
+            const { courseId } = courseIdParamSchema.parse(req.params);
+            const schoolId = (req as SchoolContextRequest).schoolId as string;
+
+            const classes = await deps.listCourseClasses!.exec({ schoolId, courseId });
+            if (classes === null) {
+                res.status(404).json({ error: 'Course not found' });
+                return;
+            }
+
+            res.json({ classes });
+        }));
+    }
+
     if (deps.getSchoolCourse) {
         router.get('/:courseId', ...protectedMiddleware, asyncHandler(async (req, res) => {
             const { courseId } = courseIdParamSchema.parse(req.params);
@@ -94,19 +138,6 @@ export function buildCoursesRoutes(deps: CoursesRoutesDeps, guards: SchoolRouteG
             res.json(course);
         }));
     }
-
-    router.post('/', ...protectedMiddleware, asyncHandler(async (req, res) => {
-        const schoolId = (req as SchoolContextRequest).schoolId as string;
-
-        const data = createCourseSchema.parse(req.body);
-        const course = await deps.createCourse.exec({
-            schoolId,
-            name: data.name,
-            description: data.description ?? null,
-            categories: mapCourseCategories(data.categories)
-        });
-        res.status(201).json(course);
-    }));
 
     if (deps.updateCourse) {
         router.put('/:courseId', ...protectedMiddleware, asyncHandler(async (req, res) => {
@@ -131,40 +162,17 @@ export function buildCoursesRoutes(deps: CoursesRoutesDeps, guards: SchoolRouteG
             const { courseId } = courseIdParamSchema.parse(req.params);
             const schoolId = (req as SchoolContextRequest).schoolId as string;
 
-            await deps.deleteCourse!.exec({ schoolId, courseId });
+            try {
+                await deps.deleteCourse!.exec({ schoolId, courseId });
+            } catch (error) {
+                const message = error instanceof Error ? error.message : '';
+                if (message === 'Course not found for this school') {
+                    res.status(204).send();
+                    return;
+                }
+                throw error;
+            }
             res.status(204).send();
-        }));
-    }
-
-    if (deps.listCourseClasses) {
-        router.get('/classes', ...protectedMiddleware, asyncHandler(async (req, res) => {
-            const { courseId } = listCourseClassesQuerySchema.parse(req.query);
-            const schoolId = (req as SchoolContextRequest).schoolId as string;
-
-            const classes = await deps.listCourseClasses!.exec({
-                schoolId,
-                courseId: courseId ?? null
-            });
-
-            if (!classes) {
-                res.status(404).json({ error: 'Course not found' });
-                return;
-            }
-
-            res.json({ classes });
-        }));
-
-        router.get('/:courseId/classes', ...protectedMiddleware, asyncHandler(async (req, res) => {
-            const { courseId } = courseIdParamSchema.parse(req.params);
-            const schoolId = (req as SchoolContextRequest).schoolId as string;
-
-            const classes = await deps.listCourseClasses!.exec({ schoolId, courseId });
-            if (!classes) {
-                res.status(404).json({ error: 'Course not found' });
-                return;
-            }
-
-            res.json({ classes });
         }));
     }
 
@@ -299,4 +307,18 @@ export function buildCoursesRoutes(deps: CoursesRoutesDeps, guards: SchoolRouteG
     }));
 
     return router;
+}
+
+function normalizeCourseId(raw: unknown): string | undefined {
+    if (Array.isArray(raw)) {
+        raw = raw[0];
+    }
+    if (typeof raw !== 'string') {
+        return undefined;
+    }
+    const trimmed = raw.trim();
+    if (!trimmed || trimmed.toLowerCase() === 'undefined' || trimmed.toLowerCase() === 'null') {
+        return undefined;
+    }
+    return trimmed;
 }
