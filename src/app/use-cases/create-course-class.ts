@@ -29,7 +29,7 @@ export class CreateCourseClass {
         const label = input.label.trim();
 
         const course = await this.courses.findById(courseId);
-        if (!course || !equalUuid(course.schoolId, schoolId)) {
+        if (!course || !course.isActive || !equalUuid(course.schoolId, schoolId)) {
             throw new Error('Course not found for this school');
         }
 

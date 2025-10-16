@@ -26,7 +26,7 @@ export class ListCourseClasses {
 
         if (courseId) {
             const course = await this.courses.findById(courseId);
-            if (!course || !equalUuid(course.schoolId, schoolId)) {
+            if (!course || !course.isActive || !equalUuid(course.schoolId, schoolId)) {
                 return null;
             }
 

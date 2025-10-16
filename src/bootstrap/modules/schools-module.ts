@@ -7,6 +7,7 @@ import { DependentRepositoryAdapter } from '../../infra/db/typeorm/dependent-rep
 import { CreateSchool } from '../../app/use-cases/create-school';
 import { CreateCourse } from '../../app/use-cases/create-course';
 import { CreateCourseClass } from '../../app/use-cases/create-course-class';
+import { UpdateCourseClass } from '../../app/use-cases/update-course-class';
 import { schoolsRouter } from '../../infra/http/routes/schools.routes';
 import { ListStudents } from '../../app/use-cases/list-students';
 import { studentsRouter } from '../../infra/http/routes/students.routes';
@@ -31,6 +32,7 @@ import { GetCourseClass } from '../../app/use-cases/get-course-class';
 import { GetSchoolProfile } from '../../app/use-cases/get-school-profile';
 import { UpdateSchool } from '../../app/use-cases/update-school';
 import { UpdateCourse } from '../../app/use-cases/update-course';
+import { DeleteCourse } from '../../app/use-cases/delete-course';
 import { SchoolPlanInvoiceRepositoryAdapter } from '../../infra/db/typeorm/school-plan-invoice-repository.adap';
 import { IssueSchoolPlanInvoice } from '../../app/use-cases/issue-school-plan-invoice';
 import { PaymentProviderPort } from '../../ports/providers/payment-provider.port';
@@ -41,6 +43,7 @@ import { EnrollmentRepositoryAdapter } from '../../infra/db/typeorm/enrollment-r
 import { EnrollmentRequestRepositoryAdapter } from '../../infra/db/typeorm/enrollment-request-repository.adap';
 import { EnrollStudent } from '../../app/use-cases/enroll-student';
 import { ListEnrollmentRequests } from '../../app/use-cases/list-enrollment-requests';
+import { DeleteCourseClass } from '../../app/use-cases/delete-course-class';
 
 export type SchoolsModuleDeps = {
     schoolsRepo: SchoolRepositoryAdapter;
@@ -65,6 +68,9 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, _ctx: ModuleSetupCon
     const createSchool = new CreateSchool(deps.schoolsRepo, deps.passwordHasher);
     const createCourse = new CreateCourse(deps.schoolsRepo, deps.coursesRepo);
     const createCourseClass = new CreateCourseClass(deps.coursesRepo, deps.classesRepo);
+    const updateCourseClass = new UpdateCourseClass(deps.coursesRepo, deps.classesRepo);
+    const deleteCourse = new DeleteCourse(deps.coursesRepo, deps.classesRepo);
+    const deleteCourseClass = new DeleteCourseClass(deps.coursesRepo, deps.classesRepo, deps.enrollmentsRepo, deps.enrollmentRequestsRepo);
     const listSchoolCourses = new ListSchoolCourses(deps.coursesRepo, deps.categoriesRepo);
     const getSchoolCourse = new GetSchoolCourse(deps.coursesRepo);
     const updateCourse = new UpdateCourse(deps.schoolsRepo, deps.coursesRepo);
@@ -109,11 +115,14 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, _ctx: ModuleSetupCon
             createSchool,
             createCourse,
             createCourseClass,
+            updateCourseClass,
             listSchoolCourses,
             getSchoolCourse,
             updateCourse,
+            deleteCourse,
             listCourseClasses,
             getCourseClass,
+            deleteCourseClass,
             getSchoolProfile,
             updateSchool,
             studentsRouter,

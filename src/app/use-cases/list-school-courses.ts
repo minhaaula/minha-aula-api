@@ -43,7 +43,7 @@ export class ListSchoolCourses {
         }
 
         return courses
-            .filter((course) => equalUuid(course.schoolId, schoolId))
+            .filter((course) => course.isActive && equalUuid(course.schoolId, schoolId))
             .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
             .map((course) => ({
                 id: course.id,

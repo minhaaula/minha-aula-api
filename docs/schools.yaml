@@ -169,6 +169,40 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+        - Schools
+      summary: Desativar um curso da escola
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: courseId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Curso desativado com sucesso.
+        '400':
+          description: Curso possui turmas ativas ou não pode ser removido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Curso não encontrado para a escola.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '501':
+          description: Funcionalidade de remoção de curso não configurada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /schools/courses/classes:
     get:
       tags:
@@ -306,6 +340,96 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '501':
           description: Funcionalidade de consulta de turma não configurada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      tags:
+        - Schools
+      summary: Atualizar uma turma do curso
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: courseId
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: path
+          name: classId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCourseClassInput'
+      responses:
+        '200':
+          description: Turma atualizada com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseClassResponse'
+        '400':
+          description: Dados inválidos ou rótulo já utilizado no curso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Curso ou turma não encontrados para a escola.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '501':
+          description: Funcionalidade de atualização de turma não configurada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+        - Schools
+      summary: Remover uma turma de um curso
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: courseId
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: path
+          name: classId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Turma removida com sucesso.
+        '400':
+          description: Turma possui matrículas ativas ou solicitações pendentes.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Curso ou turma não encontrados para a escola.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '501':
+          description: Funcionalidade de remoção de turma não configurada.
           content:
             application/json:
               schema:

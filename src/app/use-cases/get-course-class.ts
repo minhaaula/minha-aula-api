@@ -26,12 +26,12 @@ export class GetCourseClass {
         }
 
         const course = await this.courses.findById(courseId);
-        if (!course || !equalUuid(course.schoolId, schoolId)) {
+        if (!course || !course.isActive || !equalUuid(course.schoolId, schoolId)) {
             return null;
         }
 
         const courseClass = await this.classes.findById(classId);
-        if (!courseClass || !equalUuid(courseClass.courseId, course.id)) {
+        if (!courseClass || !courseClass.isActive || !equalUuid(courseClass.courseId, course.id)) {
             return null;
         }
 

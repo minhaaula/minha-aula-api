@@ -44,12 +44,12 @@ export class EnrollStudent {
         }
 
         const course = await this.courses.findById(courseId);
-        if (!course || !equalUuid(course.schoolId, schoolId)) {
+        if (!course || !course.isActive || !equalUuid(course.schoolId, schoolId)) {
             throw new Error('Course not found for this school');
         }
 
         const courseClass = await this.classes.findById(classId);
-        if (!courseClass || !equalUuid(courseClass.courseId, course.id)) {
+        if (!courseClass || !courseClass.isActive || !equalUuid(courseClass.courseId, course.id)) {
             throw new Error('Course class not found for this course');
         }
 

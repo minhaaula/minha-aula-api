@@ -13,13 +13,13 @@ export class CourseClassRepositoryAdapter implements CourseClassRepository {
     }
 
     async findByCourseAndLabel(courseId: string, label: string): Promise<CourseClass | null> {
-        const row = await this.repo.findOne({ where: { courseId, label } });
+        const row = await this.repo.findOne({ where: { courseId, label, isActive: true } });
         return row ? this.toDomain(row) : null;
     }
 
     async findByCourseId(courseId: string): Promise<CourseClass[]> {
         const rows = await this.repo.find({
-            where: { courseId },
+            where: { courseId, isActive: true },
             order: { createdAt: 'DESC' }
         });
         return rows.map((row) => this.toDomain(row));
@@ -29,7 +29,10 @@ export class CourseClassRepositoryAdapter implements CourseClassRepository {
         if (courseIds.length === 0) return [];
 
         const rows = await this.repo.find({
-            where: { courseId: In(courseIds) },
+            where: {
+                courseId: In(courseIds),
+                isActive: true
+            },
             order: { createdAt: 'DESC' }
         });
         return rows.map((row) => this.toDomain(row));
@@ -46,6 +49,7 @@ export class CourseClassRepositoryAdapter implements CourseClassRepository {
             label: row.label,
             schedule: row.schedule ?? [],
             capacity: row.capacity,
+            isActive: row.isActive,
             createdAt: row.createdAt
         });
     }
@@ -57,6 +61,7 @@ export class CourseClassRepositoryAdapter implements CourseClassRepository {
         row.label = courseClass.label;
         row.schedule = courseClass.schedule.map((entry) => ({ ...entry }));
         row.capacity = courseClass.capacity;
+        row.isActive = courseClass.isActive;
         row.createdAt = courseClass.createdAt;
         return row;
     }

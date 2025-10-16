@@ -6,18 +6,22 @@ import type { UpdateCourse } from '../../../../app/use-cases/update-course';
 import type { ListSchoolCourses } from '../../../../app/use-cases/list-school-courses';
 import type { GetSchoolCourse } from '../../../../app/use-cases/get-school-course';
 import type { CreateCourseClass } from '../../../../app/use-cases/create-course-class';
+import type { UpdateCourseClass } from '../../../../app/use-cases/update-course-class';
 import type { ListCourseClasses } from '../../../../app/use-cases/list-course-classes';
 import type { GetCourseClass } from '../../../../app/use-cases/get-course-class';
 import type { ScheduleClassSession } from '../../../../app/use-cases/schedule-class-session';
 import type { ListClassSessions } from '../../../../app/use-cases/list-class-sessions';
 import type { EnrollStudent } from '../../../../app/use-cases/enroll-student';
 import type { ListEnrollmentRequests } from '../../../../app/use-cases/list-enrollment-requests';
+import type { DeleteCourse } from '../../../../app/use-cases/delete-course';
+import type { DeleteCourseClass } from '../../../../app/use-cases/delete-course-class';
 import {
     classSessionsDateRangeSchema,
     courseClassParamsSchema,
     courseIdParamSchema,
     createCourseClassSchema,
     createCourseSchema,
+    updateCourseClassSchema,
     listCourseClassesQuerySchema,
     scheduleClassSessionSchema,
     updateCourseSchema
@@ -33,12 +37,15 @@ type CoursesRoutesDeps = {
     listSchoolCourses?: ListSchoolCourses;
     getSchoolCourse?: GetSchoolCourse;
     createCourseClass: CreateCourseClass;
+    updateCourseClass?: UpdateCourseClass;
     listCourseClasses?: ListCourseClasses;
     getCourseClass?: GetCourseClass;
     scheduleClassSession: ScheduleClassSession;
     listClassSessions: ListClassSessions;
     enrollStudent?: EnrollStudent;
     listEnrollmentRequests?: ListEnrollmentRequests;
+    deleteCourse?: DeleteCourse;
+    deleteCourseClass?: DeleteCourseClass;
 };
 
 export function buildCoursesRoutes(deps: CoursesRoutesDeps, guards: SchoolRouteGuards) {
@@ -119,6 +126,16 @@ export function buildCoursesRoutes(deps: CoursesRoutesDeps, guards: SchoolRouteG
         }));
     }
 
+    if (deps.deleteCourse) {
+        router.delete('/:courseId', ...protectedMiddleware, asyncHandler(async (req, res) => {
+            const { courseId } = courseIdParamSchema.parse(req.params);
+            const schoolId = (req as SchoolContextRequest).schoolId as string;
+
+            await deps.deleteCourse!.exec({ schoolId, courseId });
+            res.status(204).send();
+        }));
+    }
+
     if (deps.listCourseClasses) {
         router.get('/classes', ...protectedMiddleware, asyncHandler(async (req, res) => {
             const { courseId } = listCourseClassesQuerySchema.parse(req.query);
@@ -170,6 +187,25 @@ export function buildCoursesRoutes(deps: CoursesRoutesDeps, guards: SchoolRouteG
         }));
     }
 
+    if (deps.updateCourseClass) {
+        router.put('/:courseId/classes/:classId', ...protectedMiddleware, asyncHandler(async (req, res) => {
+            const { courseId, classId } = courseClassParamsSchema.parse(req.params);
+            const data = updateCourseClassSchema.parse(req.body ?? {});
+            const schoolId = (req as SchoolContextRequest).schoolId as string;
+
+            const updated = await deps.updateCourseClass!.exec({
+                schoolId,
+                courseId,
+                classId,
+                label: data.label,
+                classes: data.classes,
+                capacity: data.capacity === undefined ? undefined : data.capacity
+            });
+
+            res.json(updated);
+        }));
+    }
+
     router.post('/:courseId/classes', ...protectedMiddleware, asyncHandler(async (req, res) => {
         const { courseId } = courseIdParamSchema.parse(req.params);
         const data = createCourseClassSchema.parse(req.body);
@@ -184,6 +220,16 @@ export function buildCoursesRoutes(deps: CoursesRoutesDeps, guards: SchoolRouteG
         });
         res.status(201).json(courseClass);
     }));
+
+    if (deps.deleteCourseClass) {
+        router.delete('/:courseId/classes/:classId', ...protectedMiddleware, asyncHandler(async (req, res) => {
+            const { courseId, classId } = courseClassParamsSchema.parse(req.params);
+            const schoolId = (req as SchoolContextRequest).schoolId as string;
+
+            await deps.deleteCourseClass!.exec({ schoolId, courseId, classId });
+            res.status(204).send();
+        }));
+    }
 
     if (deps.enrollStudent) {
         router.post('/:courseId/classes/:classId/enrollments', ...protectedMiddleware, asyncHandler(async (req, res) => {

@@ -29,7 +29,7 @@ export class CourseRepositoryAdapter implements CourseRepository {
 
     async findBySchoolAndName(schoolId: string, name: string): Promise<Course | null> {
         const row = await this.repo.findOne({
-            where: { schoolId, name },
+            where: { schoolId, name, isActive: true },
             relations: {
                 categories: {
                     category: true,
@@ -42,7 +42,7 @@ export class CourseRepositoryAdapter implements CourseRepository {
 
     async findBySchoolId(schoolId: string): Promise<Course[]> {
         const rows = await this.repo.find({
-            where: { schoolId },
+            where: { schoolId, isActive: true },
             order: { createdAt: 'DESC' },
             relations: {
                 categories: {

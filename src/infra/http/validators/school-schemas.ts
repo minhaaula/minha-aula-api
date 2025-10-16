@@ -77,6 +77,12 @@ export const createCourseClassSchema = z.object({
     classes: z.array(classScheduleSchema).min(1, 'Informe pelo menos um horário padrão')
 });
 
+export const updateCourseClassSchema = z.object({
+    label: z.string().min(1).optional(),
+    capacity: z.union([z.number().int().positive(), z.null()]).optional(),
+    classes: z.array(classScheduleSchema).min(1, 'Informe pelo menos um horário padrão').optional()
+});
+
 export const listCourseClassesQuerySchema = z.object({
     courseId: z.string().uuid().optional()
 });

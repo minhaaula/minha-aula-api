@@ -13,6 +13,7 @@ export class CourseClass {
         public readonly label: string,
         public readonly schedule: ReadonlyArray<CourseClassScheduleEntry>,
         public readonly capacity: number | null,
+        private _isActive: boolean,
         public readonly createdAt: Date
     ) {}
 
@@ -22,6 +23,7 @@ export class CourseClass {
         label: string;
         schedule: CourseClassScheduleEntry[];
         capacity?: number | null;
+        isActive?: boolean;
         createdAt?: Date;
     }) {
         const label = params.label.trim();
@@ -71,7 +73,20 @@ export class CourseClass {
             label,
             Object.freeze(normalizedSchedule.slice()),
             capacity,
+            params.isActive ?? true,
             params.createdAt ?? new Date()
         );
+    }
+
+    get isActive() {
+        return this._isActive;
+    }
+
+    deactivate() {
+        this._isActive = false;
+    }
+
+    activate() {
+        this._isActive = true;
     }
 }

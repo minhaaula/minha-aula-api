@@ -1074,6 +1074,23 @@ components:
           items:
             $ref: '#/components/schemas/CourseClassScheduleEntry'
           minItems: 1
+    UpdateCourseClassInput:
+      type: object
+      description: Campos opcionais para atualizar uma turma existente.
+      properties:
+        label:
+          type: string
+          example: Turma A - Noite
+        capacity:
+          type: integer
+          format: int32
+          nullable: true
+          minimum: 1
+        classes:
+          type: array
+          items:
+            $ref: '#/components/schemas/CourseClassScheduleEntry'
+          minItems: 1
     CourseClassResponse:
       type: object
       properties:

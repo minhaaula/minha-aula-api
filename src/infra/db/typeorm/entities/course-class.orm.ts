@@ -7,7 +7,7 @@ import { ClassSessionOrm } from './class-session.orm';
 
 @Entity('course_classes')
 @Index('idx_course_classes_course', ['courseId'])
-@Index('uq_course_classes_course_label', ['courseId', 'label'], { unique: true })
+@Index('uq_course_classes_course_label', ['courseId', 'label', 'isActive'], { unique: true })
 export class CourseClassOrm {
     @PrimaryColumn('char', { length: 36 }) id!: string;
 
@@ -18,6 +18,8 @@ export class CourseClassOrm {
     @Column('json') schedule!: Array<{ day: string; start: string; end: string }>;
 
     @Column('int', { nullable: true }) capacity!: number | null;
+
+    @Column('tinyint', { width: 1, name: 'is_active', default: () => '1' }) isActive!: boolean;
 
     @CreateDateColumn({ name: 'created_at', type: 'datetime', default: () => 'CURRENT_TIMESTAMP' }) createdAt!: Date;
 

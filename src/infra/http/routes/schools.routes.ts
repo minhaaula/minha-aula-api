@@ -2,6 +2,7 @@ import { Router, type RequestHandler } from 'express';
 import type { CreateSchool } from '../../../app/use-cases/create-school';
 import type { CreateCourse } from '../../../app/use-cases/create-course';
 import type { CreateCourseClass } from '../../../app/use-cases/create-course-class';
+import type { UpdateCourseClass } from '../../../app/use-cases/update-course-class';
 import type { ScheduleClassSession } from '../../../app/use-cases/schedule-class-session';
 import type { ListClassSessions } from '../../../app/use-cases/list-class-sessions';
 import type { CancelClassSession } from '../../../app/use-cases/cancel-class-session';
@@ -21,6 +22,8 @@ import type { UpdateSchool } from '../../../app/use-cases/update-school';
 import type { UpdateCourse } from '../../../app/use-cases/update-course';
 import type { EnrollStudent } from '../../../app/use-cases/enroll-student';
 import type { ListEnrollmentRequests } from '../../../app/use-cases/list-enrollment-requests';
+import type { DeleteCourse } from '../../../app/use-cases/delete-course';
+import type { DeleteCourseClass } from '../../../app/use-cases/delete-course-class';
 import { requirePersona } from '../middlewares/require-persona';
 import { UserPersonaEnum } from '../../../domain/value-objects/user-persona';
 import type { SchoolRepository } from '../../../ports/repositories/school.repo';
@@ -36,6 +39,7 @@ export type SchoolsRouterDeps = {
     createSchool: CreateSchool;
     createCourse: CreateCourse;
     createCourseClass: CreateCourseClass;
+    updateCourseClass?: UpdateCourseClass;
     scheduleClassSession: ScheduleClassSession;
     listClassSessions: ListClassSessions;
     cancelClassSession: CancelClassSession;
@@ -49,8 +53,10 @@ export type SchoolsRouterDeps = {
     listSchoolCourses?: ListSchoolCourses;
     getSchoolCourse?: GetSchoolCourse;
     updateCourse?: UpdateCourse;
+    deleteCourse?: DeleteCourse;
     listCourseClasses?: ListCourseClasses;
     getCourseClass?: GetCourseClass;
+    deleteCourseClass?: DeleteCourseClass;
     getSchoolProfile?: GetSchoolProfile;
     updateSchool?: UpdateSchool;
     enrollStudent?: EnrollStudent;
@@ -92,9 +98,12 @@ export function schoolsRouter(deps: SchoolsRouterDeps) {
     router.use('/courses', buildCoursesRoutes({
         createCourse: deps.createCourse,
         updateCourse: deps.updateCourse,
+        updateCourseClass: deps.updateCourseClass,
+        deleteCourse: deps.deleteCourse,
         listSchoolCourses: deps.listSchoolCourses,
         getSchoolCourse: deps.getSchoolCourse,
         createCourseClass: deps.createCourseClass,
+        deleteCourseClass: deps.deleteCourseClass,
         listCourseClasses: deps.listCourseClasses,
         getCourseClass: deps.getCourseClass,
         scheduleClassSession: deps.scheduleClassSession,

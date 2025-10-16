@@ -43,11 +43,11 @@ export class ListClassSessions {
         if (courseClassId) {
             const courseClass = await this.classes.findById(courseClassId);
 
-            if (!courseClass) throw new Error('Course class not found');
+            if (!courseClass || !courseClass.isActive) throw new Error('Course class not found');
 
             const course = await this.courses.findById(courseClass.courseId);
 
-            if (!course || course.schoolId !== schoolId) {
+            if (!course || !course.isActive || course.schoolId !== schoolId) {
                 throw new Error('Course class not found for this school');
             }
 
