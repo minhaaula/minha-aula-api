@@ -134,6 +134,13 @@ class InMemoryCourseClassRepository implements CourseClassRepository {
             .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
     }
 
+    async findByCourseIds(courseIds: string[]): Promise<CourseClass[]> {
+        if (courseIds.length === 0) return [];
+        return Array.from(this.classes.values())
+            .filter((cls) => courseIds.some((courseId) => equalUuid(cls.courseId, courseId)))
+            .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    }
+
     async save(courseClass: CourseClass): Promise<void> {
         this.classes.set(courseClass.id, courseClass);
     }
@@ -686,6 +693,63 @@ describe('School creation flow', () => {
 
         const unauthorized = await listClasses.exec({ schoolId: 'other-school', courseId: course.id });
         expect(unauthorized).toBeNull();
+    });
+
+    it('lists all classes for the school when no course filter is provided', async () => {
+        const courses = new InMemoryCourseRepository();
+        const courseClasses = new InMemoryCourseClassRepository();
+
+        const courseA = Course.create({
+            id: 'course-a',
+            schoolId: 'school-classes',
+            name: 'Curso de Teatro',
+            description: null,
+            categories: [],
+            createdAt: new Date('2024-03-01')
+        });
+        const courseB = Course.create({
+            id: 'course-b',
+            schoolId: 'school-classes',
+            name: 'Curso de Dança',
+            description: null,
+            categories: [],
+            createdAt: new Date('2024-02-01')
+        });
+        courses.seed(courseA);
+        courses.seed(courseB);
+
+        const classA1 = CourseClass.create({
+            id: 'class-a-1',
+            courseId: courseA.id,
+            label: 'Turma Teatro 1',
+            schedule: [{ day: 'Segunda', start: '09:00', end: '10:00' }],
+            createdAt: new Date('2024-04-01')
+        });
+        const classB1 = CourseClass.create({
+            id: 'class-b-1',
+            courseId: courseB.id,
+            label: 'Turma Dança 1',
+            schedule: [{ day: 'Terça', start: '11:00', end: '12:00' }],
+            createdAt: new Date('2024-03-15')
+        });
+        const otherSchoolClass = CourseClass.create({
+            id: 'class-other',
+            courseId: 'different-course',
+            label: 'Outra Escola',
+            schedule: [{ day: 'Quarta', start: '14:00', end: '15:00' }],
+            createdAt: new Date('2024-04-05')
+        });
+
+        courseClasses.seed(classA1);
+        courseClasses.seed(classB1);
+        courseClasses.seed(otherSchoolClass);
+
+        const listClasses = new ListCourseClasses(courses, courseClasses);
+
+        const classes = await listClasses.exec({ schoolId: 'school-classes' });
+        expect(classes).not.toBeNull();
+        if (!classes) throw new Error('Expected classes');
+        expect(classes.map((cls) => cls.id)).toEqual(['class-a-1', 'class-b-1']);
     });
 
     it('retrieves a course class when it belongs to the school and course', async () => {

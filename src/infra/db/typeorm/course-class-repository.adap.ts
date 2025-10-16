@@ -1,3 +1,4 @@
+import { In } from 'typeorm';
 import { AppDataSource } from './datasource';
 import { CourseClassRepository } from '../../../ports/repositories/course-class.repo';
 import { CourseClass } from '../../../domain/entities/course-class';
@@ -19,6 +20,16 @@ export class CourseClassRepositoryAdapter implements CourseClassRepository {
     async findByCourseId(courseId: string): Promise<CourseClass[]> {
         const rows = await this.repo.find({
             where: { courseId },
+            order: { createdAt: 'DESC' }
+        });
+        return rows.map((row) => this.toDomain(row));
+    }
+
+    async findByCourseIds(courseIds: string[]): Promise<CourseClass[]> {
+        if (courseIds.length === 0) return [];
+
+        const rows = await this.repo.find({
+            where: { courseId: In(courseIds) },
             order: { createdAt: 'DESC' }
         });
         return rows.map((row) => this.toDomain(row));

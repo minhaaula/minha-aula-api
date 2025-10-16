@@ -43,6 +43,11 @@ class InMemoryCourseClassRepository implements CourseClassRepository {
     async findByCourseId(courseId: string): Promise<CourseClass[]> {
         return Array.from(this.items.values()).filter((cls) => cls.courseId === courseId);
     }
+    async findByCourseIds(courseIds: string[]): Promise<CourseClass[]> {
+        if (courseIds.length === 0) return [];
+        const lookup = new Set(courseIds);
+        return Array.from(this.items.values()).filter((cls) => lookup.has(cls.courseId));
+    }
     async save(courseClass: CourseClass): Promise<void> {
         this.items.set(courseClass.id, courseClass);
     }

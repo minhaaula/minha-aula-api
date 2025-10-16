@@ -94,6 +94,13 @@ class InMemoryCourseClassRepository implements CourseClassRepository {
             .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
     }
 
+    async findByCourseIds(courseIds: string[]): Promise<CourseClass[]> {
+        if (courseIds.length === 0) return [];
+        return Array.from(this.items.values())
+            .filter((cls) => courseIds.some((courseId) => equalUuid(cls.courseId, courseId)))
+            .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    }
+
     async save(courseClass: CourseClass): Promise<void> {
         this.items.set(courseClass.id, courseClass);
     }

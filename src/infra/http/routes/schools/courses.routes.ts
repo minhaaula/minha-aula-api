@@ -18,6 +18,7 @@ import {
     courseIdParamSchema,
     createCourseClassSchema,
     createCourseSchema,
+    listCourseClassesQuerySchema,
     scheduleClassSessionSchema,
     updateCourseSchema
 } from '../../validators/school-schemas';
@@ -119,6 +120,23 @@ export function buildCoursesRoutes(deps: CoursesRoutesDeps, guards: SchoolRouteG
     }
 
     if (deps.listCourseClasses) {
+        router.get('/classes', ...protectedMiddleware, asyncHandler(async (req, res) => {
+            const { courseId } = listCourseClassesQuerySchema.parse(req.query);
+            const schoolId = (req as SchoolContextRequest).schoolId as string;
+
+            const classes = await deps.listCourseClasses!.exec({
+                schoolId,
+                courseId: courseId ?? null
+            });
+
+            if (!classes) {
+                res.status(404).json({ error: 'Course not found' });
+                return;
+            }
+
+            res.json({ classes });
+        }));
+
         router.get('/:courseId/classes', ...protectedMiddleware, asyncHandler(async (req, res) => {
             const { courseId } = courseIdParamSchema.parse(req.params);
             const schoolId = (req as SchoolContextRequest).schoolId as string;

@@ -169,6 +169,41 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /schools/courses/classes:
+    get:
+      tags:
+        - Schools
+      summary: Listar turmas da escola
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: courseId
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Se informado, filtra as turmas pelo identificador do curso.
+      responses:
+        '200':
+          description: Lista de turmas encontradas.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseClassListResponse'
+        '404':
+          description: Curso não encontrado para a escola (quando o filtro courseId for inválido).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '501':
+          description: Funcionalidade de listagem de turmas não configurada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /schools/courses/{courseId}/classes:
     get:
       tags:
