@@ -87,6 +87,7 @@ interface AppDependencies {
     listSchoolPlanInvoices?: any;
     listCategories?: any;
     listSchoolCourses?: any;
+    listSchoolStudents?: any;
     getSchoolProfile?: any;
     getSchoolCourse?: any;
     updateCourse?: any;
@@ -186,6 +187,7 @@ export function makeServer(deps: AppDependencies & Record<string, any>) {
             getSchoolProfile: deps.getSchoolProfile,
             updateSchool: deps.updateSchool,
             listSchoolCourses: deps.listSchoolCourses,
+            listSchoolStudents: deps.listSchoolStudents,
             getSchoolCourse: deps.getSchoolCourse,
             listCourseClasses: deps.listCourseClasses,
             getCourseClass: deps.getCourseClass,

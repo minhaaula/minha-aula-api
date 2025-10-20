@@ -14,6 +14,7 @@ import type { IssueSchoolPlanInvoice } from '../../../app/use-cases/issue-school
 import type { ListSchoolPlanInvoices } from '../../../app/use-cases/list-school-plan-invoices';
 import type { ListCategories } from '../../../app/use-cases/list-categories';
 import type { ListSchoolCourses } from '../../../app/use-cases/list-school-courses';
+import type { ListSchoolStudents } from '../../../app/use-cases/list-school-students';
 import type { GetSchoolCourse } from '../../../app/use-cases/get-school-course';
 import type { ListCourseClasses } from '../../../app/use-cases/list-course-classes';
 import type { GetCourseClass } from '../../../app/use-cases/get-course-class';
@@ -31,6 +32,7 @@ import { buildPublicSchoolRoutes } from './schools/public.routes';
 import { buildProfileRoutes } from './schools/profile.routes';
 import { buildPlansRoutes } from './schools/plans.routes';
 import { buildCoursesRoutes } from './schools/courses.routes';
+import { buildStudentsRoutes } from './schools/students.routes';
 import { buildSessionsRoutes } from './schools/sessions.routes';
 import type { SchoolRouteGuards } from './schools/guards';
 import { makeResolveSchoolContextMiddleware } from '../middlewares/resolve-school-context';
@@ -51,6 +53,7 @@ export type SchoolsRouterDeps = {
     listSchoolPlanInvoices?: ListSchoolPlanInvoices;
     listCategories?: ListCategories;
     listSchoolCourses?: ListSchoolCourses;
+    listSchoolStudents?: ListSchoolStudents;
     getSchoolCourse?: GetSchoolCourse;
     updateCourse?: UpdateCourse;
     deleteCourse?: DeleteCourse;
@@ -94,6 +97,12 @@ export function schoolsRouter(deps: SchoolsRouterDeps) {
         issueSchoolPlanInvoice: deps.issueSchoolPlanInvoice,
         listSchoolPlanInvoices: deps.listSchoolPlanInvoices
     }, guards));
+
+    if (deps.listSchoolStudents) {
+        router.use('/students', buildStudentsRoutes({
+            listSchoolStudents: deps.listSchoolStudents
+        }, guards));
+    }
 
     router.use('/courses', buildCoursesRoutes({
         createCourse: deps.createCourse,

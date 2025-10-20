@@ -47,6 +47,60 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /schools/students:
+    get:
+      tags:
+        - Schools
+      summary: Listar alunos matriculados na escola
+      description: Retorna as matrículas ativas com os dados do aluno, dependente (quando existir), curso e turma.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: name
+          required: false
+          schema:
+            type: string
+          description: Filtrar alunos cujo nome (ou do dependente) contenha o valor informado.
+        - in: query
+          name: courseId
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Filtrar matrículas vinculadas a um curso específico.
+        - in: query
+          name: classId
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Filtrar matrículas de uma turma específica.
+      responses:
+        '200':
+          description: Lista de alunos matriculados na escola.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchoolStudentsResponse'
+        '400':
+          description: Erro na requisição.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado ou sem contexto de escola.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '501':
+          description: Funcionalidade de listagem de alunos não configurada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /schools/courses:
     get:
       tags:

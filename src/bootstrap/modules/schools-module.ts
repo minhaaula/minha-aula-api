@@ -45,6 +45,7 @@ import { EnrollmentRequestRepositoryAdapter } from '../../infra/db/typeorm/enrol
 import { EnrollStudent } from '../../app/use-cases/enroll-student';
 import { ListEnrollmentRequests } from '../../app/use-cases/list-enrollment-requests';
 import { DeleteCourseClass } from '../../app/use-cases/delete-course-class';
+import { ListSchoolStudents } from '../../app/use-cases/list-school-students';
 
 export type SchoolsModuleDeps = {
     schoolsRepo: SchoolRepositoryAdapter;
@@ -80,6 +81,13 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, _ctx: ModuleSetupCon
     const getSchoolProfile = new GetSchoolProfile(deps.schoolsRepo);
     const updateSchool = new UpdateSchool(deps.schoolsRepo, deps.passwordHasher);
     const listStudents = new ListStudents(deps.usersRepo, deps.dependentsRepo, deps.classesRepo, deps.enrollmentsRepo);
+    const listSchoolStudents = new ListSchoolStudents(
+        deps.coursesRepo,
+        deps.classesRepo,
+        deps.enrollmentsRepo,
+        deps.usersRepo,
+        deps.dependentsRepo
+    );
     const enrollStudent = new EnrollStudent(deps.coursesRepo, deps.classesRepo, deps.usersRepo, deps.dependentsRepo, deps.enrollmentsRepo);
     const listEnrollmentRequests = new ListEnrollmentRequests(deps.enrollmentRequestsRepo);
     const scheduleClassSession = new ScheduleClassSession(deps.classSessionsRepo, deps.classesRepo, deps.coursesRepo);
@@ -134,6 +142,7 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, _ctx: ModuleSetupCon
             updateSchool,
             studentsRouter,
             listStudents,
+            listSchoolStudents,
             enrollStudent,
             listEnrollmentRequests,
             scheduleClassSession,

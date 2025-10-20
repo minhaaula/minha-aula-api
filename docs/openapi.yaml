@@ -918,6 +918,80 @@ components:
             $ref: '#/components/schemas/StudentResponse'
       required:
         - students
+    SchoolStudentCourseResponse:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+    SchoolStudentClassResponse:
+      type: object
+      required:
+        - id
+        - label
+      properties:
+        id:
+          type: string
+          format: uuid
+        label:
+          type: string
+    SchoolStudentEnrollmentResponse:
+      type: object
+      required:
+        - enrollmentId
+        - status
+        - studentType
+        - enrolledAt
+        - updatedAt
+        - student
+        - course
+        - class
+      properties:
+        enrollmentId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum:
+            - PENDING
+            - ACTIVE
+            - COMPLETED
+            - CANCELLED
+        studentType:
+          type: string
+          enum:
+            - USER
+            - DEPENDENT
+        enrolledAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        student:
+          $ref: '#/components/schemas/StudentResponse'
+        dependent:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/StudentDependentResponse'
+        course:
+          $ref: '#/components/schemas/SchoolStudentCourseResponse'
+        class:
+          $ref: '#/components/schemas/SchoolStudentClassResponse'
+    SchoolStudentsResponse:
+      type: object
+      required:
+        - students
+      properties:
+        students:
+          type: array
+          items:
+            $ref: '#/components/schemas/SchoolStudentEnrollmentResponse'
     SchoolAddress:
       type: object
       required:
