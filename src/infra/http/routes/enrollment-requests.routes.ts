@@ -33,6 +33,63 @@ export function enrollmentRequestsRouter(deps: {
         createdAt: request.createdAt
     });
 
+    r.get('/schools', canManageRequests, async (req, res, next) => {
+        try {
+            const authReq = req as AuthenticatedRequest;
+            const querySchema = z.object({
+                schoolId: z.string().uuid().optional(),
+                classId: z.string().uuid().optional(),
+                courseId: z.string().uuid().optional(),
+                studentDocument: z.string().trim().min(1).optional(),
+                status: z.enum(['PENDING', 'APPROVED', 'REJECTED', 'CANCELLED']).optional(),
+                limit: z.coerce.number().int().positive().max(100).optional(),
+                offset: z.coerce.number().int().min(0).optional()
+            });
+
+            const query = querySchema.parse({
+                schoolId: typeof req.query.schoolId === 'string' ? req.query.schoolId : undefined,
+                classId: typeof req.query.classId === 'string' ? req.query.classId : undefined,
+                courseId: typeof req.query.courseId === 'string' ? req.query.courseId : undefined,
+                studentDocument: typeof req.query.studentDocument === 'string' ? req.query.studentDocument : undefined,
+                status: typeof req.query.status === 'string' ? req.query.status : undefined,
+                limit: typeof req.query.limit === 'string' ? req.query.limit : undefined,
+                offset: typeof req.query.offset === 'string' ? req.query.offset : undefined
+            });
+
+            const persona = authReq.user?.persona;
+            let schoolId = query.schoolId;
+
+            if (persona === UserPersonaEnum.SCHOOL) {
+                const contextSchoolId = authReq.user?.schoolId;
+                if (!contextSchoolId) {
+                    return res.status(403).json({ error: 'School context not found for user' });
+                }
+                if (schoolId && schoolId !== contextSchoolId) {
+                    return res.status(403).json({ error: 'Cannot access enrollment requests for another school' });
+                }
+                schoolId = contextSchoolId;
+            }
+
+            if (!schoolId) {
+                return res.status(400).json({ error: 'schoolId is required' });
+            }
+
+            const requests = await deps.listEnrollmentRequests.exec({
+                schoolId,
+                courseClassId: query.classId,
+                courseId: query.courseId,
+                status: query.status,
+                studentDocument: query.studentDocument,
+                limit: query.limit,
+                offset: query.offset
+            });
+
+            res.json({ requests: requests.map(serializeEnrollmentRequest) });
+        } catch (err) {
+            next(err);
+        }
+    });
+
     r.get('/schools/:schoolId/classes/:classId/requests', canManageRequests, async (req, res, next) => {
         try {
             const paramsSchema = z.object({

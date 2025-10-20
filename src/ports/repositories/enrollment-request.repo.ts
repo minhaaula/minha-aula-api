@@ -6,9 +6,11 @@ export interface EnrollmentRequestRepository {
     findMany(params: {
         schoolId?: string;
         courseClassId?: string;
+        courseId?: string;
         status?: EnrollmentRequestStatus;
         requestedForUserId?: string;
         requestedForDependentId?: string | null;
+        studentDocument?: string;
         limit?: number;
         offset?: number;
     }): Promise<EnrollmentRequest[]>;

@@ -43,9 +43,13 @@ import { ListSchoolPlanInvoices } from '../../app/use-cases/list-school-plan-inv
 import { EnrollmentRepositoryAdapter } from '../../infra/db/typeorm/enrollment-repository.adap';
 import { EnrollmentRequestRepositoryAdapter } from '../../infra/db/typeorm/enrollment-request-repository.adap';
 import { EnrollStudent } from '../../app/use-cases/enroll-student';
-import { ListEnrollmentRequests } from '../../app/use-cases/list-enrollment-requests';
 import { DeleteCourseClass } from '../../app/use-cases/delete-course-class';
 import { ListSchoolStudents } from '../../app/use-cases/list-school-students';
+import { enrollmentRequestsRouter } from '../../infra/http/routes/enrollment-requests.routes';
+import { ListEnrollmentRequests } from '../../app/use-cases/list-enrollment-requests';
+import { CreateEnrollmentRequest } from '../../app/use-cases/create-enrollment-request';
+import { ApproveEnrollmentRequest } from '../../app/use-cases/approve-enrollment-request';
+import { GetEnrollmentRequest } from '../../app/use-cases/get-enrollment-request';
 
 export type SchoolsModuleDeps = {
     schoolsRepo: SchoolRepositoryAdapter;
@@ -90,6 +94,17 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, _ctx: ModuleSetupCon
     );
     const enrollStudent = new EnrollStudent(deps.coursesRepo, deps.classesRepo, deps.usersRepo, deps.dependentsRepo, deps.enrollmentsRepo);
     const listEnrollmentRequests = new ListEnrollmentRequests(deps.enrollmentRequestsRepo);
+    const createEnrollmentRequest = new CreateEnrollmentRequest(
+        deps.schoolsRepo,
+        deps.coursesRepo,
+        deps.classesRepo,
+        deps.usersRepo,
+        deps.dependentsRepo,
+        deps.enrollmentsRepo,
+        deps.enrollmentRequestsRepo
+    );
+    const approveEnrollmentRequest = new ApproveEnrollmentRequest(deps.enrollmentRequestsRepo, deps.enrollmentsRepo);
+    const getEnrollmentRequest = new GetEnrollmentRequest(deps.enrollmentRequestsRepo);
     const scheduleClassSession = new ScheduleClassSession(deps.classSessionsRepo, deps.classesRepo, deps.coursesRepo);
     const listClassSessions = new ListClassSessions(deps.classSessionsRepo, deps.classesRepo, deps.coursesRepo);
     const cancelClassSession = new CancelClassSession(deps.classSessionsRepo);
@@ -144,7 +159,11 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, _ctx: ModuleSetupCon
             listStudents,
             listSchoolStudents,
             enrollStudent,
+            enrollmentRequestsRouter,
+            createEnrollmentRequest,
+            approveEnrollmentRequest,
             listEnrollmentRequests,
+            getEnrollmentRequest,
             scheduleClassSession,
             listClassSessions,
             cancelClassSession,

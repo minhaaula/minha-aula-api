@@ -114,6 +114,8 @@ class InMemoryEnrollments implements EnrollmentRepository {
 
 class InMemoryRequests implements EnrollmentRequestRepository {
     private readonly items = new Map<string, EnrollmentRequest>();
+    private readonly classCourseLookup = new Map<string, string>();
+    private readonly studentDocuments = new Map<string, string>();
     async findById(id: string) { return this.items.get(id) ?? null; }
     async findByCourseClassAndTarget(params: { courseClassId: string; userId: string; dependentId: string | null; }) {
         return Array.from(this.items.values()).find((request) =>
@@ -125,19 +127,29 @@ class InMemoryRequests implements EnrollmentRequestRepository {
     async findMany(params: {
         schoolId?: string;
         courseClassId?: string;
+        courseId?: string;
         status?: EnrollmentRequestStatus;
         requestedForUserId?: string;
         requestedForDependentId?: string | null;
+        studentDocument?: string;
         limit?: number;
         offset?: number;
     }) {
         const filtered = Array.from(this.items.values()).filter((request) => {
             if (params.schoolId && request.schoolId !== params.schoolId) return false;
             if (params.courseClassId && request.courseClassId !== params.courseClassId) return false;
+            if (params.courseId) {
+                const courseId = this.classCourseLookup.get(request.courseClassId);
+                if (courseId !== params.courseId) return false;
+            }
             if (params.status && request.status !== params.status) return false;
             if (params.requestedForUserId && request.requestedForUserId !== params.requestedForUserId) return false;
             if (params.requestedForDependentId === null && request.requestedForDependentId !== null) return false;
             if (params.requestedForDependentId && request.requestedForDependentId !== params.requestedForDependentId) return false;
+            if (params.studentDocument) {
+                const doc = this.studentDocuments.get(request.id);
+                if (doc !== params.studentDocument) return false;
+            }
             return true;
         });
         const ordered = filtered.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
@@ -147,6 +159,8 @@ class InMemoryRequests implements EnrollmentRequestRepository {
     }
     async save(request: EnrollmentRequest) { this.items.set(request.id, request); }
     seed(request: EnrollmentRequest) { this.items.set(request.id, request); }
+    setCourseForClass(classId: string, courseId: string) { this.classCourseLookup.set(classId, courseId); }
+    setStudentDocument(requestId: string, document: string) { this.studentDocuments.set(requestId, document); }
 }
 
 let cpfCounter = 0;
@@ -397,6 +411,54 @@ describe('ListEnrollmentRequests', () => {
         const useCase = new ListEnrollmentRequests(requests);
         const result = await useCase.exec({ schoolId: 'school-1' });
         expect(result.map(({ id }) => id).sort()).toEqual(['req-10', 'req-11']);
+    });
+
+    it('filters by course id and student document', async () => {
+        const requests = new InMemoryRequests();
+        const first = EnrollmentRequest.create({
+            id: 'req-20',
+            schoolId: 'school-1',
+            courseClassId: 'class-1',
+            requestedForUserId: 'user-1'
+        });
+        const second = EnrollmentRequest.create({
+            id: 'req-21',
+            schoolId: 'school-1',
+            courseClassId: 'class-2',
+            requestedForUserId: 'user-2'
+        });
+        const third = EnrollmentRequest.create({
+            id: 'req-22',
+            schoolId: 'school-1',
+            courseClassId: 'class-3',
+            requestedForUserId: 'user-3'
+        });
+
+        requests.seed(first);
+        requests.seed(second);
+        requests.seed(third);
+
+        requests.setCourseForClass('class-1', 'course-1');
+        requests.setCourseForClass('class-2', 'course-2');
+        requests.setCourseForClass('class-3', 'course-1');
+
+        requests.setStudentDocument('req-20', '12345678901');
+        requests.setStudentDocument('req-21', '99999999999');
+        requests.setStudentDocument('req-22', '12345678901');
+
+        const useCase = new ListEnrollmentRequests(requests);
+        const byCourse = await useCase.exec({ schoolId: 'school-1', courseId: 'course-1' });
+        expect(byCourse.map(({ id }) => id).sort()).toEqual(['req-20', 'req-22']);
+
+        const byDocument = await useCase.exec({ schoolId: 'school-1', studentDocument: '123.456.789-01' });
+        expect(byDocument.map(({ id }) => id).sort()).toEqual(['req-20', 'req-22']);
+    });
+
+    it('validates student document format', async () => {
+        const requests = new InMemoryRequests();
+        const useCase = new ListEnrollmentRequests(requests);
+        await expect(useCase.exec({ schoolId: 'school-1', studentDocument: '123' }))
+            .rejects.toThrow('Invalid student document');
     });
 });
 

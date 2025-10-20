@@ -1,4 +1,75 @@
 paths:
+  /enrollment-requests/schools:
+    get:
+      tags:
+        - Enrollment Requests
+      summary: Listar solicitações de matrícula por escola
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: schoolId
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Identificador da escola. Obrigatório para usuários administradores.
+        - in: query
+          name: classId
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Filtra solicitações para uma turma específica.
+        - in: query
+          name: courseId
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Filtra solicitações vinculadas a um curso específico.
+        - in: query
+          name: studentDocument
+          required: false
+          schema:
+            type: string
+          description: Filtra solicitações pelo documento (CPF) do aluno.
+        - in: query
+          name: status
+          required: false
+          schema:
+            type: string
+            enum: [PENDING, APPROVED, REJECTED, CANCELLED]
+          description: Filtra solicitações por status.
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+          description: Quantidade máxima de registros retornados (default 50).
+        - in: query
+          name: offset
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+          description: Quantidade de registros a pular para paginação.
+      responses:
+        '200':
+          description: Solicitações encontradas.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - requests
+                properties:
+                  requests:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/EnrollmentRequestResponse'
   /enrollment-requests/schools/{schoolId}/classes/{classId}/requests:
     get:
       tags:

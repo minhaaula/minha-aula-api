@@ -29,13 +29,31 @@ export class EnrollmentRequestRepositoryAdapter implements EnrollmentRequestRepo
     async findMany(params: {
         schoolId?: string;
         courseClassId?: string;
+        courseId?: string;
         status?: EnrollmentRequestStatus;
         requestedForUserId?: string;
         requestedForDependentId?: string | null;
+        studentDocument?: string;
         limit?: number;
         offset?: number;
     }): Promise<EnrollmentRequest[]> {
         const qb = this.repo.createQueryBuilder('request');
+        let courseClassJoined = false;
+        let studentJoined = false;
+
+        const ensureCourseClassJoin = () => {
+            if (!courseClassJoined) {
+                qb.innerJoin('request.courseClass', 'courseClass');
+                courseClassJoined = true;
+            }
+        };
+
+        const ensureStudentJoin = () => {
+            if (!studentJoined) {
+                qb.innerJoin('request.requestedFor', 'student');
+                studentJoined = true;
+            }
+        };
 
         if (params.schoolId) {
             qb.andWhere('request.schoolId = :schoolId', { schoolId: params.schoolId });
@@ -49,6 +67,11 @@ export class EnrollmentRequestRepositoryAdapter implements EnrollmentRequestRepo
             qb.andWhere('request.status = :status', { status: params.status });
         }
 
+        if (params.courseId) {
+            ensureCourseClassJoin();
+            qb.andWhere('courseClass.courseId = :courseId', { courseId: params.courseId });
+        }
+
         if (params.requestedForUserId) {
             qb.andWhere('request.requestedForUserId = :requestedForUserId', { requestedForUserId: params.requestedForUserId });
         }
@@ -57,6 +80,11 @@ export class EnrollmentRequestRepositoryAdapter implements EnrollmentRequestRepo
             qb.andWhere('request.requestedForDependentId IS NULL');
         } else if (params.requestedForDependentId) {
             qb.andWhere('request.requestedForDependentId = :requestedForDependentId', { requestedForDependentId: params.requestedForDependentId });
+        }
+
+        if (params.studentDocument) {
+            ensureStudentJoin();
+            qb.andWhere('student.cpf = :studentDocument', { studentDocument: params.studentDocument });
         }
 
         const limit = params.limit ?? 50;
