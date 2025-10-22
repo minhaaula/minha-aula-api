@@ -29,6 +29,7 @@ export function enrollmentRequestsRouter(deps: {
         decidedAt: request.decidedAt,
         decidedByUserId: request.decidedByUserId,
         notes: request.notes,
+        discont: request.discountCents !== null ? request.discountCents / 100 : null,
         enrollmentId: request.enrollmentId,
         createdAt: request.createdAt
     });
@@ -138,25 +139,43 @@ export function enrollmentRequestsRouter(deps: {
         }
     });
 
-    r.post('/schools/:schoolId/classes/:classId/requests', async (req, res, next) => {
+    r.post('/schools/classes/:classId/requests', canManageRequests, async (req, res, next) => {
         try {
             const paramsSchema = z.object({
-                schoolId: z.string().uuid(),
                 classId: z.string().uuid()
             });
-            const { schoolId, classId } = paramsSchema.parse(req.params);
+            const { classId } = paramsSchema.parse(req.params);
             const bodySchema = z.object({
                 requestedForUserId: z.string().uuid(),
                 requestedForDependentId: z.string().uuid().optional(),
-                notes: z.string().max(255).optional()
+                notes: z.string().max(255).optional(),
+                discont: z.coerce.number().min(0).optional(),
+                schoolId: z.string().uuid().optional()
             });
             const data = bodySchema.parse(req.body);
+            const authReq = req as AuthenticatedRequest;
+            const persona = authReq.user?.persona;
+
+            let schoolId = data.schoolId;
+            if (persona === UserPersonaEnum.SCHOOL) {
+                const contextSchoolId = authReq.user?.schoolId;
+                if (!contextSchoolId) {
+                    return res.status(403).json({ error: 'School context not found for user' });
+                }
+                schoolId = contextSchoolId;
+            }
+
+            if (!schoolId) {
+                return res.status(400).json({ error: 'schoolId is required' });
+            }
+
             const request = await deps.createEnrollmentRequest.exec({
                 schoolId,
                 courseClassId: classId,
                 requestedForUserId: data.requestedForUserId,
                 requestedForDependentId: data.requestedForDependentId ?? null,
-                notes: data.notes ?? null
+                notes: data.notes ?? null,
+                discount: data.discont ?? null
             });
             res.status(201).json(serializeEnrollmentRequest(request));
         } catch (err) {

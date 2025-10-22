@@ -143,20 +143,15 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/EnrollmentRequestResponse'
+  /enrollment-requests/schools/classes/{classId}/requests:
     post:
       tags:
         - Enrollment Requests
       summary: Criar uma solicitação de matrícula
+      description: Identificador da escola é inferido do usuário autenticado. Usuários ADMIN podem informar `schoolId` no payload para agir em nome de outra escola.
       security:
         - bearerAuth: []
       parameters:
-        - in: path
-          name: schoolId
-          required: true
-          schema:
-            type: string
-            format: uuid
-          description: Identificador da escola responsável pela turma.
         - in: path
           name: classId
           required: true

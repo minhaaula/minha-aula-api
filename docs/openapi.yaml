@@ -899,6 +899,8 @@ components:
         createdAt:
           type: string
           format: date-time
+        schoolContext:
+          $ref: '#/components/schemas/StudentSchoolContext'
       required:
         - id
         - fullName
@@ -909,6 +911,67 @@ components:
         - address
         - dependents
         - createdAt
+    StudentSchoolCourse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+      required:
+        - id
+        - name
+    StudentSchoolClass:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        label:
+          type: string
+        courseId:
+          type: string
+          format: uuid
+      required:
+        - id
+        - label
+        - courseId
+    StudentSchoolCategory:
+      type: object
+      properties:
+        categoryId:
+          type: string
+        subcategoryIds:
+          type: array
+          items:
+            type: string
+      required:
+        - categoryId
+        - subcategoryIds
+    StudentSchoolContext:
+      type: object
+      properties:
+        schoolId:
+          type: string
+          format: uuid
+        courses:
+          type: array
+          items:
+            $ref: '#/components/schemas/StudentSchoolCourse'
+        classes:
+          type: array
+          items:
+            $ref: '#/components/schemas/StudentSchoolClass'
+        categories:
+          type: array
+          items:
+            $ref: '#/components/schemas/StudentSchoolCategory'
+      required:
+        - schoolId
+        - courses
+        - classes
+        - categories
     StudentsListResponse:
       type: object
       properties:
@@ -1304,6 +1367,10 @@ components:
       required:
         - requestedForUserId
       properties:
+        schoolId:
+          type: string
+          format: uuid
+          description: Obrigatório apenas para usuários ADMIN.
         requestedForUserId:
           type: string
           format: uuid
@@ -1315,6 +1382,11 @@ components:
           type: string
           nullable: true
           maxLength: 255
+        discont:
+          type: number
+          format: double
+          minimum: 0
+          description: Valor do desconto em reais (R$).
     EnrollmentRequestResponse:
       type: object
       properties:
@@ -1349,6 +1421,10 @@ components:
           type: string
           nullable: true
           maxLength: 255
+        discont:
+          type: number
+          nullable: true
+          description: Valor do desconto aplicado em reais (R$).
         enrollmentId:
           type: string
           format: uuid

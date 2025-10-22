@@ -32,6 +32,8 @@ export class EnrollmentRequestOrm {
 
     @Column('varchar', { length: 255, nullable: true }) notes!: string | null;
 
+    @Column('int', { name: 'discount_cents', nullable: true }) discountCents!: number | null;
+
     @Column('char', { length: 36, name: 'enrollment_id', nullable: true }) enrollmentId!: string | null;
 
     @CreateDateColumn({ name: 'created_at', type: 'datetime', default: () => 'CURRENT_TIMESTAMP' }) createdAt!: Date;

@@ -26,6 +26,7 @@ export class CreateEnrollmentRequest {
         requestedForUserId: string;
         requestedForDependentId?: string | null;
         notes?: string | null;
+        discount?: number | null;
     }): Promise<EnrollmentRequest> {
         const schoolId = input.schoolId.trim();
         const courseClassId = input.courseClassId.trim();
@@ -63,13 +64,23 @@ export class CreateEnrollmentRequest {
         });
         if (existingRequest) throw new Error('Enrollment request already exists for this target');
 
+        let discountCents: number | null = null;
+        if (input.discount !== undefined && input.discount !== null) {
+            const discountValue = Number(input.discount);
+            if (!Number.isFinite(discountValue) || discountValue < 0) {
+                throw new Error('Invalid discount value');
+            }
+            discountCents = Math.round(discountValue * 100);
+        }
+
         const request = EnrollmentRequest.create({
             id: Uuid(),
             schoolId: school.id,
             courseClassId: courseClass.id,
             requestedForUserId: user.id,
             requestedForDependentId: dependentId,
-            notes: input.notes ?? null
+            notes: input.notes ?? null,
+            discountCents
         });
 
         await this.requests.save(request);

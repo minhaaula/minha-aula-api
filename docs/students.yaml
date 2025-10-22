@@ -4,7 +4,7 @@ paths:
       tags:
         - Students
       summary: Listar alunos com dependentes
-      description: Requer persona ADMIN ou SCHOOL.
+      description: Requer persona ADMIN ou SCHOOL. Quando autenticado como escola, cada aluno inclui o objeto `schoolContext` com as turmas, cursos e categorias vinculados na instituição.
       security:
         - bearerAuth: []
       parameters:

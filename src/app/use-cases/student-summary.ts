@@ -11,6 +11,29 @@ export type DependentSummary = {
     createdAt: Date;
 };
 
+export type StudentSchoolCourseSummary = {
+    id: string;
+    name: string;
+};
+
+export type StudentSchoolClassSummary = {
+    id: string;
+    label: string;
+    courseId: string;
+};
+
+export type StudentSchoolCategorySummary = {
+    categoryId: string;
+    subcategoryIds: string[];
+};
+
+export type StudentSchoolContext = {
+    schoolId: string;
+    courses: StudentSchoolCourseSummary[];
+    classes: StudentSchoolClassSummary[];
+    categories: StudentSchoolCategorySummary[];
+};
+
 export type StudentSummary = {
     id: string;
     fullName: string;
@@ -21,6 +44,7 @@ export type StudentSummary = {
     address: PostalAddressProps;
     dependents: DependentSummary[];
     createdAt: Date;
+    schoolContext?: StudentSchoolContext;
 };
 
 export function buildStudentSummary(student: User, dependents: Dependent[]): StudentSummary {

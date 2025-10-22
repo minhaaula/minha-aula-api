@@ -84,7 +84,13 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, _ctx: ModuleSetupCon
     const getCourseClass = new GetCourseClass(deps.coursesRepo, deps.classesRepo);
     const getSchoolProfile = new GetSchoolProfile(deps.schoolsRepo);
     const updateSchool = new UpdateSchool(deps.schoolsRepo, deps.passwordHasher);
-    const listStudents = new ListStudents(deps.usersRepo, deps.dependentsRepo, deps.classesRepo, deps.enrollmentsRepo);
+    const listStudents = new ListStudents(
+        deps.usersRepo,
+        deps.dependentsRepo,
+        deps.coursesRepo,
+        deps.classesRepo,
+        deps.enrollmentsRepo
+    );
     const listSchoolStudents = new ListSchoolStudents(
         deps.coursesRepo,
         deps.classesRepo,

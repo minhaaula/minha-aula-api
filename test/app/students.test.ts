@@ -10,6 +10,8 @@ import { PostalAddress } from '../../src/domain/value-objects/postal-address';
 import { Dependent } from '../../src/domain/entities/dependent';
 import { CourseClass } from '../../src/domain/entities/course-class';
 import { Enrollment } from '../../src/domain/entities/enrollment';
+import { CourseRepository } from '../../src/ports/repositories/course.repo';
+import { Course } from '../../src/domain/entities/course';
 
 class InMemoryUserRepository implements UserRepository {
     private readonly items = new Map<string, User>();
@@ -71,6 +73,38 @@ class InMemoryDependentRepository implements DependentRepository {
 
     seed(dependent: Dependent) {
         this.items.set(dependent.id, dependent);
+    }
+}
+
+class InMemoryCourseRepository implements CourseRepository {
+    private readonly items = new Map<string, Course>();
+
+    async findById(id: string): Promise<Course | null> {
+        return this.items.get(id) ?? null;
+    }
+
+    async findByIdIncludingDeleted(id: string): Promise<Course | null> {
+        return this.findById(id);
+    }
+
+    async findBySchoolAndName(schoolId: string, name: string): Promise<Course | null> {
+        return Array.from(this.items.values()).find(
+            (course) => course.schoolId === schoolId && course.name === name && course.isActive
+        ) ?? null;
+    }
+
+    async findBySchoolId(schoolId: string): Promise<Course[]> {
+        return Array.from(this.items.values()).filter(
+            (course) => course.schoolId === schoolId && course.isActive
+        );
+    }
+
+    async save(course: Course): Promise<void> {
+        this.items.set(course.id, course);
+    }
+
+    seed(course: Course) {
+        this.items.set(course.id, course);
     }
 }
 
@@ -165,6 +199,7 @@ describe('ListStudents use case', () => {
     it('returns students with their dependents ordered by creation date', async () => {
         const users = new InMemoryUserRepository();
         const dependents = new InMemoryDependentRepository();
+        const courses = new InMemoryCourseRepository();
         const classes = new InMemoryCourseClassRepository();
         const enrollments = new InMemoryEnrollmentRepository();
         const newer = makeStudent('student-2', '12345678902', new Date('2024-01-01T10:00:00Z'));
@@ -175,7 +210,7 @@ describe('ListStudents use case', () => {
         dependents.seed(makeDependent('dep-2', 'student-2', new Date('2024-03-01T10:00:00Z')));
         dependents.seed(makeDependent('dep-3', 'student-1', new Date('2023-02-01T10:00:00Z')));
 
-        const useCase = new ListStudents(users, dependents, classes, enrollments);
+        const useCase = new ListStudents(users, dependents, courses, classes, enrollments);
         const result = await useCase.exec();
 
         expect(result).toHaveLength(2);
@@ -189,9 +224,10 @@ describe('ListStudents use case', () => {
     it('returns empty list when no students are registered', async () => {
         const users = new InMemoryUserRepository();
         const dependents = new InMemoryDependentRepository();
+        const courses = new InMemoryCourseRepository();
         const classes = new InMemoryCourseClassRepository();
         const enrollments = new InMemoryEnrollmentRepository();
-        const useCase = new ListStudents(users, dependents, classes, enrollments);
+        const useCase = new ListStudents(users, dependents, courses, classes, enrollments);
 
         const result = await useCase.exec();
         expect(result).toEqual([]);
@@ -205,10 +241,11 @@ describe('ListStudents use case', () => {
         users.seed(studentA);
         users.seed(studentB);
         dependents.seed(makeDependent('dep-1', studentA.id, new Date('2024-03-01T10:00:00Z')));
+        const courses = new InMemoryCourseRepository();
         const classes = new InMemoryCourseClassRepository();
         const enrollments = new InMemoryEnrollmentRepository();
 
-        const useCase = new ListStudents(users, dependents, classes, enrollments);
+        const useCase = new ListStudents(users, dependents, courses, classes, enrollments);
         const result = await useCase.exec({ cpf: '123.456.789-01' });
 
         expect(result).toHaveLength(1);
@@ -220,6 +257,7 @@ describe('ListStudents use case', () => {
     it('returns empty array when CPF belongs to a non-student user', async () => {
         const users = new InMemoryUserRepository();
         const dependents = new InMemoryDependentRepository();
+        const courses = new InMemoryCourseRepository();
         const classes = new InMemoryCourseClassRepository();
         const enrollments = new InMemoryEnrollmentRepository();
         const nonStudent = User.create({
@@ -242,7 +280,7 @@ describe('ListStudents use case', () => {
         });
         users.seed(nonStudent);
 
-        const useCase = new ListStudents(users, dependents, classes, enrollments);
+        const useCase = new ListStudents(users, dependents, courses, classes, enrollments);
         const result = await useCase.exec({ cpf: '12345678903' });
 
         expect(result).toHaveLength(0);
@@ -251,9 +289,10 @@ describe('ListStudents use case', () => {
     it('throws when CPF format is invalid', async () => {
         const users = new InMemoryUserRepository();
         const dependents = new InMemoryDependentRepository();
+        const courses = new InMemoryCourseRepository();
         const classes = new InMemoryCourseClassRepository();
         const enrollments = new InMemoryEnrollmentRepository();
-        const useCase = new ListStudents(users, dependents, classes, enrollments);
+        const useCase = new ListStudents(users, dependents, courses, classes, enrollments);
 
         await expect(useCase.exec({ cpf: '123' })).rejects.toThrow('Invalid CPF');
     });
@@ -267,10 +306,11 @@ describe('ListStudents use case', () => {
         users.seed(studentB);
         users.assignStudentToSchool(studentA.id, 'school-1');
         users.assignStudentToSchool(studentB.id, 'school-2');
+        const courses = new InMemoryCourseRepository();
         const classes = new InMemoryCourseClassRepository();
         const enrollments = new InMemoryEnrollmentRepository();
 
-        const useCase = new ListStudents(users, dependents, classes, enrollments);
+        const useCase = new ListStudents(users, dependents, courses, classes, enrollments);
         const result = await useCase.exec({ schoolId: 'school-1' });
 
         expect(result).toHaveLength(1);
@@ -280,6 +320,7 @@ describe('ListStudents use case', () => {
     it('filters students by name fragment', async () => {
         const users = new InMemoryUserRepository();
         const dependents = new InMemoryDependentRepository();
+        const courses = new InMemoryCourseRepository();
         const classes = new InMemoryCourseClassRepository();
         const enrollments = new InMemoryEnrollmentRepository();
         const studentA = makeStudent('student-1', '12345678901', new Date('2024-01-01T10:00:00Z'));
@@ -287,7 +328,7 @@ describe('ListStudents use case', () => {
         users.seed(studentA);
         users.seed(studentB);
 
-        const useCase = new ListStudents(users, dependents, classes, enrollments);
+        const useCase = new ListStudents(users, dependents, courses, classes, enrollments);
         const result = await useCase.exec({ name: 'estudante' });
 
         expect(result).toHaveLength(1);
@@ -297,6 +338,7 @@ describe('ListStudents use case', () => {
     it('filters students by course enrollment', async () => {
         const users = new InMemoryUserRepository();
         const dependents = new InMemoryDependentRepository();
+        const courses = new InMemoryCourseRepository();
         const classes = new InMemoryCourseClassRepository();
         const enrollments = new InMemoryEnrollmentRepository();
         const studentA = makeStudent('student-1', '12345678901', new Date('2024-01-01T10:00:00Z'));
@@ -318,10 +360,65 @@ describe('ListStudents use case', () => {
             studentUserId: studentA.id
         }));
 
-        const useCase = new ListStudents(users, dependents, classes, enrollments);
+        const useCase = new ListStudents(users, dependents, courses, classes, enrollments);
         const result = await useCase.exec({ courseId: 'course-1' });
 
         expect(result).toHaveLength(1);
         expect(result[0].id).toBe(studentA.id);
+    });
+
+    it('enriches students with school context including courses, classes and categories', async () => {
+        const users = new InMemoryUserRepository();
+        const dependents = new InMemoryDependentRepository();
+        const courses = new InMemoryCourseRepository();
+        const classes = new InMemoryCourseClassRepository();
+        const enrollments = new InMemoryEnrollmentRepository();
+
+        const student = makeStudent('student-1', '12345678901', new Date('2024-01-01T10:00:00Z'));
+        users.seed(student);
+        users.assignStudentToSchool(student.id, 'school-1');
+
+        const course = Course.create({
+            id: 'course-1',
+            schoolId: 'school-1',
+            name: 'Curso de Inglês',
+            description: null,
+            categories: [
+                { categoryId: 'cat-1', subcategoryIds: ['sub-1'] },
+                { categoryId: 'cat-2', subcategoryIds: [] }
+            ],
+            createdAt: new Date('2024-01-05T10:00:00Z')
+        });
+        courses.seed(course);
+
+        const courseClass = CourseClass.create({
+            id: 'class-1',
+            courseId: course.id,
+            label: 'Turma A',
+            schedule: [{ day: 'Segunda', start: '08:00', end: '09:00' }]
+        });
+        classes.seed(courseClass);
+
+        enrollments.seed(Enrollment.createForUser({
+            id: 'enroll-1',
+            courseClassId: courseClass.id,
+            ownerUserId: student.id,
+            studentUserId: student.id
+        }));
+
+        const useCase = new ListStudents(users, dependents, courses, classes, enrollments);
+        const result = await useCase.exec({ schoolId: 'school-1' });
+
+        expect(result).toHaveLength(1);
+        const [summary] = result;
+        expect(summary.schoolContext).toEqual({
+            schoolId: 'school-1',
+            courses: [{ id: course.id, name: course.name }],
+            classes: [{ id: courseClass.id, label: courseClass.label, courseId: course.id }],
+            categories: [
+                { categoryId: 'cat-1', subcategoryIds: ['sub-1'] },
+                { categoryId: 'cat-2', subcategoryIds: [] }
+            ]
+        });
     });
 });

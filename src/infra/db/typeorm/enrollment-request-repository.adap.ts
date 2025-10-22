@@ -111,12 +111,14 @@ export class EnrollmentRequestRepositoryAdapter implements EnrollmentRequestRepo
             requestedForUserId: row.requestedForUserId,
             requestedForDependentId: row.requestedForDependentId,
             notes: row.notes,
+            discountCents: row.discountCents ?? null,
             createdAt: row.createdAt
         });
         (entity as any)._status = row.status;
         (entity as any)._decidedAt = row.decidedAt;
         (entity as any)._decidedByUserId = row.decidedByUserId;
         (entity as any)._notes = row.notes;
+        (entity as any)._discountCents = row.discountCents ?? null;
         (entity as any)._enrollmentId = row.enrollmentId;
         return entity;
     }
@@ -132,6 +134,7 @@ export class EnrollmentRequestRepositoryAdapter implements EnrollmentRequestRepo
         row.decidedAt = request.decidedAt;
         row.decidedByUserId = request.decidedByUserId;
         row.notes = request.notes ?? null;
+        row.discountCents = request.discountCents ?? null;
         row.enrollmentId = request.enrollmentId;
         row.createdAt = request.createdAt;
         return row;

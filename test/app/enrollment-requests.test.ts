@@ -241,6 +241,33 @@ describe('CreateEnrollmentRequest', () => {
         expect(result.requestedForDependentId).toBeNull();
     });
 
+    it('stores discount value when provided', async () => {
+        const schools = new InMemorySchools();
+        const courses = new InMemoryCourses();
+        const classes = new InMemoryClasses();
+        const users = new InMemoryUsers();
+        const dependents = new InMemoryDependents();
+        const enrollments = new InMemoryEnrollments();
+        const requests = new InMemoryRequests();
+
+        const { school, course, courseClass } = setupCourseStructure();
+        schools.seed(school);
+        courses.seed(course);
+        classes.seed(courseClass);
+        const user = makeUser('user-1');
+        users.seed(user);
+
+        const useCase = new CreateEnrollmentRequest(schools, courses, classes, users, dependents, enrollments, requests);
+        const result = await useCase.exec({
+            schoolId: school.id,
+            courseClassId: courseClass.id,
+            requestedForUserId: user.id,
+            discount: 150.75
+        });
+
+        expect(result.discountCents).toBe(15075);
+    });
+
     it('prevents duplicate enrollment requests and validations for dependents', async () => {
         const schools = new InMemorySchools();
         const courses = new InMemoryCourses();

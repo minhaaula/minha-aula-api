@@ -11,6 +11,7 @@ export class EnrollmentRequest {
         private _decidedAt: Date | null,
         private _decidedByUserId: string | null,
         private _notes: string | null,
+        private _discountCents: number | null,
         private _enrollmentId: string | null,
         public readonly createdAt: Date
     ) {}
@@ -22,6 +23,7 @@ export class EnrollmentRequest {
         requestedForUserId: string;
         requestedForDependentId?: string | null;
         notes?: string | null;
+        discountCents?: number | null;
         createdAt?: Date;
     }) {
         const schoolId = params.schoolId.trim();
@@ -32,6 +34,12 @@ export class EnrollmentRequest {
         }
         const requestedForDependentId = params.requestedForDependentId?.trim() || null;
         const notes = params.notes?.trim() || null;
+        const discountCents = params.discountCents ?? null;
+        if (discountCents !== null) {
+            if (!Number.isInteger(discountCents) || discountCents < 0) {
+                throw new Error('Enrollment request discount must be a non-negative integer');
+            }
+        }
         return new EnrollmentRequest(
             params.id,
             schoolId,
@@ -42,6 +50,7 @@ export class EnrollmentRequest {
             null,
             null,
             notes,
+            discountCents,
             null,
             params.createdAt ?? new Date()
         );
@@ -61,6 +70,10 @@ export class EnrollmentRequest {
 
     get notes() {
         return this._notes;
+    }
+
+    get discountCents() {
+        return this._discountCents;
     }
 
     get enrollmentId() {
