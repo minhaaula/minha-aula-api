@@ -1,6 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-const PASSWORD_HASH = 'b1a45f1c9d8e4f1b8cacbb16b6e0e337:3509e3a8e34eab5d21820aff3986fd52562bf740029d19966e67387c65d56a6d7e004b97305855329dd8614d16feca8ee10d11b96fb2d38f636d25f26ad3ca0e';
+const PASSWORD_HASH = 'b1a45f1c9d8e4f1b8cacbb16b6e0e337:2e07f75b342bff606fac2e124835c74b4aae3b55b37c56e0613e1093a7cce955afcc00dd8eb9c9a7b60f86194da09431ccba0eeea5f7914ac125af85d285572b';
 
 const USERS = [
     {
@@ -439,4 +439,3 @@ export class SeedDemoSchool1000000000021 implements MigrationInterface {
         }
     }
 }
-
