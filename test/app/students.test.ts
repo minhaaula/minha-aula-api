@@ -254,6 +254,46 @@ describe('ListStudents use case', () => {
         expect(result[0].dependents[0].id).toBe('dep-1');
     });
 
+    it('allows CPF search for school users when enrollment exists', async () => {
+        const users = new InMemoryUserRepository();
+        const dependents = new InMemoryDependentRepository();
+        const courses = new InMemoryCourseRepository();
+        const classes = new InMemoryCourseClassRepository();
+        const enrollments = new InMemoryEnrollmentRepository();
+
+        const student = makeStudent('student-1', '12345678901', new Date('2024-01-01T10:00:00Z'));
+        users.seed(student);
+
+        const course = Course.create({
+            id: 'course-1',
+            schoolId: 'school-1',
+            name: 'Curso Teste',
+            createdAt: new Date('2024-01-05T10:00:00Z')
+        });
+        courses.seed(course);
+
+        const courseClass = CourseClass.create({
+            id: 'class-1',
+            courseId: course.id,
+            label: 'Turma A',
+            schedule: [{ day: 'Segunda', start: '08:00', end: '09:00' }]
+        });
+        classes.seed(courseClass);
+
+        enrollments.seed(Enrollment.createForUser({
+            id: 'enroll-1',
+            courseClassId: courseClass.id,
+            ownerUserId: student.id,
+            studentUserId: student.id
+        }));
+
+        const useCase = new ListStudents(users, dependents, courses, classes, enrollments);
+        const result = await useCase.exec({ cpf: '12345678901', schoolId: 'school-1' });
+
+        expect(result).toHaveLength(1);
+        expect(result[0].id).toBe(student.id);
+    });
+
     it('returns empty array when CPF belongs to a non-student user', async () => {
         const users = new InMemoryUserRepository();
         const dependents = new InMemoryDependentRepository();

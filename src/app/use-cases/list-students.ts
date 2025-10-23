@@ -118,9 +118,17 @@ export class ListStudents {
     }
 
     private async studentBelongsToSchool(studentId: string, schoolId: string): Promise<boolean> {
-        if (!this.users.findBySchoolId) return false;
-        const students = await this.users.findBySchoolId(schoolId);
-        return students.some((student) => student.id === studentId);
+        if (!schoolId) return false;
+
+        if (typeof this.users.findBySchoolId === 'function') {
+            const students = await this.users.findBySchoolId(schoolId);
+            if (students.some((student) => student.id === studentId)) {
+                return true;
+            }
+        }
+
+        const activeStudentIds = await this.findActiveStudentIdsForSchool(schoolId);
+        return activeStudentIds.has(studentId);
     }
 
     private async enrichWithSchoolContext(
@@ -193,7 +201,10 @@ export class ListStudents {
         }
 
         for (const enrollment of enrollments) {
-            const builder = contextBuilders.get(enrollment.ownerUserId);
+            const studentId = enrollment.studentUserId;
+            if (!studentId) continue;
+
+            const builder = contextBuilders.get(studentId);
             if (!builder) continue;
 
             const courseClass = classById.get(enrollment.courseClassId);
@@ -248,5 +259,36 @@ export class ListStudents {
         }
 
         return result;
+    }
+
+    private async findActiveStudentIdsForSchool(schoolId: string): Promise<Set<string>> {
+        const courses = await this.courses.findBySchoolId(schoolId);
+        if (courses.length === 0) {
+            return new Set();
+        }
+
+        const courseIds = courses.map((course) => course.id);
+        if (courseIds.length === 0) {
+            return new Set();
+        }
+
+        const classes = await this.classes.findByCourseIds(courseIds);
+        if (classes.length === 0) {
+            return new Set();
+        }
+
+        const classIds = classes.map((courseClass) => courseClass.id);
+        if (classIds.length === 0) {
+            return new Set();
+        }
+
+        const enrollments = await this.enrollments.findActiveByClassIds(classIds);
+        const activeStudentIds = new Set<string>();
+        for (const enrollment of enrollments) {
+            if (enrollment.studentUserId) {
+                activeStudentIds.add(enrollment.studentUserId);
+            }
+        }
+        return activeStudentIds;
     }
 }
