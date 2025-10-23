@@ -9,6 +9,11 @@ export function studentsRouter(deps: { listStudents: ListStudents; }) {
     const r = Router();
 
     const canListStudents = requirePersona(UserPersonaEnum.ADMIN, UserPersonaEnum.SCHOOL);
+    const querySchema = z.object({
+        cpf: z.string().trim().min(1).optional(),
+        name: z.string().trim().min(1).optional(),
+        courseId: z.string().uuid().optional()
+    });
 
     r.get('/', canListStudents, async (req, res, next) => {
         try {
@@ -22,11 +27,6 @@ export function studentsRouter(deps: { listStudents: ListStudents; }) {
                 return res.status(403).json({ error: 'School context not found for user' });
             }
 
-            const querySchema = z.object({
-                cpf: z.string().trim().min(1).optional(),
-                name: z.string().trim().min(1).optional(),
-                courseId: z.string().uuid().optional()
-            });
             const parsedQuery = querySchema.parse({
                 cpf: typeof req.query.cpf === 'string' ? req.query.cpf : undefined,
                 name: typeof req.query.name === 'string' ? req.query.name : undefined,
@@ -38,6 +38,32 @@ export function studentsRouter(deps: { listStudents: ListStudents; }) {
                 name: parsedQuery.name,
                 courseId: parsedQuery.courseId,
                 schoolId
+            });
+            res.json({ students });
+        } catch (err) {
+            next(err);
+        }
+    });
+
+    r.get('/directory', canListStudents, async (req, res, next) => {
+        try {
+            const authReq = req as AuthenticatedRequest;
+            const persona = authReq.user?.persona;
+
+            if (persona === UserPersonaEnum.SCHOOL && typeof authReq.user?.schoolId !== 'string') {
+                return res.status(403).json({ error: 'School context not found for user' });
+            }
+
+            const parsedQuery = querySchema.parse({
+                cpf: typeof req.query.cpf === 'string' ? req.query.cpf : undefined,
+                name: typeof req.query.name === 'string' ? req.query.name : undefined,
+                courseId: typeof req.query.courseId === 'string' ? req.query.courseId : undefined
+            });
+
+            const students = await deps.listStudents.exec({
+                cpf: parsedQuery.cpf,
+                name: parsedQuery.name,
+                courseId: parsedQuery.courseId
             });
             res.json({ students });
         } catch (err) {
