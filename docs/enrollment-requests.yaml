@@ -58,7 +58,7 @@ paths:
           description: Quantidade de registros a pular para paginação.
       responses:
         '200':
-          description: Solicitações encontradas.
+          description: Solicitações encontradas. Inclui identificadores, labels de curso/turma e nomes do aluno ou dependente.
           content:
             application/json:
               schema:
@@ -131,7 +131,7 @@ paths:
           description: Quantidade de registros a pular para paginação.
       responses:
         '200':
-          description: Solicitações encontradas.
+          description: Solicitações encontradas. Inclui identificadores, labels de curso/turma e nomes do aluno ou dependente.
           content:
             application/json:
               schema:
@@ -148,7 +148,7 @@ paths:
       tags:
         - Enrollment Requests
       summary: Criar uma solicitação de matrícula
-      description: Identificador da escola é inferido do usuário autenticado. Usuários ADMIN podem informar `schoolId` no payload para agir em nome de outra escola.
+      description: Identificador da escola é inferido do usuário autenticado.
       security:
         - bearerAuth: []
       parameters:

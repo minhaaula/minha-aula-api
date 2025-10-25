@@ -1367,10 +1367,6 @@ components:
       required:
         - requestedForUserId
       properties:
-        schoolId:
-          type: string
-          format: uuid
-          description: Obrigatório apenas para usuários ADMIN.
         requestedForUserId:
           type: string
           format: uuid
@@ -1423,6 +1419,7 @@ components:
           maxLength: 255
         discont:
           type: number
+          format: double
           nullable: true
           description: Valor do desconto aplicado em reais (R$).
         enrollmentId:
@@ -1432,6 +1429,21 @@ components:
         createdAt:
           type: string
           format: date-time
+        courseLabel:
+          type: string
+          nullable: true
+          description: Nome do curso vinculado à solicitação.
+        courseClassLabel:
+          type: string
+          nullable: true
+          description: Rótulo da turma vinculada à solicitação.
+        studentName:
+          type: string
+          description: Nome completo do aluno titular da solicitação.
+        dependentName:
+          type: string
+          nullable: true
+          description: Nome completo do dependente, quando aplicável.
       required:
         - id
         - status

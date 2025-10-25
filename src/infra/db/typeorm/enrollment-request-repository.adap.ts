@@ -1,5 +1,8 @@
 import { AppDataSource } from './datasource';
-import { EnrollmentRequestRepository } from '../../../ports/repositories/enrollment-request.repo';
+import {
+    EnrollmentRequestRepository,
+    EnrollmentRequestWithDetails
+} from '../../../ports/repositories/enrollment-request.repo';
 import { EnrollmentRequest, EnrollmentRequestStatus } from '../../../domain/entities/enrollment-request';
 import { EnrollmentRequestOrm } from './entities/enrollment-request.orm';
 
@@ -36,24 +39,13 @@ export class EnrollmentRequestRepositoryAdapter implements EnrollmentRequestRepo
         studentDocument?: string;
         limit?: number;
         offset?: number;
-    }): Promise<EnrollmentRequest[]> {
-        const qb = this.repo.createQueryBuilder('request');
-        let courseClassJoined = false;
-        let studentJoined = false;
-
-        const ensureCourseClassJoin = () => {
-            if (!courseClassJoined) {
-                qb.innerJoin('request.courseClass', 'courseClass');
-                courseClassJoined = true;
-            }
-        };
-
-        const ensureStudentJoin = () => {
-            if (!studentJoined) {
-                qb.innerJoin('request.requestedFor', 'student');
-                studentJoined = true;
-            }
-        };
+    }): Promise<EnrollmentRequestWithDetails[]> {
+        const qb = this.repo
+            .createQueryBuilder('request')
+            .innerJoinAndSelect('request.courseClass', 'courseClass')
+            .innerJoinAndSelect('courseClass.course', 'course')
+            .innerJoinAndSelect('request.requestedFor', 'student')
+            .leftJoinAndSelect('request.dependent', 'dependent');
 
         if (params.schoolId) {
             qb.andWhere('request.schoolId = :schoolId', { schoolId: params.schoolId });
@@ -68,7 +60,6 @@ export class EnrollmentRequestRepositoryAdapter implements EnrollmentRequestRepo
         }
 
         if (params.courseId) {
-            ensureCourseClassJoin();
             qb.andWhere('courseClass.courseId = :courseId', { courseId: params.courseId });
         }
 
@@ -83,7 +74,6 @@ export class EnrollmentRequestRepositoryAdapter implements EnrollmentRequestRepo
         }
 
         if (params.studentDocument) {
-            ensureStudentJoin();
             qb.andWhere('student.cpf = :studentDocument', { studentDocument: params.studentDocument });
         }
 
@@ -96,7 +86,13 @@ export class EnrollmentRequestRepositoryAdapter implements EnrollmentRequestRepo
         }
 
         const rows = await qb.getMany();
-        return rows.map((row) => this.toDomain(row));
+        return rows.map((row) => ({
+            request: this.toDomain(row),
+            courseClassLabel: row.courseClass?.label ?? null,
+            courseLabel: row.courseClass?.course?.name ?? null,
+            studentName: row.requestedFor.fullName,
+            dependentName: row.dependent?.fullName ?? null
+        }));
     }
 
     async save(request: EnrollmentRequest): Promise<void> {

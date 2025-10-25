@@ -7,7 +7,8 @@ import { GetEnrollmentRequest } from '../../../app/use-cases/get-enrollment-requ
 import { AuthenticatedRequest } from '../middlewares/auth';
 import { requirePersona } from '../middlewares/require-persona';
 import { UserPersonaEnum } from '../../../domain/value-objects/user-persona';
-import { EnrollmentRequest } from '../../../domain/entities/enrollment-request';
+import type { EnrollmentRequest } from '../../../domain/entities/enrollment-request';
+import type { EnrollmentRequestWithDetails } from '../../../ports/repositories/enrollment-request.repo';
 
 export function enrollmentRequestsRouter(deps: {
     createEnrollmentRequest: CreateEnrollmentRequest;
@@ -19,20 +20,29 @@ export function enrollmentRequestsRouter(deps: {
 
     const canManageRequests = requirePersona(UserPersonaEnum.ADMIN, UserPersonaEnum.SCHOOL);
 
-    const serializeEnrollmentRequest = (request: EnrollmentRequest) => ({
-        id: request.id,
-        status: request.status,
-        schoolId: request.schoolId,
-        courseClassId: request.courseClassId,
-        requestedForUserId: request.requestedForUserId,
-        requestedForDependentId: request.requestedForDependentId,
-        decidedAt: request.decidedAt,
-        decidedByUserId: request.decidedByUserId,
-        notes: request.notes,
-        discont: request.discountCents !== null ? request.discountCents / 100 : null,
-        enrollmentId: request.enrollmentId,
-        createdAt: request.createdAt
-    });
+    type SerializableRequest = EnrollmentRequest | EnrollmentRequestWithDetails;
+
+    const serializeEnrollmentRequest = (item: SerializableRequest) => {
+        const request = 'request' in item ? item.request : item;
+        return {
+            id: request.id,
+            status: request.status,
+            schoolId: request.schoolId,
+            courseClassId: request.courseClassId,
+            requestedForUserId: request.requestedForUserId,
+            requestedForDependentId: request.requestedForDependentId,
+            decidedAt: request.decidedAt,
+            decidedByUserId: request.decidedByUserId,
+            notes: request.notes,
+            discont: request.discountCents !== null ? request.discountCents / 100 : null,
+            enrollmentId: request.enrollmentId,
+            createdAt: request.createdAt,
+            courseLabel: 'request' in item ? item.courseLabel : null,
+            courseClassLabel: 'request' in item ? item.courseClassLabel : null,
+            studentName: 'request' in item ? item.studentName : null,
+            dependentName: 'request' in item ? item.dependentName : null
+        };
+    };
 
     r.get('/schools', canManageRequests, async (req, res, next) => {
         try {

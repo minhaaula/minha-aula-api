@@ -1,5 +1,8 @@
-import { EnrollmentRequest, EnrollmentRequestStatus } from '../../domain/entities/enrollment-request';
-import { EnrollmentRequestRepository } from '../../ports/repositories/enrollment-request.repo';
+import { EnrollmentRequestStatus } from '../../domain/entities/enrollment-request';
+import {
+    EnrollmentRequestRepository,
+    EnrollmentRequestWithDetails
+} from '../../ports/repositories/enrollment-request.repo';
 
 export class ListEnrollmentRequests {
     constructor(private readonly requests: EnrollmentRequestRepository) {}
@@ -14,7 +17,7 @@ export class ListEnrollmentRequests {
         studentDocument?: string;
         limit?: number;
         offset?: number;
-    }): Promise<EnrollmentRequest[]> {
+    }): Promise<EnrollmentRequestWithDetails[]> {
         const schoolId = params.schoolId.trim();
         if (!schoolId) {
             throw new Error('Invalid enrollment request filters');

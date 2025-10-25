@@ -45,7 +45,7 @@ export function studentsRouter(deps: { listStudents: ListStudents; }) {
         }
     });
 
-    r.get('/directory', canListStudents, async (req, res, next) => {
+    r.get('/directory/:cpf', canListStudents, async (req, res, next) => {
         try {
             const authReq = req as AuthenticatedRequest;
             const persona = authReq.user?.persona;
@@ -54,18 +54,13 @@ export function studentsRouter(deps: { listStudents: ListStudents; }) {
                 return res.status(403).json({ error: 'School context not found for user' });
             }
 
-            const parsedQuery = querySchema.parse({
-                cpf: typeof req.query.cpf === 'string' ? req.query.cpf : undefined,
-                name: typeof req.query.name === 'string' ? req.query.name : undefined,
-                courseId: typeof req.query.courseId === 'string' ? req.query.courseId : undefined
-            });
+            const paramsSchema = z.object({ cpf: z.string().trim().min(1) });
+            const { cpf } = paramsSchema.parse(req.params);
 
             const students = await deps.listStudents.exec({
-                cpf: parsedQuery.cpf,
-                name: parsedQuery.name,
-                courseId: parsedQuery.courseId
+                cpf
             });
-            res.json({ students });
+            res.json({ students: students.length > 0 ? [students[0]] : [] });
         } catch (err) {
             next(err);
         }

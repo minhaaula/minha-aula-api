@@ -42,39 +42,25 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-  /students/directory:
+  /students/directory/{cpf}:
     get:
       tags:
         - Students
       summary: Listar alunos para convites
-      description: Permite ADMIN ou SCHOOL pesquisarem qualquer aluno na base para iniciar convites, sem restringir por escola. Aplica os mesmos filtros disponíveis em `/students`.
+      description: Permite ADMIN ou SCHOOL pesquisarem qualquer aluno na base para iniciar convites, sem restringir por escola. Retorna, no máximo, uma ocorrência.
       security:
         - bearerAuth: []
       parameters:
-        - in: query
+        - in: path
           name: cpf
-          required: false
+          required: true
           schema:
             type: string
             example: '12345678909'
-          description: Filtrar pelo CPF de um aluno específico.
-        - in: query
-          name: name
-          required: false
-          schema:
-            type: string
-            example: Maria
-          description: Filtrar alunos cujo nome contenha o valor informado (case insensitive).
-        - in: query
-          name: courseId
-          required: false
-          schema:
-            type: string
-            format: uuid
-          description: Filtrar alunos com matrícula ativa em turmas do curso informado.
+          description: CPF do aluno a ser localizado.
       responses:
         '200':
-          description: Lista de alunos cadastrados.
+          description: Lista contendo zero ou um aluno encontrado.
           content:
             application/json:
               schema:

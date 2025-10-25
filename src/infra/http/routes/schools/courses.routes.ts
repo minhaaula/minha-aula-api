@@ -29,6 +29,7 @@ import type { SchoolRouteGuards } from './guards';
 import type { SchoolContextRequest } from '../../middlewares/resolve-school-context';
 import { mapCourseCategories } from './transformers';
 import type { EnrollmentRequest } from '../../../../domain/entities/enrollment-request';
+import type { EnrollmentRequestWithDetails } from '../../../../ports/repositories/enrollment-request.repo';
 
 type CoursesRoutesDeps = {
     createCourse: CreateCourse;
@@ -56,19 +57,28 @@ export function buildCoursesRoutes(deps: CoursesRoutesDeps, guards: SchoolRouteG
         guards.resolveSchoolContext
     ] as const;
 
-    const serializeEnrollmentRequest = (request: EnrollmentRequest) => ({
-        id: request.id,
-        status: request.status,
-        schoolId: request.schoolId,
-        courseClassId: request.courseClassId,
-        requestedForUserId: request.requestedForUserId,
-        requestedForDependentId: request.requestedForDependentId,
-        decidedAt: request.decidedAt,
-        decidedByUserId: request.decidedByUserId,
-        notes: request.notes,
-        enrollmentId: request.enrollmentId,
-        createdAt: request.createdAt
-    });
+    type SerializableRequest = EnrollmentRequest | EnrollmentRequestWithDetails;
+
+    const serializeEnrollmentRequest = (item: SerializableRequest) => {
+        const request = 'request' in item ? item.request : item;
+        return {
+            id: request.id,
+            status: request.status,
+            schoolId: request.schoolId,
+            courseClassId: request.courseClassId,
+            requestedForUserId: request.requestedForUserId,
+            requestedForDependentId: request.requestedForDependentId,
+            decidedAt: request.decidedAt,
+            decidedByUserId: request.decidedByUserId,
+            notes: request.notes,
+            enrollmentId: request.enrollmentId,
+            createdAt: request.createdAt,
+            courseLabel: 'request' in item ? item.courseLabel : null,
+            courseClassLabel: 'request' in item ? item.courseClassLabel : null,
+            studentName: 'request' in item ? item.studentName : null,
+            dependentName: 'request' in item ? item.dependentName : null
+        };
+    };
 
     if (deps.listSchoolCourses) {
         router.get('/', ...protectedMiddleware, asyncHandler(async (req, res) => {
