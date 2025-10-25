@@ -42,6 +42,7 @@ import { asaasWebhookRouter } from '../../infra/http/routes/webhooks/asaas.route
 import { ListSchoolPlanInvoices } from '../../app/use-cases/list-school-plan-invoices';
 import { EnrollmentRepositoryAdapter } from '../../infra/db/typeorm/enrollment-repository.adap';
 import { EnrollmentRequestRepositoryAdapter } from '../../infra/db/typeorm/enrollment-request-repository.adap';
+import { SchoolFinancialChargeRepositoryAdapter } from '../../infra/db/typeorm/school-financial-charge-repository.adap';
 import { EnrollStudent } from '../../app/use-cases/enroll-student';
 import { DeleteCourseClass } from '../../app/use-cases/delete-course-class';
 import { ListSchoolStudents } from '../../app/use-cases/list-school-students';
@@ -50,6 +51,7 @@ import { ListEnrollmentRequests } from '../../app/use-cases/list-enrollment-requ
 import { CreateEnrollmentRequest } from '../../app/use-cases/create-enrollment-request';
 import { ApproveEnrollmentRequest } from '../../app/use-cases/approve-enrollment-request';
 import { GetEnrollmentRequest } from '../../app/use-cases/get-enrollment-request';
+import { CreateSchoolCharge } from '../../app/use-cases/create-school-charge';
 
 export type SchoolsModuleDeps = {
     schoolsRepo: SchoolRepositoryAdapter;
@@ -59,6 +61,7 @@ export type SchoolsModuleDeps = {
     dependentsRepo: DependentRepositoryAdapter;
     enrollmentsRepo: EnrollmentRepositoryAdapter;
     enrollmentRequestsRepo: EnrollmentRequestRepositoryAdapter;
+    financialChargesRepo: SchoolFinancialChargeRepositoryAdapter;
     subscriptionPlansRepo: SubscriptionPlanRepositoryAdapter;
     categoriesRepo: CategoryRepositoryAdapter;
     planFinancesRepo: SchoolPlanFinanceRepositoryAdapter;
@@ -111,6 +114,13 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, _ctx: ModuleSetupCon
     );
     const approveEnrollmentRequest = new ApproveEnrollmentRequest(deps.enrollmentRequestsRepo, deps.enrollmentsRepo);
     const getEnrollmentRequest = new GetEnrollmentRequest(deps.enrollmentRequestsRepo);
+    const createSchoolCharge = new CreateSchoolCharge(
+        deps.financialChargesRepo,
+        deps.coursesRepo,
+        deps.classesRepo,
+        deps.usersRepo,
+        deps.dependentsRepo
+    );
     const scheduleClassSession = new ScheduleClassSession(deps.classSessionsRepo, deps.classesRepo, deps.coursesRepo);
     const listClassSessions = new ListClassSessions(deps.classSessionsRepo, deps.classesRepo, deps.coursesRepo);
     const cancelClassSession = new CancelClassSession(deps.classSessionsRepo);
@@ -170,6 +180,7 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, _ctx: ModuleSetupCon
             approveEnrollmentRequest,
             listEnrollmentRequests,
             getEnrollmentRequest,
+            createSchoolCharge,
             scheduleClassSession,
             listClassSessions,
             cancelClassSession,

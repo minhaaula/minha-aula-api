@@ -101,6 +101,45 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /schools/finance/charges:
+    post:
+      tags:
+        - Schools
+      summary: Criar cobrança financeira para aluno
+      description: Registra uma cobrança para um aluno ou dependente da escola, vinculando-a ao curso e opcionalmente à turma correspondente.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSchoolChargeInput'
+      responses:
+        '201':
+          description: Cobrança registrada com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchoolChargeResponse'
+        '400':
+          description: Dados inválidos para geração da cobrança.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário autenticado sem permissão para a escola informada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Aluno, dependente ou curso não encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /schools/courses:
     get:
       tags:

@@ -732,6 +732,147 @@ components:
             $ref: '#/components/schemas/SchoolPlanInvoice'
       required:
         - invoices
+    CreateSchoolChargeInput:
+      type: object
+      description: Pelo menos um entre `studentUserId` ou `dependentId` deve ser informado.
+      required:
+        - courseId
+        - chargeType
+        - amount
+        - dueDate
+      properties:
+        studentUserId:
+          type: string
+          format: uuid
+          nullable: true
+        dependentId:
+          type: string
+          format: uuid
+          nullable: true
+        courseId:
+          type: string
+          format: uuid
+        courseClassId:
+          type: string
+          format: uuid
+          nullable: true
+        chargeType:
+          type: string
+          enum: [TUITION, ENROLLMENT, MATERIALS, DAILY, OTHER]
+        description:
+          type: string
+          maxLength: 255
+          nullable: true
+        amount:
+          type: number
+          format: double
+          minimum: 0.01
+        discount:
+          type: object
+          nullable: true
+          required:
+            - amount
+          properties:
+            amount:
+              type: number
+              format: double
+              minimum: 0.01
+            reason:
+              type: string
+              maxLength: 255
+              nullable: true
+        dueDate:
+          type: string
+          format: date
+    SchoolCharge:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        schoolId:
+          type: string
+          format: uuid
+        ownerUserId:
+          type: string
+          format: uuid
+        studentUserId:
+          type: string
+          format: uuid
+          nullable: true
+        dependentId:
+          type: string
+          format: uuid
+          nullable: true
+        courseId:
+          type: string
+          format: uuid
+        courseClassId:
+          type: string
+          format: uuid
+          nullable: true
+        chargeType:
+          type: string
+          enum: [TUITION, ENROLLMENT, MATERIALS, DAILY, OTHER]
+        description:
+          type: string
+          nullable: true
+        amount:
+          type: number
+          format: double
+        discount:
+          type: object
+          nullable: true
+          properties:
+            amount:
+              type: number
+              format: double
+            reason:
+              type: string
+              nullable: true
+          required:
+            - amount
+        netAmount:
+          type: number
+          format: double
+        dueDate:
+          type: string
+          format: date
+        status:
+          type: string
+          enum: [PENDING_SYNC, OPEN, PAID, OVERDUE, CANCELLED, FAILED]
+        asaasPaymentId:
+          type: string
+          nullable: true
+        asaasInvoiceUrl:
+          type: string
+          format: uri
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - schoolId
+        - ownerUserId
+        - courseId
+        - chargeType
+        - amount
+        - netAmount
+        - dueDate
+        - status
+        - createdAt
+        - updatedAt
+    SchoolChargeResponse:
+      type: object
+      properties:
+        charge:
+          $ref: '#/components/schemas/SchoolCharge'
+      required:
+        - charge
     SubscriptionPlanListResponse:
       type: object
       properties:

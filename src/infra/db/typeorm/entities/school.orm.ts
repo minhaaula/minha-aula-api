@@ -6,6 +6,7 @@ import { SchoolAddressOrm } from './school-address.orm';
 import { UserOrm } from './user.orm';
 import { ClassSessionOrm } from './class-session.orm';
 import { SchoolPlanFinanceOrm } from './school-plan-finance.orm';
+import { SchoolFinancialChargeOrm } from './school-financial-charge.orm';
 
 @Entity('schools')
 export class SchoolOrm {
@@ -65,4 +66,7 @@ export class SchoolOrm {
 
     @OneToOne(() => SchoolPlanFinanceOrm, (finance) => finance.school, { cascade: ['insert', 'update'] })
     planFinance?: SchoolPlanFinanceOrm | null;
+
+    @OneToMany(() => SchoolFinancialChargeOrm, (charge) => charge.school)
+    financialCharges!: SchoolFinancialChargeOrm[];
 }

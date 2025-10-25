@@ -21,6 +21,7 @@ import { CourseCategorySubcategoryOrm } from './entities/course-category-subcate
 import { SubscriptionPlanOrm } from './entities/subscription-plan.orm';
 import { SchoolPlanFinanceOrm } from './entities/school-plan-finance.orm';
 import { SchoolPlanInvoiceOrm } from './entities/school-plan-invoice.orm';
+import { SchoolFinancialChargeOrm } from './entities/school-financial-charge.orm';
 
 export const AppDataSource = new DataSource({
     type: 'mysql',
@@ -49,7 +50,8 @@ export const AppDataSource = new DataSource({
         EnrollmentRequestOrm,
         SubscriptionPlanOrm,
         SchoolPlanFinanceOrm,
-        SchoolPlanInvoiceOrm
+        SchoolPlanInvoiceOrm,
+        SchoolFinancialChargeOrm
     ],
     synchronize: false,
     migrations: ['dist/infra/db/typeorm/migrations/*.js'],

@@ -25,6 +25,7 @@ import type { EnrollStudent } from '../../../app/use-cases/enroll-student';
 import type { ListEnrollmentRequests } from '../../../app/use-cases/list-enrollment-requests';
 import type { DeleteCourse } from '../../../app/use-cases/delete-course';
 import type { DeleteCourseClass } from '../../../app/use-cases/delete-course-class';
+import type { CreateSchoolCharge } from '../../../app/use-cases/create-school-charge';
 import { requirePersona } from '../middlewares/require-persona';
 import { UserPersonaEnum } from '../../../domain/value-objects/user-persona';
 import type { SchoolRepository } from '../../../ports/repositories/school.repo';
@@ -34,6 +35,7 @@ import { buildPlansRoutes } from './schools/plans.routes';
 import { buildCoursesRoutes } from './schools/courses.routes';
 import { buildStudentsRoutes } from './schools/students.routes';
 import { buildSessionsRoutes } from './schools/sessions.routes';
+import { buildFinanceRoutes } from './schools/finance.routes';
 import type { SchoolRouteGuards } from './schools/guards';
 import { makeResolveSchoolContextMiddleware } from '../middlewares/resolve-school-context';
 
@@ -66,6 +68,7 @@ export type SchoolsRouterDeps = {
     listEnrollmentRequests?: ListEnrollmentRequests;
     authMiddleware?: RequestHandler;
     schoolsRepo?: SchoolRepository;
+    createSchoolCharge?: CreateSchoolCharge;
 };
 
 export function schoolsRouter(deps: SchoolsRouterDeps) {
@@ -97,6 +100,12 @@ export function schoolsRouter(deps: SchoolsRouterDeps) {
         issueSchoolPlanInvoice: deps.issueSchoolPlanInvoice,
         listSchoolPlanInvoices: deps.listSchoolPlanInvoices
     }, guards));
+
+    if (deps.createSchoolCharge) {
+        router.use('/finance', buildFinanceRoutes({
+            createSchoolCharge: deps.createSchoolCharge
+        }, guards));
+    }
 
     if (deps.listSchoolStudents) {
         router.use('/students', buildStudentsRoutes({

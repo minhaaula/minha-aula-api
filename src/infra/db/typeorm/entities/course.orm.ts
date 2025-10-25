@@ -3,6 +3,7 @@ import { SchoolOrm } from './school.orm';
 import { CourseClassOrm } from './course-class.orm';
 import { CourseCategoryOrm } from './course-category.orm';
 import { CourseCategorySubcategoryOrm } from './course-category-subcategory.orm';
+import { SchoolFinancialChargeOrm } from './school-financial-charge.orm';
 
 @Entity('courses')
 @Index('idx_courses_school', ['schoolId'])
@@ -36,4 +37,7 @@ export class CourseOrm {
 
     @OneToMany(() => CourseCategorySubcategoryOrm, (link) => link.courseCategory)
     categorySubcategories!: CourseCategorySubcategoryOrm[];
+
+    @OneToMany(() => SchoolFinancialChargeOrm, (charge) => charge.course)
+    financialCharges!: SchoolFinancialChargeOrm[];
 }

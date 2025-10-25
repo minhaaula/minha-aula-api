@@ -8,6 +8,7 @@ import { SchoolRepositoryAdapter } from '../infra/db/typeorm/school-repository.a
 import { CourseRepositoryAdapter } from '../infra/db/typeorm/course-repository.adap';
 import { CourseClassRepositoryAdapter } from '../infra/db/typeorm/course-class-repository.adap';
 import { DependentRepositoryAdapter } from '../infra/db/typeorm/dependent-repository.adap';
+import { SchoolFinancialChargeRepositoryAdapter } from '../infra/db/typeorm/school-financial-charge-repository.adap';
 import { EnrollmentRepositoryAdapter } from '../infra/db/typeorm/enrollment-repository.adap';
 import { EnrollmentRequestRepositoryAdapter } from '../infra/db/typeorm/enrollment-request-repository.adap';
 import { ClassSessionRepositoryAdapter } from '../infra/db/typeorm/class-session-repository.adap';
@@ -67,6 +68,7 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
     const subscriptionPlansRepo = new SubscriptionPlanRepositoryAdapter();
     const categoriesRepo = new CategoryRepositoryAdapter();
     const dependentsRepo = new DependentRepositoryAdapter();
+    const financialChargesRepo = new SchoolFinancialChargeRepositoryAdapter();
     const classSessionsRepo = new ClassSessionRepositoryAdapter();
     const enrollmentsRepo = new EnrollmentRepositoryAdapter();
     const enrollmentRequestsRepo = new EnrollmentRequestRepositoryAdapter();
@@ -144,7 +146,8 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
                     passwordHasher,
                     tokenProvider,
                     tokenTtl,
-                    paymentProvider
+                    paymentProvider,
+                    financialChargesRepo
                 }, ctx);
                 mergeModuleResult(serverDeps, docFiles, result);
                 break;

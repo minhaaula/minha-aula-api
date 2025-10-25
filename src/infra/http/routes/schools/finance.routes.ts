@@ -1,0 +1,118 @@
+import { Router } from 'express';
+import { z } from 'zod';
+import { asyncHandler } from '../../utils/async-handler';
+import type { CreateSchoolCharge } from '../../../../app/use-cases/create-school-charge';
+import type { SchoolRouteGuards } from './guards';
+import type { SchoolContextRequest } from '../../middlewares/resolve-school-context';
+import type { SchoolFinancialCharge } from '../../../../domain/entities/school-financial-charge';
+
+const chargeTypes = ['TUITION', 'ENROLLMENT', 'MATERIALS', 'DAILY', 'OTHER'] as const;
+
+const createChargeSchema = z.object({
+    studentUserId: z.string().uuid().optional(),
+    dependentId: z.string().uuid().optional(),
+    courseId: z.string().uuid(),
+    courseClassId: z.string().uuid().optional(),
+    chargeType: z.enum(chargeTypes),
+    description: z.string().trim().max(255).optional(),
+    amount: z.number().positive(),
+    discount: z.object({
+        amount: z.number().positive(),
+        reason: z.string().trim().max(255).optional()
+    }).optional(),
+    dueDate: z.coerce.date()
+}).superRefine((data, ctx) => {
+    if (!data.studentUserId && !data.dependentId) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['studentUserId'],
+            message: 'Informe o aluno ou dependente para a cobrança'
+        });
+    }
+    if (data.discount && data.discount.amount >= data.amount) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['discount', 'amount'],
+            message: 'O desconto deve ser menor que o valor da cobrança'
+        });
+    }
+    if (data.discount?.reason && !data.discount?.amount) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['discount', 'reason'],
+            message: 'Informe o valor do desconto'
+        });
+    }
+});
+
+const toCents = (value: number) => Math.round(value * 100);
+const toCurrency = (valueInCents: number) => Number((valueInCents / 100).toFixed(2));
+const formatDate = (date: Date) => date.toISOString().split('T')[0];
+
+type FinanceRoutesDeps = {
+    createSchoolCharge: CreateSchoolCharge;
+};
+
+export function buildFinanceRoutes(deps: FinanceRoutesDeps, guards: SchoolRouteGuards) {
+    const router = Router();
+
+    const protectedMiddleware = [
+        guards.requireAuth,
+        guards.requireSchoolPersona,
+        guards.resolveSchoolContext
+    ] as const;
+
+    router.post('/charges', ...protectedMiddleware, asyncHandler(async (req, res) => {
+        const schoolId = (req as SchoolContextRequest).schoolId as string;
+        const body = createChargeSchema.parse(req.body ?? {});
+
+        const amountCents = toCents(body.amount);
+        const discountCents = body.discount ? toCents(body.discount.amount) : null;
+
+        const charge = await deps.createSchoolCharge.exec({
+            schoolId,
+            courseId: body.courseId,
+            courseClassId: body.courseClassId ?? null,
+            studentUserId: body.studentUserId ?? null,
+            dependentId: body.dependentId ?? null,
+            chargeType: body.chargeType,
+            description: body.description ?? null,
+            amountCents,
+            discountCents,
+            discountReason: body.discount?.reason ?? null,
+            dueDate: body.dueDate
+        });
+
+        res.status(201).json({ charge: serializeCharge(charge) });
+    }));
+
+    return router;
+}
+
+function serializeCharge(charge: SchoolFinancialCharge) {
+    return {
+        id: charge.id,
+        schoolId: charge.schoolId,
+        ownerUserId: charge.ownerUserId,
+        studentUserId: charge.studentUserId,
+        dependentId: charge.dependentId,
+        courseId: charge.courseId,
+        courseClassId: charge.courseClassId,
+        chargeType: charge.chargeType,
+        description: charge.description,
+        amount: toCurrency(charge.amountCents),
+        discount: charge.discountCents !== null
+            ? {
+                amount: toCurrency(charge.discountCents),
+                reason: charge.discountReason
+            }
+            : null,
+        netAmount: toCurrency(charge.netAmountCents),
+        dueDate: formatDate(charge.dueDate),
+        status: charge.status,
+        asaasPaymentId: charge.asaasPaymentId,
+        asaasInvoiceUrl: charge.asaasInvoiceUrl,
+        createdAt: charge.createdAt.toISOString(),
+        updatedAt: charge.updatedAt.toISOString()
+    };
+}
