@@ -12,6 +12,9 @@ export class EnrollmentRequest {
         private _decidedByUserId: string | null,
         private _notes: string | null,
         private _discountCents: number | null,
+        private _enrollmentFeeCents: number | null,
+        private _enrollmentFeeDueDate: Date | null,
+        private _firstMonthlyPaymentDate: Date,
         private _enrollmentId: string | null,
         public readonly createdAt: Date
     ) {}
@@ -24,6 +27,9 @@ export class EnrollmentRequest {
         requestedForDependentId?: string | null;
         notes?: string | null;
         discountCents?: number | null;
+        enrollmentFeeCents?: number | null;
+        enrollmentFeeDueDate?: Date | null;
+        firstMonthlyPaymentDate: Date;
         createdAt?: Date;
     }) {
         const schoolId = params.schoolId.trim();
@@ -40,6 +46,35 @@ export class EnrollmentRequest {
                 throw new Error('Enrollment request discount must be a non-negative integer');
             }
         }
+        const enrollmentFeeCents = params.enrollmentFeeCents ?? null;
+        if (enrollmentFeeCents !== null) {
+            if (!Number.isInteger(enrollmentFeeCents) || enrollmentFeeCents < 0) {
+                throw new Error('Enrollment request fee must be a non-negative integer');
+            }
+        }
+        let enrollmentFeeDueDate: Date | null = null;
+        if (params.enrollmentFeeDueDate) {
+            const dueDate = new Date(params.enrollmentFeeDueDate);
+            if (Number.isNaN(dueDate.getTime())) {
+                throw new Error('Invalid enrollment fee due date');
+            }
+            enrollmentFeeDueDate = new Date(Date.UTC(dueDate.getUTCFullYear(), dueDate.getUTCMonth(), dueDate.getUTCDate()));
+            if (enrollmentFeeCents === null) {
+                throw new Error('Enrollment fee due date requires a fee amount');
+            }
+        }
+        const firstMonthlyPaymentDate = new Date(params.firstMonthlyPaymentDate);
+        if (Number.isNaN(firstMonthlyPaymentDate.getTime())) {
+            throw new Error('Invalid first monthly payment date');
+        }
+        const normalizedFirstMonthlyPaymentDate = new Date(
+            Date.UTC(
+                firstMonthlyPaymentDate.getUTCFullYear(),
+                firstMonthlyPaymentDate.getUTCMonth(),
+                firstMonthlyPaymentDate.getUTCDate()
+            )
+        );
+
         return new EnrollmentRequest(
             params.id,
             schoolId,
@@ -51,6 +86,9 @@ export class EnrollmentRequest {
             null,
             notes,
             discountCents,
+            enrollmentFeeCents,
+            enrollmentFeeDueDate,
+            normalizedFirstMonthlyPaymentDate,
             null,
             params.createdAt ?? new Date()
         );
@@ -74,6 +112,18 @@ export class EnrollmentRequest {
 
     get discountCents() {
         return this._discountCents;
+    }
+
+    get enrollmentFeeCents() {
+        return this._enrollmentFeeCents;
+    }
+
+    get enrollmentFeeDueDate() {
+        return this._enrollmentFeeDueDate;
+    }
+
+    get firstMonthlyPaymentDate() {
+        return this._firstMonthlyPaymentDate;
     }
 
     get enrollmentId() {

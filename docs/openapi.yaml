@@ -1507,6 +1507,7 @@ components:
       type: object
       required:
         - requestedForUserId
+        - firstMonthlyPaymentDate
       properties:
         requestedForUserId:
           type: string
@@ -1524,6 +1525,19 @@ components:
           format: double
           minimum: 0
           description: Valor do desconto em reais (R$).
+        enrollmentFeeAmount:
+          type: number
+          format: double
+          minimum: 0
+          description: Valor da matrícula em reais (R$).
+        enrollmentFeeDueDate:
+          type: string
+          format: date
+          description: Data de vencimento da matrícula.
+        firstMonthlyPaymentDate:
+          type: string
+          format: date
+          description: Data de vencimento da primeira mensalidade.
     EnrollmentRequestResponse:
       type: object
       properties:
@@ -1563,6 +1577,20 @@ components:
           format: double
           nullable: true
           description: Valor do desconto aplicado em reais (R$).
+        enrollmentFeeAmount:
+          type: number
+          format: double
+          nullable: true
+          description: Valor da matrícula em reais (R$).
+        enrollmentFeeDueDate:
+          type: string
+          format: date
+          nullable: true
+          description: Data de vencimento da matrícula.
+        firstMonthlyPaymentDate:
+          type: string
+          format: date
+          description: Data de vencimento da primeira mensalidade.
         enrollmentId:
           type: string
           format: uuid

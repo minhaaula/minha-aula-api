@@ -35,6 +35,11 @@ export function enrollmentRequestsRouter(deps: {
             decidedByUserId: request.decidedByUserId,
             notes: request.notes,
             discont: request.discountCents !== null ? request.discountCents / 100 : null,
+            enrollmentFeeAmount: request.enrollmentFeeCents !== null ? request.enrollmentFeeCents / 100 : null,
+            enrollmentFeeDueDate: request.enrollmentFeeDueDate
+                ? request.enrollmentFeeDueDate.toISOString().slice(0, 10)
+                : null,
+            firstMonthlyPaymentDate: request.firstMonthlyPaymentDate.toISOString().slice(0, 10),
             enrollmentId: request.enrollmentId,
             createdAt: request.createdAt,
             courseLabel: 'request' in item ? item.courseLabel : null,
@@ -160,7 +165,10 @@ export function enrollmentRequestsRouter(deps: {
                 requestedForDependentId: z.string().uuid().optional(),
                 notes: z.string().max(255).optional(),
                 discont: z.coerce.number().min(0).optional(),
-                schoolId: z.string().uuid().optional()
+                schoolId: z.string().uuid().optional(),
+                enrollmentFeeAmount: z.coerce.number().min(0).optional(),
+                enrollmentFeeDueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+                firstMonthlyPaymentDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
             });
             const data = bodySchema.parse(req.body);
             const authReq = req as AuthenticatedRequest;
@@ -185,7 +193,10 @@ export function enrollmentRequestsRouter(deps: {
                 requestedForUserId: data.requestedForUserId,
                 requestedForDependentId: data.requestedForDependentId ?? null,
                 notes: data.notes ?? null,
-                discount: data.discont ?? null
+                discount: data.discont ?? null,
+                enrollmentFeeAmount: data.enrollmentFeeAmount ?? null,
+                enrollmentFeeDueDate: data.enrollmentFeeDueDate ?? null,
+                firstMonthlyPaymentDate: data.firstMonthlyPaymentDate
             });
             res.status(201).json(serializeEnrollmentRequest(request));
         } catch (err) {

@@ -100,6 +100,13 @@ export class EnrollmentRequestRepositoryAdapter implements EnrollmentRequestRepo
     }
 
     private toDomain(row: EnrollmentRequestOrm): EnrollmentRequest {
+        const enrollmentFeeDueDate = row.enrollmentFeeDueDate
+            ? new Date(row.enrollmentFeeDueDate)
+            : null;
+        const firstMonthlyPaymentDate = row.firstMonthlyPaymentDate
+            ? new Date(row.firstMonthlyPaymentDate)
+            : new Date(row.createdAt);
+
         const entity = EnrollmentRequest.create({
             id: row.id,
             schoolId: row.schoolId,
@@ -108,6 +115,9 @@ export class EnrollmentRequestRepositoryAdapter implements EnrollmentRequestRepo
             requestedForDependentId: row.requestedForDependentId,
             notes: row.notes,
             discountCents: row.discountCents ?? null,
+            enrollmentFeeCents: row.enrollmentFeeCents ?? null,
+            enrollmentFeeDueDate,
+            firstMonthlyPaymentDate,
             createdAt: row.createdAt
         });
         (entity as any)._status = row.status;
@@ -115,6 +125,9 @@ export class EnrollmentRequestRepositoryAdapter implements EnrollmentRequestRepo
         (entity as any)._decidedByUserId = row.decidedByUserId;
         (entity as any)._notes = row.notes;
         (entity as any)._discountCents = row.discountCents ?? null;
+        (entity as any)._enrollmentFeeCents = row.enrollmentFeeCents ?? null;
+        (entity as any)._enrollmentFeeDueDate = enrollmentFeeDueDate;
+        (entity as any)._firstMonthlyPaymentDate = firstMonthlyPaymentDate;
         (entity as any)._enrollmentId = row.enrollmentId;
         return entity;
     }
@@ -131,6 +144,11 @@ export class EnrollmentRequestRepositoryAdapter implements EnrollmentRequestRepo
         row.decidedByUserId = request.decidedByUserId;
         row.notes = request.notes ?? null;
         row.discountCents = request.discountCents ?? null;
+        row.enrollmentFeeCents = request.enrollmentFeeCents ?? null;
+        row.enrollmentFeeDueDate = request.enrollmentFeeDueDate
+            ? request.enrollmentFeeDueDate.toISOString().slice(0, 10)
+            : null;
+        row.firstMonthlyPaymentDate = request.firstMonthlyPaymentDate.toISOString().slice(0, 10);
         row.enrollmentId = request.enrollmentId;
         row.createdAt = request.createdAt;
         return row;

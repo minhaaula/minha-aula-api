@@ -34,6 +34,12 @@ export class EnrollmentRequestOrm {
 
     @Column('int', { name: 'discount_cents', nullable: true }) discountCents!: number | null;
 
+    @Column('int', { name: 'enrollment_fee_cents', nullable: true }) enrollmentFeeCents!: number | null;
+
+    @Column('date', { name: 'enrollment_fee_due_date', nullable: true }) enrollmentFeeDueDate!: string | null;
+
+    @Column('date', { name: 'first_monthly_payment_date' }) firstMonthlyPaymentDate!: string;
+
     @Column('char', { length: 36, name: 'enrollment_id', nullable: true }) enrollmentId!: string | null;
 
     @CreateDateColumn({ name: 'created_at', type: 'datetime', default: () => 'CURRENT_TIMESTAMP' }) createdAt!: Date;

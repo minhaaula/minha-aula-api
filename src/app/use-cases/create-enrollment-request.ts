@@ -27,6 +27,9 @@ export class CreateEnrollmentRequest {
         requestedForDependentId?: string | null;
         notes?: string | null;
         discount?: number | null;
+        enrollmentFeeAmount?: number | null;
+        enrollmentFeeDueDate?: string | null;
+        firstMonthlyPaymentDate: string;
     }): Promise<EnrollmentRequest> {
         const schoolId = input.schoolId.trim();
         const courseClassId = input.courseClassId.trim();
@@ -73,6 +76,49 @@ export class CreateEnrollmentRequest {
             discountCents = Math.round(discountValue * 100);
         }
 
+        let enrollmentFeeCents: number | null = null;
+        if (input.enrollmentFeeAmount !== undefined && input.enrollmentFeeAmount !== null) {
+            const feeAmount = Number(input.enrollmentFeeAmount);
+            if (!Number.isFinite(feeAmount) || feeAmount < 0) {
+                throw new Error('Invalid enrollment fee amount');
+            }
+            enrollmentFeeCents = Math.round(feeAmount * 100);
+        }
+
+        const normalizeDate = (value: string, field: string) => {
+            if (!value || typeof value !== 'string') {
+                throw new Error(`Invalid ${field}`);
+            }
+            const trimmed = value.trim();
+            const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(trimmed);
+            if (!match) {
+                throw new Error(`Invalid ${field}`);
+            }
+            const year = Number(match[1]);
+            const month = Number(match[2]);
+            const day = Number(match[3]);
+            const date = new Date(Date.UTC(year, month - 1, day));
+            if (
+                Number.isNaN(date.getTime()) ||
+                date.getUTCFullYear() !== year ||
+                date.getUTCMonth() !== month - 1 ||
+                date.getUTCDate() !== day
+            ) {
+                throw new Error(`Invalid ${field}`);
+            }
+            return date;
+        };
+
+        let enrollmentFeeDueDate: Date | null = null;
+        if (input.enrollmentFeeDueDate !== undefined && input.enrollmentFeeDueDate !== null) {
+            enrollmentFeeDueDate = normalizeDate(input.enrollmentFeeDueDate, 'enrollment fee due date');
+            if (enrollmentFeeCents === null) {
+                throw new Error('Enrollment fee due date requires a fee amount');
+            }
+        }
+
+        const firstMonthlyPaymentDate = normalizeDate(input.firstMonthlyPaymentDate, 'first monthly payment date');
+
         const request = EnrollmentRequest.create({
             id: Uuid(),
             schoolId: school.id,
@@ -80,7 +126,10 @@ export class CreateEnrollmentRequest {
             requestedForUserId: user.id,
             requestedForDependentId: dependentId,
             notes: input.notes ?? null,
-            discountCents
+            discountCents,
+            enrollmentFeeCents,
+            enrollmentFeeDueDate,
+            firstMonthlyPaymentDate
         });
 
         await this.requests.save(request);

@@ -37,7 +37,7 @@ export class CreateSchoolFinancialCharges1000000000024 implements MigrationInter
                 CONSTRAINT fk_${TABLE_NAME}_dependent FOREIGN KEY (dependent_id) REFERENCES dependents(id) ON DELETE SET NULL,
                 CONSTRAINT fk_${TABLE_NAME}_course FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE,
                 CONSTRAINT fk_${TABLE_NAME}_course_class FOREIGN KEY (course_class_id) REFERENCES course_classes(id) ON DELETE SET NULL
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+            ) ENGINE=InnoDB;
         `);
 
         await queryRunner.query(`CREATE INDEX idx_${TABLE_NAME}_school ON ${TABLE_NAME} (school_id);`);

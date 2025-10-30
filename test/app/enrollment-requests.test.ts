@@ -234,7 +234,8 @@ describe('CreateEnrollmentRequest', () => {
             schoolId: school.id,
             courseClassId: courseClass.id,
             requestedForUserId: user.id,
-            notes: 'Quero participar'
+            notes: 'Quero participar',
+            firstMonthlyPaymentDate: '2024-02-01'
         });
 
         expect(result.status).toBe('PENDING');
@@ -262,10 +263,42 @@ describe('CreateEnrollmentRequest', () => {
             schoolId: school.id,
             courseClassId: courseClass.id,
             requestedForUserId: user.id,
-            discount: 150.75
+            discount: 150.75,
+            firstMonthlyPaymentDate: '2024-02-01'
         });
 
         expect(result.discountCents).toBe(15075);
+    });
+
+    it('stores enrollment fee metadata when provided', async () => {
+        const schools = new InMemorySchools();
+        const courses = new InMemoryCourses();
+        const classes = new InMemoryClasses();
+        const users = new InMemoryUsers();
+        const dependents = new InMemoryDependents();
+        const enrollments = new InMemoryEnrollments();
+        const requests = new InMemoryRequests();
+
+        const { school, course, courseClass } = setupCourseStructure();
+        schools.seed(school);
+        courses.seed(course);
+        classes.seed(courseClass);
+        const user = makeUser('user-1');
+        users.seed(user);
+
+        const useCase = new CreateEnrollmentRequest(schools, courses, classes, users, dependents, enrollments, requests);
+        const result = await useCase.exec({
+            schoolId: school.id,
+            courseClassId: courseClass.id,
+            requestedForUserId: user.id,
+            enrollmentFeeAmount: 250,
+            enrollmentFeeDueDate: '2024-01-15',
+            firstMonthlyPaymentDate: '2024-02-01'
+        });
+
+        expect(result.enrollmentFeeCents).toBe(25000);
+        expect(result.enrollmentFeeDueDate?.toISOString().slice(0, 10)).toBe('2024-01-15');
+        expect(result.firstMonthlyPaymentDate.toISOString().slice(0, 10)).toBe('2024-02-01');
     });
 
     it('prevents duplicate enrollment requests and validations for dependents', async () => {
@@ -291,14 +324,16 @@ describe('CreateEnrollmentRequest', () => {
             schoolId: school.id,
             courseClassId: courseClass.id,
             requestedForUserId: user.id,
-            requestedForDependentId: dependent.id
+            requestedForDependentId: dependent.id,
+            firstMonthlyPaymentDate: '2024-02-01'
         });
 
         await expect(useCase.exec({
             schoolId: school.id,
             courseClassId: courseClass.id,
             requestedForUserId: user.id,
-            requestedForDependentId: dependent.id
+            requestedForDependentId: dependent.id,
+            firstMonthlyPaymentDate: '2024-02-01'
         })).rejects.toThrow('Enrollment request already exists for this target');
 
         enrollments.seed(Enrollment.createForDependent({
@@ -312,7 +347,8 @@ describe('CreateEnrollmentRequest', () => {
             schoolId: school.id,
             courseClassId: courseClass.id,
             requestedForUserId: user.id,
-            requestedForDependentId: dependent.id
+            requestedForDependentId: dependent.id,
+            firstMonthlyPaymentDate: '2024-02-01'
         })).rejects.toThrow('Dependent already enrolled in this class');
     });
 });
@@ -325,7 +361,8 @@ describe('ApproveEnrollmentRequest', () => {
             id: 'req-1',
             schoolId: 'school-1',
             courseClassId: 'class-1',
-            requestedForUserId: 'user-1'
+            requestedForUserId: 'user-1',
+            firstMonthlyPaymentDate: new Date('2024-02-01')
         });
         requests.seed(request);
 
@@ -345,7 +382,8 @@ describe('ApproveEnrollmentRequest', () => {
             schoolId: 'school-1',
             courseClassId: 'class-1',
             requestedForUserId: 'owner',
-            requestedForDependentId: 'dep-1'
+            requestedForDependentId: 'dep-1',
+            firstMonthlyPaymentDate: new Date('2024-02-01')
         });
         requests.seed(request);
 
@@ -375,7 +413,8 @@ describe('ListEnrollmentRequests', () => {
             schoolId: 'school-1',
             courseClassId: 'class-1',
             requestedForUserId: 'user-1',
-            createdAt: new Date('2024-01-01T10:00:00Z')
+            createdAt: new Date('2024-01-01T10:00:00Z'),
+            firstMonthlyPaymentDate: new Date('2024-02-01')
         });
         const second = EnrollmentRequest.create({
             id: 'req-2',
@@ -383,7 +422,8 @@ describe('ListEnrollmentRequests', () => {
             courseClassId: 'class-1',
             requestedForUserId: 'user-1',
             requestedForDependentId: 'dep-1',
-            createdAt: new Date('2024-02-01T10:00:00Z')
+            createdAt: new Date('2024-02-01T10:00:00Z'),
+            firstMonthlyPaymentDate: new Date('2024-02-15')
         });
         (second as any)._status = 'APPROVED';
         const other = EnrollmentRequest.create({
@@ -391,7 +431,8 @@ describe('ListEnrollmentRequests', () => {
             schoolId: 'school-2',
             courseClassId: 'class-2',
             requestedForUserId: 'user-2',
-            createdAt: new Date('2024-03-01T10:00:00Z')
+            createdAt: new Date('2024-03-01T10:00:00Z'),
+            firstMonthlyPaymentDate: new Date('2024-03-10')
         });
 
         requests.seed(first);
@@ -417,19 +458,22 @@ describe('ListEnrollmentRequests', () => {
             id: 'req-10',
             schoolId: 'school-1',
             courseClassId: 'class-1',
-            requestedForUserId: 'user-1'
+            requestedForUserId: 'user-1',
+            firstMonthlyPaymentDate: new Date('2024-02-01')
         });
         const second = EnrollmentRequest.create({
             id: 'req-11',
             schoolId: 'school-1',
             courseClassId: 'class-2',
-            requestedForUserId: 'user-2'
+            requestedForUserId: 'user-2',
+            firstMonthlyPaymentDate: new Date('2024-02-01')
         });
         const other = EnrollmentRequest.create({
             id: 'req-12',
             schoolId: 'school-2',
             courseClassId: 'class-3',
-            requestedForUserId: 'user-3'
+            requestedForUserId: 'user-3',
+            firstMonthlyPaymentDate: new Date('2024-02-01')
         });
         requests.seed(first);
         requests.seed(second);
@@ -446,19 +490,22 @@ describe('ListEnrollmentRequests', () => {
             id: 'req-20',
             schoolId: 'school-1',
             courseClassId: 'class-1',
-            requestedForUserId: 'user-1'
+            requestedForUserId: 'user-1',
+            firstMonthlyPaymentDate: new Date('2024-02-01')
         });
         const second = EnrollmentRequest.create({
             id: 'req-21',
             schoolId: 'school-1',
             courseClassId: 'class-2',
-            requestedForUserId: 'user-2'
+            requestedForUserId: 'user-2',
+            firstMonthlyPaymentDate: new Date('2024-02-01')
         });
         const third = EnrollmentRequest.create({
             id: 'req-22',
             schoolId: 'school-1',
             courseClassId: 'class-3',
-            requestedForUserId: 'user-3'
+            requestedForUserId: 'user-3',
+            firstMonthlyPaymentDate: new Date('2024-02-01')
         });
 
         requests.seed(first);
@@ -496,7 +543,8 @@ describe('GetEnrollmentRequest', () => {
             id: 'req-10',
             schoolId: 'school-1',
             courseClassId: 'class-1',
-            requestedForUserId: 'user-1'
+            requestedForUserId: 'user-1',
+            firstMonthlyPaymentDate: new Date('2024-02-01')
         });
         requests.seed(request);
 
