@@ -4,6 +4,7 @@ import { CreateEnrollmentRequest } from '../../../app/use-cases/create-enrollmen
 import { ApproveEnrollmentRequest } from '../../../app/use-cases/approve-enrollment-request';
 import { ListEnrollmentRequests } from '../../../app/use-cases/list-enrollment-requests';
 import { GetEnrollmentRequest } from '../../../app/use-cases/get-enrollment-request';
+import { IssueEnrollmentFeeBoleto } from '../../../app/use-cases/issue-enrollment-fee-boleto';
 import { AuthenticatedRequest } from '../middlewares/auth';
 import { requirePersona } from '../middlewares/require-persona';
 import { UserPersonaEnum } from '../../../domain/value-objects/user-persona';
@@ -15,10 +16,12 @@ export function enrollmentRequestsRouter(deps: {
     approveEnrollmentRequest: ApproveEnrollmentRequest;
     listEnrollmentRequests: ListEnrollmentRequests;
     getEnrollmentRequest: GetEnrollmentRequest;
+    issueEnrollmentFeeBoleto: IssueEnrollmentFeeBoleto;
 }) {
     const r = Router();
 
     const canManageRequests = requirePersona(UserPersonaEnum.ADMIN, UserPersonaEnum.SCHOOL);
+    const canIssueEnrollmentFeeBoleto = requirePersona(UserPersonaEnum.ADMIN, UserPersonaEnum.SCHOOL, UserPersonaEnum.STUDENT);
 
     type SerializableRequest = EnrollmentRequest | EnrollmentRequestWithDetails;
 
@@ -57,7 +60,6 @@ export function enrollmentRequestsRouter(deps: {
                 classId: z.string().uuid().optional(),
                 courseId: z.string().uuid().optional(),
                 studentDocument: z.string().trim().min(1).optional(),
-                status: z.enum(['PENDING', 'APPROVED', 'REJECTED', 'CANCELLED']).optional(),
                 limit: z.coerce.number().int().positive().max(100).optional(),
                 offset: z.coerce.number().int().min(0).optional()
             });
@@ -67,7 +69,6 @@ export function enrollmentRequestsRouter(deps: {
                 classId: typeof req.query.classId === 'string' ? req.query.classId : undefined,
                 courseId: typeof req.query.courseId === 'string' ? req.query.courseId : undefined,
                 studentDocument: typeof req.query.studentDocument === 'string' ? req.query.studentDocument : undefined,
-                status: typeof req.query.status === 'string' ? req.query.status : undefined,
                 limit: typeof req.query.limit === 'string' ? req.query.limit : undefined,
                 offset: typeof req.query.offset === 'string' ? req.query.offset : undefined
             });
@@ -94,7 +95,7 @@ export function enrollmentRequestsRouter(deps: {
                 schoolId,
                 courseClassId: query.classId,
                 courseId: query.courseId,
-                status: query.status,
+                status: 'PENDING',
                 studentDocument: query.studentDocument,
                 limit: query.limit,
                 offset: query.offset
@@ -219,6 +220,48 @@ export function enrollmentRequestsRouter(deps: {
             });
             res.json(result);
         } catch (err) {
+            next(err);
+        }
+    });
+
+    r.post('/charges/:chargeId/boleto', canIssueEnrollmentFeeBoleto, async (req, res, next) => {
+        try {
+            const authReq = req as AuthenticatedRequest;
+            if (!authReq.user?.sub) throw new Error('Unauthorized');
+
+            const paramsSchema = z.object({ chargeId: z.string().uuid() });
+            const { chargeId } = paramsSchema.parse(req.params);
+
+            const result = await deps.issueEnrollmentFeeBoleto.exec({
+                chargeId,
+                requester: {
+                    id: authReq.user.sub,
+                    persona: authReq.user.persona as UserPersonaEnum,
+                    schoolId: typeof authReq.user.schoolId === 'string' ? authReq.user.schoolId : null
+                }
+            });
+
+            res.json({
+                chargeId: result.chargeId,
+                paymentProviderRef: result.paymentProviderRef,
+                boletoUrl: result.boletoUrl,
+                digitableLine: result.digitableLine,
+                barcode: result.barcode,
+                dueDate: result.dueDate.toISOString().slice(0, 10),
+                status: result.status
+            });
+        } catch (err) {
+            if (err instanceof Error) {
+                if (err.message === 'User not allowed to issue boleto for this charge') {
+                    return res.status(403).json({ error: err.message });
+                }
+                if (err.message === 'Charge not found' || err.message === 'Charge type does not allow boleto issuance') {
+                    return res.status(404).json({ error: err.message });
+                }
+                if (err.message === 'Charge is not eligible for boleto issuance') {
+                    return res.status(400).json({ error: err.message });
+                }
+            }
             next(err);
         }
     });

@@ -1639,7 +1639,41 @@ components:
         status:
           type: string
           enum: [APPROVED]
+        enrollmentFeeChargeId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Identificador da cobrança de matrícula, quando gerada no momento da aprovação.
       required:
         - requestId
         - enrollmentId
+        - status
+    EnrollmentFeeBoletoResponse:
+      type: object
+      properties:
+        chargeId:
+          type: string
+          format: uuid
+        paymentProviderRef:
+          type: string
+        boletoUrl:
+          type: string
+          format: uri
+          nullable: true
+        digitableLine:
+          type: string
+          nullable: true
+        barcode:
+          type: string
+          nullable: true
+        dueDate:
+          type: string
+          format: date
+        status:
+          type: string
+          enum: [PENDING_SYNC, OPEN, PAID, OVERDUE, CANCELLED, FAILED]
+      required:
+        - chargeId
+        - paymentProviderRef
+        - dueDate
         - status

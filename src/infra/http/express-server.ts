@@ -236,13 +236,15 @@ export function makeServer(deps: AppDependencies & Record<string, any>) {
         deps.createEnrollmentRequest &&
         deps.approveEnrollmentRequest &&
         deps.listEnrollmentRequests &&
-        deps.getEnrollmentRequest
+        deps.getEnrollmentRequest &&
+        deps.issueEnrollmentFeeBoleto
     ) {
         const router = deps.enrollmentRequestsRouter({
             createEnrollmentRequest: deps.createEnrollmentRequest,
             approveEnrollmentRequest: deps.approveEnrollmentRequest,
             listEnrollmentRequests: deps.listEnrollmentRequests,
-            getEnrollmentRequest: deps.getEnrollmentRequest
+            getEnrollmentRequest: deps.getEnrollmentRequest,
+            issueEnrollmentFeeBoleto: deps.issueEnrollmentFeeBoleto
         });
         mount('/enrollment-requests', router);
     }

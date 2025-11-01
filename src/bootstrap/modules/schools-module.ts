@@ -50,6 +50,7 @@ import { enrollmentRequestsRouter } from '../../infra/http/routes/enrollment-req
 import { ListEnrollmentRequests } from '../../app/use-cases/list-enrollment-requests';
 import { CreateEnrollmentRequest } from '../../app/use-cases/create-enrollment-request';
 import { ApproveEnrollmentRequest } from '../../app/use-cases/approve-enrollment-request';
+import { IssueEnrollmentFeeBoleto } from '../../app/use-cases/issue-enrollment-fee-boleto';
 import { GetEnrollmentRequest } from '../../app/use-cases/get-enrollment-request';
 import { CreateSchoolCharge } from '../../app/use-cases/create-school-charge';
 
@@ -112,7 +113,17 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, _ctx: ModuleSetupCon
         deps.enrollmentsRepo,
         deps.enrollmentRequestsRepo
     );
-    const approveEnrollmentRequest = new ApproveEnrollmentRequest(deps.enrollmentRequestsRepo, deps.enrollmentsRepo);
+    const approveEnrollmentRequest = new ApproveEnrollmentRequest(
+        deps.enrollmentRequestsRepo,
+        deps.enrollmentsRepo,
+        deps.classesRepo,
+        deps.financialChargesRepo
+    );
+    const issueEnrollmentFeeBoleto = new IssueEnrollmentFeeBoleto(
+        deps.financialChargesRepo,
+        deps.usersRepo,
+        deps.paymentProvider
+    );
     const getEnrollmentRequest = new GetEnrollmentRequest(deps.enrollmentRequestsRepo);
     const createSchoolCharge = new CreateSchoolCharge(
         deps.financialChargesRepo,
@@ -178,6 +189,7 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, _ctx: ModuleSetupCon
             enrollmentRequestsRouter,
             createEnrollmentRequest,
             approveEnrollmentRequest,
+            issueEnrollmentFeeBoleto,
             listEnrollmentRequests,
             getEnrollmentRequest,
             createSchoolCharge,

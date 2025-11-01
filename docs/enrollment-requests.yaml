@@ -35,13 +35,6 @@ paths:
             type: string
           description: Filtra solicitações pelo documento (CPF) do aluno.
         - in: query
-          name: status
-          required: false
-          schema:
-            type: string
-            enum: [PENDING, APPROVED, REJECTED, CANCELLED]
-          description: Filtra solicitações por status.
-        - in: query
           name: limit
           required: false
           schema:
@@ -58,7 +51,7 @@ paths:
           description: Quantidade de registros a pular para paginação.
       responses:
         '200':
-          description: Solicitações encontradas. Inclui identificadores, labels de curso/turma e nomes do aluno ou dependente.
+          description: Solicitações em aberto encontradas. Inclui identificadores, labels de curso/turma e nomes do aluno ou dependente.
           content:
             application/json:
               schema:
@@ -183,6 +176,7 @@ paths:
       tags:
         - Enrollment Requests
       summary: Aprovar uma solicitação de matrícula
+      description: Aprova a solicitação, cria a matrícula e gera uma cobrança de matrícula quando existe valor informado, sem emitir boleto automaticamente.
       security:
         - bearerAuth: []
       parameters:
@@ -208,6 +202,47 @@ paths:
                 $ref: '#/components/schemas/ApproveEnrollmentRequestResponse'
         '400':
           description: Solicitação inválida ou não autorizada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /enrollment-requests/charges/{chargeId}/boleto:
+    post:
+      tags:
+        - Enrollment Requests
+      summary: Emitir boleto da taxa de matrícula
+      description: Disponibiliza o boleto associado à taxa de matrícula, gerando-o no provedor quando ainda não houver boleto disponível.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: chargeId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Identificador da cobrança de matrícula.
+      responses:
+        '200':
+          description: Boleto emitido ou recuperado com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnrollmentFeeBoletoResponse'
+        '400':
+          description: Cobrança não está apta para emissão ou dados inválidos.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não possui autorização para emitir o boleto.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Cobrança não encontrada ou não vinculada a uma taxa de matrícula.
           content:
             application/json:
               schema:

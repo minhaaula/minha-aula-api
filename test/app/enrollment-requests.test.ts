@@ -3,6 +3,7 @@ import { CreateEnrollmentRequest } from '../../src/app/use-cases/create-enrollme
 import { ApproveEnrollmentRequest } from '../../src/app/use-cases/approve-enrollment-request';
 import { ListEnrollmentRequests } from '../../src/app/use-cases/list-enrollment-requests';
 import { GetEnrollmentRequest } from '../../src/app/use-cases/get-enrollment-request';
+import { IssueEnrollmentFeeBoleto } from '../../src/app/use-cases/issue-enrollment-fee-boleto';
 import { SchoolRepository } from '../../src/ports/repositories/school.repo';
 import { CourseRepository } from '../../src/ports/repositories/course.repo';
 import { CourseClassRepository } from '../../src/ports/repositories/course-class.repo';
@@ -19,6 +20,10 @@ import { Dependent } from '../../src/domain/entities/dependent';
 import { Enrollment } from '../../src/domain/entities/enrollment';
 import { EnrollmentRequest, EnrollmentRequestStatus } from '../../src/domain/entities/enrollment-request';
 import { PostalAddress } from '../../src/domain/value-objects/postal-address';
+import { SchoolFinancialChargeRepository } from '../../src/ports/repositories/school-financial-charge.repo';
+import { SchoolFinancialCharge } from '../../src/domain/entities/school-financial-charge';
+import { PaymentProviderPort, CreateBoletoChargeInput } from '../../src/ports/providers/payment-provider.port';
+import { UserPersonaEnum } from '../../src/domain/value-objects/user-persona';
 
 class InMemorySchools implements SchoolRepository {
     private readonly items = new Map<string, School>();
@@ -161,6 +166,41 @@ class InMemoryRequests implements EnrollmentRequestRepository {
     seed(request: EnrollmentRequest) { this.items.set(request.id, request); }
     setCourseForClass(classId: string, courseId: string) { this.classCourseLookup.set(classId, courseId); }
     setStudentDocument(requestId: string, document: string) { this.studentDocuments.set(requestId, document); }
+}
+
+class InMemoryCharges implements SchoolFinancialChargeRepository {
+    private readonly items = new Map<string, SchoolFinancialCharge>();
+    async findById(id: string) { return this.items.get(id) ?? null; }
+    async save(charge: SchoolFinancialCharge) { this.items.set(charge.id, charge); }
+    all() { return Array.from(this.items.values()); }
+}
+
+class FakePaymentProvider implements PaymentProviderPort {
+    callCount = 0;
+    lastInput: CreateBoletoChargeInput | null = null;
+
+    constructor(private readonly response: {
+        providerRef: string;
+        boletoUrl?: string | null;
+        digitableLine?: string | null;
+        barcode?: string | null;
+        dueDate: Date;
+    }) {}
+
+    async authorize() { throw new Error('Not implemented'); }
+    async capture() { throw new Error('Not implemented'); }
+
+    async createBoletoCharge(input: CreateBoletoChargeInput) {
+        this.callCount += 1;
+        this.lastInput = input;
+        return {
+            providerRef: this.response.providerRef,
+            boletoUrl: this.response.boletoUrl ?? undefined,
+            digitableLine: this.response.digitableLine ?? undefined,
+            barcode: this.response.barcode ?? undefined,
+            dueDate: this.response.dueDate
+        };
+    }
 }
 
 let cpfCounter = 0;
@@ -357,6 +397,10 @@ describe('ApproveEnrollmentRequest', () => {
     it('approves request for the user and creates enrollment', async () => {
         const enrollments = new InMemoryEnrollments();
         const requests = new InMemoryRequests();
+        const classes = new InMemoryClasses();
+        const charges = new InMemoryCharges();
+        const { courseClass } = setupCourseStructure();
+        classes.seed(courseClass);
         const request = EnrollmentRequest.create({
             id: 'req-1',
             schoolId: 'school-1',
@@ -366,17 +410,23 @@ describe('ApproveEnrollmentRequest', () => {
         });
         requests.seed(request);
 
-        const useCase = new ApproveEnrollmentRequest(requests, enrollments);
+        const useCase = new ApproveEnrollmentRequest(requests, enrollments, classes, charges);
         const result = await useCase.exec({ requestId: request.id, approverUserId: 'user-1' });
 
         expect(result.status).toBe('APPROVED');
+        expect(result.enrollmentFeeChargeId).toBeNull();
         expect(enrollments.all()).toHaveLength(1);
         expect(enrollments.all()[0].studentUserId).toBe('user-1');
+        expect(charges.all()).toHaveLength(0);
     });
 
     it('validates ownership and existing enrollments', async () => {
         const enrollments = new InMemoryEnrollments();
         const requests = new InMemoryRequests();
+        const classes = new InMemoryClasses();
+        const charges = new InMemoryCharges();
+        const { courseClass } = setupCourseStructure();
+        classes.seed(courseClass);
         const request = EnrollmentRequest.create({
             id: 'req-2',
             schoolId: 'school-1',
@@ -387,7 +437,7 @@ describe('ApproveEnrollmentRequest', () => {
         });
         requests.seed(request);
 
-        const useCase = new ApproveEnrollmentRequest(requests, enrollments);
+        const useCase = new ApproveEnrollmentRequest(requests, enrollments, classes, charges);
         await expect(useCase.exec({ requestId: 'missing', approverUserId: 'owner' })).rejects.toThrow('Enrollment request not found');
         await expect(useCase.exec({ requestId: request.id, approverUserId: 'other' })).rejects.toThrow('User not allowed to approve this enrollment request');
 
@@ -402,6 +452,64 @@ describe('ApproveEnrollmentRequest', () => {
 
         (request as any)._status = 'APPROVED';
         await expect(useCase.exec({ requestId: request.id, approverUserId: 'owner' })).rejects.toThrow('Enrollment request already decided');
+    });
+
+    it('creates enrollment charge when fee metadata is present', async () => {
+        const enrollments = new InMemoryEnrollments();
+        const requests = new InMemoryRequests();
+        const classes = new InMemoryClasses();
+        const charges = new InMemoryCharges();
+        const { courseClass } = setupCourseStructure();
+        classes.seed(courseClass);
+        const request = EnrollmentRequest.create({
+            id: 'req-3',
+            schoolId: 'school-1',
+            courseClassId: courseClass.id,
+            requestedForUserId: 'user-1',
+            enrollmentFeeCents: 18000,
+            enrollmentFeeDueDate: new Date('2024-01-20'),
+            firstMonthlyPaymentDate: new Date('2024-02-05')
+        });
+        requests.seed(request);
+
+        const useCase = new ApproveEnrollmentRequest(requests, enrollments, classes, charges);
+        const approval = await useCase.exec({ requestId: request.id, approverUserId: 'user-1' });
+
+        const savedCharges = charges.all();
+        expect(approval.enrollmentFeeChargeId).toBe(savedCharges[0].id);
+        expect(savedCharges).toHaveLength(1);
+        expect(savedCharges[0].chargeType).toBe('ENROLLMENT');
+        expect(savedCharges[0].amountCents).toBe(18000);
+        expect(savedCharges[0].description).toBe('Enrollment fee');
+        expect(savedCharges[0].dueDate.toISOString().slice(0, 10)).toBe('2024-01-20');
+        expect(savedCharges[0].asaasPaymentId).toBeNull();
+        expect(savedCharges[0].status).toBe('PENDING_SYNC');
+    });
+
+    it('uses first monthly payment date when fee due date is missing', async () => {
+        const enrollments = new InMemoryEnrollments();
+        const requests = new InMemoryRequests();
+        const classes = new InMemoryClasses();
+        const charges = new InMemoryCharges();
+        const { courseClass } = setupCourseStructure();
+        classes.seed(courseClass);
+        const request = EnrollmentRequest.create({
+            id: 'req-4',
+            schoolId: 'school-1',
+            courseClassId: courseClass.id,
+            requestedForUserId: 'user-1',
+            enrollmentFeeCents: 12000,
+            firstMonthlyPaymentDate: new Date('2024-03-10')
+        });
+        requests.seed(request);
+
+        const useCase = new ApproveEnrollmentRequest(requests, enrollments, classes, charges);
+        const approval = await useCase.exec({ requestId: request.id, approverUserId: 'user-1' });
+
+        const savedCharges = charges.all();
+        expect(approval.enrollmentFeeChargeId).toBe(savedCharges[0].id);
+        expect(savedCharges).toHaveLength(1);
+        expect(savedCharges[0].dueDate.toISOString().slice(0, 10)).toBe('2024-03-10');
     });
 });
 
@@ -555,5 +663,169 @@ describe('GetEnrollmentRequest', () => {
 
         const missing = await useCase.exec({ requestId: 'missing-id' });
         expect(missing).toBeNull();
+    });
+});
+
+describe('IssueEnrollmentFeeBoleto', () => {
+    it('issues boleto for pending enrollment charge', async () => {
+        const users = new InMemoryUsers();
+        const charges = new InMemoryCharges();
+        const { school, course, courseClass } = setupCourseStructure();
+        const user = makeUser('user-boleto');
+        users.seed(user);
+
+        const charge = SchoolFinancialCharge.create({
+            id: 'charge-1',
+            schoolId: school.id,
+            ownerUserId: user.id,
+            studentUserId: user.id,
+            dependentId: null,
+            courseId: course.id,
+            courseClassId: courseClass.id,
+            chargeType: 'ENROLLMENT',
+            description: 'Taxa de matrícula',
+            amountCents: 15000,
+            dueDate: new Date('2024-04-10')
+        });
+        await charges.save(charge);
+
+        const provider = new FakePaymentProvider({
+            providerRef: 'asaas-pay-1',
+            boletoUrl: 'https://asaas.test/boleto/1',
+            digitableLine: '12345',
+            barcode: '67890',
+            dueDate: new Date('2024-04-10')
+        });
+
+        const issueBoleto = new IssueEnrollmentFeeBoleto(charges, users, provider);
+        const result = await issueBoleto.exec({
+            chargeId: charge.id,
+            requester: { id: user.id, persona: UserPersonaEnum.STUDENT }
+        });
+
+        expect(result.paymentProviderRef).toBe('asaas-pay-1');
+        expect(result.boletoUrl).toBe('https://asaas.test/boleto/1');
+        expect(result.digitableLine).toBe('12345');
+        expect(result.status).toBe('OPEN');
+        expect(provider.callCount).toBe(1);
+
+        const stored = (await charges.findById(charge.id))!;
+        expect(stored.asaasPaymentId).toBe('asaas-pay-1');
+        expect(stored.status).toBe('OPEN');
+    });
+
+    it('reuses existing boleto data when already issued', async () => {
+        const users = new InMemoryUsers();
+        const charges = new InMemoryCharges();
+        const { school, course, courseClass } = setupCourseStructure();
+        const user = makeUser('user-existing');
+        users.seed(user);
+
+        const charge = SchoolFinancialCharge.create({
+            id: 'charge-2',
+            schoolId: school.id,
+            ownerUserId: user.id,
+            studentUserId: user.id,
+            dependentId: null,
+            courseId: course.id,
+            courseClassId: courseClass.id,
+            chargeType: 'ENROLLMENT',
+            amountCents: 12000,
+            dueDate: new Date('2024-05-05')
+        });
+        charge.markAsSynced({
+            paymentId: 'asaas-existing',
+            invoiceUrl: 'https://asaas.test/boleto/2',
+            payload: {
+                digitableLine: '54321',
+                barcode: '09876',
+                dueDate: new Date('2024-05-05').toISOString()
+            }
+        });
+        await charges.save(charge);
+
+        const provider = new FakePaymentProvider({
+            providerRef: 'asaas-new',
+            dueDate: new Date('2024-05-05')
+        });
+
+        const issueBoleto = new IssueEnrollmentFeeBoleto(charges, users, provider);
+        const result = await issueBoleto.exec({
+            chargeId: charge.id,
+            requester: { id: user.id, persona: UserPersonaEnum.STUDENT }
+        });
+
+        expect(result.paymentProviderRef).toBe('asaas-existing');
+        expect(result.digitableLine).toBe('54321');
+        expect(provider.callCount).toBe(0);
+    });
+
+    it('validates requester permissions', async () => {
+        const users = new InMemoryUsers();
+        const charges = new InMemoryCharges();
+        const { school, course, courseClass } = setupCourseStructure();
+        const owner = makeUser('owner-user');
+        const other = makeUser('other-user');
+        users.seed(owner);
+        users.seed(other);
+
+        const charge = SchoolFinancialCharge.create({
+            id: 'charge-3',
+            schoolId: school.id,
+            ownerUserId: owner.id,
+            studentUserId: owner.id,
+            dependentId: null,
+            courseId: course.id,
+            courseClassId: courseClass.id,
+            chargeType: 'ENROLLMENT',
+            amountCents: 9000,
+            dueDate: new Date('2024-06-01')
+        });
+        await charges.save(charge);
+
+        const provider = new FakePaymentProvider({
+            providerRef: 'asaas-pay-3',
+            dueDate: new Date('2024-06-01')
+        });
+        const issueBoleto = new IssueEnrollmentFeeBoleto(charges, users, provider);
+
+        await expect(issueBoleto.exec({
+            chargeId: charge.id,
+            requester: { id: other.id, persona: UserPersonaEnum.STUDENT }
+        })).rejects.toThrow('User not allowed to issue boleto for this charge');
+    });
+
+    it('rejects charges with ineligible status', async () => {
+        const users = new InMemoryUsers();
+        const charges = new InMemoryCharges();
+        const { school, course, courseClass } = setupCourseStructure();
+        const user = makeUser('user-ineligible');
+        users.seed(user);
+
+        const charge = SchoolFinancialCharge.create({
+            id: 'charge-4',
+            schoolId: school.id,
+            ownerUserId: user.id,
+            studentUserId: user.id,
+            dependentId: null,
+            courseId: course.id,
+            courseClassId: courseClass.id,
+            chargeType: 'ENROLLMENT',
+            amountCents: 13500,
+            dueDate: new Date('2024-07-01')
+        });
+        (charge as any)._status = 'CANCELLED';
+        await charges.save(charge);
+
+        const provider = new FakePaymentProvider({
+            providerRef: 'asaas-pay-4',
+            dueDate: new Date('2024-07-01')
+        });
+        const issueBoleto = new IssueEnrollmentFeeBoleto(charges, users, provider);
+
+        await expect(issueBoleto.exec({
+            chargeId: charge.id,
+            requester: { id: user.id, persona: UserPersonaEnum.STUDENT }
+        })).rejects.toThrow('Charge is not eligible for boleto issuance');
     });
 });

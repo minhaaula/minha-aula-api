@@ -90,12 +90,12 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
 
     const asaasApiKey = process.env.ASAAS_API_KEY ?? '';
     const asaasBaseUrl = process.env.ASAAS_BASE_URL;
-    const needsPaymentProvider = selected.includes('payments') || selected.includes('schools');
+    const needsPaymentProvider = selected.includes('payments') || selected.includes('schools') || selected.includes('students');
 
     let paymentProvider: (PaymentProviderPort & Partial<AsaasProviderPort>) | undefined;
     if (needsPaymentProvider) {
         if (!asaasApiKey) {
-            throw new Error('ASAAS_API_KEY is required when payments or schools module is enabled');
+            throw new Error('ASAAS_API_KEY is required when payments, schools or students module is enabled');
         }
         paymentProvider = new AsaasProvider({ apiKey: asaasApiKey, baseUrl: asaasBaseUrl });
     }
@@ -153,6 +153,9 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
                 break;
             }
             case 'students': {
+                if (!paymentProvider) {
+                    throw new Error('Payment provider is not configured');
+                }
                 const result = buildStudentsModule({
                     usersRepo,
                     dependentsRepo,
@@ -160,7 +163,9 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
                     coursesRepo,
                     classesRepo,
                     enrollmentsRepo,
-                    enrollmentRequestsRepo
+                    enrollmentRequestsRepo,
+                    financialChargesRepo,
+                    paymentProvider
                 }, ctx);
                 mergeModuleResult(serverDeps, docFiles, result);
                 break;
