@@ -170,9 +170,10 @@ export function makeServer(deps: AppDependencies & Record<string, any>) {
         mount('/payments', paymentsRoutes, { skipAuth: true });
     }
 
-    if (deps.studentsRouter && deps.listStudents) {
+    if (deps.studentsRouter && deps.listStudents && deps.getStudentDirectoryEntry) {
         const router = deps.studentsRouter({
-            listStudents: deps.listStudents
+            listStudents: deps.listStudents,
+            getStudentDirectoryEntry: deps.getStudentDirectoryEntry
         });
         mount('/students', router);
     }

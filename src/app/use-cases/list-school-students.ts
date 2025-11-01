@@ -104,6 +104,7 @@ export class ListSchoolStudents {
                     id: dep.id,
                     userId: dep.userId,
                     fullName: dep.fullName,
+                    cpf: dep.cpf,
                     birthDate: dep.birthDate,
                     relationship: dep.relationship,
                     createdAt: dep.createdAt

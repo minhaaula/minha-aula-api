@@ -12,6 +12,8 @@ export class DependentOrm {
 
     @Column('varchar', { length: 191, name: 'full_name' }) fullName!: string;
 
+    @Column('char', { length: 11, nullable: true }) cpf!: string | null;
+
     @Column('date', { name: 'birth_date', nullable: true }) birthDate!: Date | null;
 
     @Column('varchar', { length: 64, nullable: true }) relationship!: string | null;

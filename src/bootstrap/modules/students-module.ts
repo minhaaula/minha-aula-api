@@ -19,6 +19,7 @@ import { ListSchools } from '../../app/use-cases/list-schools';
 import { ListEnrollmentRequests } from '../../app/use-cases/list-enrollment-requests';
 import { GetEnrollmentRequest } from '../../app/use-cases/get-enrollment-request';
 import { PaymentProviderPort } from '../../ports/providers/payment-provider.port';
+import { GetStudentDirectoryEntry } from '../../app/use-cases/get-student-directory-entry';
 
 export type StudentsModuleDeps = {
     usersRepo: UserRepositoryAdapter;
@@ -41,6 +42,7 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
         deps.classesRepo,
         deps.enrollmentsRepo
     );
+    const getStudentDirectoryEntry = new GetStudentDirectoryEntry(deps.usersRepo, deps.dependentsRepo);
     const listSchools = new ListSchools(deps.schoolsRepo);
     const createEnrollmentRequest = new CreateEnrollmentRequest(
         deps.schoolsRepo,
@@ -69,6 +71,7 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
         deps: {
             studentsRouter,
             listStudents,
+            getStudentDirectoryEntry,
             dependentsRouter,
             addDependent,
             enrollmentRequestsRouter,

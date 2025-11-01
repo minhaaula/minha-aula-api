@@ -6,6 +6,7 @@ export type DependentSummary = {
     id: string;
     userId: string;
     fullName: string;
+    cpf: string | null;
     birthDate: Date | null;
     relationship: string | null;
     createdAt: Date;
@@ -55,6 +56,7 @@ export function buildStudentSummary(student: User, dependents: Dependent[]): Stu
             id: dep.id,
             userId: dep.userId,
             fullName: dep.fullName,
+            cpf: dep.cpf,
             birthDate: dep.birthDate,
             relationship: dep.relationship,
             createdAt: dep.createdAt

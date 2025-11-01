@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ListStudents } from '../../src/app/use-cases/list-students';
+import { GetStudentDirectoryEntry } from '../../src/app/use-cases/get-student-directory-entry';
 import { UserRepository } from '../../src/ports/repositories/user.repo';
 import { DependentRepository } from '../../src/ports/repositories/dependent.repo';
 import { CourseClassRepository } from '../../src/ports/repositories/course-class.repo';
@@ -56,6 +57,11 @@ class InMemoryDependentRepository implements DependentRepository {
 
     async findById(id: string): Promise<Dependent | null> {
         return this.items.get(id) ?? null;
+    }
+
+    async findByCpf(cpf: string): Promise<Dependent | null> {
+        const normalized = cpf.replace(/\D/g, '');
+        return Array.from(this.items.values()).find((dep) => dep.cpf === normalized) ?? null;
     }
 
     async findByUserAndFullName(userId: string, fullName: string): Promise<Dependent | null> {
@@ -186,10 +192,11 @@ const makeStudent = (id: string, cpf: string, createdAt: Date, fullName?: string
     createdAt
 });
 
-const makeDependent = (id: string, userId: string, createdAt: Date) => Dependent.create({
+const makeDependent = (id: string, userId: string, createdAt: Date, cpf?: string) => Dependent.create({
     id,
     userId,
     fullName: `Dependente ${id}`,
+    cpf: cpf ?? null,
     birthDate: null,
     relationship: 'Filho',
     createdAt
@@ -460,5 +467,51 @@ describe('ListStudents use case', () => {
                 { categoryId: 'cat-2', subcategoryIds: [] }
             ]
         });
+    });
+});
+
+describe('GetStudentDirectoryEntry use case', () => {
+    it('returns basic student data without responsible when CPF belongs to a student', async () => {
+        const users = new InMemoryUserRepository();
+        const dependents = new InMemoryDependentRepository();
+        const student = makeStudent('student-1', '39588620805', new Date('2024-01-01'), 'Aluno Maior');
+        users.seed(student);
+
+        const useCase = new GetStudentDirectoryEntry(users, dependents);
+        const result = await useCase.exec({ cpf: '395.886.208-05' });
+
+        expect(result).not.toBeNull();
+        expect(result?.student.id).toBe(student.id);
+        expect(result?.student.cpf).toBe('39588620805');
+        expect(result?.responsible).toBeNull();
+        expect(result?.isDependent).toBe(false);
+    });
+
+    it('returns dependent and responsible data when CPF belongs to a dependent', async () => {
+        const users = new InMemoryUserRepository();
+        const dependents = new InMemoryDependentRepository();
+        const guardian = makeStudent('guardian-1', '12345678909', new Date('2024-01-01'), 'Responsável');
+        users.seed(guardian);
+        const dependent = makeDependent('dep-1', guardian.id, new Date('2024-02-01'), '39588620805');
+        dependents.seed(dependent);
+
+        const useCase = new GetStudentDirectoryEntry(users, dependents);
+        const result = await useCase.exec({ cpf: '39588620805' });
+
+        expect(result).not.toBeNull();
+        expect(result?.student.id).toBe(dependent.id);
+        expect(result?.responsible?.id).toBe(guardian.id);
+        expect(result?.responsible?.cpf).toBe('12345678909');
+        expect(result?.isDependent).toBe(true);
+    });
+
+    it('returns null when CPF is invalid or not found', async () => {
+        const users = new InMemoryUserRepository();
+        const dependents = new InMemoryDependentRepository();
+        const useCase = new GetStudentDirectoryEntry(users, dependents);
+
+        await expect(useCase.exec({ cpf: '123' })).rejects.toThrow('Invalid CPF');
+        const result = await useCase.exec({ cpf: '12345678901' });
+        expect(result).toBeNull();
     });
 });

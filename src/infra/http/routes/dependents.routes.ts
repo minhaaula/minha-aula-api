@@ -17,6 +17,7 @@ export function dependentsRouter(deps: { addDependent: AddDependent; }) {
 
             const schema = z.object({
                 fullName: z.string().min(3),
+                cpf: z.string().trim().min(11).max(14).optional(),
                 birthDate: z.string().trim().min(1).optional(),
                 relationship: z.string().min(1).optional()
             });
@@ -24,6 +25,7 @@ export function dependentsRouter(deps: { addDependent: AddDependent; }) {
             const dependent = await deps.addDependent.exec({
                 ownerUserId: authReq.user.sub,
                 fullName: data.fullName,
+                cpf: data.cpf ?? null,
                 birthDate: data.birthDate ?? null,
                 relationship: data.relationship ?? null
             });

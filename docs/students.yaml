@@ -47,7 +47,7 @@ paths:
       tags:
         - Students
       summary: Listar alunos para convites
-      description: Permite ADMIN ou SCHOOL pesquisarem qualquer aluno na base para iniciar convites, sem restringir por escola. Retorna, no máximo, uma ocorrência.
+      description: Permite ADMIN ou SCHOOL localizarem um aluno ou dependente pelo CPF. Quando o CPF pertence a um dependente, os dados do responsável são incluídos na resposta.
       security:
         - bearerAuth: []
       parameters:
@@ -60,13 +60,19 @@ paths:
           description: CPF do aluno a ser localizado.
       responses:
         '200':
-          description: Lista contendo zero ou um aluno encontrado.
+          description: Dados do aluno ou dependente encontrado.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/StudentsListResponse'
+                $ref: '#/components/schemas/StudentDirectoryResponse'
         '400':
           description: Erro na requisição.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: CPF não encontrado na base.
           content:
             application/json:
               schema:

@@ -12,6 +12,13 @@ export class DependentRepositoryAdapter implements DependentRepository {
         return row ? this.toDomain(row) : null;
     }
 
+    async findByCpf(cpf: string): Promise<Dependent | null> {
+        const normalized = cpf.replace(/\D/g, '');
+        if (normalized.length !== 11) return null;
+        const row = await this.repo.findOne({ where: { cpf: normalized } });
+        return row ? this.toDomain(row) : null;
+    }
+
     async findByUserAndFullName(userId: string, fullName: string): Promise<Dependent | null> {
         const cleaned = fullName.trim();
         if (!cleaned) return null;
@@ -34,6 +41,7 @@ export class DependentRepositoryAdapter implements DependentRepository {
             id: row.id,
             userId: row.userId,
             fullName: row.fullName,
+            cpf: row.cpf,
             birthDate: row.birthDate ? new Date(row.birthDate) : null,
             relationship: row.relationship,
             createdAt: new Date(row.createdAt)
@@ -45,6 +53,7 @@ export class DependentRepositoryAdapter implements DependentRepository {
         row.id = dependent.id;
         row.userId = dependent.userId;
         row.fullName = dependent.fullName;
+        row.cpf = dependent.cpf;
         row.birthDate = dependent.birthDate;
         row.relationship = dependent.relationship;
         row.createdAt = dependent.createdAt;

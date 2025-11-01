@@ -90,6 +90,10 @@ class InMemoryDependentRepository implements DependentRepository {
     async findById(id: string): Promise<Dependent | null> {
         return this.items.get(id) ?? null;
     }
+    async findByCpf(cpf: string): Promise<Dependent | null> {
+        const normalized = cpf.replace(/\D/g, '');
+        return Array.from(this.items.values()).find((dep) => dep.cpf === normalized) ?? null;
+    }
     async findByUserAndFullName(): Promise<Dependent | null> {
         return null;
     }

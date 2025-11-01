@@ -42,6 +42,11 @@ class InMemoryDependentRepository implements DependentRepository {
         return this.dependents.get(id) ?? null;
     }
 
+    async findByCpf(cpf: string): Promise<Dependent | null> {
+        const normalized = cpf.replace(/\D/g, '');
+        return Array.from(this.dependents.values()).find((dep) => dep.cpf === normalized) ?? null;
+    }
+
     async findByUserAndFullName(userId: string, fullName: string): Promise<Dependent | null> {
         return Array.from(this.dependents.values()).find((dep) => dep.userId === userId && dep.fullName === fullName.trim()) ?? null;
     }
@@ -89,6 +94,7 @@ describe('AddDependent use case', () => {
         const result = await useCase.exec({
             ownerUserId: owner.id,
             fullName: 'Joãozinho',
+            cpf: '123.456.789-01',
             birthDate: '2015-05-20',
             relationship: 'Filho'
         });
@@ -96,6 +102,7 @@ describe('AddDependent use case', () => {
         expect(result.id).toBeTruthy();
         expect(result.fullName).toBe('Joãozinho');
         expect(result.birthDate?.getFullYear()).toBe(2015);
+        expect(result.cpf).toBe('12345678901');
     });
 
     it('prevents duplicate dependents per user', async () => {
@@ -103,7 +110,7 @@ describe('AddDependent use case', () => {
         const dependents = new InMemoryDependentRepository();
         const owner = makeUser();
         users.seed(owner);
-        dependents.seed(Dependent.create({ id: 'dep-1', userId: owner.id, fullName: 'Maria', birthDate: null, relationship: 'Filha', createdAt: new Date() }));
+        dependents.seed(Dependent.create({ id: 'dep-1', userId: owner.id, fullName: 'Maria', cpf: '11122233344', birthDate: null, relationship: 'Filha', createdAt: new Date() }));
         const useCase = new AddDependent(users, dependents);
 
         await expect(useCase.exec({ ownerUserId: owner.id, fullName: 'Maria' })).rejects.toThrow('Dependent with this name already exists for the user');
@@ -119,5 +126,25 @@ describe('AddDependent use case', () => {
         const owner = makeUser();
         users.seed(owner);
         await expect(useCase.exec({ ownerUserId: owner.id, fullName: 'Ana', birthDate: 'invalid-date' })).rejects.toThrow('Invalid dependent birth date');
+    });
+
+    it('prevents duplicate dependent CPF', async () => {
+        const users = new InMemoryUserRepository();
+        const dependents = new InMemoryDependentRepository();
+        const owner = makeUser();
+        users.seed(owner);
+        dependents.seed(Dependent.create({
+            id: 'dep-1',
+            userId: owner.id,
+            fullName: 'Maria',
+            cpf: '22233344455',
+            birthDate: null,
+            relationship: 'Filha',
+            createdAt: new Date()
+        }));
+        const useCase = new AddDependent(users, dependents);
+
+        await expect(useCase.exec({ ownerUserId: owner.id, fullName: 'Carla', cpf: '22233344455' }))
+            .rejects.toThrow('Dependent with this CPF already exists');
     });
 });

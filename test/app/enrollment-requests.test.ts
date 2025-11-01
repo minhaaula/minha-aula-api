@@ -88,6 +88,10 @@ class InMemoryUsers implements UserRepository {
 class InMemoryDependents implements DependentRepository {
     private readonly items = new Map<string, Dependent>();
     async findById(id: string) { return this.items.get(id) ?? null; }
+    async findByCpf(cpf: string) {
+        const normalized = cpf.replace(/\D/g, '');
+        return Array.from(this.items.values()).find((dep) => dep.cpf === normalized) ?? null;
+    }
     async findByUserAndFullName(userId: string, fullName: string) {
         return Array.from(this.items.values()).find((dep) => dep.userId === userId && dep.fullName === fullName.trim()) ?? null;
     }
