@@ -46,6 +46,7 @@ import { SchoolFinancialChargeRepositoryAdapter } from '../../infra/db/typeorm/s
 import { EnrollStudent } from '../../app/use-cases/enroll-student';
 import { DeleteCourseClass } from '../../app/use-cases/delete-course-class';
 import { ListSchoolStudents } from '../../app/use-cases/list-school-students';
+import { ListSchoolPayments } from '../../app/use-cases/list-school-payments';
 import { enrollmentRequestsRouter } from '../../infra/http/routes/enrollment-requests.routes';
 import { ListEnrollmentRequests } from '../../app/use-cases/list-enrollment-requests';
 import { CreateEnrollmentRequest } from '../../app/use-cases/create-enrollment-request';
@@ -99,6 +100,12 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, _ctx: ModuleSetupCon
         deps.coursesRepo,
         deps.classesRepo,
         deps.enrollmentsRepo,
+        deps.usersRepo,
+        deps.dependentsRepo
+    );
+    const listSchoolPayments = new ListSchoolPayments(
+        deps.coursesRepo,
+        deps.classesRepo,
         deps.usersRepo,
         deps.dependentsRepo
     );
@@ -185,6 +192,7 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, _ctx: ModuleSetupCon
             studentsRouter,
             listStudents,
             listSchoolStudents,
+            listSchoolPayments,
             enrollStudent,
             enrollmentRequestsRouter,
             createEnrollmentRequest,

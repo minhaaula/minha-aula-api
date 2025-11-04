@@ -1226,6 +1226,128 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/SchoolStudentEnrollmentResponse'
+    SchoolPaymentRecord:
+      type: object
+      required:
+        - id
+        - amountCents
+        - netAmountCents
+        - status
+        - chargeType
+        - dueDate
+        - createdAt
+        - updatedAt
+        - student
+        - course
+      properties:
+        id:
+          type: string
+          format: uuid
+        amountCents:
+          type: integer
+          format: int32
+          description: Valor da cobrança em centavos
+        discountCents:
+          type: integer
+          format: int32
+          nullable: true
+          description: Valor do desconto em centavos
+        discountReason:
+          type: string
+          nullable: true
+          description: Motivo do desconto
+        netAmountCents:
+          type: integer
+          format: int32
+          description: Valor líquido (valor - desconto) em centavos
+        status:
+          type: string
+          enum: [PENDING_SYNC, OPEN, PAID, OVERDUE, CANCELLED, FAILED]
+        chargeType:
+          type: string
+          enum: [TUITION, ENROLLMENT, MATERIALS, DAILY, OTHER]
+        description:
+          type: string
+          nullable: true
+        dueDate:
+          type: string
+          format: date
+        asaasPaymentId:
+          type: string
+          nullable: true
+        asaasInvoiceUrl:
+          type: string
+          format: uri
+          nullable: true
+        paidAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        student:
+          type: object
+          required:
+            - id
+            - fullName
+            - type
+          properties:
+            id:
+              type: string
+              format: uuid
+            fullName:
+              type: string
+            type:
+              type: string
+              enum: [USER, DEPENDENT]
+        dependent:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: string
+              format: uuid
+            fullName:
+              type: string
+          required:
+            - id
+            - fullName
+        course:
+          type: object
+          required:
+            - id
+            - name
+          properties:
+            id:
+              type: string
+              format: uuid
+            name:
+              type: string
+        class:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: string
+              format: uuid
+            label:
+              type: string
+          required:
+            - id
+            - label
+    SchoolPaymentsResponse:
+      type: object
+      required:
+        - payments
+      properties:
+        payments:
+          type: array
+          items:
+            $ref: '#/components/schemas/SchoolPaymentRecord'
     SchoolAddress:
       type: object
       required:

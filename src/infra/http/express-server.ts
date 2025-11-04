@@ -64,6 +64,8 @@ interface AppDependencies {
     registerUser?: any;
     loginUser?: any;
     updateUserPassword?: any;
+    adminRouter?: (deps: any) => Router;
+    getAdminStatus?: any;
     paymentsRouter?: (deps: any) => Router;
     createPayment?: any;
     capturePayment?: any;
@@ -88,6 +90,7 @@ interface AppDependencies {
     listCategories?: any;
     listSchoolCourses?: any;
     listSchoolStudents?: any;
+    listSchoolPayments?: any;
     getSchoolProfile?: any;
     getSchoolCourse?: any;
     updateCourse?: any;
@@ -161,6 +164,12 @@ export function makeServer(deps: AppDependencies & Record<string, any>) {
             authMiddleware: deps.authMiddleware
         }));
     }
+    if (deps.adminRouter && deps.getAdminStatus) {
+        const router = deps.adminRouter({
+            getAdminStatus: deps.getAdminStatus
+        });
+        mount('/admin', router);
+    }
     if (deps.paymentsRouter && deps.createPayment && deps.capturePayment) {
         const paymentsRoutes = deps.paymentsRouter({
             createPayment: deps.createPayment,
@@ -189,6 +198,7 @@ export function makeServer(deps: AppDependencies & Record<string, any>) {
             updateSchool: deps.updateSchool,
             listSchoolCourses: deps.listSchoolCourses,
             listSchoolStudents: deps.listSchoolStudents,
+            listSchoolPayments: deps.listSchoolPayments,
             getSchoolCourse: deps.getSchoolCourse,
             listCourseClasses: deps.listCourseClasses,
             getCourseClass: deps.getCourseClass,

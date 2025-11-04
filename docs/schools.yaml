@@ -101,6 +101,78 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /schools/payments:
+    get:
+      tags:
+        - Schools
+      summary: Listar pagamentos dos alunos da escola
+      description: Retorna as cobranças financeiras de todos os alunos matriculados na escola, filtradas por mês e ano (obrigatório), com informações do aluno, dependente (quando existir), curso e turma.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: month
+          required: true
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            maximum: 12
+          description: Mês para filtrar os pagamentos (1-12).
+        - in: query
+          name: year
+          required: true
+          schema:
+            type: integer
+            format: int32
+            minimum: 2000
+            maximum: 3000
+          description: Ano para filtrar os pagamentos.
+        - in: query
+          name: studentName
+          required: false
+          schema:
+            type: string
+          description: Filtrar pagamentos de alunos cujo nome (ou do dependente) contenha o valor informado.
+        - in: query
+          name: classId
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Filtrar pagamentos vinculados a uma turma específica.
+        - in: query
+          name: status
+          required: false
+          schema:
+            type: string
+            enum: [PENDING_SYNC, OPEN, PAID, OVERDUE, CANCELLED, FAILED]
+          description: Filtrar pagamentos por status da cobrança.
+      responses:
+        '200':
+          description: Lista de pagamentos encontrados.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchoolPaymentsResponse'
+        '400':
+          description: Erro na requisição.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado ou sem contexto de escola.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '501':
+          description: Funcionalidade de listagem de pagamentos não configurada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /schools/finance/charges:
     post:
       tags:

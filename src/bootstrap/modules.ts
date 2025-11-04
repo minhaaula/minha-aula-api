@@ -21,6 +21,7 @@ import { ScryptPasswordHasher } from '../infra/auth/scrypt-password-hasher';
 import { HmacTokenProvider } from '../infra/auth/hmac-token-provider';
 import { BASE_DOC_FILES, MODULES_ORDER, type ModuleName } from './module-config';
 import { buildAuthModule } from './modules/auth-module';
+import { buildAdminModule } from './modules/admin-module';
 import { buildPaymentsModule } from './modules/payments-module';
 import { buildSchoolsModule } from './modules/schools-module';
 import { buildStudentsModule } from './modules/students-module';
@@ -36,7 +37,7 @@ export type { ModuleName } from './module-config';
 export function resolveModules(modules: ModuleName[]): ModuleName[] {
     const initial = modules.length > 0 ? modules : MODULES_ORDER;
     const set = new Set<ModuleName>(initial);
-    const requiresAuth = set.has('students');
+    const requiresAuth = (['students', 'admin'] as ModuleName[]).some((module) => set.has(module));
     if (requiresAuth) {
         set.add('auth');
     }
@@ -110,6 +111,18 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
                     tokenTtl,
                     activeModules: selected,
                     schoolsRepo
+                }, ctx);
+                mergeModuleResult(serverDeps, docFiles, result);
+                break;
+            }
+            case 'admin': {
+                const result = buildAdminModule({
+                    getActiveModules: () => selected,
+                    getOpenApiFiles: () => Array.from(docFiles),
+                    getEnvironmentInfo: () => ({
+                        nodeEnv: process.env.NODE_ENV ?? null,
+                        appModulesEnv: process.env.APP_MODULES ?? null
+                    })
                 }, ctx);
                 mergeModuleResult(serverDeps, docFiles, result);
                 break;

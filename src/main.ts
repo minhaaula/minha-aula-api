@@ -13,7 +13,7 @@ function parseModules(value: string | undefined): ModuleName[] {
         return [];
     }
 
-    return modules.filter((module): module is ModuleName => ['auth', 'payments', 'schools', 'students'].includes(module as ModuleName));
+    return modules.filter((module): module is ModuleName => ['auth', 'admin', 'payments', 'schools', 'students'].includes(module as ModuleName));
 }
 
 (async () => {

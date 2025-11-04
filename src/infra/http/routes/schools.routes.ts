@@ -15,6 +15,7 @@ import type { ListSchoolPlanInvoices } from '../../../app/use-cases/list-school-
 import type { ListCategories } from '../../../app/use-cases/list-categories';
 import type { ListSchoolCourses } from '../../../app/use-cases/list-school-courses';
 import type { ListSchoolStudents } from '../../../app/use-cases/list-school-students';
+import type { ListSchoolPayments } from '../../../app/use-cases/list-school-payments';
 import type { GetSchoolCourse } from '../../../app/use-cases/get-school-course';
 import type { ListCourseClasses } from '../../../app/use-cases/list-course-classes';
 import type { GetCourseClass } from '../../../app/use-cases/get-course-class';
@@ -34,6 +35,7 @@ import { buildProfileRoutes } from './schools/profile.routes';
 import { buildPlansRoutes } from './schools/plans.routes';
 import { buildCoursesRoutes } from './schools/courses.routes';
 import { buildStudentsRoutes } from './schools/students.routes';
+import { buildPaymentsRoutes } from './schools/payments.routes';
 import { buildSessionsRoutes } from './schools/sessions.routes';
 import { buildFinanceRoutes } from './schools/finance.routes';
 import type { SchoolRouteGuards } from './schools/guards';
@@ -56,6 +58,7 @@ export type SchoolsRouterDeps = {
     listCategories?: ListCategories;
     listSchoolCourses?: ListSchoolCourses;
     listSchoolStudents?: ListSchoolStudents;
+    listSchoolPayments?: ListSchoolPayments;
     getSchoolCourse?: GetSchoolCourse;
     updateCourse?: UpdateCourse;
     deleteCourse?: DeleteCourse;
@@ -110,6 +113,12 @@ export function schoolsRouter(deps: SchoolsRouterDeps) {
     if (deps.listSchoolStudents) {
         router.use('/students', buildStudentsRoutes({
             listSchoolStudents: deps.listSchoolStudents
+        }, guards));
+    }
+
+    if (deps.listSchoolPayments) {
+        router.use('/payments', buildPaymentsRoutes({
+            listSchoolPayments: deps.listSchoolPayments
         }, guards));
     }
 

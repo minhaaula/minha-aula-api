@@ -1,9 +1,10 @@
-export type ModuleName = 'auth' | 'payments' | 'schools' | 'students';
+export type ModuleName = 'auth' | 'admin' | 'payments' | 'schools' | 'students';
 
-export const MODULES_ORDER: ModuleName[] = ['auth', 'payments', 'schools', 'students'];
+export const MODULES_ORDER: ModuleName[] = ['auth', 'admin', 'payments', 'schools', 'students'];
 
 export const MODULE_DOC_FILES: Record<ModuleName, string[]> = {
     auth: ['auth.yaml'],
+    admin: ['admin.yaml'],
     payments: ['payments.yaml'],
     schools: ['schools.yaml', 'students.yaml'],
     students: ['students.yaml', 'dependents.yaml', 'enrollment-requests.yaml', 'schools-public.yaml']
