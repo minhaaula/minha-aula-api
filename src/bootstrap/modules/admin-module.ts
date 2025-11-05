@@ -19,10 +19,14 @@ export function buildAdminModule(deps: AdminModuleDeps, _ctx: ModuleSetupContext
         () => deps.getEnvironmentInfo()
     );
 
+    // Montar router pronto
+    const router = adminRouter({
+        getAdminStatus
+    });
+
     return {
         deps: {
-            adminRouter,
-            getAdminStatus
+            adminRouter: router
         },
         docFiles: ['admin.yaml']
     };

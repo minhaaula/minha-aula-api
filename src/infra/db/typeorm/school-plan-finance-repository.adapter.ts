@@ -99,3 +99,5 @@ export class SchoolPlanFinanceRepositoryAdapter implements SchoolPlanFinanceRepo
         return row;
     }
 }
+
+

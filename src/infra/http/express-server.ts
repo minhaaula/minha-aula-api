@@ -3,6 +3,7 @@ import swaggerUi from 'swagger-ui-express';
 import { requestLogger } from './middlewares/request-logger';
 import { loadOpenApiDocument } from './swagger/load-openapi';
 import type { ModuleName } from '../../bootstrap/module-config';
+import { AppError } from '../../shared/errors';
 
 const SWAGGER_REALM = 'Swagger UI';
 
@@ -60,52 +61,17 @@ function makeSwaggerAuthMiddleware(): RequestHandler[] {
 type MountOptions = { skipAuth?: boolean };
 
 interface AppDependencies {
-    authRouter?: (deps: any) => Router;
-    registerUser?: any;
-    loginUser?: any;
-    updateUserPassword?: any;
-    adminRouter?: (deps: any) => Router;
-    getAdminStatus?: any;
-    paymentsRouter?: (deps: any) => Router;
-    createPayment?: any;
-    capturePayment?: any;
-    issueBoleto?: any;
-    studentsRouter?: (deps: any) => Router;
-    listStudents?: any;
-    schoolsRouter?: (deps: any) => Router;
-    createSchool?: any;
-    listSchools?: any;
-    createCourse?: any;
-    createCourseClass?: any;
-    schoolsRepo?: any;
-    scheduleClassSession?: any;
-    listClassSessions?: any;
-    cancelClassSession?: any;
-    loginSchool?: any;
-    getActiveSchoolPlan?: any;
-    listSubscriptionPlans?: any;
-    assignSchoolPlan?: any;
-    issueSchoolPlanInvoice?: any;
-    listSchoolPlanInvoices?: any;
-    listCategories?: any;
-    listSchoolCourses?: any;
-    listSchoolStudents?: any;
-    listSchoolPayments?: any;
-    getSchoolProfile?: any;
-    getSchoolCourse?: any;
-    updateCourse?: any;
-    listCourseClasses?: any;
-    getCourseClass?: any;
-    updateSchool?: any;
-    asaasWebhookRouter?: (deps: any) => Router;
-    handleAsaasPaymentWebhook?: any;
-    dependentsRouter?: (deps: any) => Router;
-    addDependent?: any;
-    enrollmentRequestsRouter?: (deps: any) => Router;
-    createEnrollmentRequest?: any;
-    approveEnrollmentRequest?: any;
-    listEnrollmentRequests?: any;
-    getEnrollmentRequest?: any;
+    // Routers prontos (montados pelos módulos)
+    authRouter?: Router;
+    adminRouter?: Router;
+    paymentsRouter?: Router;
+    studentsRouter?: Router;
+    schoolsRouter?: Router;
+    asaasWebhookRouter?: Router;
+    dependentsRouter?: Router;
+    enrollmentRequestsRouter?: Router;
+    
+    // Middleware e configuração
     authMiddleware?: RequestHandler;
     healthRouter: (deps: any) => Router;
     activeModules?: ModuleName[];
@@ -156,113 +122,65 @@ export function makeServer(deps: AppDependencies & Record<string, any>) {
         });
     }
 
-    if (deps.authRouter && deps.registerUser && deps.loginUser && deps.updateUserPassword) {
-        app.use('/auth', deps.authRouter({
-            registerUser: deps.registerUser,
-            loginUser: deps.loginUser,
-            updateUserPassword: deps.updateUserPassword,
-            authMiddleware: deps.authMiddleware
-        }));
+    // Montar routers apenas se existirem (já prontos pelos módulos)
+    if (deps.authRouter) {
+        app.use('/auth', deps.authRouter);
     }
-    if (deps.adminRouter && deps.getAdminStatus) {
-        const router = deps.adminRouter({
-            getAdminStatus: deps.getAdminStatus
-        });
-        mount('/admin', router);
+    
+    if (deps.adminRouter) {
+        mount('/admin', deps.adminRouter);
     }
-    if (deps.paymentsRouter && deps.createPayment && deps.capturePayment) {
-        const paymentsRoutes = deps.paymentsRouter({
-            createPayment: deps.createPayment,
-            capturePayment: deps.capturePayment,
-            issueBoleto: deps.issueBoleto
-        });
-        mount('/payments', paymentsRoutes, { skipAuth: true });
+    
+    if (deps.paymentsRouter) {
+        mount('/payments', deps.paymentsRouter, { skipAuth: true });
     }
 
-    if (deps.studentsRouter && deps.listStudents && deps.getStudentDirectoryEntry) {
-        const router = deps.studentsRouter({
-            listStudents: deps.listStudents,
-            getStudentDirectoryEntry: deps.getStudentDirectoryEntry
-        });
-        mount('/students', router);
+    if (deps.studentsRouter) {
+        mount('/students', deps.studentsRouter);
     }
 
-    if (deps.schoolsRouter && deps.createSchool && deps.createCourse && deps.createCourseClass) {
-        const router = deps.schoolsRouter({
-            createSchool: deps.createSchool,
-            createCourse: deps.createCourse,
-            updateCourse: deps.updateCourse,
-            createCourseClass: deps.createCourseClass,
-            deleteCourse: deps.deleteCourse,
-            getSchoolProfile: deps.getSchoolProfile,
-            updateSchool: deps.updateSchool,
-            listSchoolCourses: deps.listSchoolCourses,
-            listSchoolStudents: deps.listSchoolStudents,
-            listSchoolPayments: deps.listSchoolPayments,
-            getSchoolCourse: deps.getSchoolCourse,
-            listCourseClasses: deps.listCourseClasses,
-            getCourseClass: deps.getCourseClass,
-            deleteCourseClass: deps.deleteCourseClass,
-            scheduleClassSession: deps.scheduleClassSession,
-            listClassSessions: deps.listClassSessions,
-            cancelClassSession: deps.cancelClassSession,
-            loginSchool: deps.loginSchool,
-            getActiveSchoolPlan: deps.getActiveSchoolPlan,
-            listSubscriptionPlans: deps.listSubscriptionPlans,
-            assignSchoolPlan: deps.assignSchoolPlan,
-            issueSchoolPlanInvoice: deps.issueSchoolPlanInvoice,
-            listSchoolPlanInvoices: deps.listSchoolPlanInvoices,
-            listCategories: deps.listCategories,
-            authMiddleware: deps.authMiddleware,
-            schoolsRepo: deps.schoolsRepo
-        });
-        mount('/schools', router, { skipAuth: true });
-    } else if (deps.listSchools) {
-        const router = express.Router();
-        router.get('/', async (_req, res, next) => {
-            try {
-                const schools = await deps.listSchools.exec();
-                res.json({ schools });
-            } catch (err) {
-                next(err);
-            }
-        });
-        mount('/schools', router, { skipAuth: true });
+    if (deps.schoolsRouter) {
+        mount('/schools', deps.schoolsRouter, { skipAuth: true });
     }
 
-    if (deps.asaasWebhookRouter && deps.handleAsaasPaymentWebhook) {
-        const router = deps.asaasWebhookRouter({
-            handleAsaasPaymentWebhook: deps.handleAsaasPaymentWebhook
-        });
-        mount('/integrations/asaas', router, { skipAuth: true });
+    if (deps.asaasWebhookRouter) {
+        mount('/integrations/asaas', deps.asaasWebhookRouter, { skipAuth: true });
     }
 
-    if (deps.dependentsRouter && deps.addDependent) {
-        const router = deps.dependentsRouter({ addDependent: deps.addDependent });
-        mount('/dependents', router);
+    if (deps.dependentsRouter) {
+        mount('/dependents', deps.dependentsRouter);
     }
 
-    if (
-        deps.enrollmentRequestsRouter &&
-        deps.createEnrollmentRequest &&
-        deps.approveEnrollmentRequest &&
-        deps.listEnrollmentRequests &&
-        deps.getEnrollmentRequest &&
-        deps.issueEnrollmentFeeBoleto
-    ) {
-        const router = deps.enrollmentRequestsRouter({
-            createEnrollmentRequest: deps.createEnrollmentRequest,
-            approveEnrollmentRequest: deps.approveEnrollmentRequest,
-            listEnrollmentRequests: deps.listEnrollmentRequests,
-            getEnrollmentRequest: deps.getEnrollmentRequest,
-            issueEnrollmentFeeBoleto: deps.issueEnrollmentFeeBoleto
-        });
-        mount('/enrollment-requests', router);
+    if (deps.enrollmentRequestsRouter) {
+        mount('/enrollment-requests', deps.enrollmentRequestsRouter);
     }
     app.use('/health', deps.healthRouter(deps));
     app.use((err: any, _req: any, res: any, _next: any) => {
         console.error(err);
+        
+        // Se for AppError, usar o formato padronizado
+        if (err instanceof AppError) {
+            const statusCode = getStatusCodeFromErrorCode(err.code);
+            return res.status(statusCode).json({
+                error: err.message,
+                code: err.code,
+                ...(err.details && { details: err.details })
+            });
+        }
+        
+        // Erros padrão
         res.status(400).json({ error: err?.message ?? 'Bad Request' });
     });
+
+function getStatusCodeFromErrorCode(code: string): number {
+    if (code.startsWith('VALIDATION') || code.includes('INVALID')) return 400;
+    if (code.includes('NOT_FOUND')) return 404;
+    if (code.includes('UNAUTHORIZED')) return 401;
+    if (code.includes('FORBIDDEN') || code.includes('NOT_ALLOWED')) return 403;
+    if (code.includes('ALREADY_EXISTS') || code.includes('CONFLICT')) return 409;
+    if (code.includes('CONFIGURATION')) return 500;
+    return 400;
+}
+
     return app;
 }

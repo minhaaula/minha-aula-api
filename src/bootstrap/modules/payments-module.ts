@@ -1,5 +1,5 @@
 import { ModuleBuildResult, ModuleSetupContext } from './types';
-import { PaymentRepositoryAdapter } from '../../infra/db/typeorm/payment-repository.adap';
+import { PaymentRepositoryAdapter } from '../../infra/db/typeorm/payment-repository.adapter';
 import { OutboxProducer } from '../../infra/messaging/bullmq/outbox-producer';
 import { CreatePayment } from '../../app/use-cases/create-payment';
 import { CapturePayment } from '../../app/use-cases/CapturePayment';
@@ -24,12 +24,16 @@ export function buildPaymentsModule(deps: PaymentsModuleDeps, _ctx: ModuleSetupC
     const capturePayment = new CapturePayment(deps.paymentsRepo, provider, deps.outbox);
     const issueBoleto = new IssueBoleto(provider);
 
+    // Montar router pronto
+    const router = paymentsRouter({
+        createPayment,
+        capturePayment,
+        issueBoleto
+    });
+
     return {
         deps: {
-            paymentsRouter,
-            createPayment,
-            capturePayment,
-            issueBoleto
+            paymentsRouter: router
         },
         docFiles: ['payments.yaml']
     };

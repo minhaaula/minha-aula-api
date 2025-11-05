@@ -5,6 +5,7 @@ import { User } from '../../domain/entities/user';
 import { Uuid } from '../../shared/uuid';
 import { PostalAddress } from '../../domain/value-objects/postal-address';
 import { UserPersona, assertUserPersona } from '../../domain/value-objects/user-persona';
+import { AppError, ErrorCode } from '../../shared/errors';
 
 type RegisterInput = {
     fullName: string;
@@ -35,14 +36,20 @@ export class RegisterUser {
         const email = Email.create(input.email);
 
         const existingByEmail = await this.users.findByEmail(email.value);
-        if (existingByEmail) throw new Error('Email already registered');
+        if (existingByEmail) {
+            throw AppError.fromCode(ErrorCode.EMAIL_ALREADY_REGISTERED, { email: email.value });
+        }
 
         const cpf = this.normalizeCpf(input.cpf);
         const existingByCpf = await this.users.findByCpf(cpf);
-        if (existingByCpf) throw new Error('CPF already registered');
+        if (existingByCpf) {
+            throw AppError.fromCode(ErrorCode.CPF_ALREADY_REGISTERED, { cpf });
+        }
 
         const birthDate = new Date(input.birthDate);
-        if (Number.isNaN(birthDate.getTime())) throw new Error('Invalid birth date');
+        if (Number.isNaN(birthDate.getTime())) {
+            throw AppError.fromCode(ErrorCode.INVALID_BIRTH_DATE, { birthDate: input.birthDate });
+        }
 
         assertUserPersona(input.persona);
 
@@ -83,7 +90,9 @@ export class RegisterUser {
 
     private normalizeCpf(value: string) {
         const digits = value.replace(/\D/g, '');
-        if (digits.length !== 11) throw new Error('Invalid CPF');
+        if (digits.length !== 11) {
+            throw AppError.fromCode(ErrorCode.INVALID_CPF, { cpf: value });
+        }
         return digits;
     }
 }

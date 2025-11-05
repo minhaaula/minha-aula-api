@@ -1,12 +1,12 @@
 import { ModuleBuildResult, ModuleSetupContext } from './types';
-import { UserRepositoryAdapter } from '../../infra/db/typeorm/user-repository.adap';
-import { DependentRepositoryAdapter } from '../../infra/db/typeorm/dependent-repository.adap';
-import { SchoolRepositoryAdapter } from '../../infra/db/typeorm/school-repository.adap';
-import { CourseRepositoryAdapter } from '../../infra/db/typeorm/course-repository.adap';
-import { CourseClassRepositoryAdapter } from '../../infra/db/typeorm/course-class-repository.adap';
-import { EnrollmentRepositoryAdapter } from '../../infra/db/typeorm/enrollment-repository.adap';
-import { EnrollmentRequestRepositoryAdapter } from '../../infra/db/typeorm/enrollment-request-repository.adap';
-import { SchoolFinancialChargeRepositoryAdapter } from '../../infra/db/typeorm/school-financial-charge-repository.adap';
+import { UserRepositoryAdapter } from '../../infra/db/typeorm/user-repository.adapter';
+import { DependentRepositoryAdapter } from '../../infra/db/typeorm/dependent-repository.adapter';
+import { SchoolRepositoryAdapter } from '../../infra/db/typeorm/school-repository.adapter';
+import { CourseRepositoryAdapter } from '../../infra/db/typeorm/course-repository.adapter';
+import { CourseClassRepositoryAdapter } from '../../infra/db/typeorm/course-class-repository.adapter';
+import { EnrollmentRepositoryAdapter } from '../../infra/db/typeorm/enrollment-repository.adapter';
+import { EnrollmentRequestRepositoryAdapter } from '../../infra/db/typeorm/enrollment-request-repository.adapter';
+import { SchoolFinancialChargeRepositoryAdapter } from '../../infra/db/typeorm/school-financial-charge-repository.adapter';
 import { AddDependent } from '../../app/use-cases/add-dependent';
 import { CreateEnrollmentRequest } from '../../app/use-cases/create-enrollment-request';
 import { ApproveEnrollmentRequest } from '../../app/use-cases/approve-enrollment-request';
@@ -67,20 +67,29 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
     const listEnrollmentRequests = new ListEnrollmentRequests(deps.enrollmentRequestsRepo);
     const getEnrollmentRequest = new GetEnrollmentRequest(deps.enrollmentRequestsRepo);
 
+    // Montar routers prontos
+    const studentsRouterInstance = studentsRouter({
+        listStudents,
+        getStudentDirectoryEntry
+    });
+
+    const dependentsRouterInstance = dependentsRouter({
+        addDependent
+    });
+
+    const enrollmentRequestsRouterInstance = enrollmentRequestsRouter({
+        createEnrollmentRequest,
+        approveEnrollmentRequest,
+        listEnrollmentRequests,
+        getEnrollmentRequest,
+        issueEnrollmentFeeBoleto
+    });
+
     return {
         deps: {
-            studentsRouter,
-            listStudents,
-            getStudentDirectoryEntry,
-            dependentsRouter,
-            addDependent,
-            enrollmentRequestsRouter,
-            createEnrollmentRequest,
-            approveEnrollmentRequest,
-            issueEnrollmentFeeBoleto,
-            listEnrollmentRequests,
-            getEnrollmentRequest,
-            listSchools
+            studentsRouter: studentsRouterInstance,
+            dependentsRouter: dependentsRouterInstance,
+            enrollmentRequestsRouter: enrollmentRequestsRouterInstance
         },
         docFiles: ['students.yaml', 'dependents.yaml', 'enrollment-requests.yaml', 'schools-public.yaml']
     };

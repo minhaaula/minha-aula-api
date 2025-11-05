@@ -2,6 +2,7 @@ import { EnrollmentRequestRepository } from '../../ports/repositories/enrollment
 import { EnrollmentRepository } from '../../ports/repositories/enrollment.repo';
 import { CourseClassRepository } from '../../ports/repositories/course-class.repo';
 import { SchoolFinancialChargeRepository } from '../../ports/repositories/school-financial-charge.repo';
+import { AppError, ErrorCode } from '../../shared/errors';
 import { Enrollment } from '../../domain/entities/enrollment';
 import { EnrollmentRequest } from '../../domain/entities/enrollment-request';
 import { SchoolFinancialCharge } from '../../domain/entities/school-financial-charge';
@@ -17,19 +18,39 @@ export class ApproveEnrollmentRequest {
 
     async exec(input: { requestId: string; approverUserId: string; notes?: string | null; }): Promise<{ requestId: string; enrollmentId: string; status: string; enrollmentFeeChargeId: string | null; }> {
         const request = await this.requests.findById(input.requestId);
-        if (!request) throw new Error('Enrollment request not found');
+        if (!request) {
+            throw AppError.fromCode(ErrorCode.ENROLLMENT_REQUEST_NOT_FOUND, { requestId: input.requestId });
+        }
 
-        if (request.status !== 'PENDING') throw new Error('Enrollment request already decided');
+        if (request.status !== 'PENDING') {
+            throw AppError.fromCode(ErrorCode.ENROLLMENT_REQUEST_ALREADY_DECIDED, {
+                requestId: input.requestId,
+                status: request.status
+            });
+        }
+        
         if (request.requestedForUserId !== input.approverUserId) {
-            throw new Error('User not allowed to approve this enrollment request');
+            throw AppError.fromCode(ErrorCode.NOT_ALLOWED, {
+                message: 'Usuário não autorizado a aprovar esta solicitação de matrícula'
+            });
         }
 
         if (request.requestedForDependentId) {
             const existing = await this.enrollments.findByClassAndDependent(request.courseClassId, request.requestedForDependentId);
-            if (existing) throw new Error('Dependent already enrolled in this class');
+            if (existing) {
+                throw AppError.fromCode(ErrorCode.ALREADY_ENROLLED, {
+                    courseClassId: request.courseClassId,
+                    dependentId: request.requestedForDependentId
+                });
+            }
         } else {
             const existing = await this.enrollments.findByClassAndUser(request.courseClassId, request.requestedForUserId);
-            if (existing) throw new Error('User already enrolled in this class');
+            if (existing) {
+                throw AppError.fromCode(ErrorCode.ALREADY_ENROLLED, {
+                    courseClassId: request.courseClassId,
+                    userId: request.requestedForUserId
+                });
+            }
         }
 
         const enrollmentId = Uuid();
@@ -77,7 +98,10 @@ export class ApproveEnrollmentRequest {
 
         const courseClass = await this.classes.findById(request.courseClassId);
         if (!courseClass) {
-            throw new Error('Course class not found for enrollment request');
+            throw AppError.fromCode(ErrorCode.COURSE_CLASS_NOT_FOUND, {
+                courseClassId: request.courseClassId,
+                requestId: request.id
+            });
         }
 
         const dueDate = request.enrollmentFeeDueDate ?? request.firstMonthlyPaymentDate;

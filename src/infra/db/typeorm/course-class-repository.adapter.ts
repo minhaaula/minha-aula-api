@@ -66,3 +66,5 @@ export class CourseClassRepositoryAdapter implements CourseClassRepository {
         return row;
     }
 }
+
+
