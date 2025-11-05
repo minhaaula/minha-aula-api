@@ -6,25 +6,7 @@ import { Uuid } from '../../shared/uuid';
 import { PostalAddress } from '../../domain/value-objects/postal-address';
 import { UserPersona, assertUserPersona } from '../../domain/value-objects/user-persona';
 import { AppError, ErrorCode } from '../../shared/errors';
-
-type RegisterInput = {
-    fullName: string;
-    birthDate: string;
-    email: string;
-    phone: string;
-    cpf: string;
-    address: {
-        street: string;
-        number: string;
-        complement?: string | null;
-        district?: string | null;
-        city: string;
-        state: string;
-        zipCode: string;
-    };
-    persona: UserPersona;
-    password: string;
-};
+import type { RegisterUserInput, RegisterUserOutput } from '../types/auth.types';
 
 export class RegisterUser {
     constructor(
@@ -32,7 +14,7 @@ export class RegisterUser {
         private readonly hasher: PasswordHasherPort
     ) {}
 
-    async exec(input: RegisterInput): Promise<{ userId: string; fullName: string; email: string; cpf: string; persona: UserPersona; createdAt: Date; }> {
+    async exec(input: RegisterUserInput): Promise<RegisterUserOutput> {
         const email = Email.create(input.email);
 
         const existingByEmail = await this.users.findByEmail(email.value);

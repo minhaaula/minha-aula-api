@@ -8,6 +8,9 @@ import { EnrollmentRequestRepository } from '../../ports/repositories/enrollment
 import { EnrollmentRequest } from '../../domain/entities/enrollment-request';
 import { Uuid } from '../../shared/uuid';
 import { equalUuid } from '../../shared/normalize-uuid';
+import { AppError, ErrorCode } from '../../shared/errors';
+import { normalizeDateString, normalizeOptionalDateString } from '../utils/date.utils';
+import type { CreateEnrollmentRequestInput } from '../types/enrollment.types';
 
 export class CreateEnrollmentRequest {
     constructor(
@@ -20,105 +23,44 @@ export class CreateEnrollmentRequest {
         private readonly requests: EnrollmentRequestRepository
     ) {}
 
-    async exec(input: {
-        schoolId: string;
-        courseClassId: string;
-        requestedForUserId: string;
-        requestedForDependentId?: string | null;
-        notes?: string | null;
-        discount?: number | null;
-        enrollmentFeeAmount?: number | null;
-        enrollmentFeeDueDate?: string | null;
-        firstMonthlyPaymentDate: string;
-    }): Promise<EnrollmentRequest> {
+    async exec(input: CreateEnrollmentRequestInput): Promise<EnrollmentRequest> {
         const schoolId = input.schoolId.trim();
         const courseClassId = input.courseClassId.trim();
 
-        const school = await this.schools.findById(schoolId);
-        if (!school) throw new Error('School not found');
+        // Validar e carregar entidades relacionadas
+        const school = await this.validateAndLoadSchool(schoolId);
+        const courseClass = await this.validateAndLoadCourseClass(courseClassId);
+        const course = await this.validateCourseBelongsToSchool(courseClass.courseId, school.id);
+        const user = await this.validateAndLoadUser(input.requestedForUserId);
 
-        const courseClass = await this.classes.findById(courseClassId);
-        if (!courseClass) throw new Error('Course class not found');
+        // Validar dependente se fornecido
+        const dependentId = await this.validateDependentIfProvided(
+            input.requestedForDependentId,
+            user.id,
+            courseClass.id
+        );
 
-        const course = await this.courses.findById(courseClass.courseId);
-        if (!course || !equalUuid(course.schoolId, school.id)) throw new Error('Course class does not belong to the school');
+        // Verificar se já existe matrícula
+        await this.ensureNoExistingEnrollment(courseClass.id, user.id, dependentId);
 
-        const user = await this.users.findById(input.requestedForUserId);
-        if (!user) throw new Error('Target user not found');
+        // Verificar se já existe solicitação
+        await this.ensureNoExistingRequest(courseClass.id, user.id, dependentId);
 
-        let dependentId: string | null = null;
-        if (input.requestedForDependentId) {
-            const dependent = await this.dependents.findById(input.requestedForDependentId);
-            if (!dependent || dependent.userId !== user.id) {
-                throw new Error('Dependent not found for the given user');
-            }
-            dependentId = dependent.id;
-            const existingEnrollment = await this.enrollments.findByClassAndDependent(courseClass.id, dependent.id);
-            if (existingEnrollment) throw new Error('Dependent already enrolled in this class');
-        } else {
-            const existingEnrollment = await this.enrollments.findByClassAndUser(courseClass.id, user.id);
-            if (existingEnrollment) throw new Error('User already enrolled in this class');
-        }
+        // Normalizar valores monetários
+        const discountCents = this.normalizeAmount(input.discount, 'discount');
+        const enrollmentFeeCents = this.normalizeAmount(input.enrollmentFeeAmount, 'enrollment fee');
 
-        const existingRequest = await this.requests.findByCourseClassAndTarget({
-            courseClassId: courseClass.id,
-            userId: user.id,
-            dependentId
-        });
-        if (existingRequest) throw new Error('Enrollment request already exists for this target');
+        // Normalizar datas
+        const enrollmentFeeDueDate = this.normalizeEnrollmentFeeDueDate(
+            input.enrollmentFeeDueDate,
+            enrollmentFeeCents
+        );
+        const firstMonthlyPaymentDate = normalizeDateString(
+            input.firstMonthlyPaymentDate,
+            'first monthly payment date'
+        );
 
-        let discountCents: number | null = null;
-        if (input.discount !== undefined && input.discount !== null) {
-            const discountValue = Number(input.discount);
-            if (!Number.isFinite(discountValue) || discountValue < 0) {
-                throw new Error('Invalid discount value');
-            }
-            discountCents = Math.round(discountValue * 100);
-        }
-
-        let enrollmentFeeCents: number | null = null;
-        if (input.enrollmentFeeAmount !== undefined && input.enrollmentFeeAmount !== null) {
-            const feeAmount = Number(input.enrollmentFeeAmount);
-            if (!Number.isFinite(feeAmount) || feeAmount < 0) {
-                throw new Error('Invalid enrollment fee amount');
-            }
-            enrollmentFeeCents = Math.round(feeAmount * 100);
-        }
-
-        const normalizeDate = (value: string, field: string) => {
-            if (!value || typeof value !== 'string') {
-                throw new Error(`Invalid ${field}`);
-            }
-            const trimmed = value.trim();
-            const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(trimmed);
-            if (!match) {
-                throw new Error(`Invalid ${field}`);
-            }
-            const year = Number(match[1]);
-            const month = Number(match[2]);
-            const day = Number(match[3]);
-            const date = new Date(Date.UTC(year, month - 1, day));
-            if (
-                Number.isNaN(date.getTime()) ||
-                date.getUTCFullYear() !== year ||
-                date.getUTCMonth() !== month - 1 ||
-                date.getUTCDate() !== day
-            ) {
-                throw new Error(`Invalid ${field}`);
-            }
-            return date;
-        };
-
-        let enrollmentFeeDueDate: Date | null = null;
-        if (input.enrollmentFeeDueDate !== undefined && input.enrollmentFeeDueDate !== null) {
-            enrollmentFeeDueDate = normalizeDate(input.enrollmentFeeDueDate, 'enrollment fee due date');
-            if (enrollmentFeeCents === null) {
-                throw new Error('Enrollment fee due date requires a fee amount');
-            }
-        }
-
-        const firstMonthlyPaymentDate = normalizeDate(input.firstMonthlyPaymentDate, 'first monthly payment date');
-
+        // Criar solicitação
         const request = EnrollmentRequest.create({
             id: Uuid(),
             schoolId: school.id,
@@ -135,5 +77,144 @@ export class CreateEnrollmentRequest {
         await this.requests.save(request);
 
         return request;
+    }
+
+    private async validateAndLoadSchool(schoolId: string) {
+        const school = await this.schools.findById(schoolId);
+        if (!school) {
+            throw AppError.fromCode(ErrorCode.SCHOOL_NOT_FOUND, { schoolId });
+        }
+        return school;
+    }
+
+    private async validateAndLoadCourseClass(courseClassId: string) {
+        const courseClass = await this.classes.findById(courseClassId);
+        if (!courseClass) {
+            throw AppError.fromCode(ErrorCode.COURSE_CLASS_NOT_FOUND, { courseClassId });
+        }
+        return courseClass;
+    }
+
+    private async validateCourseBelongsToSchool(courseId: string, schoolId: string) {
+        const course = await this.courses.findById(courseId);
+        if (!course || !equalUuid(course.schoolId, schoolId)) {
+            throw AppError.fromCode(ErrorCode.BUSINESS_RULE_VIOLATION, {
+                message: 'Turma não pertence à escola informada'
+            });
+        }
+        return course;
+    }
+
+    private async validateAndLoadUser(userId: string) {
+        const user = await this.users.findById(userId);
+        if (!user) {
+            throw AppError.fromCode(ErrorCode.USER_NOT_FOUND, { userId });
+        }
+        return user;
+    }
+
+    private async validateDependentIfProvided(
+        dependentId: string | null | undefined,
+        ownerUserId: string,
+        courseClassId: string
+    ): Promise<string | null> {
+        if (!dependentId) {
+            return null;
+        }
+
+        const dependent = await this.dependents.findById(dependentId);
+        if (!dependent || dependent.userId !== ownerUserId) {
+            throw AppError.fromCode(ErrorCode.DEPENDENT_NOT_FOUND, {
+                message: 'Dependente não encontrado para o usuário informado',
+                dependentId,
+                ownerUserId
+            });
+        }
+
+        // Verificar se dependente já está matriculado
+        const existingEnrollment = await this.enrollments.findByClassAndDependent(
+            courseClassId,
+            dependent.id
+        );
+        if (existingEnrollment) {
+            throw AppError.fromCode(ErrorCode.ALREADY_ENROLLED, {
+                courseClassId,
+                dependentId: dependent.id
+            });
+        }
+
+        return dependent.id;
+    }
+
+    private async ensureNoExistingEnrollment(
+        courseClassId: string,
+        userId: string,
+        dependentId: string | null
+    ): Promise<void> {
+        if (dependentId) {
+            // Já validado em validateDependentIfProvided
+            return;
+        }
+
+        const existingEnrollment = await this.enrollments.findByClassAndUser(courseClassId, userId);
+        if (existingEnrollment) {
+            throw AppError.fromCode(ErrorCode.ALREADY_ENROLLED, {
+                courseClassId,
+                userId
+            });
+        }
+    }
+
+    private async ensureNoExistingRequest(
+        courseClassId: string,
+        userId: string,
+        dependentId: string | null
+    ): Promise<void> {
+        const existingRequest = await this.requests.findByCourseClassAndTarget({
+            courseClassId,
+            userId,
+            dependentId
+        });
+
+        if (existingRequest) {
+            throw AppError.fromCode(ErrorCode.ENROLLMENT_REQUEST_ALREADY_EXISTS, {
+                courseClassId,
+                userId,
+                dependentId
+            });
+        }
+    }
+
+    private normalizeAmount(value: number | null | undefined, fieldName: string): number | null {
+        if (value === undefined || value === null) {
+            return null;
+        }
+
+        const amount = Number(value);
+        if (!Number.isFinite(amount) || amount < 0) {
+            throw AppError.fromCode(ErrorCode.INVALID_AMOUNT, {
+                message: `Valor inválido para ${fieldName}`,
+                value
+            });
+        }
+
+        return Math.round(amount * 100);
+    }
+
+    private normalizeEnrollmentFeeDueDate(
+        dateValue: string | null | undefined,
+        enrollmentFeeCents: number | null
+    ): Date | null {
+        if (dateValue === undefined || dateValue === null) {
+            return null;
+        }
+
+        if (enrollmentFeeCents === null) {
+            throw AppError.fromCode(ErrorCode.VALIDATION_ERROR, {
+                message: 'Data de vencimento da taxa de matrícula requer um valor de taxa'
+            });
+        }
+
+        return normalizeDateString(dateValue, 'enrollment fee due date');
     }
 }

@@ -7,6 +7,7 @@ import { Enrollment } from '../../domain/entities/enrollment';
 import { EnrollmentRequest } from '../../domain/entities/enrollment-request';
 import { SchoolFinancialCharge } from '../../domain/entities/school-financial-charge';
 import { Uuid } from '../../shared/uuid';
+import type { ApproveEnrollmentRequestInput, ApproveEnrollmentRequestOutput } from '../types/enrollment.types';
 
 export class ApproveEnrollmentRequest {
     constructor(
@@ -16,65 +17,33 @@ export class ApproveEnrollmentRequest {
         private readonly financialCharges: SchoolFinancialChargeRepository
     ) {}
 
-    async exec(input: { requestId: string; approverUserId: string; notes?: string | null; }): Promise<{ requestId: string; enrollmentId: string; status: string; enrollmentFeeChargeId: string | null; }> {
-        const request = await this.requests.findById(input.requestId);
-        if (!request) {
-            throw AppError.fromCode(ErrorCode.ENROLLMENT_REQUEST_NOT_FOUND, { requestId: input.requestId });
-        }
+    async exec(input: ApproveEnrollmentRequestInput): Promise<ApproveEnrollmentRequestOutput> {
+        // Validar e carregar solicitação
+        const request = await this.validateAndLoadRequest(input.requestId);
 
-        if (request.status !== 'PENDING') {
-            throw AppError.fromCode(ErrorCode.ENROLLMENT_REQUEST_ALREADY_DECIDED, {
-                requestId: input.requestId,
-                status: request.status
-            });
-        }
-        
-        if (request.requestedForUserId !== input.approverUserId) {
-            throw AppError.fromCode(ErrorCode.NOT_ALLOWED, {
-                message: 'Usuário não autorizado a aprovar esta solicitação de matrícula'
-            });
-        }
+        // Validar que pode ser aprovada
+        this.validateRequestCanBeApproved(request, input.approverUserId);
 
-        if (request.requestedForDependentId) {
-            const existing = await this.enrollments.findByClassAndDependent(request.courseClassId, request.requestedForDependentId);
-            if (existing) {
-                throw AppError.fromCode(ErrorCode.ALREADY_ENROLLED, {
-                    courseClassId: request.courseClassId,
-                    dependentId: request.requestedForDependentId
-                });
-            }
-        } else {
-            const existing = await this.enrollments.findByClassAndUser(request.courseClassId, request.requestedForUserId);
-            if (existing) {
-                throw AppError.fromCode(ErrorCode.ALREADY_ENROLLED, {
-                    courseClassId: request.courseClassId,
-                    userId: request.requestedForUserId
-                });
-            }
-        }
+        // Verificar se já existe matrícula
+        await this.ensureNoExistingEnrollment(
+            request.courseClassId,
+            request.requestedForUserId,
+            request.requestedForDependentId
+        );
 
-        const enrollmentId = Uuid();
-        const enrollment = request.requestedForDependentId
-            ? Enrollment.createForDependent({
-                id: enrollmentId,
-                courseClassId: request.courseClassId,
-                ownerUserId: request.requestedForUserId,
-                dependentId: request.requestedForDependentId
-            })
-            : Enrollment.createForUser({
-                id: enrollmentId,
-                courseClassId: request.courseClassId,
-                ownerUserId: request.requestedForUserId,
-                studentUserId: request.requestedForUserId
-            });
+        // Criar matrícula
+        const enrollment = this.createEnrollmentFromRequest(request);
 
+        // Criar cobrança de taxa de matrícula se aplicável
         const pendingCharge = await this.buildEnrollmentCharge(request);
 
+        // Salvar matrícula e cobrança
         await this.enrollments.save(enrollment);
         if (pendingCharge) {
             await this.financialCharges.save(pendingCharge);
         }
 
+        // Aprovar solicitação
         request.approve({
             decidedByUserId: input.approverUserId,
             enrollmentId: enrollment.id,
@@ -89,6 +58,80 @@ export class ApproveEnrollmentRequest {
             status: request.status,
             enrollmentFeeChargeId: pendingCharge ? pendingCharge.id : null
         };
+    }
+
+    private async validateAndLoadRequest(requestId: string) {
+        const request = await this.requests.findById(requestId);
+        if (!request) {
+            throw AppError.fromCode(ErrorCode.ENROLLMENT_REQUEST_NOT_FOUND, { requestId });
+        }
+        return request;
+    }
+
+    private validateRequestCanBeApproved(
+        request: EnrollmentRequest,
+        approverUserId: string
+    ): void {
+        if (request.status !== 'PENDING') {
+            throw AppError.fromCode(ErrorCode.ENROLLMENT_REQUEST_ALREADY_DECIDED, {
+                requestId: request.id,
+                status: request.status
+            });
+        }
+
+        if (request.requestedForUserId !== approverUserId) {
+            throw AppError.fromCode(ErrorCode.NOT_ALLOWED, {
+                message: 'Usuário não autorizado a aprovar esta solicitação de matrícula',
+                requestId: request.id,
+                approverUserId,
+                requestedForUserId: request.requestedForUserId
+            });
+        }
+    }
+
+    private async ensureNoExistingEnrollment(
+        courseClassId: string,
+        userId: string,
+        dependentId: string | null
+    ): Promise<void> {
+        if (dependentId) {
+            const existing = await this.enrollments.findByClassAndDependent(courseClassId, dependentId);
+            if (existing) {
+                throw AppError.fromCode(ErrorCode.ALREADY_ENROLLED, {
+                    courseClassId,
+                    dependentId
+                });
+            }
+            return;
+        }
+
+        const existing = await this.enrollments.findByClassAndUser(courseClassId, userId);
+        if (existing) {
+            throw AppError.fromCode(ErrorCode.ALREADY_ENROLLED, {
+                courseClassId,
+                userId
+            });
+        }
+    }
+
+    private createEnrollmentFromRequest(request: EnrollmentRequest): Enrollment {
+        const enrollmentId = Uuid();
+
+        if (request.requestedForDependentId) {
+            return Enrollment.createForDependent({
+                id: enrollmentId,
+                courseClassId: request.courseClassId,
+                ownerUserId: request.requestedForUserId,
+                dependentId: request.requestedForDependentId
+            });
+        }
+
+        return Enrollment.createForUser({
+            id: enrollmentId,
+            courseClassId: request.courseClassId,
+            ownerUserId: request.requestedForUserId,
+            studentUserId: request.requestedForUserId
+        });
     }
 
     private async buildEnrollmentCharge(request: EnrollmentRequest): Promise<SchoolFinancialCharge | null> {

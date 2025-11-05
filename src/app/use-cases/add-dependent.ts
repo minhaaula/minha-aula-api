@@ -3,6 +3,7 @@ import { UserRepository } from '../../ports/repositories/user.repo';
 import { Dependent } from '../../domain/entities/dependent';
 import { Uuid } from '../../shared/uuid';
 import { AppError, ErrorCode } from '../../shared/errors';
+import type { AddDependentInput, AddDependentOutput } from '../types/dependent.types';
 
 export class AddDependent {
     constructor(
@@ -10,21 +11,7 @@ export class AddDependent {
         private readonly dependents: DependentRepository
     ) {}
 
-    async exec(input: {
-        ownerUserId: string;
-        fullName: string;
-        cpf?: string | null;
-        birthDate?: string | null;
-        relationship?: string | null;
-    }): Promise<{
-        id: string;
-        userId: string;
-        fullName: string;
-        cpf: string | null;
-        birthDate: Date | null;
-        relationship: string | null;
-        createdAt: Date;
-    }> {
+    async exec(input: AddDependentInput): Promise<AddDependentOutput> {
         const owner = await this.users.findById(input.ownerUserId);
         if (!owner) throw AppError.fromCode(ErrorCode.USER_NOT_FOUND, { userId: input.ownerUserId });
 

@@ -2,6 +2,7 @@ import { SchoolRepository } from '../../ports/repositories/school.repo';
 import { PostalAddress, type PostalAddressProps } from '../../domain/value-objects/postal-address';
 import { School } from '../../domain/entities/school';
 import { PasswordHasherPort } from '../../ports/providers/password-hasher.port';
+import type { UpdateSchoolInput, UpdateSchoolOutput } from '../types/school.types';
 
 export class UpdateSchool {
     constructor(
@@ -9,41 +10,7 @@ export class UpdateSchool {
         private readonly passwordHasher: PasswordHasherPort
     ) {}
 
-    async exec(input: {
-        schoolId: string;
-        name?: string;
-        email?: string;
-        phone?: string;
-        cnpj?: string;
-        addresses?: Array<{
-            street: string;
-            number: string;
-            complement?: string | null;
-            district?: string | null;
-            city: string;
-            state: string;
-            zipCode: string;
-        }>;
-        ownerName?: string | null;
-        ownerCpf?: string | null;
-        ownerEmail?: string | null;
-        ownerUserId?: string | null;
-        ownerPassword?: string | null;
-        incomeValue?: number;
-    }): Promise<{
-        id: string;
-        name: string;
-        email: string;
-        phone: string;
-        cnpj: string;
-        addresses: PostalAddressProps[];
-        createdAt: Date;
-        ownerUserId: string | null;
-        ownerName: string | null;
-        ownerCpf: string | null;
-        ownerEmail: string | null;
-        incomeValue: number;
-    }> {
+    async exec(input: UpdateSchoolInput): Promise<UpdateSchoolOutput> {
         const schoolId = input.schoolId.trim();
         if (!schoolId) {
             throw new Error('School id is required');

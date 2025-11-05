@@ -6,6 +6,8 @@ import { EnrollmentRepository } from '../../ports/repositories/enrollment.repo';
 import { Enrollment } from '../../domain/entities/enrollment';
 import { Uuid } from '../../shared/uuid';
 import { equalUuid } from '../../shared/normalize-uuid';
+import { AppError, ErrorCode } from '../../shared/errors';
+import type { EnrollStudentInput, EnrollStudentOutput } from '../types/enrollment.types';
 
 export class EnrollStudent {
     constructor(
@@ -16,77 +18,29 @@ export class EnrollStudent {
         private readonly enrollments: EnrollmentRepository
     ) {}
 
-    async exec(input: {
-        schoolId: string;
-        courseId: string;
-        classId: string;
-        studentUserId: string;
-        dependentId?: string | null;
-    }): Promise<{
-        id: string;
-        courseClassId: string;
-        ownerUserId: string;
-        studentType: Enrollment['studentType'];
-        studentUserId: string | null;
-        dependentId: string | null;
-        status: Enrollment['status'];
-        enrolledAt: Date;
-        updatedAt: Date;
-    }> {
+    async exec(input: EnrollStudentInput): Promise<EnrollStudentOutput> {
         const schoolId = input.schoolId.trim();
         const courseId = input.courseId.trim();
         const classId = input.classId.trim();
         const studentUserId = input.studentUserId.trim();
         const dependentId = input.dependentId?.trim() || null;
 
-        if (!schoolId || !courseId || !classId || !studentUserId) {
-            throw new Error('Missing enrollment data');
-        }
+        // Validar dados obrigatórios
+        this.validateRequiredFields(schoolId, courseId, classId, studentUserId);
 
-        const course = await this.courses.findById(courseId);
-        if (!course || !course.isActive || !equalUuid(course.schoolId, schoolId)) {
-            throw new Error('Course not found for this school');
-        }
+        // Validar e carregar entidades relacionadas
+        const course = await this.validateAndLoadCourse(courseId, schoolId);
+        const courseClass = await this.validateAndLoadCourseClass(classId, course.id);
+        const owner = await this.validateAndLoadUser(studentUserId);
 
-        const courseClass = await this.classes.findById(classId);
-        if (!courseClass || !courseClass.isActive || !equalUuid(courseClass.courseId, course.id)) {
-            throw new Error('Course class not found for this course');
-        }
+        // Validar dependente se fornecido e verificar se já está matriculado
+        await this.validateDependentIfProvided(dependentId, owner.id, courseClass.id);
 
-        const owner = await this.users.findById(studentUserId);
-        if (!owner) throw new Error('Student user not found');
+        // Verificar se usuário já está matriculado (se não for dependente)
+        await this.ensureNoExistingEnrollment(courseClass.id, owner.id, dependentId);
 
-        let enrollment: Enrollment;
-        if (dependentId) {
-            const dependent = await this.dependents.findById(dependentId);
-            if (!dependent || !equalUuid(dependent.userId, owner.id)) {
-                throw new Error('Dependent not found for this student');
-            }
-
-            const existing = await this.enrollments.findByClassAndDependent(courseClass.id, dependent.id);
-            if (existing) {
-                throw new Error('Dependent already enrolled in this class');
-            }
-
-            enrollment = Enrollment.createForDependent({
-                id: Uuid(),
-                courseClassId: courseClass.id,
-                ownerUserId: owner.id,
-                dependentId: dependent.id
-            });
-        } else {
-            const existing = await this.enrollments.findByClassAndUser(courseClass.id, owner.id);
-            if (existing) {
-                throw new Error('Student already enrolled in this class');
-            }
-
-            enrollment = Enrollment.createForUser({
-                id: Uuid(),
-                courseClassId: courseClass.id,
-                ownerUserId: owner.id,
-                studentUserId: owner.id
-            });
-        }
+        // Criar matrícula
+        const enrollment = this.createEnrollment(courseClass.id, owner.id, dependentId);
 
         await this.enrollments.save(enrollment);
 
@@ -101,5 +55,119 @@ export class EnrollStudent {
             enrolledAt: enrollment.enrolledAt,
             updatedAt: enrollment.updatedAt
         };
+    }
+
+    private validateRequiredFields(
+        schoolId: string,
+        courseId: string,
+        classId: string,
+        studentUserId: string
+    ): void {
+        if (!schoolId || !courseId || !classId || !studentUserId) {
+            throw AppError.fromCode(ErrorCode.INVALID_IDENTIFIERS, {
+                message: 'Dados de matrícula incompletos'
+            });
+        }
+    }
+
+    private async validateAndLoadCourse(courseId: string, schoolId: string) {
+        const course = await this.courses.findById(courseId);
+        if (!course || !course.isActive || !equalUuid(course.schoolId, schoolId)) {
+            throw AppError.fromCode(ErrorCode.COURSE_NOT_FOUND, {
+                courseId,
+                schoolId,
+                message: 'Curso não encontrado para esta escola ou está inativo'
+            });
+        }
+        return course;
+    }
+
+    private async validateAndLoadCourseClass(classId: string, courseId: string) {
+        const courseClass = await this.classes.findById(classId);
+        if (!courseClass || !courseClass.isActive || !equalUuid(courseClass.courseId, courseId)) {
+            throw AppError.fromCode(ErrorCode.COURSE_CLASS_NOT_FOUND, {
+                classId,
+                courseId,
+                message: 'Turma não encontrada para este curso ou está inativa'
+            });
+        }
+        return courseClass;
+    }
+
+    private async validateAndLoadUser(userId: string) {
+        const user = await this.users.findById(userId);
+        if (!user) {
+            throw AppError.fromCode(ErrorCode.USER_NOT_FOUND, { userId });
+        }
+        return user;
+    }
+
+    private async validateDependentIfProvided(
+        dependentId: string | null,
+        ownerUserId: string,
+        courseClassId: string
+    ): Promise<void> {
+        if (!dependentId) {
+            return;
+        }
+
+        const dependent = await this.dependents.findById(dependentId);
+        if (!dependent || !equalUuid(dependent.userId, ownerUserId)) {
+            throw AppError.fromCode(ErrorCode.DEPENDENT_NOT_FOUND, {
+                dependentId,
+                ownerUserId,
+                message: 'Dependente não encontrado para este aluno'
+            });
+        }
+
+        // Verificar se dependente já está matriculado
+        const existing = await this.enrollments.findByClassAndDependent(courseClassId, dependent.id);
+        if (existing) {
+            throw AppError.fromCode(ErrorCode.ALREADY_ENROLLED, {
+                courseClassId,
+                dependentId: dependent.id
+            });
+        }
+    }
+
+    private async ensureNoExistingEnrollment(
+        courseClassId: string,
+        userId: string,
+        dependentId: string | null
+    ): Promise<void> {
+        // Se for dependente, já foi validado em validateDependentIfProvided
+        if (dependentId) {
+            return;
+        }
+
+        const existing = await this.enrollments.findByClassAndUser(courseClassId, userId);
+        if (existing) {
+            throw AppError.fromCode(ErrorCode.ALREADY_ENROLLED, {
+                courseClassId,
+                userId
+            });
+        }
+    }
+
+    private createEnrollment(
+        courseClassId: string,
+        ownerUserId: string,
+        dependentId: string | null
+    ): Enrollment {
+        if (dependentId) {
+            return Enrollment.createForDependent({
+                id: Uuid(),
+                courseClassId,
+                ownerUserId,
+                dependentId
+            });
+        }
+
+        return Enrollment.createForUser({
+            id: Uuid(),
+            courseClassId,
+            ownerUserId,
+            studentUserId: ownerUserId
+        });
     }
 }

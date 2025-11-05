@@ -2,24 +2,11 @@ import { SchoolFinancialChargeRepository } from '../../ports/repositories/school
 import { UserRepository } from '../../ports/repositories/user.repo';
 import { PaymentProviderPort } from '../../ports/providers/payment-provider.port';
 import { Money } from '../../domain/value-objects/money';
-import { UserPersonaEnum } from '../../domain/value-objects/user-persona';
 import { SchoolFinancialChargeStatus } from '../../domain/entities/school-financial-charge';
+import { UserPersonaEnum } from '../../domain/value-objects/user-persona';
+import type { IssueEnrollmentFeeBoletoInput, IssueEnrollmentFeeBoletoOutput } from '../types/enrollment.types';
 
-type Requester = {
-    id: string;
-    persona: UserPersonaEnum;
-    schoolId?: string | null;
-};
-
-export type IssueEnrollmentFeeBoletoResult = {
-    chargeId: string;
-    paymentProviderRef: string;
-    boletoUrl: string | null;
-    digitableLine: string | null;
-    barcode: string | null;
-    dueDate: Date;
-    status: SchoolFinancialChargeStatus;
-};
+export type IssueEnrollmentFeeBoletoResult = IssueEnrollmentFeeBoletoOutput;
 
 export class IssueEnrollmentFeeBoleto {
     private readonly allowedStatuses = new Set<SchoolFinancialChargeStatus>(['PENDING_SYNC', 'FAILED', 'OPEN', 'PAID', 'OVERDUE']);
@@ -30,7 +17,7 @@ export class IssueEnrollmentFeeBoleto {
         private readonly paymentProvider: PaymentProviderPort
     ) {}
 
-    async exec(params: { chargeId: string; requester: Requester; }): Promise<IssueEnrollmentFeeBoletoResult> {
+    async exec(params: IssueEnrollmentFeeBoletoInput): Promise<IssueEnrollmentFeeBoletoOutput> {
         if (!this.paymentProvider.createBoletoCharge) {
             throw new Error('Configured payment provider does not support boleto issuance');
         }
@@ -102,7 +89,7 @@ export class IssueEnrollmentFeeBoleto {
         };
     }
 
-    private ensureRequesterCanIssue(requester: Requester, schoolId: string, ownerUserId: string) {
+    private ensureRequesterCanIssue(requester: IssueEnrollmentFeeBoletoInput['requester'], schoolId: string, ownerUserId: string) {
         switch (requester.persona) {
             case UserPersonaEnum.STUDENT:
                 if (ownerUserId !== requester.id) {
@@ -138,7 +125,7 @@ export class IssueEnrollmentFeeBoleto {
         return metadata;
     }
 
-    private serializeExistingCharge(charge: import('../../domain/entities/school-financial-charge').SchoolFinancialCharge): IssueEnrollmentFeeBoletoResult {
+    private serializeExistingCharge(charge: import('../../domain/entities/school-financial-charge').SchoolFinancialCharge): IssueEnrollmentFeeBoletoOutput {
         const payload = charge.asaasPayload ?? {};
         const dueDateValue = typeof payload?.dueDate === 'string' ? new Date(payload.dueDate) : charge.dueDate;
         return {

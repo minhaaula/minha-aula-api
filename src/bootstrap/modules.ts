@@ -122,7 +122,9 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
                     getEnvironmentInfo: () => ({
                         nodeEnv: process.env.NODE_ENV ?? null,
                         appModulesEnv: process.env.APP_MODULES ?? null
-                    })
+                    }),
+                    schoolsRepo,
+                    planFinancesRepo: schoolPlanFinancesRepo
                 }, ctx);
                 mergeModuleResult(serverDeps, docFiles, result);
                 break;

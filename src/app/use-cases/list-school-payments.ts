@@ -6,49 +6,9 @@ import { UserRepository } from '../../ports/repositories/user.repo';
 import { DependentRepository } from '../../ports/repositories/dependent.repo';
 import { equalUuid } from '../../shared/normalize-uuid';
 import { SchoolFinancialChargeStatus } from '../../domain/entities/school-financial-charge';
+import type { ListSchoolPaymentsInput, SchoolPaymentRecord } from '../types/payment.types';
 
-type ListSchoolPaymentsInput = {
-    schoolId: string;
-    month: number;
-    year: number;
-    studentName?: string | null;
-    classId?: string | null;
-    status?: SchoolFinancialChargeStatus | null;
-};
-
-export type SchoolPaymentRecord = {
-    id: string;
-    amountCents: number;
-    discountCents: number | null;
-    discountReason: string | null;
-    netAmountCents: number;
-    status: SchoolFinancialChargeStatus;
-    chargeType: string;
-    description: string | null;
-    dueDate: Date;
-    asaasPaymentId: string | null;
-    asaasInvoiceUrl: string | null;
-    paidAt: Date | null;
-    createdAt: Date;
-    updatedAt: Date;
-    student: {
-        id: string;
-        fullName: string;
-        type: 'USER' | 'DEPENDENT';
-    };
-    dependent: {
-        id: string;
-        fullName: string;
-    } | null;
-    course: {
-        id: string;
-        name: string;
-    };
-    class: {
-        id: string;
-        label: string;
-    } | null;
-};
+export type { SchoolPaymentRecord };
 
 export class ListSchoolPayments {
     constructor(

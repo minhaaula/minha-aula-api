@@ -4,6 +4,7 @@ import { SchoolPlanFinanceOrm } from './entities/school-plan-finance.orm';
 import { SchoolPlanFinance } from '../../../domain/entities/school-plan-finance';
 import { SubscriptionPlan } from '../../../domain/entities/subscription-plan';
 import { SubscriptionPlanOrm } from './entities/subscription-plan.orm';
+import { In } from 'typeorm';
 
 export class SchoolPlanFinanceRepositoryAdapter implements SchoolPlanFinanceRepository {
     private readonly repo = AppDataSource.getRepository(SchoolPlanFinanceOrm);
@@ -37,6 +38,28 @@ export class SchoolPlanFinanceRepositoryAdapter implements SchoolPlanFinanceRepo
         if (!row) return null;
 
         return this.toDomain(row);
+    }
+
+    async findAllBySchoolIds(schoolIds: string[]): Promise<SchoolPlanFinance[]> {
+        if (schoolIds.length === 0) {
+            return [];
+        }
+
+        const normalizedIds = schoolIds.map((id) => id.trim()).filter((id) => id.length > 0);
+        if (normalizedIds.length === 0) {
+            return [];
+        }
+
+        const rows = await this.repo.find({
+            where: {
+                schoolId: In(normalizedIds)
+            },
+            relations: {
+                plan: true
+            }
+        });
+
+        return rows.map((row) => this.toDomain(row));
     }
 
     async save(finance: SchoolPlanFinance): Promise<void> {

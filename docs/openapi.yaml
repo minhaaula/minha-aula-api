@@ -11,6 +11,8 @@ servers:
 tags:
   - name: Auth
     description: Fluxo de cadastro e autenticação de usuários.
+  - name: Admin
+    description: Operações administrativas do sistema. Requer autenticação com persona ADMIN.
   - name: Payments
     description: Operações para criação e captura de pagamentos.
   - name: Health
@@ -35,8 +37,18 @@ components:
       properties:
         error:
           type: string
+          description: Mensagem de erro descritiva
+        code:
+          type: string
+          description: Código de erro padronizado
+          example: 'SCHOOL_NOT_FOUND'
+        details:
+          type: object
+          description: Detalhes adicionais do erro (opcional)
+          additionalProperties: true
       required:
         - error
+        - code
     RegisterUserInput:
       type: object
       required:
@@ -114,6 +126,45 @@ components:
           type: string
           description: Apenas dígitos.
           example: '01234000'
+    PostalAddressOutput:
+      type: object
+      required:
+        - street
+        - number
+        - city
+        - state
+        - zipCode
+      properties:
+        street:
+          type: string
+          description: Nome da rua
+          example: 'Rua das Flores'
+        number:
+          type: string
+          description: Número do endereço
+          example: '123'
+        complement:
+          type: string
+          nullable: true
+          description: Complemento do endereço
+          example: 'Apto 45'
+        district:
+          type: string
+          nullable: true
+          description: Bairro
+          example: 'Centro'
+        city:
+          type: string
+          description: Cidade
+          example: 'São Paulo'
+        state:
+          type: string
+          description: Estado (UF)
+          example: 'SP'
+        zipCode:
+          type: string
+          description: 'CEP (formato: 01234-567 ou apenas dígitos)'
+          example: '01234-567'
     RegisterUserResponse:
       type: object
       properties:

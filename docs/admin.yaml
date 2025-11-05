@@ -1,0 +1,239 @@
+paths:
+  /admin/status:
+    get:
+      tags:
+        - Admin
+      summary: Obter status do sistema
+      description: Retorna informações sobre módulos ativos, arquivos OpenAPI carregados e informações do ambiente.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Status do sistema retornado com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminStatusResponse'
+        '401':
+          description: Usuário não autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/schools:
+    get:
+      tags:
+        - Admin
+      summary: Listar escolas com planos e status
+      description: |
+        Retorna todas as escolas cadastradas com informações do plano de assinatura atual e seu status.
+        Requer autenticação com persona ADMIN.
+        
+        Para cada escola, inclui:
+        - Dados básicos da escola
+        - Informações do plano de assinatura (se houver)
+        - Status do plano (TRIAL, ACTIVE, PAST_DUE, SUSPENDED, CANCELLED)
+        - Informações de pagamento (último pagamento, próxima vencimento)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Lista de escolas com planos retornada com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchoolsWithPlansResponse'
+        '401':
+          description: Usuário não autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado (requer persona ADMIN).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    AdminStatusResponse:
+      type: object
+      properties:
+        activeModules:
+          type: array
+          items:
+            type: string
+          description: Lista de módulos ativos no sistema
+          example: ['auth', 'admin', 'payments', 'schools', 'students']
+        openapiFiles:
+          type: array
+          items:
+            type: string
+          description: Lista de arquivos OpenAPI carregados
+          example: ['openapi.yaml', 'auth.yaml', 'admin.yaml']
+        environment:
+          type: object
+          properties:
+            nodeEnv:
+              type: string
+              nullable: true
+              example: 'production'
+            appModulesEnv:
+              type: string
+              nullable: true
+              example: 'all'
+        uptimeSeconds:
+          type: integer
+          description: Tempo de atividade do servidor em segundos
+          example: 3600
+        serverTime:
+          type: string
+          format: date-time
+          description: Data/hora atual do servidor
+          example: '2024-01-15T10:30:00.000Z'
+      required:
+        - activeModules
+        - openapiFiles
+        - environment
+        - uptimeSeconds
+        - serverTime
+    SchoolsWithPlansResponse:
+      type: object
+      properties:
+        schools:
+          type: array
+          items:
+            $ref: '#/components/schemas/SchoolWithPlanItem'
+      required:
+        - schools
+    SchoolWithPlanItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Identificador único da escola
+        name:
+          type: string
+          description: Nome da escola
+          example: 'Escola Municipal de Ensino'
+        email:
+          type: string
+          format: email
+          description: Email de contato da escola
+        phone:
+          type: string
+          description: Telefone de contato
+        cnpj:
+          type: string
+          description: CNPJ da escola (apenas dígitos)
+        addresses:
+          type: array
+          items:
+            $ref: '#/components/schemas/PostalAddressOutput'
+          description: Lista de endereços da escola
+        createdAt:
+          type: string
+          format: date-time
+          description: Data de criação da escola
+        ownerName:
+          type: string
+          nullable: true
+          description: Nome do responsável pela escola
+        ownerCpf:
+          type: string
+          nullable: true
+          description: CPF do responsável (apenas dígitos)
+        ownerEmail:
+          type: string
+          nullable: true
+          format: email
+          description: Email do responsável
+        incomeValue:
+          type: number
+          description: Valor de receita mensal da escola
+          example: 50000
+        plan:
+          type: object
+          nullable: true
+          description: Informações do plano de assinatura atual (null se não houver plano)
+          properties:
+            schoolId:
+              type: string
+              format: uuid
+            plan:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                code:
+                  type: string
+                  example: 'BASIC'
+                name:
+                  type: string
+                  example: 'Plano Básico'
+                description:
+                  type: string
+                  nullable: true
+                  example: 'Plano básico para escolas pequenas'
+                amountCents:
+                  type: integer
+                  description: Valor do plano em centavos
+                  example: 9900
+                currency:
+                  type: string
+                  example: 'BRL'
+                billingCycle:
+                  type: string
+                  enum: ['MONTHLY', 'ANNUAL']
+                  example: 'MONTHLY'
+                isActive:
+                  type: boolean
+                  description: Indica se o plano está ativo
+            status:
+              type: string
+              enum: ['TRIAL', 'ACTIVE', 'PAST_DUE', 'SUSPENDED', 'CANCELLED']
+              description: Status atual do plano
+              example: 'ACTIVE'
+            isPaid:
+              type: boolean
+              description: Indica se o plano está pago
+            lastPaymentAt:
+              type: string
+              format: date-time
+              nullable: true
+              description: Data do último pagamento
+            nextDueAt:
+              type: string
+              format: date-time
+              nullable: true
+              description: Data do próximo vencimento
+            notes:
+              type: string
+              nullable: true
+              description: Observações sobre o plano
+            createdAt:
+              type: string
+              format: date-time
+            updatedAt:
+              type: string
+              format: date-time
+      required:
+        - id
+        - name
+        - email
+        - phone
+        - cnpj
+        - addresses
+        - createdAt
+        - ownerName
+        - ownerCpf
+        - ownerEmail
+        - incomeValue
+        - plan
+    PostalAddressOutput:
+      $ref: '#/components/schemas/PostalAddressOutput'
+

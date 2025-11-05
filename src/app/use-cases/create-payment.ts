@@ -4,6 +4,7 @@ import { PaymentProviderPort } from "../../ports/providers/payment-provider.port
 import { OutboxRepository } from "../../ports/repositories/outbox.repo";
 import { PaymentRepository } from "../../ports/repositories/payment.repo";
 import { Uuid } from "../../shared/uuid";
+import type { CreatePaymentInput, CreatePaymentOutput } from '../types/payment.types';
 
 export class CreatePayment {
     constructor(
@@ -12,7 +13,7 @@ export class CreatePayment {
         private readonly outbox: OutboxRepository
     ) {}
 
-    async exec(input: { idempotencyKey: string; amount: number; currency: string; method: 'CARD'|'PIX'|'BOLETO'; customerId: string; metadata?: Record<string,string>; }) {
+    async exec(input: CreatePaymentInput): Promise<CreatePaymentOutput> {
         const existing = await this.payments.findByIdempotencyKey(input.idempotencyKey);
         if (existing) return { paymentId: existing.id, status: existing.status };
 

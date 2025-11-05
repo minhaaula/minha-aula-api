@@ -3,6 +3,7 @@ import { School } from '../../domain/entities/school';
 import { Uuid } from '../../shared/uuid';
 import { PostalAddress, type PostalAddressProps } from '../../domain/value-objects/postal-address';
 import { PasswordHasherPort } from '../../ports/providers/password-hasher.port';
+import type { CreateSchoolInput, CreateSchoolOutput } from '../types/school.types';
 
 export class CreateSchool {
     constructor(
@@ -10,40 +11,7 @@ export class CreateSchool {
         private readonly passwordHasher: PasswordHasherPort
     ) {}
 
-    async exec(input: {
-        name: string;
-        email: string;
-        phone: string;
-        cnpj: string;
-        incomeValue?: number;
-        addresses?: Array<{
-            street: string;
-            number: string;
-            complement?: string | null;
-            district?: string | null;
-            city: string;
-            state: string;
-            zipCode: string;
-        }>;
-        ownerUserId?: string | null;
-        ownerName?: string | null;
-        ownerCpf?: string | null;
-        ownerEmail?: string | null;
-        ownerPassword?: string | null;
-    }): Promise<{
-        id: string;
-        name: string;
-        email: string;
-        phone: string;
-        cnpj: string;
-        addresses: PostalAddressProps[];
-        createdAt: Date;
-        ownerUserId: string | null;
-        ownerName: string | null;
-        ownerCpf: string | null;
-        ownerEmail: string | null;
-        incomeValue: number;
-    }> {
+    async exec(input: CreateSchoolInput): Promise<CreateSchoolOutput> {
         const addresses = (input.addresses ?? []).map((address) => PostalAddress.create({
             street: address.street,
             number: address.number,
