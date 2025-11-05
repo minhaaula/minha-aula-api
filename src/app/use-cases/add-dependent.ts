@@ -2,6 +2,7 @@ import { DependentRepository } from '../../ports/repositories/dependent.repo';
 import { UserRepository } from '../../ports/repositories/user.repo';
 import { Dependent } from '../../domain/entities/dependent';
 import { Uuid } from '../../shared/uuid';
+import { AppError, ErrorCode } from '../../shared/errors';
 
 export class AddDependent {
     constructor(
@@ -25,21 +26,26 @@ export class AddDependent {
         createdAt: Date;
     }> {
         const owner = await this.users.findById(input.ownerUserId);
-        if (!owner) throw new Error('User not found');
+        if (!owner) throw AppError.fromCode(ErrorCode.USER_NOT_FOUND, { userId: input.ownerUserId });
 
         const existing = await this.dependents.findByUserAndFullName(owner.id, input.fullName);
-        if (existing) throw new Error('Dependent with this name already exists for the user');
+        if (existing) throw AppError.fromCode(ErrorCode.DEPENDENT_ALREADY_EXISTS, {
+            userId: owner.id,
+            fullName: input.fullName
+        });
 
         const normalizedCpf = this.normalizeCpf(input.cpf);
         if (normalizedCpf) {
             const existingCpf = await this.dependents.findByCpf(normalizedCpf);
             if (existingCpf) {
-                throw new Error('Dependent with this CPF already exists');
+                throw AppError.fromCode(ErrorCode.CPF_ALREADY_REGISTERED, { cpf: normalizedCpf });
             }
         }
 
         const birthDate = input.birthDate ? new Date(input.birthDate) : null;
-        if (birthDate && Number.isNaN(birthDate.getTime())) throw new Error('Invalid dependent birth date');
+        if (birthDate && Number.isNaN(birthDate.getTime())) {
+            throw AppError.fromCode(ErrorCode.INVALID_BIRTH_DATE, { birthDate: input.birthDate });
+        }
 
         const dependent = Dependent.create({
             id: Uuid(),
@@ -69,7 +75,7 @@ export class AddDependent {
         }
         const digits = value.replace(/\D/g, '');
         if (digits.length !== 11) {
-            throw new Error('Invalid dependent CPF');
+            throw AppError.fromCode(ErrorCode.INVALID_CPF, { cpf: value });
         }
         return digits;
     }

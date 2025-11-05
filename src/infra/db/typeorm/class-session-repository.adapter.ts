@@ -12,35 +12,30 @@ export class ClassSessionRepositoryAdapter implements ClassSessionRepository {
     }
 
     async findByClassAndInterval(params: { courseClassId: string; from: Date; to: Date }): Promise<ClassSession[]> {
-        const { courseClassId } = params;
-        const from = new Date(params.from);
-        const to = new Date(params.to);
-        const rows = await this.repo.createQueryBuilder('session')
-            .where('session.courseClassId = :courseClassId', { courseClassId })
-            .andWhere('session.status != :cancelled', { cancelled: 'CANCELLED' })
-            .andWhere('session.startsAt < :end', { end: to })
-            .andWhere('session.endsAt > :start', { start: from })
+        const rows = await this.repo
+            .createQueryBuilder('session')
+            .where('session.courseClassId = :courseClassId', { courseClassId: params.courseClassId })
+            .andWhere('session.startsAt < :to', { to: params.to })
+            .andWhere('session.endsAt > :from', { from: params.from })
             .orderBy('session.startsAt', 'ASC')
             .getMany();
+
         return rows.map((row) => this.toDomain(row));
     }
 
-    async findBySchoolAndInterval(params: { schoolId: string; from: Date; to: Date; courseClassId?: string | null; }): Promise<ClassSession[]> {
-        const { schoolId } = params;
-        const from = new Date(params.from);
-        const to = new Date(params.to);
-        const qb = this.repo.createQueryBuilder('session')
-            .where('session.schoolId = :schoolId', { schoolId })
-            .andWhere('session.status != :cancelled', { cancelled: 'CANCELLED' })
-            .andWhere('session.startsAt < :to', { to })
-            .andWhere('session.endsAt > :from', { from })
-            .orderBy('session.startsAt', 'ASC');
+    async findBySchoolAndInterval(params: { schoolId: string; from: Date; to: Date; courseClassId?: string | null }): Promise<ClassSession[]> {
+        const qb = this.repo
+            .createQueryBuilder('session')
+            .where('session.schoolId = :schoolId', { schoolId: params.schoolId })
+            .andWhere('session.startsAt < :to', { to: params.to })
+            .andWhere('session.endsAt > :from', { from: params.from });
 
         if (params.courseClassId) {
             qb.andWhere('session.courseClassId = :courseClassId', { courseClassId: params.courseClassId });
         }
 
-        const rows = await qb.getMany();
+        const rows = await qb.orderBy('session.startsAt', 'ASC').getMany();
+
         return rows.map((row) => this.toDomain(row));
     }
 
@@ -60,7 +55,7 @@ export class ClassSessionRepositoryAdapter implements ClassSessionRepository {
             courseClassId: row.courseClassId,
             startsAt: row.startsAt,
             endsAt: row.endsAt,
-            status: row.status === 'CANCELLED' ? 'CANCELLED' : 'SCHEDULED',
+            status: row.status as 'SCHEDULED' | 'CANCELLED',
             location: row.location,
             notes: row.notes,
             createdAt: row.createdAt,
@@ -83,3 +78,4 @@ export class ClassSessionRepositoryAdapter implements ClassSessionRepository {
         return row;
     }
 }
+

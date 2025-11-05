@@ -145,3 +145,5 @@ export class SchoolRepositoryAdapter implements SchoolRepository {
         return row;
     }
 }
+
+

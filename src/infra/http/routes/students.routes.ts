@@ -25,7 +25,10 @@ export function studentsRouter(deps: { listStudents: ListStudents; getStudentDir
                 : undefined;
 
             if (persona === UserPersonaEnum.SCHOOL && !schoolId) {
-                return res.status(403).json({ error: 'School context not found for user' });
+                return res.status(403).json({ 
+                    error: 'Contexto de escola não encontrado para o usuário',
+                    code: 'SCHOOL_CONTEXT_NOT_FOUND'
+                });
             }
 
             const parsedQuery = querySchema.parse({
@@ -52,7 +55,10 @@ export function studentsRouter(deps: { listStudents: ListStudents; getStudentDir
             const persona = authReq.user?.persona;
 
             if (persona === UserPersonaEnum.SCHOOL && typeof authReq.user?.schoolId !== 'string') {
-                return res.status(403).json({ error: 'School context not found for user' });
+                return res.status(403).json({ 
+                    error: 'Contexto de escola não encontrado para o usuário',
+                    code: 'SCHOOL_CONTEXT_NOT_FOUND'
+                });
             }
 
             const paramsSchema = z.object({ cpf: z.string().trim().min(1) });
@@ -60,7 +66,10 @@ export function studentsRouter(deps: { listStudents: ListStudents; getStudentDir
 
             const entry = await deps.getStudentDirectoryEntry.exec({ cpf });
             if (!entry) {
-                return res.status(404).json({ error: 'Student not found' });
+                return res.status(404).json({ 
+                    error: 'Aluno não encontrado',
+                    code: 'STUDENT_NOT_FOUND'
+                });
             }
 
             const serialize = (person: { id: string; name: string; cpf: string; birthDate: Date | null; }) => ({

@@ -5,6 +5,7 @@ import { CourseClassRepository } from '../../ports/repositories/course-class.rep
 import { UserRepository } from '../../ports/repositories/user.repo';
 import { DependentRepository } from '../../ports/repositories/dependent.repo';
 import { Uuid } from '../../shared/uuid';
+import { AppError, ErrorCode } from '../../shared/errors';
 
 export class CreateSchoolCharge {
     constructor(
@@ -35,18 +36,26 @@ export class CreateSchoolCharge {
         const dependentId = params.dependentId?.trim() || null;
 
         if (!studentUserId && !dependentId) {
-            throw new Error('É necessário informar o aluno ou dependente para gerar a cobrança');
+            throw AppError.fromCode(ErrorCode.INCOMPLETE_DATA, {
+                message: 'É necessário informar o aluno ou dependente para gerar a cobrança'
+            });
         }
 
         const course = await this.coursesRepo.findById(courseId);
         if (!course || course.schoolId !== schoolId) {
-            throw new Error('Curso não encontrado para a escola informada');
+            throw AppError.fromCode(ErrorCode.COURSE_NOT_FOUND, {
+                schoolId,
+                courseId
+            });
         }
 
         if (courseClassId) {
             const courseClass = await this.classesRepo.findById(courseClassId);
             if (!courseClass || courseClass.courseId !== course.id) {
-                throw new Error('Turma inválida para o curso informado');
+                throw AppError.fromCode(ErrorCode.COURSE_CLASS_NOT_FOUND, {
+                    courseClassId,
+                    courseId
+                });
             }
         }
 
@@ -57,25 +66,29 @@ export class CreateSchoolCharge {
         if (dependentId) {
             const dependent = await this.dependentsRepo.findById(dependentId);
             if (!dependent) {
-                throw new Error('Dependente não encontrado');
+                throw AppError.fromCode(ErrorCode.DEPENDENT_NOT_FOUND, { dependentId });
             }
             ownerUserId = dependent.userId;
             normalizedDependentId = dependent.id;
 
             if (studentUserId && studentUserId !== dependent.userId) {
-                throw new Error('Dependente não pertence ao responsável informado');
+                throw AppError.fromCode(ErrorCode.BUSINESS_RULE_VIOLATION, {
+                    message: 'Dependente não pertence ao responsável informado'
+                });
             }
 
             normalizedStudentUserId = studentUserId ? dependent.userId : null;
         } else if (studentUserId) {
             const student = await this.usersRepo.findById(studentUserId);
             if (!student) {
-                throw new Error('Aluno não encontrado');
+                throw AppError.fromCode(ErrorCode.STUDENT_NOT_FOUND, { studentUserId });
             }
             ownerUserId = student.id;
             normalizedStudentUserId = student.id;
         } else {
-            throw new Error('Dados de aluno inválidos');
+            throw AppError.fromCode(ErrorCode.INVALID_IDENTIFIERS, {
+                message: 'Dados de aluno inválidos'
+            });
         }
 
         const charge = SchoolFinancialCharge.create({

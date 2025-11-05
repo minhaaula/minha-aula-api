@@ -45,3 +45,5 @@ export class NotificationRepositoryAdapter implements NotificationRepository {
         return row;
     }
 }
+
+

@@ -60,3 +60,5 @@ export class DependentRepositoryAdapter implements DependentRepository {
         return row;
     }
 }
+
+

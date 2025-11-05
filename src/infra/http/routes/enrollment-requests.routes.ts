@@ -79,16 +79,25 @@ export function enrollmentRequestsRouter(deps: {
             if (persona === UserPersonaEnum.SCHOOL) {
                 const contextSchoolId = authReq.user?.schoolId;
                 if (!contextSchoolId) {
-                    return res.status(403).json({ error: 'School context not found for user' });
-                }
+                return res.status(403).json({ 
+                    error: 'Contexto de escola não encontrado para o usuário',
+                    code: 'SCHOOL_CONTEXT_NOT_FOUND'
+                });
+            }
                 if (schoolId && schoolId !== contextSchoolId) {
-                    return res.status(403).json({ error: 'Cannot access enrollment requests for another school' });
+                    return res.status(403).json({ 
+                        error: 'Não é possível acessar solicitações de matrícula de outra escola',
+                        code: 'FORBIDDEN'
+                    });
                 }
                 schoolId = contextSchoolId;
             }
 
             if (!schoolId) {
-                return res.status(400).json({ error: 'schoolId is required' });
+                return res.status(400).json({ 
+                    error: 'schoolId é obrigatório',
+                    code: 'REQUIRED_FIELD'
+                });
             }
 
             const requests = await deps.listEnrollmentRequests.exec({
@@ -147,7 +156,10 @@ export function enrollmentRequestsRouter(deps: {
             const { requestId } = paramsSchema.parse(req.params);
             const request = await deps.getEnrollmentRequest.exec({ requestId });
             if (!request) {
-                return res.status(404).json({ error: 'Enrollment request not found' });
+                return res.status(404).json({ 
+                    error: 'Solicitação de matrícula não encontrada',
+                    code: 'ENROLLMENT_REQUEST_NOT_FOUND'
+                });
             }
             res.json(serializeEnrollmentRequest(request));
         } catch (err) {
@@ -179,13 +191,19 @@ export function enrollmentRequestsRouter(deps: {
             if (persona === UserPersonaEnum.SCHOOL) {
                 const contextSchoolId = authReq.user?.schoolId;
                 if (!contextSchoolId) {
-                    return res.status(403).json({ error: 'School context not found for user' });
+                    return res.status(403).json({ 
+                        error: 'Contexto de escola não encontrado para o usuário',
+                        code: 'SCHOOL_CONTEXT_NOT_FOUND'
+                    });
                 }
                 schoolId = contextSchoolId;
             }
 
             if (!schoolId) {
-                return res.status(400).json({ error: 'schoolId is required' });
+                return res.status(400).json({ 
+                    error: 'schoolId é obrigatório',
+                    code: 'REQUIRED_FIELD'
+                });
             }
 
             const request = await deps.createEnrollmentRequest.exec({
@@ -208,7 +226,9 @@ export function enrollmentRequestsRouter(deps: {
     r.post('/:requestId/approve', async (req, res, next) => {
         try {
             const authReq = req as AuthenticatedRequest;
-            if (!authReq.user?.sub) throw new Error('Unauthorized');
+            if (!authReq.user?.sub) {
+                throw new Error('Unauthorized');
+            }
             const paramsSchema = z.object({ requestId: z.string().uuid() });
             const { requestId } = paramsSchema.parse(req.params);
             const bodySchema = z.object({ notes: z.string().max(255).optional() });
@@ -227,7 +247,9 @@ export function enrollmentRequestsRouter(deps: {
     r.post('/charges/:chargeId/boleto', canIssueEnrollmentFeeBoleto, async (req, res, next) => {
         try {
             const authReq = req as AuthenticatedRequest;
-            if (!authReq.user?.sub) throw new Error('Unauthorized');
+            if (!authReq.user?.sub) {
+                throw new Error('Unauthorized');
+            }
 
             const paramsSchema = z.object({ chargeId: z.string().uuid() });
             const { chargeId } = paramsSchema.parse(req.params);

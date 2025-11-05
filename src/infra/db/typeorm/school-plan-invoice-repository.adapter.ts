@@ -96,3 +96,5 @@ export class SchoolPlanInvoiceRepositoryAdapter implements SchoolPlanInvoiceRepo
         });
     }
 }
+
+

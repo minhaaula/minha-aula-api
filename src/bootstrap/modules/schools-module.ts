@@ -1,9 +1,9 @@
 import { ModuleBuildResult, ModuleSetupContext } from './types';
-import { SchoolRepositoryAdapter } from '../../infra/db/typeorm/school-repository.adap';
-import { CourseRepositoryAdapter } from '../../infra/db/typeorm/course-repository.adap';
-import { CourseClassRepositoryAdapter } from '../../infra/db/typeorm/course-class-repository.adap';
-import { UserRepositoryAdapter } from '../../infra/db/typeorm/user-repository.adap';
-import { DependentRepositoryAdapter } from '../../infra/db/typeorm/dependent-repository.adap';
+import { SchoolRepositoryAdapter } from '../../infra/db/typeorm/school-repository.adapter';
+import { CourseRepositoryAdapter } from '../../infra/db/typeorm/course-repository.adapter';
+import { CourseClassRepositoryAdapter } from '../../infra/db/typeorm/course-class-repository.adapter';
+import { UserRepositoryAdapter } from '../../infra/db/typeorm/user-repository.adapter';
+import { DependentRepositoryAdapter } from '../../infra/db/typeorm/dependent-repository.adapter';
 import { CreateSchool } from '../../app/use-cases/create-school';
 import { CreateCourse } from '../../app/use-cases/create-course';
 import { CreateCourseClass } from '../../app/use-cases/create-course-class';
@@ -11,19 +11,19 @@ import { UpdateCourseClass } from '../../app/use-cases/update-course-class';
 import { schoolsRouter } from '../../infra/http/routes/schools.routes';
 import { ListStudents } from '../../app/use-cases/list-students';
 import { studentsRouter } from '../../infra/http/routes/students.routes';
-import { ClassSessionRepositoryAdapter } from '../../infra/db/typeorm/class-session-repository.adap';
+import { ClassSessionRepositoryAdapter } from '../../infra/db/typeorm/class-session-repository.adapter';
 import { ScheduleClassSession } from '../../app/use-cases/schedule-class-session';
 import { ListClassSessions } from '../../app/use-cases/list-class-sessions';
 import { CancelClassSession } from '../../app/use-cases/cancel-class-session';
 import { PasswordHasherPort } from '../../ports/providers/password-hasher.port';
 import { TokenProviderPort } from '../../ports/providers/token-provider.port';
 import { LoginSchool } from '../../app/use-cases/login-school';
-import { SchoolPlanFinanceRepositoryAdapter } from '../../infra/db/typeorm/school-plan-finance-repository.adap';
+import { SchoolPlanFinanceRepositoryAdapter } from '../../infra/db/typeorm/school-plan-finance-repository.adapter';
 import { GetActiveSchoolPlan } from '../../app/use-cases/get-active-school-plan';
-import { SubscriptionPlanRepositoryAdapter } from '../../infra/db/typeorm/subscription-plan-repository.adap';
+import { SubscriptionPlanRepositoryAdapter } from '../../infra/db/typeorm/subscription-plan-repository.adapter';
 import { ListSubscriptionPlans } from '../../app/use-cases/list-subscription-plans';
 import { AssignSchoolPlan } from '../../app/use-cases/assign-school-plan';
-import { CategoryRepositoryAdapter } from '../../infra/db/typeorm/category-repository.adap';
+import { CategoryRepositoryAdapter } from '../../infra/db/typeorm/category-repository.adapter';
 import { ListCategories } from '../../app/use-cases/list-categories';
 import { ListSchoolCourses } from '../../app/use-cases/list-school-courses';
 import { GetSchoolCourse } from '../../app/use-cases/get-school-course';
@@ -33,16 +33,16 @@ import { GetSchoolProfile } from '../../app/use-cases/get-school-profile';
 import { UpdateSchool } from '../../app/use-cases/update-school';
 import { UpdateCourse } from '../../app/use-cases/update-course';
 import { DeleteCourse } from '../../app/use-cases/delete-course';
-import { SchoolPlanInvoiceRepositoryAdapter } from '../../infra/db/typeorm/school-plan-invoice-repository.adap';
+import { SchoolPlanInvoiceRepositoryAdapter } from '../../infra/db/typeorm/school-plan-invoice-repository.adapter';
 import { IssueSchoolPlanInvoice } from '../../app/use-cases/issue-school-plan-invoice';
 import { PaymentProviderPort } from '../../ports/providers/payment-provider.port';
 import { AsaasProviderPort } from '../../ports/providers/asaas-port';
 import { HandleAsaasPaymentWebhook } from '../../app/use-cases/handle-asaas-payment-webhook';
 import { asaasWebhookRouter } from '../../infra/http/routes/webhooks/asaas.routes';
 import { ListSchoolPlanInvoices } from '../../app/use-cases/list-school-plan-invoices';
-import { EnrollmentRepositoryAdapter } from '../../infra/db/typeorm/enrollment-repository.adap';
-import { EnrollmentRequestRepositoryAdapter } from '../../infra/db/typeorm/enrollment-request-repository.adap';
-import { SchoolFinancialChargeRepositoryAdapter } from '../../infra/db/typeorm/school-financial-charge-repository.adap';
+import { EnrollmentRepositoryAdapter } from '../../infra/db/typeorm/enrollment-repository.adapter';
+import { EnrollmentRequestRepositoryAdapter } from '../../infra/db/typeorm/enrollment-request-repository.adapter';
+import { SchoolFinancialChargeRepositoryAdapter } from '../../infra/db/typeorm/school-financial-charge-repository.adapter';
 import { EnrollStudent } from '../../app/use-cases/enroll-student';
 import { DeleteCourseClass } from '../../app/use-cases/delete-course-class';
 import { ListSchoolStudents } from '../../app/use-cases/list-school-students';
@@ -75,7 +75,7 @@ export type SchoolsModuleDeps = {
     paymentProvider: PaymentProviderPort & Partial<AsaasProviderPort>;
 };
 
-export function buildSchoolsModule(deps: SchoolsModuleDeps, _ctx: ModuleSetupContext): ModuleBuildResult {
+export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupContext): ModuleBuildResult {
     const createSchool = new CreateSchool(deps.schoolsRepo, deps.passwordHasher);
     const createCourse = new CreateCourse(deps.schoolsRepo, deps.coursesRepo);
     const createCourseClass = new CreateCourseClass(deps.coursesRepo, deps.classesRepo);
@@ -173,47 +173,48 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, _ctx: ModuleSetupCon
     );
     const listCategories = new ListCategories(deps.categoriesRepo);
 
+    // Montar routers prontos
+    const schoolsRouterInstance = schoolsRouter({
+        createSchool,
+        createCourse,
+        createCourseClass,
+        updateCourseClass,
+        listSchoolCourses,
+        getSchoolCourse,
+        updateCourse,
+        deleteCourse,
+        listCourseClasses,
+        getCourseClass,
+        deleteCourseClass,
+        getSchoolProfile,
+        updateSchool,
+        listSchoolStudents,
+        listSchoolPayments,
+        enrollStudent,
+        listEnrollmentRequests,
+        createSchoolCharge,
+        scheduleClassSession,
+        listClassSessions,
+        cancelClassSession,
+        loginSchool,
+        getActiveSchoolPlan,
+        listSubscriptionPlans,
+        assignSchoolPlan,
+        listCategories,
+        issueSchoolPlanInvoice,
+        listSchoolPlanInvoices,
+        authMiddleware: ctx.authMiddleware,
+        schoolsRepo: deps.schoolsRepo
+    });
+
+    const asaasWebhookRouterInstance = asaasWebhookRouter({
+        handleAsaasPaymentWebhook
+    });
+
     return {
         deps: {
-            schoolsRouter,
-            createSchool,
-            createCourse,
-            createCourseClass,
-            updateCourseClass,
-            listSchoolCourses,
-            getSchoolCourse,
-            updateCourse,
-            deleteCourse,
-            listCourseClasses,
-            getCourseClass,
-            deleteCourseClass,
-            getSchoolProfile,
-            updateSchool,
-            studentsRouter,
-            listStudents,
-            listSchoolStudents,
-            listSchoolPayments,
-            enrollStudent,
-            enrollmentRequestsRouter,
-            createEnrollmentRequest,
-            approveEnrollmentRequest,
-            issueEnrollmentFeeBoleto,
-            listEnrollmentRequests,
-            getEnrollmentRequest,
-            createSchoolCharge,
-            scheduleClassSession,
-            listClassSessions,
-            cancelClassSession,
-            schoolsRepo: deps.schoolsRepo,
-            loginSchool,
-            getActiveSchoolPlan,
-            listSubscriptionPlans,
-            assignSchoolPlan,
-            listCategories,
-            issueSchoolPlanInvoice,
-            handleAsaasPaymentWebhook,
-            asaasWebhookRouter,
-            listSchoolPlanInvoices
+            schoolsRouter: schoolsRouterInstance,
+            asaasWebhookRouter: asaasWebhookRouterInstance
         },
         docFiles: ['schools.yaml', 'students.yaml', 'enrollment-requests.yaml']
     };
