@@ -10,6 +10,7 @@
     "start:schools": "APP_MODULES=schools node dist/main.js",
     "start:students": "APP_MODULES=students node dist/main.js",
     "start:payments": "APP_MODULES=payments node dist/main.js",
+    "start:admin": "APP_MODULES=admin node dist/main.js",
     "dev": "APP_MODULES=all tsx watch src/main.ts",
     "dev:auth": "APP_MODULES=auth tsx watch src/main.ts",
     "dev:schools": "APP_MODULES=schools tsx watch src/main.ts",
