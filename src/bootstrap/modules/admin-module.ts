@@ -2,9 +2,13 @@ import { ModuleBuildResult, ModuleSetupContext } from './types';
 import { adminRouter } from '../../infra/http/routes/admin.routes';
 import { GetAdminStatus } from '../../app/use-cases/get-admin-status';
 import { ListSchoolsWithPlans } from '../../app/use-cases/list-schools-with-plans';
+import { LoginAdmin } from '../../app/use-cases/login-admin';
 import type { ModuleName } from '../module-config';
 import type { SchoolRepository } from '../../ports/repositories/school.repo';
 import type { SchoolPlanFinanceRepository } from '../../ports/repositories/school-plan-finance.repo';
+import type { UserRepository } from '../../ports/repositories/user.repo';
+import type { PasswordHasherPort } from '../../ports/providers/password-hasher.port';
+import type { TokenProviderPort } from '../../ports/providers/token-provider.port';
 
 type AdminModuleDeps = {
     getActiveModules: () => readonly ModuleName[];
@@ -15,9 +19,13 @@ type AdminModuleDeps = {
     };
     schoolsRepo: SchoolRepository;
     planFinancesRepo: SchoolPlanFinanceRepository;
+    usersRepo: UserRepository;
+    passwordHasher: PasswordHasherPort;
+    tokenProvider: TokenProviderPort;
+    tokenTtl: number;
 };
 
-export function buildAdminModule(deps: AdminModuleDeps, _ctx: ModuleSetupContext): ModuleBuildResult {
+export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext): ModuleBuildResult {
     const getAdminStatus = new GetAdminStatus(
         () => deps.getActiveModules(),
         () => deps.getOpenApiFiles(),
@@ -29,10 +37,19 @@ export function buildAdminModule(deps: AdminModuleDeps, _ctx: ModuleSetupContext
         deps.planFinancesRepo
     );
 
+    const loginAdmin = new LoginAdmin(
+        deps.usersRepo,
+        deps.passwordHasher,
+        deps.tokenProvider,
+        deps.tokenTtl
+    );
+
     // Montar router pronto
     const router = adminRouter({
         getAdminStatus,
-        listSchoolsWithPlans
+        listSchoolsWithPlans,
+        loginAdmin,
+        authMiddleware: ctx.authMiddleware
     });
 
     return {

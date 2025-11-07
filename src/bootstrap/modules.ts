@@ -124,7 +124,11 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
                         appModulesEnv: process.env.APP_MODULES ?? null
                     }),
                     schoolsRepo,
-                    planFinancesRepo: schoolPlanFinancesRepo
+                    planFinancesRepo: schoolPlanFinancesRepo,
+                    usersRepo,
+                    passwordHasher,
+                    tokenProvider,
+                    tokenTtl
                 }, ctx);
                 mergeModuleResult(serverDeps, docFiles, result);
                 break;

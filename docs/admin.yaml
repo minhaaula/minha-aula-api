@@ -1,4 +1,31 @@
 paths:
+  /admin/login:
+    post:
+      tags:
+        - Admin
+      summary: Autenticar administrador
+      description: |
+        Autentica um usuário administrador usando email e senha.
+        Apenas usuários com persona ADMIN podem fazer login através desta rota.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminLoginInput'
+      responses:
+        '200':
+          description: Autenticação realizada com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400':
+          description: Credenciais inválidas ou erro de validação.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /admin/status:
     get:
       tags:

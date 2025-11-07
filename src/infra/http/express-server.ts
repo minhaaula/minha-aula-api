@@ -128,7 +128,7 @@ export function makeServer(deps: AppDependencies & Record<string, any>) {
     }
     
     if (deps.adminRouter) {
-        mount('/admin', deps.adminRouter);
+        mount('/admin', deps.adminRouter, { skipAuth: true });
     }
     
     if (deps.paymentsRouter) {

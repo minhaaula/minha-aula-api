@@ -208,6 +208,20 @@ components:
           type: string
           format: password
           minLength: 8
+    AdminLoginInput:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: "admin@payments-api.com"
+        password:
+          type: string
+          format: password
+          minLength: 8
     UpdatePasswordInput:
       type: object
       required:
