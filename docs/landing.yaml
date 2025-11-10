@@ -1,0 +1,45 @@
+paths:
+  /landing/plans:
+    get:
+      tags:
+        - Landing
+      summary: Listar planos disponíveis para escolas
+      description: >-
+        Rota pública para landpages que retorna todos os planos de assinatura ativos
+        disponíveis para contratação pelas escolas. Esta rota não requer autenticação
+        e pode ser utilizada em páginas públicas de marketing.
+      responses:
+        '200':
+          description: Planos disponíveis encontrados.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubscriptionPlanListResponse'
+              examples:
+                default:
+                  summary: Exemplo de resposta com planos ativos
+                  value:
+                    plans:
+                      - id: '5f592b7f-7c42-4bae-9cd4-c6099436f893'
+                        code: 'BASIC'
+                        name: 'Plano Básico'
+                        description: 'Plano ideal para escolas pequenas'
+                        amountCents: 9900
+                        currency: 'BRL'
+                        billingCycle: 'MONTHLY'
+                        isActive: true
+                      - id: '8a3c4d5e-6f7g-8h9i-0j1k-2l3m4n5o6p7q'
+                        code: 'PREMIUM'
+                        name: 'Plano Premium'
+                        description: 'Plano completo com recursos avançados'
+                        amountCents: 19900
+                        currency: 'BRL'
+                        billingCycle: 'MONTHLY'
+                        isActive: true
+        '501':
+          description: Funcionalidade de planos não configurada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+

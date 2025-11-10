@@ -25,6 +25,8 @@ tags:
     description: Fluxo de solicitações e aprovações de matrícula.
   - name: Students
     description: Consulta de alunos e seus dependentes.
+  - name: Landing
+    description: Rotas públicas para landpages e páginas de marketing.
 components:
   securitySchemes:
     bearerAuth:

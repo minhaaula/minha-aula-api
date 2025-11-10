@@ -70,6 +70,7 @@ interface AppDependencies {
     asaasWebhookRouter?: Router;
     dependentsRouter?: Router;
     enrollmentRequestsRouter?: Router;
+    landingRouter?: Router;
     
     // Middleware e configuração
     authMiddleware?: RequestHandler;
@@ -154,6 +155,11 @@ export function makeServer(deps: AppDependencies & Record<string, any>) {
     if (deps.enrollmentRequestsRouter) {
         mount('/enrollment-requests', deps.enrollmentRequestsRouter);
     }
+
+    if (deps.landingRouter) {
+        mount('/landing', deps.landingRouter, { skipAuth: true });
+    }
+
     app.use('/health', deps.healthRouter(deps));
     app.use((err: any, _req: any, res: any, _next: any) => {
         console.error(err);

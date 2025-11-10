@@ -54,6 +54,7 @@ import { ApproveEnrollmentRequest } from '../../app/use-cases/approve-enrollment
 import { IssueEnrollmentFeeBoleto } from '../../app/use-cases/issue-enrollment-fee-boleto';
 import { GetEnrollmentRequest } from '../../app/use-cases/get-enrollment-request';
 import { CreateSchoolCharge } from '../../app/use-cases/create-school-charge';
+import { landingRouter } from '../../infra/http/routes/landing.routes';
 
 export type SchoolsModuleDeps = {
     schoolsRepo: SchoolRepositoryAdapter;
@@ -211,11 +212,16 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         handleAsaasPaymentWebhook
     });
 
+    const landingRouterInstance = landingRouter({
+        listSubscriptionPlans
+    });
+
     return {
         deps: {
             schoolsRouter: schoolsRouterInstance,
-            asaasWebhookRouter: asaasWebhookRouterInstance
+            asaasWebhookRouter: asaasWebhookRouterInstance,
+            landingRouter: landingRouterInstance
         },
-        docFiles: ['schools.yaml', 'students.yaml', 'enrollment-requests.yaml']
+        docFiles: ['schools.yaml', 'students.yaml', 'enrollment-requests.yaml', 'landing.yaml']
     };
 }
