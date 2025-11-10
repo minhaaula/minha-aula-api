@@ -723,6 +723,14 @@ components:
             - PAID
             - FAILED
             - CANCELLED
+        paymentStatus:
+          type: string
+          enum:
+            - pendente
+            - pago
+            - atrasado
+          description: Status do pagamento calculado baseado no status da fatura e data de vencimento
+          example: pendente
         amountCents:
           type: integer
           format: int32
@@ -770,6 +778,7 @@ components:
         - schoolId
         - planId
         - status
+        - paymentStatus
         - amountCents
         - currency
         - dueDate

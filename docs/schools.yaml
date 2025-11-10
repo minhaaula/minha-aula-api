@@ -1069,6 +1069,7 @@ paths:
                         schoolId: a585a342-650a-4ab7-a606-07ae09bb72e1
                         planId: 5f592b7f-7c42-4bae-9cd4-c6099436f893
                         status: ISSUED
+                        paymentStatus: pendente
                         amountCents: 9900
                         currency: BRL
                         dueDate: '2024-07-15T00:00:00.000Z'
@@ -1087,6 +1088,7 @@ paths:
                         schoolId: a585a342-650a-4ab7-a606-07ae09bb72e1
                         planId: 5f592b7f-7c42-4bae-9cd4-c6099436f893
                         status: PAID
+                        paymentStatus: pago
                         amountCents: 9900
                         currency: BRL
                         dueDate: '2024-06-15T00:00:00.000Z'

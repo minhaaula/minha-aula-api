@@ -97,6 +97,112 @@ describe('ListSchoolPlanInvoices', () => {
 
         expect(result.invoices).toHaveLength(1);
         expect(result.invoices[0].id).toBe(invoice.id);
+        expect(result.invoices[0].paymentStatus).toBeDefined();
+    });
+
+    it('returns paymentStatus as "pago" when invoice status is PAID', async () => {
+        const financeRepo = new FinanceRepo();
+        const invoiceRepo = new InvoiceRepo();
+        const plan = makePlan();
+
+        const finance = SchoolPlanFinance.create({
+            id: 'finance-x',
+            schoolId: 'school-1',
+            plan,
+            status: 'ACTIVE',
+            isPaid: false
+        });
+        financeRepo.seed(finance);
+
+        const invoice = SchoolPlanInvoice.create({
+            id: 'invoice-x',
+            financeId: finance.id,
+            schoolId: finance.schoolId,
+            planId: plan.id,
+            amountCents: plan.amountCents,
+            currency: plan.currency,
+            dueDate: new Date('2024-05-10T00:00:00Z'),
+            status: 'PAID',
+            paidAt: new Date('2024-05-09T00:00:00Z')
+        });
+        invoiceRepo.seed(invoice);
+
+        const useCase = new ListSchoolPlanInvoices(financeRepo, invoiceRepo);
+        const result = await useCase.exec({ schoolId: finance.schoolId });
+
+        expect(result.invoices[0].paymentStatus).toBe('pago');
+    });
+
+    it('returns paymentStatus as "atrasado" when invoice is ISSUED and dueDate has passed', async () => {
+        const financeRepo = new FinanceRepo();
+        const invoiceRepo = new InvoiceRepo();
+        const plan = makePlan();
+
+        const finance = SchoolPlanFinance.create({
+            id: 'finance-x',
+            schoolId: 'school-1',
+            plan,
+            status: 'ACTIVE',
+            isPaid: false
+        });
+        financeRepo.seed(finance);
+
+        // Data de vencimento no passado
+        const pastDate = new Date();
+        pastDate.setDate(pastDate.getDate() - 5);
+
+        const invoice = SchoolPlanInvoice.create({
+            id: 'invoice-x',
+            financeId: finance.id,
+            schoolId: finance.schoolId,
+            planId: plan.id,
+            amountCents: plan.amountCents,
+            currency: plan.currency,
+            dueDate: pastDate,
+            status: 'ISSUED'
+        });
+        invoiceRepo.seed(invoice);
+
+        const useCase = new ListSchoolPlanInvoices(financeRepo, invoiceRepo);
+        const result = await useCase.exec({ schoolId: finance.schoolId });
+
+        expect(result.invoices[0].paymentStatus).toBe('atrasado');
+    });
+
+    it('returns paymentStatus as "pendente" when invoice is ISSUED and dueDate has not passed', async () => {
+        const financeRepo = new FinanceRepo();
+        const invoiceRepo = new InvoiceRepo();
+        const plan = makePlan();
+
+        const finance = SchoolPlanFinance.create({
+            id: 'finance-x',
+            schoolId: 'school-1',
+            plan,
+            status: 'ACTIVE',
+            isPaid: false
+        });
+        financeRepo.seed(finance);
+
+        // Data de vencimento no futuro
+        const futureDate = new Date();
+        futureDate.setDate(futureDate.getDate() + 5);
+
+        const invoice = SchoolPlanInvoice.create({
+            id: 'invoice-x',
+            financeId: finance.id,
+            schoolId: finance.schoolId,
+            planId: plan.id,
+            amountCents: plan.amountCents,
+            currency: plan.currency,
+            dueDate: futureDate,
+            status: 'ISSUED'
+        });
+        invoiceRepo.seed(invoice);
+
+        const useCase = new ListSchoolPlanInvoices(financeRepo, invoiceRepo);
+        const result = await useCase.exec({ schoolId: finance.schoolId });
+
+        expect(result.invoices[0].paymentStatus).toBe('pendente');
     });
 
     it('returns empty list when school has no active plan', async () => {

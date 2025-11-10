@@ -6,6 +6,7 @@ export type SchoolPlanInvoiceView = {
     schoolId: string;
     planId: string;
     status: 'ISSUED' | 'PAID' | 'FAILED' | 'CANCELLED';
+    paymentStatus: 'pendente' | 'pago' | 'atrasado';
     amountCents: number;
     currency: string;
     dueDate: Date;
@@ -21,6 +22,29 @@ export type SchoolPlanInvoiceView = {
     updatedAt: Date;
 };
 
+function calculatePaymentStatus(invoice: SchoolPlanInvoice): 'pendente' | 'pago' | 'atrasado' {
+    if (invoice.status === 'PAID') {
+        return 'pago';
+    }
+
+    if (invoice.status === 'CANCELLED') {
+        return 'pendente';
+    }
+
+    // Para status ISSUED ou FAILED, verificar se está atrasado
+    const now = new Date();
+    const dueDate = new Date(invoice.dueDate);
+    // Comparar apenas a data (sem hora) para determinar se está atrasado
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const due = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate());
+
+    if (today > due) {
+        return 'atrasado';
+    }
+
+    return 'pendente';
+}
+
 export function presentSchoolPlanInvoice(invoice: SchoolPlanInvoice): SchoolPlanInvoiceView {
     return {
         id: invoice.id,
@@ -28,6 +52,7 @@ export function presentSchoolPlanInvoice(invoice: SchoolPlanInvoice): SchoolPlan
         schoolId: invoice.schoolId,
         planId: invoice.planId,
         status: invoice.status,
+        paymentStatus: calculatePaymentStatus(invoice),
         amountCents: invoice.amountCents,
         currency: invoice.currency,
         dueDate: invoice.dueDate,
