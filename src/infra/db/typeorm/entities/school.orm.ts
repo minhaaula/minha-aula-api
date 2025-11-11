@@ -7,6 +7,7 @@ import { UserOrm } from './user.orm';
 import { ClassSessionOrm } from './class-session.orm';
 import { SchoolPlanFinanceOrm } from './school-plan-finance.orm';
 import { SchoolFinancialChargeOrm } from './school-financial-charge.orm';
+import { SchoolBankAccountOrm } from './school-bank-account.orm';
 
 @Entity('schools')
 export class SchoolOrm {
@@ -69,4 +70,7 @@ export class SchoolOrm {
 
     @OneToMany(() => SchoolFinancialChargeOrm, (charge) => charge.school)
     financialCharges!: SchoolFinancialChargeOrm[];
+
+    @OneToMany(() => SchoolBankAccountOrm, (account) => account.school)
+    bankAccounts!: SchoolBankAccountOrm[];
 }

@@ -16,6 +16,7 @@ import { SchoolPlanFinanceRepositoryAdapter } from '../infra/db/typeorm/school-p
 import { SchoolPlanInvoiceRepositoryAdapter } from '../infra/db/typeorm/school-plan-invoice-repository.adapter';
 import { SubscriptionPlanRepositoryAdapter } from '../infra/db/typeorm/subscription-plan-repository.adapter';
 import { CategoryRepositoryAdapter } from '../infra/db/typeorm/category-repository.adapter';
+import { SchoolBankAccountRepositoryAdapter } from '../infra/db/typeorm/school-bank-account-repository.adapter';
 import { OutboxProducer } from '../infra/messaging/bullmq/outbox-producer';
 import { ScryptPasswordHasher } from '../infra/auth/scrypt-password-hasher';
 import { HmacTokenProvider } from '../infra/auth/hmac-token-provider';
@@ -70,6 +71,7 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
     const categoriesRepo = new CategoryRepositoryAdapter();
     const dependentsRepo = new DependentRepositoryAdapter();
     const financialChargesRepo = new SchoolFinancialChargeRepositoryAdapter();
+    const bankAccountsRepo = new SchoolBankAccountRepositoryAdapter();
     const classSessionsRepo = new ClassSessionRepositoryAdapter();
     const enrollmentsRepo = new EnrollmentRepositoryAdapter();
     const enrollmentRequestsRepo = new EnrollmentRequestRepositoryAdapter();
@@ -166,7 +168,8 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
                     tokenProvider,
                     tokenTtl,
                     paymentProvider,
-                    financialChargesRepo
+                    financialChargesRepo,
+                    bankAccountsRepo
                 }, ctx);
                 mergeModuleResult(serverDeps, docFiles, result);
                 break;

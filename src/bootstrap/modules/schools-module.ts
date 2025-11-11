@@ -55,6 +55,11 @@ import { IssueEnrollmentFeeBoleto } from '../../app/use-cases/issue-enrollment-f
 import { GetEnrollmentRequest } from '../../app/use-cases/get-enrollment-request';
 import { CreateSchoolCharge } from '../../app/use-cases/create-school-charge';
 import { landingRouter } from '../../infra/http/routes/landing.routes';
+import { SchoolBankAccountRepositoryAdapter } from '../../infra/db/typeorm/school-bank-account-repository.adapter';
+import { ListSchoolBankAccounts } from '../../app/use-cases/list-school-bank-accounts';
+import { CreateSchoolBankAccount } from '../../app/use-cases/create-school-bank-account';
+import { UpdateSchoolBankAccount } from '../../app/use-cases/update-school-bank-account';
+import { DeleteSchoolBankAccount } from '../../app/use-cases/delete-school-bank-account';
 
 export type SchoolsModuleDeps = {
     schoolsRepo: SchoolRepositoryAdapter;
@@ -74,6 +79,7 @@ export type SchoolsModuleDeps = {
     tokenProvider: TokenProviderPort;
     tokenTtl: number;
     paymentProvider: PaymentProviderPort & Partial<AsaasProviderPort>;
+    bankAccountsRepo?: SchoolBankAccountRepositoryAdapter;
 };
 
 export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupContext): ModuleBuildResult {
@@ -88,8 +94,21 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
     const updateCourse = new UpdateCourse(deps.schoolsRepo, deps.coursesRepo);
     const listCourseClasses = new ListCourseClasses(deps.coursesRepo, deps.classesRepo);
     const getCourseClass = new GetCourseClass(deps.coursesRepo, deps.classesRepo);
-    const getSchoolProfile = new GetSchoolProfile(deps.schoolsRepo);
+    const getSchoolProfile = new GetSchoolProfile(deps.schoolsRepo, deps.bankAccountsRepo);
     const updateSchool = new UpdateSchool(deps.schoolsRepo, deps.passwordHasher);
+    
+    const listSchoolBankAccounts = deps.bankAccountsRepo
+        ? new ListSchoolBankAccounts(deps.bankAccountsRepo)
+        : undefined;
+    const createSchoolBankAccount = deps.bankAccountsRepo
+        ? new CreateSchoolBankAccount(deps.schoolsRepo, deps.bankAccountsRepo)
+        : undefined;
+    const updateSchoolBankAccount = deps.bankAccountsRepo
+        ? new UpdateSchoolBankAccount(deps.bankAccountsRepo)
+        : undefined;
+    const deleteSchoolBankAccount = deps.bankAccountsRepo
+        ? new DeleteSchoolBankAccount(deps.bankAccountsRepo)
+        : undefined;
     const listStudents = new ListStudents(
         deps.usersRepo,
         deps.dependentsRepo,
@@ -205,7 +224,11 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         issueSchoolPlanInvoice,
         listSchoolPlanInvoices,
         authMiddleware: ctx.authMiddleware,
-        schoolsRepo: deps.schoolsRepo
+        schoolsRepo: deps.schoolsRepo,
+        listSchoolBankAccounts,
+        createSchoolBankAccount,
+        updateSchoolBankAccount,
+        deleteSchoolBankAccount
     });
 
     const asaasWebhookRouterInstance = asaasWebhookRouter({

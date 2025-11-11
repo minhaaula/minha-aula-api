@@ -1131,3 +1131,159 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /schools/bank-accounts:
+    get:
+      tags:
+        - Schools
+      summary: Listar contas bancárias da escola
+      description: Retorna todas as contas bancárias cadastradas para a escola autenticada.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: activeOnly
+          required: false
+          schema:
+            type: boolean
+            default: false
+          description: Se true, retorna apenas contas ativas
+      responses:
+        '200':
+          description: Lista de contas bancárias encontradas.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BankAccountListResponse'
+        '403':
+          description: Usuário não autorizado ou sem contexto de escola.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '501':
+          description: Funcionalidade de contas bancárias não configurada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags:
+        - Schools
+      summary: Criar uma nova conta bancária
+      description: Adiciona uma nova conta bancária para a escola autenticada.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateBankAccountInput'
+      responses:
+        '201':
+          description: Conta bancária criada com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BankAccount'
+        '400':
+          description: Dados inválidos para criação da conta bancária.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado ou sem contexto de escola.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '501':
+          description: Funcionalidade de contas bancárias não configurada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /schools/bank-accounts/{accountId}:
+    put:
+      tags:
+        - Schools
+      summary: Atualizar uma conta bancária
+      description: Atualiza os dados de uma conta bancária existente da escola autenticada.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: accountId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID da conta bancária a ser atualizada
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateBankAccountInput'
+      responses:
+        '200':
+          description: Conta bancária atualizada com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BankAccount'
+        '400':
+          description: Dados inválidos ou conta não encontrada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado, sem contexto de escola ou conta não pertence à escola.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '501':
+          description: Funcionalidade de contas bancárias não configurada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+        - Schools
+      summary: Deletar uma conta bancária
+      description: Remove uma conta bancária da escola autenticada.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: accountId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID da conta bancária a ser removida
+      responses:
+        '204':
+          description: Conta bancária removida com sucesso.
+        '400':
+          description: Conta não encontrada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado, sem contexto de escola ou conta não pertence à escola.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '501':
+          description: Funcionalidade de contas bancárias não configurada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'

@@ -38,8 +38,13 @@ import { buildStudentsRoutes } from './schools/students.routes';
 import { buildPaymentsRoutes } from './schools/payments.routes';
 import { buildSessionsRoutes } from './schools/sessions.routes';
 import { buildFinanceRoutes } from './schools/finance.routes';
+import { buildBankAccountsRoutes } from './schools/bank-accounts.routes';
 import type { SchoolRouteGuards } from './schools/guards';
 import { makeResolveSchoolContextMiddleware } from '../middlewares/resolve-school-context';
+import type { ListSchoolBankAccounts } from '../../../app/use-cases/list-school-bank-accounts';
+import type { CreateSchoolBankAccount } from '../../../app/use-cases/create-school-bank-account';
+import type { UpdateSchoolBankAccount } from '../../../app/use-cases/update-school-bank-account';
+import type { DeleteSchoolBankAccount } from '../../../app/use-cases/delete-school-bank-account';
 
 export type SchoolsRouterDeps = {
     createSchool: CreateSchool;
@@ -72,6 +77,10 @@ export type SchoolsRouterDeps = {
     authMiddleware?: RequestHandler;
     schoolsRepo?: SchoolRepository;
     createSchoolCharge?: CreateSchoolCharge;
+    listSchoolBankAccounts?: ListSchoolBankAccounts;
+    createSchoolBankAccount?: CreateSchoolBankAccount;
+    updateSchoolBankAccount?: UpdateSchoolBankAccount;
+    deleteSchoolBankAccount?: DeleteSchoolBankAccount;
 };
 
 export function schoolsRouter(deps: SchoolsRouterDeps) {
@@ -142,6 +151,13 @@ export function schoolsRouter(deps: SchoolsRouterDeps) {
     router.use(buildSessionsRoutes({
         listClassSessions: deps.listClassSessions,
         cancelClassSession: deps.cancelClassSession
+    }, guards));
+
+    router.use('/bank-accounts', buildBankAccountsRoutes({
+        listSchoolBankAccounts: deps.listSchoolBankAccounts,
+        createSchoolBankAccount: deps.createSchoolBankAccount,
+        updateSchoolBankAccount: deps.updateSchoolBankAccount,
+        deleteSchoolBankAccount: deps.deleteSchoolBankAccount
     }, guards));
 
     return router;

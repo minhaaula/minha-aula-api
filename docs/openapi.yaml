@@ -527,6 +527,11 @@ components:
           description: Lista de endereços físicos da escola.
           items:
             $ref: '#/components/schemas/SchoolAddress'
+        incomeValue:
+          type: integer
+          format: int32
+          description: Valor de receita mensal estimada em centavos
+          example: 50000
     SchoolLoginInput:
       type: object
       required:
@@ -599,6 +604,15 @@ components:
           type: string
           format: email
           nullable: true
+        incomeValue:
+          type: integer
+          format: int32
+          description: Valor de receita mensal estimada em centavos
+        bankAccounts:
+          type: array
+          description: Lista de contas bancárias da escola
+          items:
+            $ref: '#/components/schemas/BankAccount'
       required:
         - id
         - name
@@ -1913,3 +1927,135 @@ components:
         - paymentProviderRef
         - dueDate
         - status
+    BankAccount:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        bankName:
+          type: string
+          description: Nome do banco
+          example: Banco do Brasil
+        bankAgency:
+          type: string
+          maxLength: 20
+          description: Número da agência bancária
+          example: '1234'
+        bankAccount:
+          type: string
+          maxLength: 20
+          description: Número da conta bancária
+          example: '123456'
+        bankAccountType:
+          type: string
+          enum:
+            - CORRENTE
+            - POUPANCA
+          description: Tipo de conta bancária
+          example: CORRENTE
+        bankAccountHolderDocument:
+          type: string
+          description: CPF ou CNPJ do titular da conta
+          example: '12345678000190'
+        isActive:
+          type: boolean
+          description: Indica se a conta está ativa
+          example: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - bankName
+        - bankAgency
+        - bankAccount
+        - bankAccountType
+        - bankAccountHolderDocument
+        - isActive
+        - createdAt
+        - updatedAt
+    CreateBankAccountInput:
+      type: object
+      required:
+        - bankName
+        - bankAgency
+        - bankAccount
+        - bankAccountType
+        - bankAccountHolderDocument
+      properties:
+        bankName:
+          type: string
+          minLength: 1
+          description: Nome do banco
+          example: Banco do Brasil
+        bankAgency:
+          type: string
+          minLength: 1
+          maxLength: 20
+          description: Número da agência bancária (apenas dígitos)
+          example: '1234'
+        bankAccount:
+          type: string
+          minLength: 1
+          maxLength: 20
+          description: Número da conta bancária (apenas dígitos)
+          example: '123456'
+        bankAccountType:
+          type: string
+          enum:
+            - CORRENTE
+            - POUPANCA
+          description: Tipo de conta bancária
+          example: CORRENTE
+        bankAccountHolderDocument:
+          type: string
+          description: CPF (11 dígitos) ou CNPJ (14 dígitos) do titular da conta
+          example: '12345678000190'
+    UpdateBankAccountInput:
+      type: object
+      properties:
+        bankName:
+          type: string
+          minLength: 1
+          description: Nome do banco
+          example: Banco do Brasil
+        bankAgency:
+          type: string
+          minLength: 1
+          maxLength: 20
+          description: Número da agência bancária (apenas dígitos)
+          example: '1234'
+        bankAccount:
+          type: string
+          minLength: 1
+          maxLength: 20
+          description: Número da conta bancária (apenas dígitos)
+          example: '123456'
+        bankAccountType:
+          type: string
+          enum:
+            - CORRENTE
+            - POUPANCA
+          description: Tipo de conta bancária
+          example: CORRENTE
+        bankAccountHolderDocument:
+          type: string
+          description: CPF (11 dígitos) ou CNPJ (14 dígitos) do titular da conta
+          example: '12345678000190'
+        isActive:
+          type: boolean
+          description: Indica se a conta está ativa
+          example: true
+    BankAccountListResponse:
+      type: object
+      properties:
+        accounts:
+          type: array
+          items:
+            $ref: '#/components/schemas/BankAccount'
+      required:
+        - accounts

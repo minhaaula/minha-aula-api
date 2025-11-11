@@ -72,6 +72,18 @@ export interface SchoolSummary {
     createdAt: Date;
 }
 
+export type BankAccountOutput = {
+    id: string;
+    bankName: string;
+    bankAgency: string;
+    bankAccount: string;
+    bankAccountType: 'CORRENTE' | 'POUPANCA';
+    bankAccountHolderDocument: string;
+    isActive: boolean;
+    createdAt: Date;
+    updatedAt: Date;
+};
+
 export interface GetSchoolProfileOutput {
     id: string;
     name: string;
@@ -85,5 +97,6 @@ export interface GetSchoolProfileOutput {
     ownerCpf: string | null;
     ownerEmail: string | null;
     incomeValue: number;
+    bankAccounts: BankAccountOutput[];
 }
 

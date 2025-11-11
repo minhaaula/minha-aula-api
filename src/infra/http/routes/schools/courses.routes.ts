@@ -134,6 +134,22 @@ export function buildCoursesRoutes(deps: CoursesRoutesDeps, guards: SchoolRouteG
         }));
     }
 
+    // Rotas mais específicas devem vir ANTES das rotas genéricas
+    if (deps.getCourseClass) {
+        router.get('/:courseId/classes/:classId', ...protectedMiddleware, asyncHandler(async (req, res) => {
+            const { courseId, classId } = courseClassParamsSchema.parse(req.params);
+            const schoolId = (req as SchoolContextRequest).schoolId as string;
+
+            const courseClass = await deps.getCourseClass!.exec({ schoolId, courseId, classId });
+            if (!courseClass) {
+                res.status(404).json({ error: 'Course class not found' });
+                return;
+            }
+
+            res.json(courseClass);
+        }));
+    }
+
     if (deps.getSchoolCourse) {
         router.get('/:courseId', ...protectedMiddleware, asyncHandler(async (req, res) => {
             const { courseId } = courseIdParamSchema.parse(req.params);
@@ -268,21 +284,6 @@ export function buildCoursesRoutes(deps: CoursesRoutesDeps, guards: SchoolRouteG
             });
 
             res.status(201).json(enrollment);
-        }));
-    }
-
-    if (deps.getCourseClass) {
-        router.get('/:courseId/classes/:classId', ...protectedMiddleware, asyncHandler(async (req, res) => {
-            const { courseId, classId } = courseClassParamsSchema.parse(req.params);
-            const schoolId = (req as SchoolContextRequest).schoolId as string;
-
-            const courseClass = await deps.getCourseClass!.exec({ schoolId, courseId, classId });
-            if (!courseClass) {
-                res.status(404).json({ error: 'Course class not found' });
-                return;
-            }
-
-            res.json(courseClass);
         }));
     }
 
