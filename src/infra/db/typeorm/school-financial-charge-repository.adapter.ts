@@ -1,3 +1,4 @@
+import { Between } from 'typeorm';
 import { AppDataSource } from './datasource';
 import { SchoolFinancialChargeRepository } from '../../../ports/repositories/school-financial-charge.repo';
 import { SchoolFinancialCharge } from '../../../domain/entities/school-financial-charge';
@@ -13,6 +14,15 @@ export class SchoolFinancialChargeRepositoryAdapter implements SchoolFinancialCh
 
     async save(charge: SchoolFinancialCharge): Promise<void> {
         await this.repo.save(this.toOrm(charge));
+    }
+
+    async findByDateRange(startDate: Date, endDate: Date): Promise<SchoolFinancialCharge[]> {
+        const rows = await this.repo.find({
+            where: {
+                dueDate: Between(startDate, endDate)
+            }
+        });
+        return rows.map((row) => this.toDomain(row));
     }
 
     private toDomain(row: SchoolFinancialChargeOrm): SchoolFinancialCharge {

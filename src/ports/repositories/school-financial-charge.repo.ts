@@ -3,5 +3,6 @@ import { SchoolFinancialCharge } from '../../domain/entities/school-financial-ch
 export interface SchoolFinancialChargeRepository {
     findById(id: string): Promise<SchoolFinancialCharge | null>;
     save(charge: SchoolFinancialCharge): Promise<void>;
+    findByDateRange?(startDate: Date, endDate: Date): Promise<SchoolFinancialCharge[]>;
 }
 

@@ -42,6 +42,10 @@ export class CourseClassRepositoryAdapter implements CourseClassRepository {
         await this.repo.save(this.toOrm(courseClass));
     }
 
+    async countAll(): Promise<number> {
+        return await this.repo.count({ where: { isActive: true } });
+    }
+
     private toDomain(row: CourseClassOrm): CourseClass {
         return CourseClass.create({
             id: row.id,

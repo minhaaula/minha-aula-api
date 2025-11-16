@@ -1,5 +1,5 @@
 import { AppDataSource } from './datasource';
-import { EnrollmentRepository } from '../../../ports/repositories/enrollment.repo';
+import { EnrollmentRepository, EnrollmentWithDetails } from '../../../ports/repositories/enrollment.repo';
 import { Enrollment } from '../../../domain/entities/enrollment';
 import { EnrollmentOrm } from './entities/enrollment.orm';
 
@@ -32,6 +32,38 @@ export class EnrollmentRepositoryAdapter implements EnrollmentRepository {
 
     async save(enrollment: Enrollment): Promise<void> {
         await this.repo.save(this.toOrm(enrollment));
+    }
+
+    async findRecent(limit: number): Promise<EnrollmentWithDetails[]> {
+        const results = await this.repo
+            .createQueryBuilder('enrollment')
+            .leftJoin('users', 'user', 'user.id = enrollment.student_user_id')
+            .leftJoin('dependents', 'dependent', 'dependent.id = enrollment.dependent_id')
+            .leftJoin('course_classes', 'class', 'class.id = enrollment.course_class_id')
+            .leftJoin('courses', 'course', 'course.id = class.course_id')
+            .leftJoin('schools', 'school', 'school.id = course.school_id')
+            .select([
+                'COALESCE(user.id, dependent.id) as studentId',
+                'COALESCE(user.full_name, dependent.full_name) as studentName',
+                'COALESCE(user.cpf, dependent.cpf) as studentCpf',
+                'enrollment.enrolled_at as createdAt',
+                'course.name as courseName',
+                'class.label as className',
+                'school.name as schoolName'
+            ])
+            .orderBy('enrollment.enrolled_at', 'DESC')
+            .limit(limit)
+            .getRawMany();
+
+        return results.map((row: any) => ({
+            studentId: row.studentId,
+            studentName: row.studentName,
+            studentCpf: row.studentCpf,
+            createdAt: new Date(row.createdAt),
+            courseName: row.courseName,
+            className: row.className,
+            schoolName: row.schoolName
+        }));
     }
 
     private toDomain(row: EnrollmentOrm): Enrollment {

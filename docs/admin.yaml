@@ -82,6 +82,40 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /admin/dashboard:
+    get:
+      tags:
+        - Admin
+      summary: Obter dados consolidados do dashboard
+      description: |
+        Retorna informações consolidadas para o dashboard administrativo:
+        - Total de alunos cadastrados
+        - Total de turmas ativas
+        - Previsão de receita do mês atual
+        - Últimos 5 alunos matriculados
+        
+        Requer autenticação com persona ADMIN.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Dados do dashboard retornados com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminDashboardResponse'
+        '401':
+          description: Usuário não autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado (requer persona ADMIN).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
 components:
   schemas:
@@ -263,4 +297,69 @@ components:
         - plan
     PostalAddressOutput:
       $ref: '#/components/schemas/PostalAddressOutput'
+    AdminDashboardResponse:
+      type: object
+      properties:
+        totalStudents:
+          type: integer
+          description: Total de alunos cadastrados no sistema (persona STUDENT)
+          example: 1247
+        totalClasses:
+          type: integer
+          description: Total de turmas ativas no sistema
+          example: 85
+        currentMonthRevenueExpectation:
+          type: integer
+          description: Previsão de receita para o mês atual em centavos (soma dos boletos do mês)
+          example: 125000
+        recentEnrollments:
+          type: array
+          description: Últimos 5 alunos matriculados
+          items:
+            $ref: '#/components/schemas/RecentStudentEnrollment'
+      required:
+        - totalStudents
+        - totalClasses
+        - currentMonthRevenueExpectation
+        - recentEnrollments
+    RecentStudentEnrollment:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: ID do aluno (usuário ou dependente)
+        name:
+          type: string
+          description: Nome do aluno
+          example: 'Maria Silva'
+        cpf:
+          type: string
+          description: CPF do aluno
+          example: '12345678909'
+        enrolledAt:
+          type: string
+          format: date-time
+          description: Data da matrícula
+          example: '2025-11-15T14:30:00Z'
+        courseName:
+          type: string
+          description: Nome do curso
+          example: 'Matemática Avançada'
+        className:
+          type: string
+          description: Identificador da turma
+          example: 'Turma A - Noturno'
+        schoolName:
+          type: string
+          description: Nome da escola
+          example: 'Escola Municipal de Ensino'
+      required:
+        - id
+        - name
+        - cpf
+        - enrolledAt
+        - courseName
+        - className
+        - schoolName
 

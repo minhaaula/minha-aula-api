@@ -4,6 +4,7 @@ import { asyncHandler } from '../utils/async-handler';
 import { GetAdminStatus } from '../../../app/use-cases/get-admin-status';
 import { ListSchoolsWithPlans } from '../../../app/use-cases/list-schools-with-plans';
 import { LoginAdmin } from '../../../app/use-cases/login-admin';
+import { GetAdminDashboard } from '../../../app/use-cases/get-admin-dashboard';
 import { requirePersona } from '../middlewares/require-persona';
 import { UserPersonaEnum } from '../../../domain/value-objects/user-persona';
 
@@ -11,6 +12,7 @@ type AdminRouterDeps = {
     getAdminStatus: GetAdminStatus;
     listSchoolsWithPlans: ListSchoolsWithPlans;
     loginAdmin: LoginAdmin;
+    getAdminDashboard?: GetAdminDashboard;
     authMiddleware?: RequestHandler;
 };
 
@@ -26,7 +28,7 @@ function buildAuthGuards(authMiddleware?: RequestHandler) {
     return { requireAuth };
 }
 
-export function adminRouter({ getAdminStatus, listSchoolsWithPlans, loginAdmin, authMiddleware }: AdminRouterDeps) {
+export function adminRouter({ getAdminStatus, listSchoolsWithPlans, loginAdmin, getAdminDashboard, authMiddleware }: AdminRouterDeps) {
     const router = Router();
     const { requireAuth } = buildAuthGuards(authMiddleware);
     const requireAdminPersona = requirePersona(UserPersonaEnum.ADMIN);
@@ -52,6 +54,13 @@ export function adminRouter({ getAdminStatus, listSchoolsWithPlans, loginAdmin, 
         const schools = await listSchoolsWithPlans.exec();
         res.json({ schools });
     }));
+
+    if (getAdminDashboard) {
+        router.get('/dashboard', requireAuth, requireAdminPersona, asyncHandler(async (_req, res) => {
+            const dashboard = await getAdminDashboard.exec();
+            res.json(dashboard);
+        }));
+    }
 
     return router;
 }

@@ -6,4 +6,5 @@ export interface CourseClassRepository {
     findByCourseId(courseId: string): Promise<CourseClass[]>;
     findByCourseIds(courseIds: string[]): Promise<CourseClass[]>;
     save(courseClass: CourseClass): Promise<void>;
+    countAll?(): Promise<number>;
 }

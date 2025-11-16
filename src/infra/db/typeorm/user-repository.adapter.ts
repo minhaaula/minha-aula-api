@@ -57,6 +57,12 @@ export class UserRepositoryAdapter implements UserRepository {
         await this.repo.update(userId, { passwordHash: hashedPassword });
     }
 
+    async countByPersona(persona: string): Promise<number> {
+        const normalized = persona.trim();
+        if (!normalized) return 0;
+        return await this.repo.count({ where: { persona: normalized } });
+    }
+
     private toDomain(row: UserOrm): User {
         const address = PostalAddress.create({
             street: row.addressStreet,

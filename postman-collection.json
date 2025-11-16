@@ -1,0 +1,1020 @@
+{
+  "info": {
+    "name": "Minha Aula API",
+    "description": "Collection completa da API Minha Aula com todas as rotas organizadas por módulos",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "minha-aula-api"
+  },
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auth - Autenticação",
+      "item": [
+        {
+          "name": "Registrar Usuário",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"João Silva\",\n  \"birthDate\": \"1990-01-15\",\n  \"email\": \"joao@example.com\",\n  \"phone\": \"11999999999\",\n  \"cpf\": \"12345678909\",\n  \"address\": {\n    \"street\": \"Rua Exemplo\",\n    \"number\": \"123\",\n    \"complement\": \"Apto 45\",\n    \"district\": \"Centro\",\n    \"city\": \"São Paulo\",\n    \"state\": \"SP\",\n    \"zipCode\": \"01234567\"\n  },\n  \"persona\": \"STUDENT\",\n  \"password\": \"senha123456\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "Login Usuário",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cpf\": \"12345678909\",\n  \"password\": \"senha123456\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Alterar Senha (Logado)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"senhaAtual123\",\n  \"newPassword\": \"novaSenha456\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/password",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "password"]
+            }
+          }
+        },
+        {
+          "name": "Solicitar Reset de Senha",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/password/request",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "password", "request"]
+            }
+          }
+        },
+        {
+          "name": "Validar Token de Reset",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"abc123def456\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/password/validate",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "password", "validate"]
+            }
+          }
+        },
+        {
+          "name": "Resetar Senha com Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"abc123def456\",\n  \"newPassword\": \"novaSenha123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/password/reset",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "password", "reset"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin",
+      "item": [
+        {
+          "name": "Login Admin",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@example.com\",\n  \"password\": \"senha123456\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "login"]
+            }
+          }
+        },
+        {
+          "name": "Status do Sistema",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "status"]
+            }
+          }
+        },
+        {
+          "name": "Dashboard Admin",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/dashboard",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "dashboard"]
+            }
+          }
+        },
+        {
+          "name": "Listar Escolas com Planos",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/schools",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "schools"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Schools - Autenticação",
+      "item": [
+        {
+          "name": "Login Escola",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"owner@escola.com\",\n  \"password\": \"senha123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/schools/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["schools", "login"]
+            }
+          }
+        },
+        {
+          "name": "Criar Escola",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Escola Teste\",\n  \"email\": \"contato@escola.com\",\n  \"phone\": \"11999999999\",\n  \"cnpj\": \"12345678000190\",\n  \"addresses\": [\n    {\n      \"street\": \"Rua Exemplo\",\n      \"number\": \"123\",\n      \"complement\": \"Sala 1\",\n      \"district\": \"Centro\",\n      \"city\": \"São Paulo\",\n      \"state\": \"SP\",\n      \"zipCode\": \"01234567\"\n    }\n  ],\n  \"ownerEmail\": \"owner@escola.com\",\n  \"ownerPassword\": \"senha123\",\n  \"category\": \"PRIVATE\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/schools",
+              "host": ["{{baseUrl}}"],
+              "path": ["schools"]
+            }
+          }
+        },
+        {
+          "name": "Alterar Senha Escola (Logado)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{schoolToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"senhaAtual123\",\n  \"newPassword\": \"novaSenha456\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/schools/password",
+              "host": ["{{baseUrl}}"],
+              "path": ["schools", "password"]
+            }
+          }
+        },
+        {
+          "name": "Solicitar Reset de Senha Escola",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"owner@escola.com\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/schools/password/request",
+              "host": ["{{baseUrl}}"],
+              "path": ["schools", "password", "request"]
+            }
+          }
+        },
+        {
+          "name": "Validar Token Reset Escola",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"abc123def456\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/schools/password/validate",
+              "host": ["{{baseUrl}}"],
+              "path": ["schools", "password", "validate"]
+            }
+          }
+        },
+        {
+          "name": "Resetar Senha Escola com Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"abc123def456\",\n  \"newPassword\": \"novaSenha123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/schools/password/reset",
+              "host": ["{{baseUrl}}"],
+              "path": ["schools", "password", "reset"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Schools - Perfil",
+      "item": [
+        {
+          "name": "Obter Perfil da Escola",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{schoolToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/schools/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["schools", "profile"]
+            }
+          }
+        },
+        {
+          "name": "Atualizar Perfil da Escola",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{schoolToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Escola Atualizada\",\n  \"phone\": \"11888888888\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/schools/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["schools", "profile"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Schools - Planos",
+      "item": [
+        {
+          "name": "Listar Planos Disponíveis",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/schools/plans",
+              "host": ["{{baseUrl}}"],
+              "path": ["schools", "plans"]
+            }
+          }
+        },
+        {
+          "name": "Obter Plano Ativo",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{schoolToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/schools/plans/active",
+              "host": ["{{baseUrl}}"],
+              "path": ["schools", "plans", "active"]
+            }
+          }
+        },
+        {
+          "name": "Atribuir Plano à Escola",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{schoolToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"planId\": \"uuid-do-plano\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/schools/plans/assign",
+              "host": ["{{baseUrl}}"],
+              "path": ["schools", "plans", "assign"]
+            }
+          }
+        },
+        {
+          "name": "Listar Faturas do Plano",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{schoolToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/schools/plans/invoices",
+              "host": ["{{baseUrl}}"],
+              "path": ["schools", "plans", "invoices"]
+            }
+          }
+        },
+        {
+          "name": "Emitir Fatura do Plano",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{schoolToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/schools/plans/invoices/issue",
+              "host": ["{{baseUrl}}"],
+              "path": ["schools", "plans", "invoices", "issue"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Schools - Cursos",
+      "item": [
+        {
+          "name": "Listar Cursos da Escola",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{schoolToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/schools/courses",
+              "host": ["{{baseUrl}}"],
+              "path": ["schools", "courses"]
+            }
+          }
+        },
+        {
+          "name": "Criar Curso",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{schoolToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Matemática Avançada\",\n  \"description\": \"Curso de matemática\",\n  \"categoryId\": \"uuid-categoria\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/schools/courses",
+              "host": ["{{baseUrl}}"],
+              "path": ["schools", "courses"]
+            }
+          }
+        },
+        {
+          "name": "Obter Curso",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{schoolToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/schools/courses/:courseId",
+              "host": ["{{baseUrl}}"],
+              "path": ["schools", "courses", ":courseId"],
+              "variable": [
+                {
+                  "key": "courseId",
+                  "value": "uuid-do-curso"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Atualizar Curso",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{schoolToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Matemática Avançada Atualizada\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/schools/courses/:courseId",
+              "host": ["{{baseUrl}}"],
+              "path": ["schools", "courses", ":courseId"],
+              "variable": [
+                {
+                  "key": "courseId",
+                  "value": "uuid-do-curso"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Deletar Curso",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{schoolToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/schools/courses/:courseId",
+              "host": ["{{baseUrl}}"],
+              "path": ["schools", "courses", ":courseId"],
+              "variable": [
+                {
+                  "key": "courseId",
+                  "value": "uuid-do-curso"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Schools - Turmas",
+      "item": [
+        {
+          "name": "Listar Turmas do Curso",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{schoolToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/schools/courses/:courseId/classes",
+              "host": ["{{baseUrl}}"],
+              "path": ["schools", "courses", ":courseId", "classes"],
+              "variable": [
+                {
+                  "key": "courseId",
+                  "value": "uuid-do-curso"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Criar Turma",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{schoolToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"label\": \"Turma A - Noturno\",\n  \"capacity\": 30,\n  \"schedule\": []\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/schools/courses/:courseId/classes",
+              "host": ["{{baseUrl}}"],
+              "path": ["schools", "courses", ":courseId", "classes"],
+              "variable": [
+                {
+                  "key": "courseId",
+                  "value": "uuid-do-curso"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Obter Turma",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{schoolToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/schools/courses/:courseId/classes/:classId",
+              "host": ["{{baseUrl}}"],
+              "path": ["schools", "courses", ":courseId", "classes", ":classId"],
+              "variable": [
+                {
+                  "key": "courseId",
+                  "value": "uuid-do-curso"
+                },
+                {
+                  "key": "classId",
+                  "value": "uuid-da-turma"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Atualizar Turma",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{schoolToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"capacity\": 35\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/schools/courses/:courseId/classes/:classId",
+              "host": ["{{baseUrl}}"],
+              "path": ["schools", "courses", ":courseId", "classes", ":classId"],
+              "variable": [
+                {
+                  "key": "courseId",
+                  "value": "uuid-do-curso"
+                },
+                {
+                  "key": "classId",
+                  "value": "uuid-da-turma"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Deletar Turma",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{schoolToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/schools/courses/:courseId/classes/:classId",
+              "host": ["{{baseUrl}}"],
+              "path": ["schools", "courses", ":courseId", "classes", ":classId"],
+              "variable": [
+                {
+                  "key": "courseId",
+                  "value": "uuid-do-curso"
+                },
+                {
+                  "key": "classId",
+                  "value": "uuid-da-turma"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Schools - Alunos",
+      "item": [
+        {
+          "name": "Listar Alunos da Escola",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{schoolToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/schools/students",
+              "host": ["{{baseUrl}}"],
+              "path": ["schools", "students"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Schools - Pagamentos",
+      "item": [
+        {
+          "name": "Listar Pagamentos da Escola",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{schoolToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/schools/payments",
+              "host": ["{{baseUrl}}"],
+              "path": ["schools", "payments"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Landing",
+      "item": [
+        {
+          "name": "Listar Planos (Público)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/landing/plans",
+              "host": ["{{baseUrl}}"],
+              "path": ["landing", "plans"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Students",
+      "item": [
+        {
+          "name": "Listar Alunos",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/students?cpf=&name=&courseId=",
+              "host": ["{{baseUrl}}"],
+              "path": ["students"],
+              "query": [
+                {
+                  "key": "cpf",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "name",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "courseId",
+                  "value": "",
+                  "disabled": true
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Buscar Aluno por CPF",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/students/directory/:cpf",
+              "host": ["{{baseUrl}}"],
+              "path": ["students", "directory", ":cpf"],
+              "variable": [
+                {
+                  "key": "cpf",
+                  "value": "12345678909"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Payments",
+      "item": [
+        {
+          "name": "Criar Pagamento",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amountCents\": 10000,\n  \"description\": \"Pagamento teste\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/payments",
+              "host": ["{{baseUrl}}"],
+              "path": ["payments"]
+            }
+          }
+        },
+        {
+          "name": "Capturar Pagamento",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/payments/:paymentId/capture",
+              "host": ["{{baseUrl}}"],
+              "path": ["payments", ":paymentId", "capture"],
+              "variable": [
+                {
+                  "key": "paymentId",
+                  "value": "uuid-do-pagamento"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Emitir Boleto",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/payments/:paymentId/boleto",
+              "host": ["{{baseUrl}}"],
+              "path": ["payments", ":paymentId", "boleto"],
+              "variable": [
+                {
+                  "key": "paymentId",
+                  "value": "uuid-do-pagamento"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "authToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "adminToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "schoolToken",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}
+

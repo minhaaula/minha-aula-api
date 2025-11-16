@@ -8,4 +8,5 @@ export interface UserRepository {
     findBySchoolId?(schoolId: string): Promise<User[]>;
     save(user: User): Promise<void>;
     updatePassword?(userId: string, hashedPassword: string): Promise<void>;
+    countByPersona?(persona: string): Promise<number>;
 }
