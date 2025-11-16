@@ -199,3 +199,47 @@ paths:
                     format: date-time
                     description: Data de expiração do token (apenas se válido)
                     example: 2025-11-17T10:00:00Z
+    patch:
+      tags:
+        - Auth
+      summary: Alterar senha do usuário logado
+      description: Permite que um usuário autenticado altere sua própria senha
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - currentPassword
+                - newPassword
+              properties:
+                currentPassword:
+                  type: string
+                  format: password
+                  description: Senha atual do usuário
+                  minLength: 8
+                  example: senhaAtual123
+                newPassword:
+                  type: string
+                  format: password
+                  description: Nova senha (mínimo 8 caracteres)
+                  minLength: 8
+                  example: novaSenha456
+      responses:
+        '204':
+          description: Senha alterada com sucesso
+        '401':
+          description: Não autenticado ou senha atual inválida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '400':
+          description: Dados inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'

@@ -47,7 +47,11 @@ import type { UpdateSchoolBankAccount } from '../../../app/use-cases/update-scho
 import type { DeleteSchoolBankAccount } from '../../../app/use-cases/delete-school-bank-account';
 import type { RequestPasswordReset } from '../../../app/use-cases/request-password-reset';
 import type { ResetPassword } from '../../../app/use-cases/reset-password';
+import type { UpdateSchoolPassword } from '../../../app/use-cases/update-school-password';
 import { buildPasswordResetRoutes } from './schools/password-reset.routes';
+import { z } from 'zod';
+import { asyncHandler } from '../utils/async-handler';
+import { AuthenticatedRequest } from '../middlewares/auth';
 
 export type SchoolsRouterDeps = {
     createSchool: CreateSchool;
@@ -87,6 +91,7 @@ export type SchoolsRouterDeps = {
     requestPasswordReset?: RequestPasswordReset;
     resetPassword?: ResetPassword;
     validatePasswordResetToken?: import('../../../app/use-cases/validate-password-reset-token').ValidatePasswordResetToken;
+    updateSchoolPassword?: UpdateSchoolPassword;
 };
 
 export function schoolsRouter(deps: SchoolsRouterDeps) {
@@ -165,6 +170,32 @@ export function schoolsRouter(deps: SchoolsRouterDeps) {
         updateSchoolBankAccount: deps.updateSchoolBankAccount,
         deleteSchoolBankAccount: deps.deleteSchoolBankAccount
     }, guards));
+
+    // Rota protegida de alteração de senha (quando logado)
+    if (deps.updateSchoolPassword) {
+        const updatePasswordSchema = z.object({
+            currentPassword: z.string().min(6, 'A senha atual deve ter pelo menos 6 caracteres'),
+            newPassword: z.string().min(6, 'A nova senha deve ter pelo menos 6 caracteres')
+        });
+
+        router.patch('/password', requireAuth, requireSchoolPersona, asyncHandler(async (req, res) => {
+            const data = updatePasswordSchema.parse(req.body);
+            const authReq = req as AuthenticatedRequest;
+            const schoolId = authReq.user?.sub;
+
+            if (!schoolId) {
+                return res.status(401).json({ error: 'Não autenticado' });
+            }
+
+            await deps.updateSchoolPassword!.exec({
+                schoolId,
+                currentPassword: data.currentPassword,
+                newPassword: data.newPassword
+            });
+
+            res.status(204).send();
+        }));
+    }
 
     // Rotas públicas de reset de senha
     router.use('/password', buildPasswordResetRoutes({
