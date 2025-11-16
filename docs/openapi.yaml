@@ -635,6 +635,15 @@ components:
         description:
           type: string
           nullable: true
+        items:
+          type: array
+          nullable: true
+          items:
+            type: string
+          example:
+            - Cadastro de Alunos
+            - Dashboard Gerencial
+            - Relatórios
         amountCents:
           type: integer
           format: int32

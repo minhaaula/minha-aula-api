@@ -24,6 +24,10 @@ paths:
                         code: 'BASIC'
                         name: 'Plano Básico'
                         description: 'Plano ideal para escolas pequenas'
+                        items:
+                          - Cadastro de Alunos
+                          - Dashboard Gerencial
+                          - Relatórios
                         amountCents: 9900
                         currency: 'BRL'
                         billingCycle: 'MONTHLY'
@@ -32,6 +36,13 @@ paths:
                         code: 'PREMIUM'
                         name: 'Plano Premium'
                         description: 'Plano completo com recursos avançados'
+                        items:
+                          - Cadastro de Alunos
+                          - Dashboard Gerencial
+                          - Relatórios Avançados
+                          - Gestão Financeira
+                          - Múltiplos Usuários
+                          - Suporte Prioritário
                         amountCents: 19900
                         currency: 'BRL'
                         billingCycle: 'MONTHLY'

@@ -11,6 +11,8 @@ export class SubscriptionPlanOrm {
 
     @Column('varchar', { length: 255, nullable: true }) description!: string | null;
 
+    @Column('json', { nullable: true }) items!: string[] | null;
+
     @Column('int', { name: 'amount_cents' }) amountCents!: number;
 
     @Column('char', { length: 3 }) currency!: string;

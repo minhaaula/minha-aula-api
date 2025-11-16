@@ -5,6 +5,7 @@ type SubscriptionPlanItem = {
     code: string;
     name: string;
     description: string | null;
+    items: string[] | null;
     amountCents: number;
     currency: string;
     billingCycle: 'MONTHLY' | 'ANNUAL';
@@ -22,6 +23,7 @@ export class ListSubscriptionPlans {
                 code: plan.code,
                 name: plan.name,
                 description: plan.description,
+                items: plan.items,
                 amountCents: plan.amountCents,
                 currency: plan.currency,
                 billingCycle: plan.billingCycle,

@@ -8,6 +8,7 @@ export class SubscriptionPlan {
         public readonly amountCents: number,
         public readonly currency: string,
         public readonly description: string | null,
+        public readonly items: string[] | null,
         public readonly billingCycle: SubscriptionBillingCycle,
         public readonly isActive: boolean,
         public readonly createdAt: Date,
@@ -21,6 +22,7 @@ export class SubscriptionPlan {
         amountCents: number;
         currency: string;
         description?: string | null;
+        items?: string[] | null;
         billingCycle?: SubscriptionBillingCycle;
         isActive?: boolean;
         createdAt?: Date;
@@ -46,6 +48,7 @@ export class SubscriptionPlan {
         }
 
         const description = params.description?.trim() ?? null;
+        const items = params.items ?? null;
         const billingCycle = params.billingCycle ?? 'MONTHLY';
         if (billingCycle !== 'MONTHLY' && billingCycle !== 'ANNUAL') {
             throw new Error('Subscription plan billing cycle is invalid');
@@ -62,6 +65,7 @@ export class SubscriptionPlan {
             amountCents,
             currency,
             description,
+            items,
             billingCycle,
             isActive,
             createdAt,

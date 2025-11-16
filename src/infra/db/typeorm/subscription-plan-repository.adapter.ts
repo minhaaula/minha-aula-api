@@ -27,6 +27,7 @@ export class SubscriptionPlanRepositoryAdapter implements SubscriptionPlanReposi
             code: row.code,
             name: row.name,
             description: row.description,
+            items: row.items,
             amountCents: row.amountCents,
             currency: row.currency,
             billingCycle: row.billingCycle,
