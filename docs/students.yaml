@@ -1,3 +1,13 @@
+x-student-auth-info: |
+  Para autenticação, registro e gerenciamento de senha de estudantes (usuários com persona STUDENT),
+  utilize as rotas do módulo Auth (/auth/*):
+  - POST /auth/register - Cadastro de estudante
+  - POST /auth/login - Login de estudante
+  - PATCH /auth/password - Alteração de senha (quando logado)
+  - POST /auth/password/request - Solicitar reset de senha
+  - POST /auth/password/validate - Validar token de reset
+  - POST /auth/password/reset - Resetar senha com token
+
 paths:
   /students:
     get:
