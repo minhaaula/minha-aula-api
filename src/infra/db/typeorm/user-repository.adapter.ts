@@ -53,6 +53,10 @@ export class UserRepositoryAdapter implements UserRepository {
         await this.repo.save(this.toOrm(user));
     }
 
+    async updatePassword(userId: string, hashedPassword: string): Promise<void> {
+        await this.repo.update(userId, { passwordHash: hashedPassword });
+    }
+
     private toDomain(row: UserOrm): User {
         const address = PostalAddress.create({
             street: row.addressStreet,

@@ -4,6 +4,8 @@ import { RegisterUser } from '../../../app/use-cases/register-user';
 import { LoginUser } from '../../../app/use-cases/login-user';
 import { USER_PERSONAS } from '../../../domain/value-objects/user-persona';
 import { UpdateUserPassword } from '../../../app/use-cases/update-user-password';
+import { RequestUserPasswordReset } from '../../../app/use-cases/request-user-password-reset';
+import { ResetUserPassword } from '../../../app/use-cases/reset-user-password';
 import { AuthenticatedRequest } from '../middlewares/auth';
 import { cpfNumberSchema, phoneNumberSchema, zipCodeNumberSchema } from '../validators/numeric-fields';
 
@@ -13,11 +15,15 @@ export function authRouter({
     registerUser,
     loginUser,
     updateUserPassword,
+    requestUserPasswordReset,
+    resetUserPassword,
     authMiddleware
 }: {
     registerUser: RegisterUser;
     loginUser: LoginUser;
     updateUserPassword: UpdateUserPassword;
+    requestUserPasswordReset?: RequestUserPasswordReset;
+    resetUserPassword?: ResetUserPassword;
     authMiddleware?: RequestHandler;
 }) {
     const r = Router();
@@ -94,6 +100,40 @@ export function authRouter({
             next(e);
         }
     });
+
+    // Rotas de reset de senha (públicas)
+    if (requestUserPasswordReset) {
+        const requestResetSchema = z.object({
+            email: z.string().email('Email inválido')
+        });
+
+        r.post('/password/request', async (req, res, next) => {
+            try {
+                const dto = requestResetSchema.parse(req.body);
+                const result = await requestUserPasswordReset.exec(dto);
+                res.json(result);
+            } catch (e) {
+                next(e);
+            }
+        });
+    }
+
+    if (resetUserPassword) {
+        const resetPasswordSchema = z.object({
+            token: z.string().min(1, 'Token é obrigatório'),
+            newPassword: z.string().min(6, 'A senha deve ter pelo menos 6 caracteres')
+        });
+
+        r.post('/password/reset', async (req, res, next) => {
+            try {
+                const dto = resetPasswordSchema.parse(req.body);
+                const result = await resetUserPassword.exec(dto);
+                res.json(result);
+            } catch (e) {
+                next(e);
+            }
+        });
+    }
 
     return r;
 }

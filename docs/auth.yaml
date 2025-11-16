@@ -75,3 +75,86 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /auth/password/request:
+    post:
+      tags:
+        - Auth
+      summary: Solicitar reset de senha
+      description: Envia um token de reset de senha para o email do usuário
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+              properties:
+                email:
+                  type: string
+                  format: email
+                  description: Email do usuário
+                  example: usuario@email.com
+      responses:
+        '200':
+          description: Solicitação processada com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Se o email estiver cadastrado, você receberá um link para redefinir sua senha.
+                  token:
+                    type: string
+                    description: Token gerado (apenas em desenvolvimento)
+                    example: abc123def456
+        '400':
+          description: Erro de validação
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /auth/password/reset:
+    post:
+      tags:
+        - Auth
+      summary: Resetar senha com token
+      description: Redefine a senha do usuário usando o token recebido
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - token
+                - newPassword
+              properties:
+                token:
+                  type: string
+                  description: Token recebido no email
+                  example: abc123def456
+                newPassword:
+                  type: string
+                  format: password
+                  description: Nova senha (mínimo 6 caracteres)
+                  example: novaSenha123
+      responses:
+        '200':
+          description: Senha redefinida com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Senha redefinida com sucesso
+        '400':
+          description: Token inválido ou senha inválida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'

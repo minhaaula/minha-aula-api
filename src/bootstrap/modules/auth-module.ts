@@ -8,6 +8,9 @@ import { UserRepositoryAdapter } from '../../infra/db/typeorm/user-repository.ad
 import { SchoolRepositoryAdapter } from '../../infra/db/typeorm/school-repository.adapter';
 import type { ModuleName } from '../module-config';
 import { UpdateUserPassword } from '../../app/use-cases/update-user-password';
+import { RequestUserPasswordReset } from '../../app/use-cases/request-user-password-reset';
+import { ResetUserPassword } from '../../app/use-cases/reset-user-password';
+import { PasswordResetTokenRepositoryAdapter } from '../../infra/db/typeorm/password-reset-token-repository.adapter';
 
 export type AuthModuleDeps = {
     usersRepo: UserRepositoryAdapter;
@@ -29,12 +32,19 @@ export function buildAuthModule(deps: AuthModuleDeps, ctx: ModuleSetupContext): 
         deps.schoolsRepo
     );
     const updateUserPassword = new UpdateUserPassword(deps.usersRepo, deps.passwordHasher);
+    
+    // Reset de senha
+    const resetTokensRepo = new PasswordResetTokenRepositoryAdapter();
+    const requestUserPasswordReset = new RequestUserPasswordReset(deps.usersRepo, resetTokensRepo);
+    const resetUserPassword = new ResetUserPassword(deps.usersRepo, resetTokensRepo, deps.passwordHasher);
 
     // Montar router pronto
     const router = authRouter({
         registerUser,
         loginUser,
         updateUserPassword,
+        requestUserPasswordReset,
+        resetUserPassword,
         authMiddleware: ctx.authMiddleware
     });
 

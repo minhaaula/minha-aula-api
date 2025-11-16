@@ -7,4 +7,5 @@ export interface UserRepository {
     findByPersona(persona: string): Promise<User[]>;
     findBySchoolId?(schoolId: string): Promise<User[]>;
     save(user: User): Promise<void>;
+    updatePassword?(userId: string, hashedPassword: string): Promise<void>;
 }
