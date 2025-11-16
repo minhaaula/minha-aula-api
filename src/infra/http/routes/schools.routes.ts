@@ -86,6 +86,7 @@ export type SchoolsRouterDeps = {
     deleteSchoolBankAccount?: DeleteSchoolBankAccount;
     requestPasswordReset?: RequestPasswordReset;
     resetPassword?: ResetPassword;
+    validatePasswordResetToken?: import('../../../app/use-cases/validate-password-reset-token').ValidatePasswordResetToken;
 };
 
 export function schoolsRouter(deps: SchoolsRouterDeps) {
@@ -168,7 +169,8 @@ export function schoolsRouter(deps: SchoolsRouterDeps) {
     // Rotas públicas de reset de senha
     router.use('/password', buildPasswordResetRoutes({
         requestPasswordReset: deps.requestPasswordReset,
-        resetPassword: deps.resetPassword
+        resetPassword: deps.resetPassword,
+        validatePasswordResetToken: deps.validatePasswordResetToken
     }));
 
     return router;

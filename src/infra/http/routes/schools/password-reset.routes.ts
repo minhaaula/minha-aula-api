@@ -3,10 +3,12 @@ import { z } from 'zod';
 import { asyncHandler } from '../../utils/async-handler';
 import type { RequestPasswordReset } from '../../../../app/use-cases/request-password-reset';
 import type { ResetPassword } from '../../../../app/use-cases/reset-password';
+import type { ValidatePasswordResetToken } from '../../../../app/use-cases/validate-password-reset-token';
 
 type PasswordResetRoutesDeps = {
     requestPasswordReset?: RequestPasswordReset;
     resetPassword?: ResetPassword;
+    validatePasswordResetToken?: ValidatePasswordResetToken;
 };
 
 export function buildPasswordResetRoutes(deps: PasswordResetRoutesDeps) {
@@ -28,6 +30,14 @@ export function buildPasswordResetRoutes(deps: PasswordResetRoutesDeps) {
         }));
     }
 
+    if (deps.validatePasswordResetToken) {
+        router.post('/validate', asyncHandler(async (req, res) => {
+            const data = validateTokenSchema.parse(req.body);
+            const result = await deps.validatePasswordResetToken!.exec(data);
+            res.json(result);
+        }));
+    }
+
     return router;
 }
 
@@ -38,5 +48,9 @@ const requestPasswordResetSchema = z.object({
 const resetPasswordSchema = z.object({
     token: z.string().min(1, 'Token é obrigatório'),
     newPassword: z.string().min(6, 'A senha deve ter pelo menos 6 caracteres')
+});
+
+const validateTokenSchema = z.object({
+    token: z.string().min(1, 'Token é obrigatório')
 });
 

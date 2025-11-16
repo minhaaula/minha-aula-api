@@ -6,6 +6,7 @@ import { USER_PERSONAS } from '../../../domain/value-objects/user-persona';
 import { UpdateUserPassword } from '../../../app/use-cases/update-user-password';
 import { RequestUserPasswordReset } from '../../../app/use-cases/request-user-password-reset';
 import { ResetUserPassword } from '../../../app/use-cases/reset-user-password';
+import { ValidatePasswordResetToken } from '../../../app/use-cases/validate-password-reset-token';
 import { AuthenticatedRequest } from '../middlewares/auth';
 import { cpfNumberSchema, phoneNumberSchema, zipCodeNumberSchema } from '../validators/numeric-fields';
 
@@ -17,6 +18,7 @@ export function authRouter({
     updateUserPassword,
     requestUserPasswordReset,
     resetUserPassword,
+    validatePasswordResetToken,
     authMiddleware
 }: {
     registerUser: RegisterUser;
@@ -24,6 +26,7 @@ export function authRouter({
     updateUserPassword: UpdateUserPassword;
     requestUserPasswordReset?: RequestUserPasswordReset;
     resetUserPassword?: ResetUserPassword;
+    validatePasswordResetToken?: ValidatePasswordResetToken;
     authMiddleware?: RequestHandler;
 }) {
     const r = Router();
@@ -128,6 +131,22 @@ export function authRouter({
             try {
                 const dto = resetPasswordSchema.parse(req.body);
                 const result = await resetUserPassword.exec(dto);
+                res.json(result);
+            } catch (e) {
+                next(e);
+            }
+        });
+    }
+
+    if (validatePasswordResetToken) {
+        const validateTokenSchema = z.object({
+            token: z.string().min(1, 'Token é obrigatório')
+        });
+
+        r.post('/password/validate', async (req, res, next) => {
+            try {
+                const dto = validateTokenSchema.parse(req.body);
+                const result = await validatePasswordResetToken.exec(dto);
                 res.json(result);
             } catch (e) {
                 next(e);

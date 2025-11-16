@@ -10,6 +10,7 @@ import type { ModuleName } from '../module-config';
 import { UpdateUserPassword } from '../../app/use-cases/update-user-password';
 import { RequestUserPasswordReset } from '../../app/use-cases/request-user-password-reset';
 import { ResetUserPassword } from '../../app/use-cases/reset-user-password';
+import { ValidatePasswordResetToken } from '../../app/use-cases/validate-password-reset-token';
 import { PasswordResetTokenRepositoryAdapter } from '../../infra/db/typeorm/password-reset-token-repository.adapter';
 
 export type AuthModuleDeps = {
@@ -37,6 +38,7 @@ export function buildAuthModule(deps: AuthModuleDeps, ctx: ModuleSetupContext): 
     const resetTokensRepo = new PasswordResetTokenRepositoryAdapter();
     const requestUserPasswordReset = new RequestUserPasswordReset(deps.usersRepo, resetTokensRepo);
     const resetUserPassword = new ResetUserPassword(deps.usersRepo, resetTokensRepo, deps.passwordHasher);
+    const validatePasswordResetToken = new ValidatePasswordResetToken(resetTokensRepo);
 
     // Montar router pronto
     const router = authRouter({
@@ -45,6 +47,7 @@ export function buildAuthModule(deps: AuthModuleDeps, ctx: ModuleSetupContext): 
         updateUserPassword,
         requestUserPasswordReset,
         resetUserPassword,
+        validatePasswordResetToken,
         authMiddleware: ctx.authMiddleware
     });
 
