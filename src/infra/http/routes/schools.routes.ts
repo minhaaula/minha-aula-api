@@ -45,6 +45,9 @@ import type { ListSchoolBankAccounts } from '../../../app/use-cases/list-school-
 import type { CreateSchoolBankAccount } from '../../../app/use-cases/create-school-bank-account';
 import type { UpdateSchoolBankAccount } from '../../../app/use-cases/update-school-bank-account';
 import type { DeleteSchoolBankAccount } from '../../../app/use-cases/delete-school-bank-account';
+import type { RequestPasswordReset } from '../../../app/use-cases/request-password-reset';
+import type { ResetPassword } from '../../../app/use-cases/reset-password';
+import { buildPasswordResetRoutes } from './schools/password-reset.routes';
 
 export type SchoolsRouterDeps = {
     createSchool: CreateSchool;
@@ -81,6 +84,8 @@ export type SchoolsRouterDeps = {
     createSchoolBankAccount?: CreateSchoolBankAccount;
     updateSchoolBankAccount?: UpdateSchoolBankAccount;
     deleteSchoolBankAccount?: DeleteSchoolBankAccount;
+    requestPasswordReset?: RequestPasswordReset;
+    resetPassword?: ResetPassword;
 };
 
 export function schoolsRouter(deps: SchoolsRouterDeps) {
@@ -159,6 +164,12 @@ export function schoolsRouter(deps: SchoolsRouterDeps) {
         updateSchoolBankAccount: deps.updateSchoolBankAccount,
         deleteSchoolBankAccount: deps.deleteSchoolBankAccount
     }, guards));
+
+    // Rotas públicas de reset de senha
+    router.use('/password', buildPasswordResetRoutes({
+        requestPasswordReset: deps.requestPasswordReset,
+        resetPassword: deps.resetPassword
+    }));
 
     return router;
 }

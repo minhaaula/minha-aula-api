@@ -69,6 +69,10 @@ export class SchoolRepositoryAdapter implements SchoolRepository {
         await this.repo.save(row);
     }
 
+    async updateOwnerPassword(schoolId: string, hashedPassword: string): Promise<void> {
+        await this.repo.update(schoolId, { ownerPasswordHash: hashedPassword });
+    }
+
     private toDomain(row: SchoolOrm): School {
         const addresses = (row.addresses ?? []).map((address) => PostalAddress.create({
             street: address.street,

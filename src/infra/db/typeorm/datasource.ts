@@ -23,6 +23,7 @@ import { SchoolPlanFinanceOrm } from './entities/school-plan-finance.orm';
 import { SchoolPlanInvoiceOrm } from './entities/school-plan-invoice.orm';
 import { SchoolFinancialChargeOrm } from './entities/school-financial-charge.orm';
 import { SchoolBankAccountOrm } from './entities/school-bank-account.orm';
+import { PasswordResetTokenOrm } from './entities/password-reset-token.orm';
 
 export const AppDataSource = new DataSource({
     type: 'mysql',
@@ -53,7 +54,8 @@ export const AppDataSource = new DataSource({
         SchoolPlanFinanceOrm,
         SchoolPlanInvoiceOrm,
         SchoolFinancialChargeOrm,
-        SchoolBankAccountOrm
+        SchoolBankAccountOrm,
+        PasswordResetTokenOrm
     ],
     synchronize: false,
     migrations: ['dist/infra/db/typeorm/migrations/*.js'],

@@ -62,6 +62,30 @@ class InMemorySchoolRepository implements SchoolRepository {
         this.items.set(school.id, school);
     }
 
+    async updateOwnerPassword(schoolId: string, hashedPassword: string): Promise<void> {
+        const school = this.items.get(schoolId);
+        if (!school) return;
+        
+        const updated = School.create({
+            id: school.id,
+            name: school.name,
+            email: school.email,
+            phone: school.phone,
+            cnpj: school.cnpj,
+            addresses: school.addresses,
+            ownerUserId: school.ownerUserId,
+            ownerName: school.ownerName,
+            ownerCpf: school.ownerCpf,
+            ownerEmail: school.ownerEmail,
+            ownerPasswordHash: hashedPassword,
+            accountId: school.accountId,
+            incomeValue: school.incomeValue,
+            createdAt: school.createdAt
+        });
+        
+        this.items.set(schoolId, updated);
+    }
+
     seed(school: School) {
         this.items.set(school.id, school);
     }

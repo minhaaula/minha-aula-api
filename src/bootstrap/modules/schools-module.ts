@@ -60,6 +60,9 @@ import { ListSchoolBankAccounts } from '../../app/use-cases/list-school-bank-acc
 import { CreateSchoolBankAccount } from '../../app/use-cases/create-school-bank-account';
 import { UpdateSchoolBankAccount } from '../../app/use-cases/update-school-bank-account';
 import { DeleteSchoolBankAccount } from '../../app/use-cases/delete-school-bank-account';
+import { RequestPasswordReset } from '../../app/use-cases/request-password-reset';
+import { ResetPassword } from '../../app/use-cases/reset-password';
+import { PasswordResetTokenRepositoryAdapter } from '../../infra/db/typeorm/password-reset-token-repository.adapter';
 
 export type SchoolsModuleDeps = {
     schoolsRepo: SchoolRepositoryAdapter;
@@ -109,6 +112,11 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
     const deleteSchoolBankAccount = deps.bankAccountsRepo
         ? new DeleteSchoolBankAccount(deps.bankAccountsRepo)
         : undefined;
+    
+    const resetTokensRepo = new PasswordResetTokenRepositoryAdapter();
+    const requestPasswordReset = new RequestPasswordReset(deps.schoolsRepo, resetTokensRepo);
+    const resetPassword = new ResetPassword(deps.schoolsRepo, resetTokensRepo, deps.passwordHasher);
+    
     const listStudents = new ListStudents(
         deps.usersRepo,
         deps.dependentsRepo,
@@ -228,7 +236,9 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         listSchoolBankAccounts,
         createSchoolBankAccount,
         updateSchoolBankAccount,
-        deleteSchoolBankAccount
+        deleteSchoolBankAccount,
+        requestPasswordReset,
+        resetPassword
     });
 
     const asaasWebhookRouterInstance = asaasWebhookRouter({

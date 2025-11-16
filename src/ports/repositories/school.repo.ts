@@ -7,4 +7,5 @@ export interface SchoolRepository {
     findByOwnerEmail?(email: string): Promise<School | null>;
     findAll(): Promise<School[]>;
     save(school: School): Promise<void>;
+    updateOwnerPassword?(schoolId: string, hashedPassword: string): Promise<void>;
 }
