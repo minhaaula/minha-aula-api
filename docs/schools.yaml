@@ -147,6 +147,7 @@ paths:
                     format: date-time
                     description: Data de expiração do token (apenas se válido)
                     example: 2025-11-17T10:00:00Z
+  /schools/password:
     patch:
       tags:
         - Schools
