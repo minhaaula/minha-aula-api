@@ -12,6 +12,7 @@ import { RequestUserPasswordReset } from '../../app/use-cases/request-user-passw
 import { ResetUserPassword } from '../../app/use-cases/reset-user-password';
 import { ValidatePasswordResetToken } from '../../app/use-cases/validate-password-reset-token';
 import { PasswordResetTokenRepositoryAdapter } from '../../infra/db/typeorm/password-reset-token-repository.adapter';
+import { EmailProviderPort } from '../../ports/providers/email-provider.port';
 
 export type AuthModuleDeps = {
     usersRepo: UserRepositoryAdapter;
@@ -20,6 +21,8 @@ export type AuthModuleDeps = {
     tokenTtl: number;
     activeModules?: readonly ModuleName[];
     schoolsRepo: SchoolRepositoryAdapter;
+    emailProvider?: EmailProviderPort;
+    frontendBaseUrl?: string;
 };
 
 export function buildAuthModule(deps: AuthModuleDeps, ctx: ModuleSetupContext): ModuleBuildResult {
@@ -36,7 +39,12 @@ export function buildAuthModule(deps: AuthModuleDeps, ctx: ModuleSetupContext): 
     
     // Reset de senha
     const resetTokensRepo = new PasswordResetTokenRepositoryAdapter();
-    const requestUserPasswordReset = new RequestUserPasswordReset(deps.usersRepo, resetTokensRepo);
+    const requestUserPasswordReset = new RequestUserPasswordReset(
+        deps.usersRepo, 
+        resetTokensRepo, 
+        deps.emailProvider,
+        deps.frontendBaseUrl
+    );
     const resetUserPassword = new ResetUserPassword(deps.usersRepo, resetTokensRepo, deps.passwordHasher);
     const validatePasswordResetToken = new ValidatePasswordResetToken(resetTokensRepo);
 

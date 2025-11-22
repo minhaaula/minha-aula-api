@@ -30,6 +30,8 @@ import { ModuleSetupContext, ModuleBuildResult } from './modules/types';
 import { AsaasProvider } from '../infra/providers/asaas/asaas-provider';
 import { PaymentProviderPort } from '../ports/providers/payment-provider.port';
 import { AsaasProviderPort } from '../ports/providers/asaas-port';
+import { NodemailerEmailProvider } from '../infra/providers/nodemailer/email-provider';
+import { EmailProviderPort } from '../ports/providers/email-provider.port';
 
 type ServerDeps = Parameters<typeof makeServer>[0];
 
@@ -83,6 +85,33 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
     const tokenTtl = Number.isFinite(parsedTtl) && parsedTtl > 0 ? parsedTtl : 3600;
     const authMiddleware = makeAuthMiddleware(tokenProvider);
 
+    // Configurar email provider
+    let emailProvider: EmailProviderPort | undefined;
+    const emailHost = process.env.EMAIL_HOST;
+    const emailPort = process.env.EMAIL_PORT;
+    const emailUser = process.env.EMAIL_USER;
+    const emailPass = process.env.EMAIL_PASS;
+    const frontendBaseUrl = process.env.FRONTEND_BASE_URL;
+
+    if (emailHost && emailPort && emailUser && emailPass) {
+        try {
+            emailProvider = new NodemailerEmailProvider({
+                host: emailHost,
+                port: Number(emailPort),
+                auth: {
+                    user: emailUser,
+                    pass: emailPass
+                },
+                from: process.env.EMAIL_FROM
+            });
+            console.log('EmailProvider configurado com sucesso:', { host: emailHost, port: emailPort });
+        } catch (error) {
+            console.error('Erro ao configurar EmailProvider:', error);
+        }
+    } else {
+        console.warn('EmailProvider não configurado. Variáveis necessárias: EMAIL_HOST, EMAIL_PORT, EMAIL_USER, EMAIL_PASS');
+    }
+
     const serverDeps: ServerDeps = {
         healthRouter,
         authMiddleware
@@ -112,7 +141,9 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
                     tokenProvider,
                     tokenTtl,
                     activeModules: selected,
-                    schoolsRepo
+                    schoolsRepo,
+                    emailProvider,
+                    frontendBaseUrl
                 }, ctx);
                 mergeModuleResult(serverDeps, docFiles, result);
                 break;
@@ -172,7 +203,9 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
                     tokenTtl,
                     paymentProvider,
                     financialChargesRepo,
-                    bankAccountsRepo
+                    bankAccountsRepo,
+                    emailProvider,
+                    frontendBaseUrl
                 }, ctx);
                 mergeModuleResult(serverDeps, docFiles, result);
                 break;

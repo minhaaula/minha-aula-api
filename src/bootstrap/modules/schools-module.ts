@@ -65,6 +65,7 @@ import { ResetPassword } from '../../app/use-cases/reset-password';
 import { ValidatePasswordResetToken } from '../../app/use-cases/validate-password-reset-token';
 import { UpdateSchoolPassword } from '../../app/use-cases/update-school-password';
 import { PasswordResetTokenRepositoryAdapter } from '../../infra/db/typeorm/password-reset-token-repository.adapter';
+import { EmailProviderPort } from '../../ports/providers/email-provider.port';
 
 export type SchoolsModuleDeps = {
     schoolsRepo: SchoolRepositoryAdapter;
@@ -85,6 +86,8 @@ export type SchoolsModuleDeps = {
     tokenTtl: number;
     paymentProvider: PaymentProviderPort & Partial<AsaasProviderPort>;
     bankAccountsRepo?: SchoolBankAccountRepositoryAdapter;
+    emailProvider?: EmailProviderPort;
+    frontendBaseUrl?: string;
 };
 
 export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupContext): ModuleBuildResult {
@@ -116,7 +119,12 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         : undefined;
     
     const resetTokensRepo = new PasswordResetTokenRepositoryAdapter();
-    const requestPasswordReset = new RequestPasswordReset(deps.schoolsRepo, resetTokensRepo);
+    const requestPasswordReset = new RequestPasswordReset(
+        deps.schoolsRepo, 
+        resetTokensRepo, 
+        deps.emailProvider,
+        deps.frontendBaseUrl
+    );
     const resetPassword = new ResetPassword(deps.schoolsRepo, resetTokensRepo, deps.passwordHasher);
     const validatePasswordResetToken = new ValidatePasswordResetToken(resetTokensRepo);
     const updateSchoolPassword = new UpdateSchoolPassword(deps.schoolsRepo, deps.passwordHasher);

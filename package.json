@@ -23,6 +23,8 @@
     "migrate:run:prod": "node ./node_modules/typeorm/cli.js migration:run -d dist/infra/db/typeorm/datasource.js",
     "worker": "tsx watch src/infra/messaging/bullmq/outbox-worker.ts",
     "simulate:asaas-webhook": "tsx scripts/simulate-asaas-webhook.ts",
+    "test:email": "tsx scripts/test-email.ts",
+    "test:password-reset": "tsx scripts/test-password-reset-flow.ts",
     "deploy:railway": "npm install && npm run test && npm run build && npm run migrate:run:prod && npm run start"
   },
   "keywords": [],
@@ -30,11 +32,13 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@types/nodemailer": "^7.0.4",
     "axios": "^1.7.2",
     "bullmq": "^5.7.7",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "mysql2": "^3.10.0",
+    "nodemailer": "^7.0.10",
     "reflect-metadata": "^0.1.14",
     "swagger-ui-express": "^5.0.1",
     "typeorm": "^0.3.20",
