@@ -47,10 +47,14 @@ export class SchoolBankAccountRepositoryAdapter implements SchoolBankAccountRepo
             id: row.id,
             schoolId: row.schoolId,
             bankName: row.bankName,
+            bankCode: row.bankCode ?? undefined,
             bankAgency: row.bankAgency,
+            bankAgencyDigit: row.bankAgencyDigit ?? undefined,
             bankAccount: row.bankAccount,
+            bankAccountDigit: row.bankAccountDigit ?? undefined,
             bankAccountType: row.bankAccountType,
             bankAccountHolderDocument: row.bankAccountHolderDocument,
+            pixKey: row.pixKey ?? undefined,
             isActive: row.isActive === 1,
             createdAt: row.createdAt,
             updatedAt: row.updatedAt
@@ -63,10 +67,14 @@ export class SchoolBankAccountRepositoryAdapter implements SchoolBankAccountRepo
         row.id = account.id;
         row.schoolId = account.schoolId;
         row.bankName = account.bankName;
+        row.bankCode = account.bankCode ?? null;
         row.bankAgency = account.bankAgency;
+        row.bankAgencyDigit = account.bankAgencyDigit ?? null;
         row.bankAccount = account.bankAccount;
+        row.bankAccountDigit = account.bankAccountDigit ?? null;
         row.bankAccountType = account.bankAccountType;
         row.bankAccountHolderDocument = account.bankAccountHolderDocument;
+        row.pixKey = account.pixKey ?? null;
         row.isActive = account.isActive ? 1 : 0;
         row.createdAt = account.createdAt;
         row.updatedAt = account.updatedAt;

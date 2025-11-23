@@ -5,10 +5,14 @@ type BankAccountView = {
     id: string;
     schoolId: string;
     bankName: string;
+    bankCode?: number;
     bankAgency: string;
+    bankAgencyDigit?: string;
     bankAccount: string;
+    bankAccountDigit?: string;
     bankAccountType: 'CORRENTE' | 'POUPANCA';
     bankAccountHolderDocument: string;
+    pixKey?: string;
     isActive: boolean;
     createdAt: Date;
     updatedAt: Date;
@@ -32,10 +36,14 @@ export class ListSchoolBankAccounts {
                 id: account.id,
                 schoolId: account.schoolId,
                 bankName: account.bankName,
+                bankCode: account.bankCode,
                 bankAgency: account.bankAgency,
+                bankAgencyDigit: account.bankAgencyDigit,
                 bankAccount: account.bankAccount,
+                bankAccountDigit: account.bankAccountDigit,
                 bankAccountType: account.bankAccountType,
                 bankAccountHolderDocument: account.bankAccountHolderDocument,
+                pixKey: account.pixKey,
                 isActive: account.isActive,
                 createdAt: account.createdAt,
                 updatedAt: account.updatedAt

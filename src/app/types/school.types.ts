@@ -75,10 +75,14 @@ export interface SchoolSummary {
 export type BankAccountOutput = {
     id: string;
     bankName: string;
+    bankCode?: number;
     bankAgency: string;
+    bankAgencyDigit?: string;
     bankAccount: string;
+    bankAccountDigit?: string;
     bankAccountType: 'CORRENTE' | 'POUPANCA';
     bankAccountHolderDocument: string;
+    pixKey?: string;
     isActive: boolean;
     createdAt: Date;
     updatedAt: Date;

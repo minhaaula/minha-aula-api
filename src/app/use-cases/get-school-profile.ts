@@ -5,10 +5,14 @@ import { SchoolBankAccountRepository } from '../../ports/repositories/school-ban
 type BankAccountView = {
     id: string;
     bankName: string;
+    bankCode?: number;
     bankAgency: string;
+    bankAgencyDigit?: string;
     bankAccount: string;
+    bankAccountDigit?: string;
     bankAccountType: 'CORRENTE' | 'POUPANCA';
     bankAccountHolderDocument: string;
+    pixKey?: string;
     isActive: boolean;
     createdAt: Date;
     updatedAt: Date;
@@ -63,10 +67,14 @@ export class GetSchoolProfile {
             bankAccounts: accounts.map((account) => ({
                 id: account.id,
                 bankName: account.bankName,
+                bankCode: account.bankCode,
                 bankAgency: account.bankAgency,
+                bankAgencyDigit: account.bankAgencyDigit,
                 bankAccount: account.bankAccount,
+                bankAccountDigit: account.bankAccountDigit,
                 bankAccountType: account.bankAccountType,
                 bankAccountHolderDocument: account.bankAccountHolderDocument,
+                pixKey: account.pixKey,
                 isActive: account.isActive,
                 createdAt: account.createdAt,
                 updatedAt: account.updatedAt

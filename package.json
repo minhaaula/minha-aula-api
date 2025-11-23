@@ -25,6 +25,7 @@
     "simulate:asaas-webhook": "tsx scripts/simulate-asaas-webhook.ts",
     "test:email": "tsx scripts/test-email.ts",
     "test:password-reset": "tsx scripts/test-password-reset-flow.ts",
+    "test:bank-accounts": "tsx scripts/test-bank-accounts-routes.ts",
     "deploy:railway": "npm install && npm run test && npm run build && npm run migrate:run:prod && npm run start"
   },
   "keywords": [],

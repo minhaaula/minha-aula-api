@@ -34,10 +34,14 @@ export function buildBankAccountsRoutes(deps: BankAccountsRoutesDeps, guards: Sc
             const result = await deps.createSchoolBankAccount!.exec({
                 schoolId,
                 bankName: data.bankName,
+                bankCode: data.banco,
                 bankAgency: data.bankAgency,
+                bankAgencyDigit: data.digitoAgencia,
                 bankAccount: data.bankAccount,
+                bankAccountDigit: data.digitoConta,
                 bankAccountType: data.bankAccountType,
-                bankAccountHolderDocument: data.bankAccountHolderDocument
+                bankAccountHolderDocument: data.bankAccountHolderDocument,
+                pixKey: data.PIX
             });
             res.status(201).json(result);
         }));
@@ -52,10 +56,14 @@ export function buildBankAccountsRoutes(deps: BankAccountsRoutesDeps, guards: Sc
                 accountId,
                 schoolId,
                 bankName: data.bankName,
+                bankCode: data.banco,
                 bankAgency: data.bankAgency,
+                bankAgencyDigit: data.digitoAgencia,
                 bankAccount: data.bankAccount,
+                bankAccountDigit: data.digitoConta,
                 bankAccountType: data.bankAccountType,
                 bankAccountHolderDocument: data.bankAccountHolderDocument,
+                pixKey: data.PIX,
                 isActive: data.isActive
             });
             res.json(result);
