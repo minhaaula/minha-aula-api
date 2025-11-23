@@ -378,7 +378,7 @@ describe('CreateEnrollmentRequest', () => {
             requestedForUserId: user.id,
             requestedForDependentId: dependent.id,
             firstMonthlyPaymentDate: '2024-02-01'
-        })).rejects.toThrow('Enrollment request already exists for this target');
+        })).rejects.toThrow('Solicitação de matrícula já existe para este alvo');
 
         enrollments.seed(Enrollment.createForDependent({
             id: 'enroll-1',
@@ -393,7 +393,7 @@ describe('CreateEnrollmentRequest', () => {
             requestedForUserId: user.id,
             requestedForDependentId: dependent.id,
             firstMonthlyPaymentDate: '2024-02-01'
-        })).rejects.toThrow('Dependent already enrolled in this class');
+        })).rejects.toThrow('Já matriculado nesta turma');
     });
 });
 
@@ -442,8 +442,8 @@ describe('ApproveEnrollmentRequest', () => {
         requests.seed(request);
 
         const useCase = new ApproveEnrollmentRequest(requests, enrollments, classes, charges);
-        await expect(useCase.exec({ requestId: 'missing', approverUserId: 'owner' })).rejects.toThrow('Enrollment request not found');
-        await expect(useCase.exec({ requestId: request.id, approverUserId: 'other' })).rejects.toThrow('User not allowed to approve this enrollment request');
+        await expect(useCase.exec({ requestId: 'missing', approverUserId: 'owner' })).rejects.toThrow('Solicitação de matrícula não encontrada');
+        await expect(useCase.exec({ requestId: request.id, approverUserId: 'other' })).rejects.toThrow('Operação não permitida');
 
         enrollments.seed(Enrollment.createForDependent({
             id: 'enroll-existing',
@@ -452,10 +452,10 @@ describe('ApproveEnrollmentRequest', () => {
             dependentId: 'dep-1'
         }));
 
-        await expect(useCase.exec({ requestId: request.id, approverUserId: 'owner' })).rejects.toThrow('Dependent already enrolled in this class');
+        await expect(useCase.exec({ requestId: request.id, approverUserId: 'owner' })).rejects.toThrow('Já matriculado nesta turma');
 
         (request as any)._status = 'APPROVED';
-        await expect(useCase.exec({ requestId: request.id, approverUserId: 'owner' })).rejects.toThrow('Enrollment request already decided');
+        await expect(useCase.exec({ requestId: request.id, approverUserId: 'owner' })).rejects.toThrow('Solicitação de matrícula já foi decidida');
     });
 
     it('creates enrollment charge when fee metadata is present', async () => {

@@ -113,7 +113,7 @@ describe('AddDependent use case', () => {
         dependents.seed(Dependent.create({ id: 'dep-1', userId: owner.id, fullName: 'Maria', cpf: '11122233344', birthDate: null, relationship: 'Filha', createdAt: new Date() }));
         const useCase = new AddDependent(users, dependents);
 
-        await expect(useCase.exec({ ownerUserId: owner.id, fullName: 'Maria' })).rejects.toThrow('Dependent with this name already exists for the user');
+        await expect(useCase.exec({ ownerUserId: owner.id, fullName: 'Maria' })).rejects.toThrow('Dependente com este nome já existe para o usuário');
     });
 
     it('validates user existence and birth date', async () => {
@@ -121,11 +121,11 @@ describe('AddDependent use case', () => {
         const dependents = new InMemoryDependentRepository();
         const useCase = new AddDependent(users, dependents);
 
-        await expect(useCase.exec({ ownerUserId: 'missing', fullName: 'Ana' })).rejects.toThrow('User not found');
+        await expect(useCase.exec({ ownerUserId: 'missing', fullName: 'Ana' })).rejects.toThrow('Usuário não encontrado');
 
         const owner = makeUser();
         users.seed(owner);
-        await expect(useCase.exec({ ownerUserId: owner.id, fullName: 'Ana', birthDate: 'invalid-date' })).rejects.toThrow('Invalid dependent birth date');
+        await expect(useCase.exec({ ownerUserId: owner.id, fullName: 'Ana', birthDate: 'invalid-date' })).rejects.toThrow('Data de nascimento inválida');
     });
 
     it('prevents duplicate dependent CPF', async () => {
@@ -145,6 +145,6 @@ describe('AddDependent use case', () => {
         const useCase = new AddDependent(users, dependents);
 
         await expect(useCase.exec({ ownerUserId: owner.id, fullName: 'Carla', cpf: '22233344455' }))
-            .rejects.toThrow('Dependent with this CPF already exists');
+            .rejects.toThrow('CPF já cadastrado');
     });
 });

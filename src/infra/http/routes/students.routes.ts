@@ -4,6 +4,7 @@ import { ListStudents } from '../../../app/use-cases/list-students';
 import { GetStudentDirectoryEntry } from '../../../app/use-cases/get-student-directory-entry';
 import { ListMyCourses } from '../../../app/use-cases/list-my-courses';
 import { ListAllCourses } from '../../../app/use-cases/list-all-courses';
+import { ListStudentPayments } from '../../../app/use-cases/list-student-payments';
 import { requirePersona } from '../middlewares/require-persona';
 import { UserPersonaEnum } from '../../../domain/value-objects/user-persona';
 import { AuthenticatedRequest } from '../middlewares/auth';
@@ -14,6 +15,7 @@ export function studentsRouter(deps: {
     getStudentDirectoryEntry: GetStudentDirectoryEntry;
     listMyCourses?: ListMyCourses;
     listAllCourses?: ListAllCourses;
+    listStudentPayments?: ListStudentPayments;
 }) {
     const r = Router();
 
@@ -130,6 +132,35 @@ export function studentsRouter(deps: {
             });
 
             const result = await deps.listAllCourses!.exec(query);
+            res.json(result);
+        }));
+    }
+
+    if (deps.listStudentPayments) {
+        const paymentsQuerySchema = z.object({
+            status: z.enum(['pendente', 'atrasado', 'pago']).optional(),
+            isPaid: z.coerce.boolean().optional()
+        });
+
+        r.get('/payments', requireStudent, asyncHandler(async (req, res) => {
+            const authReq = req as AuthenticatedRequest;
+            if (!authReq.user?.sub) {
+                return res.status(401).json({ 
+                    error: 'Não autorizado',
+                    code: 'UNAUTHORIZED'
+                });
+            }
+
+            const query = paymentsQuerySchema.parse({
+                status: typeof req.query.status === 'string' ? req.query.status : undefined,
+                isPaid: typeof req.query.isPaid !== 'undefined' ? req.query.isPaid : undefined
+            });
+
+            const result = await deps.listStudentPayments!.exec({
+                userId: authReq.user.sub,
+                status: query.status,
+                isPaid: query.isPaid
+            });
             res.json(result);
         }));
     }

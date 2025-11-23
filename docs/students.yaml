@@ -263,3 +263,82 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /students/payments:
+    get:
+      tags:
+        - Students
+      summary: Listar pagamentos do estudante
+      description: Retorna os pagamentos (cobranças financeiras) do usuário logado e seus dependentes, incluindo informações do curso, aluno, valor, data de vencimento e status. Requer persona STUDENT.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: status
+          required: false
+          schema:
+            type: string
+            enum: [pendente, atrasado, pago]
+          description: Filtrar pagamentos por status (pendente, atrasado ou pago).
+        - in: query
+          name: isPaid
+          required: false
+          schema:
+            type: boolean
+          description: Filtrar apenas pagos (true) ou apenas em aberto (false). Quando true, retorna apenas pagamentos com status 'pago'. Quando false, retorna apenas pagamentos pendentes ou em atraso.
+      responses:
+        '200':
+          description: Lista de pagamentos do estudante.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  payments:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        courseName:
+                          type: string
+                          description: Nome do curso
+                        studentName:
+                          type: string
+                          description: Nome do aluno (usuário ou dependente)
+                        amountCents:
+                          type: integer
+                          format: int64
+                          description: Valor do pagamento em centavos
+                        dueDate:
+                          type: string
+                          format: date
+                          description: Data de vencimento do pagamento
+                        status:
+                          type: string
+                          enum: [pendente, atrasado, pago, cancelado, falhou]
+                          description: Status do pagamento
+                      required:
+                        - courseName
+                        - studentName
+                        - amountCents
+                        - dueDate
+                        - status
+                required:
+                  - payments
+        '401':
+          description: Não autorizado. Token inválido ou ausente.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado. Requer persona STUDENT.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '501':
+          description: Funcionalidade de listagem de pagamentos não configurada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'

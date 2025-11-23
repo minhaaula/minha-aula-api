@@ -1,7 +1,7 @@
 import { Between } from 'typeorm';
 import { AppDataSource } from './datasource';
-import { SchoolFinancialChargeRepository } from '../../../ports/repositories/school-financial-charge.repo';
-import { SchoolFinancialCharge } from '../../../domain/entities/school-financial-charge';
+import { SchoolFinancialChargeRepository, StudentPaymentInfo } from '../../../ports/repositories/school-financial-charge.repo';
+import { SchoolFinancialCharge, SchoolFinancialChargeStatus } from '../../../domain/entities/school-financial-charge';
 import { SchoolFinancialChargeOrm } from './entities/school-financial-charge.orm';
 
 export class SchoolFinancialChargeRepositoryAdapter implements SchoolFinancialChargeRepository {
@@ -23,6 +23,55 @@ export class SchoolFinancialChargeRepositoryAdapter implements SchoolFinancialCh
             }
         });
         return rows.map((row) => this.toDomain(row));
+    }
+
+    async findByOwnerUserId(ownerUserId: string, filters?: {
+        status?: SchoolFinancialChargeStatus;
+        isPaid?: boolean;
+    }): Promise<StudentPaymentInfo[]> {
+        const queryBuilder = this.repo
+            .createQueryBuilder('charge')
+            .leftJoin('charge.course', 'course')
+            .leftJoin('charge.student', 'studentUser')
+            .leftJoin('charge.dependent', 'dependent')
+            .where('charge.ownerUserId = :ownerUserId', { ownerUserId })
+            .andWhere('charge.status != :cancelledStatus', { cancelledStatus: 'CANCELLED' })
+            .select([
+                'charge.id AS chargeId',
+                'course.name AS courseName',
+                'COALESCE(studentUser.fullName, dependent.fullName) AS studentName',
+                'charge.netAmountCents AS amountCents',
+                'charge.dueDate AS dueDate',
+                'charge.status AS status'
+            ])
+            .orderBy('charge.dueDate', 'DESC');
+
+        // Filtro por status específico
+        if (filters?.status) {
+            queryBuilder.andWhere('charge.status = :status', { status: filters.status });
+        }
+
+        // Filtro por isPaid (pagos ou em aberto)
+        if (filters?.isPaid !== undefined) {
+            if (filters.isPaid) {
+                queryBuilder.andWhere('charge.status = :paidStatus', { paidStatus: 'PAID' });
+            } else {
+                queryBuilder.andWhere('charge.status IN (:...openStatuses)', { 
+                    openStatuses: ['PENDING_SYNC', 'OPEN', 'OVERDUE'] 
+                });
+            }
+        }
+
+        const results = await queryBuilder.getRawMany();
+
+        return results.map((row: any) => ({
+            chargeId: row.chargeId,
+            courseName: row.courseName,
+            studentName: row.studentName,
+            amountCents: row.amountCents,
+            dueDate: new Date(row.dueDate),
+            status: row.status as SchoolFinancialChargeStatus
+        }));
     }
 
     private toDomain(row: SchoolFinancialChargeOrm): SchoolFinancialCharge {

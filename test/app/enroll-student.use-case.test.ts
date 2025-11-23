@@ -244,7 +244,7 @@ describe('EnrollStudent use case', () => {
             courseId: 'course-1',
             classId: 'class-1',
             studentUserId: student.id
-        })).rejects.toThrow('Student already enrolled in this class');
+        })).rejects.toThrow('Já matriculado nesta turma');
     });
 
     it('validates course ownership for the school', async () => {
@@ -264,6 +264,6 @@ describe('EnrollStudent use case', () => {
             courseId: 'course-1',
             classId: 'class-1',
             studentUserId: student.id
-        })).rejects.toThrow('Course not found for this school');
+        })).rejects.toThrow('Curso não encontrado');
     });
 });

@@ -22,6 +22,7 @@ import { PaymentProviderPort } from '../../ports/providers/payment-provider.port
 import { GetStudentDirectoryEntry } from '../../app/use-cases/get-student-directory-entry';
 import { ListMyCourses } from '../../app/use-cases/list-my-courses';
 import { ListAllCourses } from '../../app/use-cases/list-all-courses';
+import { ListStudentPayments } from '../../app/use-cases/list-student-payments';
 import { CategoryRepositoryAdapter } from '../../infra/db/typeorm/category-repository.adapter';
 
 export type StudentsModuleDeps = {
@@ -51,6 +52,7 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
     const listAllCourses = deps.categoriesRepo
         ? new ListAllCourses(deps.coursesRepo, deps.categoriesRepo)
         : undefined;
+    const listStudentPayments = new ListStudentPayments(deps.financialChargesRepo);
     const listSchools = new ListSchools(deps.schoolsRepo);
     const createEnrollmentRequest = new CreateEnrollmentRequest(
         deps.schoolsRepo,
@@ -80,7 +82,8 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
         listStudents,
         getStudentDirectoryEntry,
         listMyCourses,
-        listAllCourses
+        listAllCourses,
+        listStudentPayments
     });
 
     const dependentsRouterInstance = dependentsRouter({
