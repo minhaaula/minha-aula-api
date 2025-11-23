@@ -1,6 +1,6 @@
 import { ModuleBuildResult, ModuleSetupContext } from './types';
-import { SchoolRepositoryAdapter } from '../../infra/db/typeorm/school-repository.adapter';
-import { CourseRepositoryAdapter } from '../../infra/db/typeorm/course-repository.adapter';
+import { SchoolRepositoryAdapter } from '../../infra/db/typeorm/school-repository';
+import { CourseRepositoryAdapter } from '../../infra/db/typeorm/course-repository';
 import { CourseClassRepositoryAdapter } from '../../infra/db/typeorm/course-class-repository.adapter';
 import { UserRepositoryAdapter } from '../../infra/db/typeorm/user-repository.adapter';
 import { DependentRepositoryAdapter } from '../../infra/db/typeorm/dependent-repository.adapter';
@@ -40,7 +40,7 @@ import { AsaasProviderPort } from '../../ports/providers/asaas-port';
 import { HandleAsaasPaymentWebhook } from '../../app/use-cases/handle-asaas-payment-webhook';
 import { asaasWebhookRouter } from '../../infra/http/routes/webhooks/asaas.routes';
 import { ListSchoolPlanInvoices } from '../../app/use-cases/list-school-plan-invoices';
-import { EnrollmentRepositoryAdapter } from '../../infra/db/typeorm/enrollment-repository.adapter';
+import { EnrollmentRepositoryAdapter } from '../../infra/db/typeorm/enrollment-repository';
 import { EnrollmentRequestRepositoryAdapter } from '../../infra/db/typeorm/enrollment-request-repository.adapter';
 import { SchoolFinancialChargeRepositoryAdapter } from '../../infra/db/typeorm/school-financial-charge-repository.adapter';
 import { EnrollStudent } from '../../app/use-cases/enroll-student';

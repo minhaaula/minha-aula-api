@@ -10,6 +10,15 @@ export type EnrollmentWithDetails = {
     schoolName: string | null;
 };
 
+export type MyCourseData = {
+    courseId: string;
+    courseName: string;
+    schoolId: string;
+    schoolName: string;
+    studentName: string;
+    schedule: Array<{ day: string; start: string; end: string }>;
+};
+
 export interface EnrollmentRepository {
     findById(id: string): Promise<Enrollment | null>;
     findByClassAndUser(classId: string, userId: string): Promise<Enrollment | null>;
@@ -17,4 +26,5 @@ export interface EnrollmentRepository {
     findActiveByClassIds(classIds: string[]): Promise<Enrollment[]>;
     save(enrollment: Enrollment): Promise<void>;
     findRecent?(limit: number): Promise<EnrollmentWithDetails[]>;
+    findMyCourses?(userId: string): Promise<MyCourseData[]>;
 }

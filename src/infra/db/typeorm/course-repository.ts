@@ -68,6 +68,48 @@ export class CourseRepositoryAdapter implements CourseRepository {
         return rows.map((row) => this.toDomain(row));
     }
 
+    async findCategoriesByCourseIds(courseIds: string[]): Promise<import('../../../ports/repositories/course.repo').CourseCategoryInfo[]> {
+        if (courseIds.length === 0) return [];
+
+        const results = await AppDataSource.query(`
+            SELECT 
+                cc.course_id,
+                c.name AS category_name,
+                s.name AS subcategory_name
+            FROM course_categories cc
+            INNER JOIN categories c ON c.id = cc.category_id
+            LEFT JOIN course_category_subcategories ccs ON ccs.course_category_id = cc.id
+            LEFT JOIN subcategories s ON s.id = ccs.subcategory_id
+            WHERE cc.course_id IN (${courseIds.map(() => '?').join(',')})
+            ORDER BY cc.created_at ASC
+        `, courseIds);
+
+        const categoriesMap = new Map<string, { category: string | null; subcategory: string | null }>();
+        for (const row of results) {
+            const courseId = row.course_id;
+            if (!categoriesMap.has(courseId)) {
+                categoriesMap.set(courseId, {
+                    category: row.category_name || null,
+                    subcategory: row.subcategory_name || null
+                });
+            } else {
+                const existing = categoriesMap.get(courseId)!;
+                if (!existing.subcategory && row.subcategory_name) {
+                    existing.subcategory = row.subcategory_name;
+                }
+            }
+        }
+
+        return courseIds.map(courseId => {
+            const info = categoriesMap.get(courseId) || { category: null, subcategory: null };
+            return {
+                courseId,
+                category: info.category,
+                subcategory: info.subcategory
+            };
+        });
+    }
+
     async save(course: Course): Promise<void> {
         const row = await this.toOrm(course);
         await this.repo.save(row);

@@ -2,11 +2,17 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { ListStudents } from '../../../app/use-cases/list-students';
 import { GetStudentDirectoryEntry } from '../../../app/use-cases/get-student-directory-entry';
+import { ListMyCourses } from '../../../app/use-cases/list-my-courses';
 import { requirePersona } from '../middlewares/require-persona';
 import { UserPersonaEnum } from '../../../domain/value-objects/user-persona';
 import { AuthenticatedRequest } from '../middlewares/auth';
+import { asyncHandler } from '../utils/async-handler';
 
-export function studentsRouter(deps: { listStudents: ListStudents; getStudentDirectoryEntry: GetStudentDirectoryEntry; }) {
+export function studentsRouter(deps: { 
+    listStudents: ListStudents; 
+    getStudentDirectoryEntry: GetStudentDirectoryEntry;
+    listMyCourses?: ListMyCourses;
+}) {
     const r = Router();
 
     const canListStudents = requirePersona(UserPersonaEnum.ADMIN, UserPersonaEnum.SCHOOL);
@@ -87,6 +93,23 @@ export function studentsRouter(deps: { listStudents: ListStudents; getStudentDir
             next(err);
         }
     });
+
+    const requireStudent = requirePersona(UserPersonaEnum.STUDENT);
+
+    if (deps.listMyCourses) {
+        r.get('/courses', requireStudent, asyncHandler(async (req, res) => {
+            const authReq = req as AuthenticatedRequest;
+            if (!authReq.user?.sub) {
+                return res.status(401).json({ 
+                    error: 'Não autorizado',
+                    code: 'UNAUTHORIZED'
+                });
+            }
+
+            const result = await deps.listMyCourses!.exec({ userId: authReq.user.sub });
+            res.json(result);
+        }));
+    }
 
     return r;
 }

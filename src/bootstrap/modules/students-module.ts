@@ -1,10 +1,10 @@
 import { ModuleBuildResult, ModuleSetupContext } from './types';
 import { UserRepositoryAdapter } from '../../infra/db/typeorm/user-repository.adapter';
 import { DependentRepositoryAdapter } from '../../infra/db/typeorm/dependent-repository.adapter';
-import { SchoolRepositoryAdapter } from '../../infra/db/typeorm/school-repository.adapter';
-import { CourseRepositoryAdapter } from '../../infra/db/typeorm/course-repository.adapter';
+import { SchoolRepositoryAdapter } from '../../infra/db/typeorm/school-repository';
+import { CourseRepositoryAdapter } from '../../infra/db/typeorm/course-repository';
 import { CourseClassRepositoryAdapter } from '../../infra/db/typeorm/course-class-repository.adapter';
-import { EnrollmentRepositoryAdapter } from '../../infra/db/typeorm/enrollment-repository.adapter';
+import { EnrollmentRepositoryAdapter } from '../../infra/db/typeorm/enrollment-repository';
 import { EnrollmentRequestRepositoryAdapter } from '../../infra/db/typeorm/enrollment-request-repository.adapter';
 import { SchoolFinancialChargeRepositoryAdapter } from '../../infra/db/typeorm/school-financial-charge-repository.adapter';
 import { AddDependent } from '../../app/use-cases/add-dependent';
@@ -20,6 +20,7 @@ import { ListEnrollmentRequests } from '../../app/use-cases/list-enrollment-requ
 import { GetEnrollmentRequest } from '../../app/use-cases/get-enrollment-request';
 import { PaymentProviderPort } from '../../ports/providers/payment-provider.port';
 import { GetStudentDirectoryEntry } from '../../app/use-cases/get-student-directory-entry';
+import { ListMyCourses } from '../../app/use-cases/list-my-courses';
 
 export type StudentsModuleDeps = {
     usersRepo: UserRepositoryAdapter;
@@ -43,6 +44,7 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
         deps.enrollmentsRepo
     );
     const getStudentDirectoryEntry = new GetStudentDirectoryEntry(deps.usersRepo, deps.dependentsRepo);
+    const listMyCourses = new ListMyCourses(deps.enrollmentsRepo, deps.coursesRepo, deps.schoolsRepo);
     const listSchools = new ListSchools(deps.schoolsRepo);
     const createEnrollmentRequest = new CreateEnrollmentRequest(
         deps.schoolsRepo,
@@ -70,7 +72,8 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
     // Montar routers prontos
     const studentsRouterInstance = studentsRouter({
         listStudents,
-        getStudentDirectoryEntry
+        getStudentDirectoryEntry,
+        listMyCourses
     });
 
     const dependentsRouterInstance = dependentsRouter({

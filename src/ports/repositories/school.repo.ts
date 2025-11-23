@@ -1,5 +1,10 @@
 import { School } from '../../domain/entities/school';
 
+export type SchoolCityInfo = {
+    schoolId: string;
+    city: string | null;
+};
+
 export interface SchoolRepository {
     findById(id: string): Promise<School | null>;
     findByEmail?(email: string): Promise<School | null>;
@@ -8,4 +13,5 @@ export interface SchoolRepository {
     findAll(): Promise<School[]>;
     save(school: School): Promise<void>;
     updateOwnerPassword?(schoolId: string, hashedPassword: string): Promise<void>;
+    findCitiesBySchoolIds?(schoolIds: string[]): Promise<SchoolCityInfo[]>;
 }

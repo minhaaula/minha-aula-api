@@ -66,6 +66,52 @@ export class EnrollmentRepositoryAdapter implements EnrollmentRepository {
         }));
     }
 
+    async findMyCourses(userId: string): Promise<import('../../../ports/repositories/enrollment.repo').MyCourseData[]> {
+        const results = await this.repo
+            .createQueryBuilder('enrollment')
+            .leftJoin('enrollment.courseClass', 'courseClass')
+            .leftJoin('enrollment.studentUser', 'studentUser')
+            .leftJoin('enrollment.dependent', 'dependent')
+            .leftJoin('courseClass.course', 'course')
+            .leftJoin('course.school', 'school')
+            .where('enrollment.ownerUserId = :userId', { userId })
+            .andWhere('enrollment.status = :status', { status: 'ACTIVE' })
+            .andWhere('course.isActive = :isActive', { isActive: true })
+            .andWhere('courseClass.isActive = :isActive', { isActive: true })
+            .select([
+                'course.id AS courseId',
+                'course.name AS courseName',
+                'school.id AS schoolId',
+                'school.name AS schoolName',
+                'COALESCE(studentUser.fullName, dependent.fullName) AS studentName',
+                'courseClass.schedule AS schedule'
+            ])
+            .orderBy('enrollment.enrolledAt', 'DESC')
+            .getRawMany();
+
+        return results.map((row: any) => {
+            let schedule: Array<{ day: string; start: string; end: string }> = [];
+            if (Array.isArray(row.schedule)) {
+                schedule = row.schedule;
+            } else if (typeof row.schedule === 'string') {
+                try {
+                    schedule = JSON.parse(row.schedule);
+                } catch {
+                    schedule = [];
+                }
+            }
+
+            return {
+                courseId: row.courseId,
+                courseName: row.courseName,
+                schoolId: row.schoolId,
+                schoolName: row.schoolName,
+                studentName: row.studentName,
+                schedule: schedule
+            };
+        });
+    }
+
     private toDomain(row: EnrollmentOrm): Enrollment {
         if (row.studentType === 'USER') {
             return Enrollment.createForUser({

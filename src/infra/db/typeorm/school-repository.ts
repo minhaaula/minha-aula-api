@@ -148,6 +148,24 @@ export class SchoolRepositoryAdapter implements SchoolRepository {
         });
         return row;
     }
+
+    async findCitiesBySchoolIds(schoolIds: string[]): Promise<import('../../../ports/repositories/school.repo').SchoolCityInfo[]> {
+        if (schoolIds.length === 0) return [];
+
+        const results = await AppDataSource.query(`
+            SELECT 
+                school_id,
+                MIN(city) AS city
+            FROM school_addresses
+            WHERE school_id IN (${schoolIds.map(() => '?').join(',')})
+            GROUP BY school_id
+        `, schoolIds);
+
+        return results.map((row: any) => ({
+            schoolId: row.school_id,
+            city: row.city || null
+        }));
+    }
 }
 
 

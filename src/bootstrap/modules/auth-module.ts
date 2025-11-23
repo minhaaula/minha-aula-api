@@ -5,7 +5,7 @@ import { authRouter } from '../../infra/http/routes/auth.routes';
 import { ScryptPasswordHasher } from '../../infra/auth/scrypt-password-hasher';
 import { HmacTokenProvider } from '../../infra/auth/hmac-token-provider';
 import { UserRepositoryAdapter } from '../../infra/db/typeorm/user-repository.adapter';
-import { SchoolRepositoryAdapter } from '../../infra/db/typeorm/school-repository.adapter';
+import { SchoolRepositoryAdapter } from '../../infra/db/typeorm/school-repository';
 import type { ModuleName } from '../module-config';
 import { UpdateUserPassword } from '../../app/use-cases/update-user-password';
 import { RequestUserPasswordReset } from '../../app/use-cases/request-user-password-reset';
