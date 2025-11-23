@@ -340,6 +340,85 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /schools/payments/consolidated:
+    get:
+      tags:
+        - Schools
+      summary: Consolidado de pagamentos dos estudantes da escola
+      description: Retorna os totais consolidados de mensalidades dos alunos da escola para um mês e ano específicos, incluindo totais de pendentes, em atraso, pagas, a receber e recebido. Todos os valores são retornados em centavos.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: month
+          required: true
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            maximum: 12
+          description: Mês para consolidar os pagamentos (1-12).
+        - in: query
+          name: year
+          required: true
+          schema:
+            type: integer
+            format: int32
+            minimum: 2000
+            maximum: 3000
+          description: Ano para consolidar os pagamentos.
+      responses:
+        '200':
+          description: Totais consolidados de pagamentos.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  totalMensalidadesPendentes:
+                    type: integer
+                    format: int64
+                    description: Total de mensalidades pendentes (em centavos). Inclui status OPEN ou PENDING_SYNC com data de vencimento ainda não passada.
+                  totalMensalidadesEmAtraso:
+                    type: integer
+                    format: int64
+                    description: Total de mensalidades em atraso (em centavos). Inclui status OVERDUE ou status pendente com data de vencimento passada.
+                  totalMensalidadesPagas:
+                    type: integer
+                    format: int64
+                    description: Total de mensalidades pagas (em centavos). Status PAID.
+                  totalAReceber:
+                    type: integer
+                    format: int64
+                    description: Total a receber (em centavos). Soma de pendentes e em atraso.
+                  totalRecebido:
+                    type: integer
+                    format: int64
+                    description: Total recebido (em centavos). Equivale ao total de mensalidades pagas.
+                required:
+                  - totalMensalidadesPendentes
+                  - totalMensalidadesEmAtraso
+                  - totalMensalidadesPagas
+                  - totalAReceber
+                  - totalRecebido
+        '400':
+          description: Erro na requisição. Mês ou ano inválidos ou não fornecidos.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado ou sem contexto de escola.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '501':
+          description: Funcionalidade de consolidação de pagamentos não configurada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /schools/finance/charges:
     post:
       tags:

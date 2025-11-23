@@ -2,12 +2,14 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { asyncHandler } from '../../utils/async-handler';
 import type { ListSchoolPayments } from '../../../../app/use-cases/list-school-payments';
+import type { ConsolidateSchoolPayments } from '../../../../app/use-cases/consolidate-school-payments';
 import type { SchoolRouteGuards } from './guards';
 import type { SchoolContextRequest } from '../../middlewares/resolve-school-context';
 import { SchoolFinancialChargeStatus } from '../../../../domain/entities/school-financial-charge';
 
 type PaymentsRoutesDeps = {
     listSchoolPayments: ListSchoolPayments;
+    consolidateSchoolPayments?: ConsolidateSchoolPayments;
 };
 
 export function buildPaymentsRoutes(deps: PaymentsRoutesDeps, guards: SchoolRouteGuards) {
@@ -48,6 +50,41 @@ export function buildPaymentsRoutes(deps: PaymentsRoutesDeps, guards: SchoolRout
         });
 
         res.json({ payments });
+    }));
+
+    const consolidatedQuerySchema = z.object({
+        month: z.coerce.number({
+            required_error: 'Mês é obrigatório',
+            invalid_type_error: 'Mês deve ser um número'
+        }).int('Mês deve ser um número inteiro').min(1, 'Mês deve ser entre 1 e 12').max(12, 'Mês deve ser entre 1 e 12'),
+        year: z.coerce.number({
+            required_error: 'Ano é obrigatório',
+            invalid_type_error: 'Ano deve ser um número'
+        }).int('Ano deve ser um número inteiro').min(2000, 'Ano deve ser válido').max(3000, 'Ano deve ser válido')
+    });
+
+    router.get('/consolidated', ...protectedMiddleware, asyncHandler(async (req, res) => {
+        if (!deps.consolidateSchoolPayments) {
+            return res.status(501).json({ 
+                error: 'Funcionalidade de consolidação de pagamentos não configurada',
+                code: 'NOT_IMPLEMENTED'
+            });
+        }
+
+        const schoolId = (req as SchoolContextRequest).schoolId as string;
+
+        const query = consolidatedQuerySchema.parse({
+            month: req.query.month,
+            year: req.query.year
+        });
+
+        const consolidated = await deps.consolidateSchoolPayments.exec({
+            schoolId,
+            month: query.month,
+            year: query.year
+        });
+
+        res.json(consolidated);
     }));
 
     return router;

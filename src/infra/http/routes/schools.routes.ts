@@ -16,6 +16,7 @@ import type { ListCategories } from '../../../app/use-cases/list-categories';
 import type { ListSchoolCourses } from '../../../app/use-cases/list-school-courses';
 import type { ListSchoolStudents } from '../../../app/use-cases/list-school-students';
 import type { ListSchoolPayments } from '../../../app/use-cases/list-school-payments';
+import type { ConsolidateSchoolPayments } from '../../../app/use-cases/consolidate-school-payments';
 import type { GetSchoolCourse } from '../../../app/use-cases/get-school-course';
 import type { ListCourseClasses } from '../../../app/use-cases/list-course-classes';
 import type { GetCourseClass } from '../../../app/use-cases/get-course-class';
@@ -71,6 +72,7 @@ export type SchoolsRouterDeps = {
     listSchoolCourses?: ListSchoolCourses;
     listSchoolStudents?: ListSchoolStudents;
     listSchoolPayments?: ListSchoolPayments;
+    consolidateSchoolPayments?: ConsolidateSchoolPayments;
     getSchoolCourse?: GetSchoolCourse;
     updateCourse?: UpdateCourse;
     deleteCourse?: DeleteCourse;
@@ -138,7 +140,8 @@ export function schoolsRouter(deps: SchoolsRouterDeps) {
 
     if (deps.listSchoolPayments) {
         router.use('/payments', buildPaymentsRoutes({
-            listSchoolPayments: deps.listSchoolPayments
+            listSchoolPayments: deps.listSchoolPayments,
+            consolidateSchoolPayments: deps.consolidateSchoolPayments
         }, guards));
     }
 
