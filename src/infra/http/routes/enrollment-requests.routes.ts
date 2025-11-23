@@ -79,11 +79,11 @@ export function enrollmentRequestsRouter(deps: {
             if (persona === UserPersonaEnum.SCHOOL) {
                 const contextSchoolId = authReq.user?.schoolId;
                 if (!contextSchoolId) {
-                return res.status(403).json({ 
-                    error: 'Contexto de escola não encontrado para o usuário',
-                    code: 'SCHOOL_CONTEXT_NOT_FOUND'
-                });
-            }
+                    return res.status(403).json({ 
+                        error: 'Contexto de escola não encontrado para o usuário',
+                        code: 'SCHOOL_CONTEXT_NOT_FOUND'
+                    });
+                }
                 if (schoolId && schoolId !== contextSchoolId) {
                     return res.status(403).json({ 
                         error: 'Não é possível acessar solicitações de matrícula de outra escola',

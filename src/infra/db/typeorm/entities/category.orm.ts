@@ -9,6 +9,10 @@ export class CategoryOrm {
 
     @Column('varchar', { length: 191 }) name!: string;
 
+    @Column('varchar', { length: 191, nullable: true }) icon!: string | null;
+
+    @Column('text', { nullable: true }) description!: string | null;
+
     @OneToMany(() => SubcategoryOrm, (subcategory) => subcategory.category)
     subcategories!: SubcategoryOrm[];
 
