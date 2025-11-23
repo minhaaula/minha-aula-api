@@ -237,6 +237,71 @@ export class CourseRepositoryAdapter implements CourseRepository {
             return link;
         });
     }
+
+    async findAllWithFilters(filters: {
+        name?: string;
+        categoryId?: string;
+        subcategoryId?: string;
+        city?: string;
+    }): Promise<import('../../../ports/repositories/course.repo').CourseWithSchoolInfo[]> {
+        const queryBuilder = this.repo
+            .createQueryBuilder('course')
+            .leftJoin('course.school', 'school')
+            .leftJoin('school.addresses', 'address')
+            .where('course.isActive = :isActive', { isActive: true })
+            .andWhere('course.deletedAt IS NULL')
+            .select([
+                'course.id AS courseId',
+                'course.name AS courseName',
+                'course.description AS courseDescription',
+                'school.id AS schoolId',
+                'school.name AS schoolName',
+                'MIN(address.city) AS schoolCity'
+            ])
+            .groupBy('course.id')
+            .addGroupBy('course.name')
+            .addGroupBy('course.description')
+            .addGroupBy('school.id')
+            .addGroupBy('school.name');
+
+        // Filtro por nome do curso
+        if (filters.name) {
+            queryBuilder.andWhere('course.name LIKE :name', { name: `%${filters.name}%` });
+        }
+
+        // Filtro por cidade
+        if (filters.city) {
+            queryBuilder.andHaving('MIN(address.city) LIKE :city', { city: `%${filters.city}%` });
+        }
+
+        // Filtro por categoria ou subcategoria
+        if (filters.categoryId || filters.subcategoryId) {
+            queryBuilder
+                .leftJoin('course.categories', 'courseCategory')
+                .leftJoin('courseCategory.category', 'category')
+                .leftJoin('courseCategory.subcategories', 'courseCategorySubcategory')
+                .leftJoin('courseCategorySubcategory.subcategory', 'subcategory');
+
+            if (filters.categoryId) {
+                queryBuilder.andWhere('category.id = :categoryId', { categoryId: filters.categoryId });
+            }
+
+            if (filters.subcategoryId) {
+                queryBuilder.andWhere('subcategory.id = :subcategoryId', { subcategoryId: filters.subcategoryId });
+            }
+        }
+
+        const results = await queryBuilder.getRawMany();
+
+        return results.map((row: any) => ({
+            courseId: row.courseId,
+            courseName: row.courseName,
+            courseDescription: row.courseDescription,
+            schoolId: row.schoolId,
+            schoolName: row.schoolName,
+            schoolCity: row.schoolCity || null
+        }));
+    }
 }
 
 

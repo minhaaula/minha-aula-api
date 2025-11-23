@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { ListStudents } from '../../../app/use-cases/list-students';
 import { GetStudentDirectoryEntry } from '../../../app/use-cases/get-student-directory-entry';
 import { ListMyCourses } from '../../../app/use-cases/list-my-courses';
+import { ListAllCourses } from '../../../app/use-cases/list-all-courses';
 import { requirePersona } from '../middlewares/require-persona';
 import { UserPersonaEnum } from '../../../domain/value-objects/user-persona';
 import { AuthenticatedRequest } from '../middlewares/auth';
@@ -12,6 +13,7 @@ export function studentsRouter(deps: {
     listStudents: ListStudents; 
     getStudentDirectoryEntry: GetStudentDirectoryEntry;
     listMyCourses?: ListMyCourses;
+    listAllCourses?: ListAllCourses;
 }) {
     const r = Router();
 
@@ -107,6 +109,27 @@ export function studentsRouter(deps: {
             }
 
             const result = await deps.listMyCourses!.exec({ userId: authReq.user.sub });
+            res.json(result);
+        }));
+    }
+
+    if (deps.listAllCourses) {
+        const allCoursesQuerySchema = z.object({
+            name: z.string().trim().min(1).optional(),
+            categoryId: z.string().trim().min(1).optional(),
+            subcategoryId: z.string().trim().min(1).optional(),
+            city: z.string().trim().min(1).optional()
+        });
+
+        r.get('/courses/all', asyncHandler(async (req, res) => {
+            const query = allCoursesQuerySchema.parse({
+                name: typeof req.query.name === 'string' ? req.query.name : undefined,
+                categoryId: typeof req.query.categoryId === 'string' ? req.query.categoryId : undefined,
+                subcategoryId: typeof req.query.subcategoryId === 'string' ? req.query.subcategoryId : undefined,
+                city: typeof req.query.city === 'string' ? req.query.city : undefined
+            });
+
+            const result = await deps.listAllCourses!.exec(query);
             res.json(result);
         }));
     }

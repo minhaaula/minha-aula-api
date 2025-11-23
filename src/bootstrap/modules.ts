@@ -223,7 +223,8 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
                     enrollmentsRepo,
                     enrollmentRequestsRepo,
                     financialChargesRepo,
-                    paymentProvider
+                    paymentProvider,
+                    categoriesRepo
                 }, ctx);
                 mergeModuleResult(serverDeps, docFiles, result);
                 break;
