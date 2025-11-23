@@ -1,0 +1,58 @@
+import { UserRepository } from '../../ports/repositories/user.repo';
+import { DependentRepository } from '../../ports/repositories/dependent.repo';
+
+export interface StudentProfile {
+    id: string;
+    fullName: string;
+    email: string;
+    cpf: string;
+    phone: string;
+    birthDate: Date;
+    createdAt: Date;
+    dependents: Array<{
+        id: string;
+        fullName: string;
+        cpf: string | null;
+        birthDate: Date | null;
+        relationship: string | null;
+    }>;
+}
+
+export class GetMyProfile {
+    constructor(
+        private readonly users: UserRepository,
+        private readonly dependents: DependentRepository
+    ) {}
+
+    async exec(input: { userId: string }): Promise<StudentProfile | null> {
+        const userId = input.userId?.trim();
+        if (!userId) {
+            return null;
+        }
+
+        const user = await this.users.findById(userId);
+        if (!user) {
+            return null;
+        }
+
+        const dependentsList = await this.dependents.findByUserIds([userId]);
+
+        return {
+            id: user.id,
+            fullName: user.fullName,
+            email: user.email.value,
+            cpf: user.cpf,
+            phone: user.phone,
+            birthDate: user.birthDate,
+            createdAt: user.createdAt,
+            dependents: dependentsList.map((dep) => ({
+                id: dep.id,
+                fullName: dep.fullName,
+                cpf: dep.cpf,
+                birthDate: dep.birthDate,
+                relationship: dep.relationship
+            }))
+        };
+    }
+}
+

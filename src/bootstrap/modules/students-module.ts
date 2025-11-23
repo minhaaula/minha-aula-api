@@ -23,6 +23,9 @@ import { GetStudentDirectoryEntry } from '../../app/use-cases/get-student-direct
 import { ListMyCourses } from '../../app/use-cases/list-my-courses';
 import { ListAllCourses } from '../../app/use-cases/list-all-courses';
 import { ListStudentPayments } from '../../app/use-cases/list-student-payments';
+import { ListMyDependents } from '../../app/use-cases/list-my-dependents';
+import { GetMyProfile } from '../../app/use-cases/get-my-profile';
+import { ListMyEnrollmentRequests } from '../../app/use-cases/list-my-enrollment-requests';
 import { CategoryRepositoryAdapter } from '../../infra/db/typeorm/category-repository.adapter';
 
 export type StudentsModuleDeps = {
@@ -48,6 +51,7 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
         deps.enrollmentsRepo
     );
     const getStudentDirectoryEntry = new GetStudentDirectoryEntry(deps.usersRepo, deps.dependentsRepo);
+    const getMyProfile = new GetMyProfile(deps.usersRepo, deps.dependentsRepo);
     const listMyCourses = new ListMyCourses(deps.enrollmentsRepo, deps.coursesRepo, deps.schoolsRepo);
     const listAllCourses = deps.categoriesRepo
         ? new ListAllCourses(deps.coursesRepo, deps.categoriesRepo)
@@ -76,18 +80,24 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
     );
     const listEnrollmentRequests = new ListEnrollmentRequests(deps.enrollmentRequestsRepo);
     const getEnrollmentRequest = new GetEnrollmentRequest(deps.enrollmentRequestsRepo);
+    const listMyEnrollmentRequests = new ListMyEnrollmentRequests(deps.enrollmentRequestsRepo);
 
     // Montar routers prontos
     const studentsRouterInstance = studentsRouter({
         listStudents,
         getStudentDirectoryEntry,
+        getMyProfile,
         listMyCourses,
         listAllCourses,
-        listStudentPayments
+        listStudentPayments,
+        listMyEnrollmentRequests
     });
 
+    const listMyDependents = new ListMyDependents(deps.dependentsRepo);
+    
     const dependentsRouterInstance = dependentsRouter({
-        addDependent
+        addDependent,
+        listMyDependents
     });
 
     const enrollmentRequestsRouterInstance = enrollmentRequestsRouter({

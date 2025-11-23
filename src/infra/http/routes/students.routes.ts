@@ -5,6 +5,8 @@ import { GetStudentDirectoryEntry } from '../../../app/use-cases/get-student-dir
 import { ListMyCourses } from '../../../app/use-cases/list-my-courses';
 import { ListAllCourses } from '../../../app/use-cases/list-all-courses';
 import { ListStudentPayments } from '../../../app/use-cases/list-student-payments';
+import { GetMyProfile } from '../../../app/use-cases/get-my-profile';
+import { ListMyEnrollmentRequests } from '../../../app/use-cases/list-my-enrollment-requests';
 import { requirePersona } from '../middlewares/require-persona';
 import { UserPersonaEnum } from '../../../domain/value-objects/user-persona';
 import { AuthenticatedRequest } from '../middlewares/auth';
@@ -16,6 +18,8 @@ export function studentsRouter(deps: {
     listMyCourses?: ListMyCourses;
     listAllCourses?: ListAllCourses;
     listStudentPayments?: ListStudentPayments;
+    getMyProfile?: GetMyProfile;
+    listMyEnrollmentRequests?: ListMyEnrollmentRequests;
 }) {
     const r = Router();
 
@@ -100,6 +104,28 @@ export function studentsRouter(deps: {
 
     const requireStudent = requirePersona(UserPersonaEnum.STUDENT);
 
+    if (deps.getMyProfile) {
+        r.get('/me', requireStudent, asyncHandler(async (req, res) => {
+            const authReq = req as AuthenticatedRequest;
+            if (!authReq.user?.sub) {
+                return res.status(401).json({ 
+                    error: 'Não autorizado',
+                    code: 'UNAUTHORIZED'
+                });
+            }
+
+            const profile = await deps.getMyProfile!.exec({ userId: authReq.user.sub });
+            if (!profile) {
+                return res.status(404).json({ 
+                    error: 'Estudante não encontrado',
+                    code: 'STUDENT_NOT_FOUND'
+                });
+            }
+
+            res.json(profile);
+        }));
+    }
+
     if (deps.listMyCourses) {
         r.get('/courses', requireStudent, asyncHandler(async (req, res) => {
             const authReq = req as AuthenticatedRequest;
@@ -160,6 +186,38 @@ export function studentsRouter(deps: {
                 userId: authReq.user.sub,
                 status: query.status,
                 isPaid: query.isPaid
+            });
+            res.json(result);
+        }));
+    }
+
+    if (deps.listMyEnrollmentRequests) {
+        const enrollmentRequestsQuerySchema = z.object({
+            status: z.enum(['PENDING', 'APPROVED', 'REJECTED', 'CANCELLED']).optional(),
+            limit: z.coerce.number().int().positive().max(100).optional(),
+            offset: z.coerce.number().int().min(0).optional()
+        });
+
+        r.get('/enrollment-requests', requireStudent, asyncHandler(async (req, res) => {
+            const authReq = req as AuthenticatedRequest;
+            if (!authReq.user?.sub) {
+                return res.status(401).json({ 
+                    error: 'Não autorizado',
+                    code: 'UNAUTHORIZED'
+                });
+            }
+
+            const query = enrollmentRequestsQuerySchema.parse({
+                status: typeof req.query.status === 'string' ? req.query.status : undefined,
+                limit: typeof req.query.limit === 'string' ? req.query.limit : undefined,
+                offset: typeof req.query.offset === 'string' ? req.query.offset : undefined
+            });
+
+            const result = await deps.listMyEnrollmentRequests!.exec({
+                userId: authReq.user.sub,
+                status: query.status,
+                limit: query.limit,
+                offset: query.offset
             });
             res.json(result);
         }));

@@ -87,6 +87,112 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /students/me:
+    get:
+      tags:
+        - Students
+      summary: Obter dados do estudante logado
+      description: Retorna os dados completos do estudante autenticado, incluindo informações pessoais e lista de dependentes. Requer persona STUDENT.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Dados do estudante logado.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                    description: ID do estudante
+                  fullName:
+                    type: string
+                    description: Nome completo do estudante
+                  email:
+                    type: string
+                    format: email
+                    description: Email do estudante
+                  cpf:
+                    type: string
+                    description: CPF do estudante (apenas dígitos)
+                  phone:
+                    type: string
+                    description: Telefone do estudante
+                  birthDate:
+                    type: string
+                    format: date
+                    description: Data de nascimento do estudante
+                  createdAt:
+                    type: string
+                    format: date-time
+                    description: Data de cadastro do estudante
+                  dependents:
+                    type: array
+                    description: Lista de dependentes do estudante
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                          description: ID do dependente
+                        fullName:
+                          type: string
+                          description: Nome completo do dependente
+                        cpf:
+                          type: string
+                          nullable: true
+                          description: CPF do dependente (apenas dígitos)
+                        birthDate:
+                          type: string
+                          format: date
+                          nullable: true
+                          description: Data de nascimento do dependente
+                        relationship:
+                          type: string
+                          nullable: true
+                          description: Relacionamento com o responsável (ex: Filho, Filha)
+                      required:
+                        - id
+                        - fullName
+                        - cpf
+                        - birthDate
+                        - relationship
+                required:
+                  - id
+                  - fullName
+                  - email
+                  - cpf
+                  - phone
+                  - birthDate
+                  - createdAt
+                  - dependents
+        '401':
+          description: Não autorizado. Token inválido ou ausente.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado. Requer persona STUDENT.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Estudante não encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '501':
+          description: Funcionalidade de perfil do estudante não configurada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /students/courses:
     get:
       tags:
@@ -338,6 +444,173 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '501':
           description: Funcionalidade de listagem de pagamentos não configurada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /students/enrollment-requests:
+    get:
+      tags:
+        - Students
+      summary: Listar meus pedidos de matrícula
+      description: Retorna todos os pedidos de matrícula do estudante logado, incluindo pedidos para o próprio estudante e para seus dependentes. Permite filtrar por status. Requer persona STUDENT.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: status
+          required: false
+          schema:
+            type: string
+            enum: [PENDING, APPROVED, REJECTED, CANCELLED]
+          description: Filtrar pedidos por status.
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+          description: Quantidade máxima de registros retornados.
+        - in: query
+          name: offset
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+          description: Quantidade de registros a pular para paginação.
+      responses:
+        '200':
+          description: Lista de pedidos de matrícula do estudante.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  requests:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                          description: ID do pedido de matrícula
+                        status:
+                          type: string
+                          enum: [PENDING, APPROVED, REJECTED, CANCELLED]
+                          description: Status do pedido
+                        schoolId:
+                          type: string
+                          format: uuid
+                          description: ID da escola
+                        courseClassId:
+                          type: string
+                          format: uuid
+                          description: ID da turma
+                        requestedForUserId:
+                          type: string
+                          format: uuid
+                          description: ID do usuário responsável pelo pedido
+                        requestedForDependentId:
+                          type: string
+                          format: uuid
+                          nullable: true
+                          description: ID do dependente (quando aplicável)
+                        decidedAt:
+                          type: string
+                          format: date-time
+                          nullable: true
+                          description: Data da decisão do pedido
+                        decidedByUserId:
+                          type: string
+                          format: uuid
+                          nullable: true
+                          description: ID do usuário que decidiu o pedido
+                        notes:
+                          type: string
+                          nullable: true
+                          description: Observações do pedido
+                        discount:
+                          type: number
+                          nullable: true
+                          description: Desconto aplicado (em reais)
+                        enrollmentFeeAmount:
+                          type: number
+                          nullable: true
+                          description: Valor da taxa de matrícula (em reais)
+                        enrollmentFeeDueDate:
+                          type: string
+                          format: date
+                          nullable: true
+                          description: Data de vencimento da taxa de matrícula
+                        firstMonthlyPaymentDate:
+                          type: string
+                          format: date
+                          description: Data do primeiro pagamento mensal
+                        enrollmentId:
+                          type: string
+                          format: uuid
+                          nullable: true
+                          description: ID da matrícula criada (quando aprovado)
+                        createdAt:
+                          type: string
+                          format: date-time
+                          description: Data de criação do pedido
+                        courseLabel:
+                          type: string
+                          nullable: true
+                          description: Nome do curso
+                        courseClassLabel:
+                          type: string
+                          nullable: true
+                          description: Nome da turma
+                        studentName:
+                          type: string
+                          nullable: true
+                          description: Nome do aluno
+                        dependentName:
+                          type: string
+                          nullable: true
+                          description: Nome do dependente (quando aplicável)
+                      required:
+                        - id
+                        - status
+                        - schoolId
+                        - courseClassId
+                        - requestedForUserId
+                        - requestedForDependentId
+                        - decidedAt
+                        - decidedByUserId
+                        - notes
+                        - discount
+                        - enrollmentFeeAmount
+                        - enrollmentFeeDueDate
+                        - firstMonthlyPaymentDate
+                        - enrollmentId
+                        - createdAt
+                        - courseLabel
+                        - courseClassLabel
+                        - studentName
+                        - dependentName
+                required:
+                  - requests
+        '401':
+          description: Não autorizado. Token inválido ou ausente.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado. Requer persona STUDENT.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '501':
+          description: Funcionalidade de listagem de pedidos de matrícula não configurada.
           content:
             application/json:
               schema:

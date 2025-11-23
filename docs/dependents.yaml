@@ -1,5 +1,76 @@
 paths:
   /dependents:
+    get:
+      tags:
+        - Dependents
+      summary: Listar dependentes do estudante logado
+      description: Retorna todos os dependentes cadastrados pelo usuário autenticado. Requer persona STUDENT.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Lista de dependentes do usuário.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dependents:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                          description: ID do dependente
+                        fullName:
+                          type: string
+                          description: Nome completo do dependente
+                        cpf:
+                          type: string
+                          nullable: true
+                          description: CPF do dependente (apenas dígitos)
+                        birthDate:
+                          type: string
+                          format: date
+                          nullable: true
+                          description: Data de nascimento do dependente
+                        relationship:
+                          type: string
+                          nullable: true
+                          description: Relacionamento com o responsável (ex: Filho, Filha)
+                        createdAt:
+                          type: string
+                          format: date-time
+                          description: Data de cadastro do dependente
+                      required:
+                        - id
+                        - fullName
+                        - cpf
+                        - birthDate
+                        - relationship
+                        - createdAt
+                required:
+                  - dependents
+        '401':
+          description: Não autorizado. Token inválido ou ausente.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado. Requer persona STUDENT.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '501':
+          description: Funcionalidade de listagem de dependentes não configurada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     post:
       tags:
         - Dependents

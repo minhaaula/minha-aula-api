@@ -1,11 +1,16 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { AddDependent } from '../../../app/use-cases/add-dependent';
+import { ListMyDependents } from '../../../app/use-cases/list-my-dependents';
 import { AuthenticatedRequest } from '../middlewares/auth';
 import { requirePersona } from '../middlewares/require-persona';
 import { UserPersonaEnum } from '../../../domain/value-objects/user-persona';
+import { asyncHandler } from '../utils/async-handler';
 
-export function dependentsRouter(deps: { addDependent: AddDependent; }) {
+export function dependentsRouter(deps: { 
+    addDependent: AddDependent;
+    listMyDependents?: ListMyDependents;
+}) {
     const r = Router();
 
     const requireStudentPersona = requirePersona(UserPersonaEnum.STUDENT);
@@ -34,6 +39,21 @@ export function dependentsRouter(deps: { addDependent: AddDependent; }) {
             next(err);
         }
     });
+
+    if (deps.listMyDependents) {
+        r.get('/', requireStudentPersona, asyncHandler(async (req, res) => {
+            const authReq = req as AuthenticatedRequest;
+            if (!authReq.user?.sub) {
+                return res.status(401).json({ 
+                    error: 'Não autorizado',
+                    code: 'UNAUTHORIZED'
+                });
+            }
+
+            const result = await deps.listMyDependents!.exec({ userId: authReq.user.sub });
+            res.json(result);
+        }));
+    }
 
     return r;
 }
