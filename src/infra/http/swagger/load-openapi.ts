@@ -2,11 +2,16 @@ import fs from 'fs';
 import path from 'path';
 import YAML from 'yaml';
 
+// Caminhos candidatos para encontrar o diretório docs
+// Funciona tanto em dev (tsx) quanto em produção (node dist/main.js)
 const DOCS_DIR_CANDIDATES = [
     path.resolve(process.cwd(), 'docs'),
-    path.resolve(__dirname, '../../../docs'),
-    path.resolve(__dirname, '../../../../docs')
-];
+    path.resolve(process.cwd(), 'dist/docs'),
+    // @ts-ignore - __dirname está disponível em CommonJS (código compilado)
+    typeof __dirname !== 'undefined' ? path.resolve(__dirname, '../../../docs') : null,
+    // @ts-ignore
+    typeof __dirname !== 'undefined' ? path.resolve(__dirname, '../../../../docs') : null
+].filter((dir): dir is string => dir !== null) as string[];
 const BASE_FILENAMES = ['openapi.yaml', 'openapi.yml'];
 
 type PlainObject = Record<string, unknown>;

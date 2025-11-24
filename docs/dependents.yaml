@@ -39,7 +39,7 @@ paths:
                         relationship:
                           type: string
                           nullable: true
-                          description: Relacionamento com o responsável (ex: Filho, Filha)
+                          description: "Relacionamento com o responsável (ex: Filho, Filha)"
                         createdAt:
                           type: string
                           format: date-time

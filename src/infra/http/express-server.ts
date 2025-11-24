@@ -107,8 +107,13 @@ export function makeServer(deps: AppDependencies & Record<string, any>) {
             includeFiles: deps.openapiFiles,
             modules: deps.activeModules
         });
+        console.log('✓ Swagger/OpenAPI documentação carregada com sucesso');
     } catch (err) {
-        console.warn('Swagger não pôde ser carregado:', err);
+        console.error('✗ Swagger não pôde ser carregado:', err);
+        console.error('  A rota /docs não estará disponível.');
+        if (err instanceof Error) {
+            console.error('  Erro:', err.message);
+        }
     }
 
     if (openApiDocument) {
@@ -121,6 +126,9 @@ export function makeServer(deps: AppDependencies & Record<string, any>) {
         app.get('/docs/openapi.json', ...swaggerAuth, (_req, res) => {
             res.json(openApiDocument);
         });
+        console.log('✓ Rota /docs montada com sucesso');
+    } else {
+        console.warn('⚠ Rota /docs não foi montada (documentação OpenAPI não disponível)');
     }
 
     // Montar routers apenas se existirem (já prontos pelos módulos)
