@@ -887,3 +887,104 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /students/schools/{schoolId}/reviews:
+    get:
+      tags:
+        - Students
+      summary: Listar avaliações de uma escola
+      description: Retorna as avaliações de uma escola específica com paginação. Inclui nome do aluno, foto, nota (1 a 5) e descrição. Esta rota é pública e não requer autenticação.
+      parameters:
+        - in: path
+          name: schoolId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID da escola
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+          description: Quantidade máxima de registros retornados.
+        - in: query
+          name: offset
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+          description: Quantidade de registros a pular para paginação.
+      responses:
+        '200':
+          description: Lista de avaliações da escola.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reviews:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                          description: ID da avaliação
+                        rating:
+                          type: integer
+                          minimum: 1
+                          maximum: 5
+                          description: Nota da avaliação (1 a 5)
+                        description:
+                          type: string
+                          nullable: true
+                          description: Descrição da avaliação
+                        studentName:
+                          type: string
+                          description: Nome do aluno que fez a avaliação
+                        studentPhotoUrl:
+                          type: string
+                          format: uri
+                          nullable: true
+                          description: |
+                            URL assinada (signed URL) da foto do aluno. 
+                            Esta URL é gerada automaticamente pela API e é válida por 1 hora.
+                            Pode ser usada diretamente em tags <img> no frontend.
+                            Exemplo: "https://storage.railway.app/.../photos/users/123.jpg?X-Amz-Algorithm=..."
+                          example: "https://storage.railway.app/minha-aula-bucket-itlvsbl/photos/users/abc123.jpg?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=...&X-Amz-Date=20251129T160000Z&X-Amz-Expires=3600&X-Amz-Signature=..."
+                        createdAt:
+                          type: string
+                          format: date-time
+                          description: Data de criação da avaliação
+                      required:
+                        - id
+                        - rating
+                        - description
+                        - studentName
+                        - studentPhotoUrl
+                        - createdAt
+                required:
+                  - reviews
+        '400':
+          description: Erro na requisição. ID da escola inválido ou parâmetros de paginação inválidos.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Escola não encontrada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '501':
+          description: Funcionalidade de listagem de avaliações não configurada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'

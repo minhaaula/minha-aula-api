@@ -17,6 +17,7 @@ import { SchoolPlanInvoiceRepositoryAdapter } from '../infra/db/typeorm/school-p
 import { SubscriptionPlanRepositoryAdapter } from '../infra/db/typeorm/subscription-plan-repository.adapter';
 import { CategoryRepositoryAdapter } from '../infra/db/typeorm/category-repository.adapter';
 import { SchoolBankAccountRepositoryAdapter } from '../infra/db/typeorm/school-bank-account-repository.adapter';
+import { SchoolReviewRepositoryAdapter } from '../infra/db/typeorm/school-review-repository.adapter';
 import { OutboxProducer } from '../infra/messaging/bullmq/outbox-producer';
 import { ScryptPasswordHasher } from '../infra/auth/scrypt-password-hasher';
 import { HmacTokenProvider } from '../infra/auth/hmac-token-provider';
@@ -32,6 +33,8 @@ import { PaymentProviderPort } from '../ports/providers/payment-provider.port';
 import { AsaasProviderPort } from '../ports/providers/asaas-port';
 import { NodemailerEmailProvider } from '../infra/providers/nodemailer/email-provider';
 import { EmailProviderPort } from '../ports/providers/email-provider.port';
+import { S3StorageProvider } from '../infra/providers/s3/storage-provider';
+import { StorageProviderPort } from '../ports/providers/storage-provider.port';
 
 type ServerDeps = Parameters<typeof makeServer>[0];
 
@@ -77,6 +80,7 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
     const classSessionsRepo = new ClassSessionRepositoryAdapter();
     const enrollmentsRepo = new EnrollmentRepositoryAdapter();
     const enrollmentRequestsRepo = new EnrollmentRequestRepositoryAdapter();
+    const schoolReviewsRepo = new SchoolReviewRepositoryAdapter();
     const outbox = new OutboxProducer();
 
     const passwordHasher = new ScryptPasswordHasher();
@@ -110,6 +114,35 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
         }
     } else {
         console.warn('EmailProvider não configurado. Variáveis necessárias: EMAIL_HOST, EMAIL_PORT, EMAIL_USER, EMAIL_PASS');
+    }
+
+    // Configurar storage provider (Railway Storage)
+    let storageProvider: StorageProviderPort | undefined;
+    const storageAccessKeyId = process.env.STORAGE_ACCESS_KEY_ID;
+    const storageSecretAccessKey = process.env.STORAGE_SECRET_ACCESS_KEY;
+    const storageRegion = process.env.STORAGE_REGION;
+    const storageBucket = process.env.STORAGE_BUCKET;
+    const storageEndpoint = process.env.STORAGE_ENDPOINT;
+
+    if (storageAccessKeyId && storageSecretAccessKey && storageRegion && storageBucket) {
+        try {
+            storageProvider = new S3StorageProvider({
+                accessKeyId: storageAccessKeyId,
+                secretAccessKey: storageSecretAccessKey,
+                region: storageRegion,
+                bucket: storageBucket,
+                endpoint: storageEndpoint,
+                forcePathStyle: true
+            });
+            console.log('StorageProvider configurado com sucesso:', { 
+                bucket: storageBucket, 
+                endpoint: storageEndpoint || 'default S3 endpoint' 
+            });
+        } catch (error) {
+            console.error('Erro ao configurar StorageProvider:', error);
+        }
+    } else {
+        console.warn('StorageProvider não configurado. Variáveis necessárias: STORAGE_ACCESS_KEY_ID, STORAGE_SECRET_ACCESS_KEY, STORAGE_REGION, STORAGE_BUCKET');
     }
 
     const serverDeps: ServerDeps = {
@@ -224,7 +257,9 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
                     enrollmentRequestsRepo,
                     financialChargesRepo,
                     paymentProvider,
-                    categoriesRepo
+                    categoriesRepo,
+                    schoolReviewsRepo,
+                    storageProvider
                 }, ctx);
                 mergeModuleResult(serverDeps, docFiles, result);
                 break;

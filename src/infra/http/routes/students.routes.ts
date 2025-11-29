@@ -9,6 +9,7 @@ import { GetMyProfile } from '../../../app/use-cases/get-my-profile';
 import { ListMyEnrollmentRequests } from '../../../app/use-cases/list-my-enrollment-requests';
 import { UpdateStudentProfile } from '../../../app/use-cases/update-student-profile';
 import { ListSchoolCourses } from '../../../app/use-cases/list-school-courses';
+import { ListSchoolReviews } from '../../../app/use-cases/list-school-reviews';
 import { requirePersona } from '../middlewares/require-persona';
 import { UserPersonaEnum } from '../../../domain/value-objects/user-persona';
 import { AuthenticatedRequest } from '../middlewares/auth';
@@ -25,6 +26,7 @@ export function studentsRouter(deps: {
     listMyEnrollmentRequests?: ListMyEnrollmentRequests;
     updateStudentProfile?: UpdateStudentProfile;
     listSchoolCourses?: ListSchoolCourses;
+    listSchoolReviews?: ListSchoolReviews;
 }) {
     const r = Router();
 
@@ -246,6 +248,32 @@ export function studentsRouter(deps: {
 
             const courses = await deps.listSchoolCourses!.exec({ schoolId });
             res.json({ courses });
+        }));
+    }
+
+    if (deps.listSchoolReviews) {
+        r.get('/schools/:schoolId/reviews', asyncHandler(async (req, res) => {
+            const paramsSchema = z.object({
+                schoolId: z.string().uuid()
+            });
+
+            const querySchema = z.object({
+                limit: z.coerce.number().int().positive().max(100).optional(),
+                offset: z.coerce.number().int().min(0).optional()
+            });
+
+            const { schoolId } = paramsSchema.parse(req.params);
+            const query = querySchema.parse({
+                limit: typeof req.query.limit === 'string' ? req.query.limit : undefined,
+                offset: typeof req.query.offset === 'string' ? req.query.offset : undefined
+            });
+
+            const result = await deps.listSchoolReviews!.exec({
+                schoolId,
+                limit: query.limit,
+                offset: query.offset
+            });
+            res.json(result);
         }));
     }
 

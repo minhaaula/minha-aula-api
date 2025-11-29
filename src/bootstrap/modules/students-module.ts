@@ -28,7 +28,11 @@ import { GetMyProfile } from '../../app/use-cases/get-my-profile';
 import { ListMyEnrollmentRequests } from '../../app/use-cases/list-my-enrollment-requests';
 import { UpdateStudentProfile } from '../../app/use-cases/update-student-profile';
 import { ListSchoolCourses } from '../../app/use-cases/list-school-courses';
+import { ListSchoolReviews } from '../../app/use-cases/list-school-reviews';
 import { CategoryRepositoryAdapter } from '../../infra/db/typeorm/category-repository.adapter';
+import { SchoolReviewRepositoryAdapter } from '../../infra/db/typeorm/school-review-repository.adapter';
+
+import { StorageProviderPort } from '../../ports/providers/storage-provider.port';
 
 export type StudentsModuleDeps = {
     usersRepo: UserRepositoryAdapter;
@@ -41,6 +45,8 @@ export type StudentsModuleDeps = {
     financialChargesRepo: SchoolFinancialChargeRepositoryAdapter;
     paymentProvider: PaymentProviderPort;
     categoriesRepo?: CategoryRepositoryAdapter;
+    schoolReviewsRepo?: SchoolReviewRepositoryAdapter;
+    storageProvider?: StorageProviderPort;
 };
 
 export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupContext): ModuleBuildResult {
@@ -87,6 +93,9 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
     const listSchoolCourses = deps.categoriesRepo
         ? new ListSchoolCourses(deps.coursesRepo, deps.categoriesRepo)
         : undefined;
+    const listSchoolReviews = deps.schoolReviewsRepo
+        ? new ListSchoolReviews(deps.schoolReviewsRepo, deps.storageProvider)
+        : undefined;
 
     // Montar routers prontos
     const studentsRouterInstance = studentsRouter({
@@ -98,7 +107,8 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
         listAllCourses,
         listStudentPayments,
         listMyEnrollmentRequests,
-        listSchoolCourses
+        listSchoolCourses,
+        listSchoolReviews
     });
 
     const listMyDependents = new ListMyDependents(deps.dependentsRepo);
