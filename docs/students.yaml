@@ -779,3 +779,111 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /students/schools/{schoolId}/courses:
+    get:
+      tags:
+        - Students
+      summary: Listar cursos de uma escola
+      description: Retorna todos os cursos ativos de uma escola específica, incluindo nome do curso, descrição, categoria e subcategorias. Esta rota é pública e não requer autenticação.
+      parameters:
+        - in: path
+          name: schoolId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID da escola
+      responses:
+        '200':
+          description: Lista de cursos da escola.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  courses:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                          description: ID do curso
+                        schoolId:
+                          type: string
+                          format: uuid
+                          description: ID da escola
+                        name:
+                          type: string
+                          description: Nome do curso
+                        description:
+                          type: string
+                          nullable: true
+                          description: Descrição do curso
+                        categories:
+                          type: array
+                          description: Lista de categorias do curso
+                          items:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                                format: uuid
+                                description: ID da categoria
+                              name:
+                                type: string
+                                nullable: true
+                                description: Nome da categoria
+                              subcategories:
+                                type: array
+                                description: Lista de subcategorias
+                                items:
+                                  type: object
+                                  properties:
+                                    id:
+                                      type: string
+                                      format: uuid
+                                      description: ID da subcategoria
+                                    name:
+                                      type: string
+                                      nullable: true
+                                      description: Nome da subcategoria
+                                  required:
+                                    - id
+                                    - name
+                            required:
+                              - id
+                              - name
+                              - subcategories
+                        createdAt:
+                          type: string
+                          format: date-time
+                          description: Data de criação do curso
+                      required:
+                        - id
+                        - schoolId
+                        - name
+                        - description
+                        - categories
+                        - createdAt
+                required:
+                  - courses
+        '400':
+          description: Erro na requisição. ID da escola inválido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Escola não encontrada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '501':
+          description: Funcionalidade de listagem de cursos da escola não configurada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'

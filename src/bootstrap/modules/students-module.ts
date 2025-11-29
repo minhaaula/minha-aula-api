@@ -27,6 +27,7 @@ import { ListMyDependents } from '../../app/use-cases/list-my-dependents';
 import { GetMyProfile } from '../../app/use-cases/get-my-profile';
 import { ListMyEnrollmentRequests } from '../../app/use-cases/list-my-enrollment-requests';
 import { UpdateStudentProfile } from '../../app/use-cases/update-student-profile';
+import { ListSchoolCourses } from '../../app/use-cases/list-school-courses';
 import { CategoryRepositoryAdapter } from '../../infra/db/typeorm/category-repository.adapter';
 
 export type StudentsModuleDeps = {
@@ -83,6 +84,9 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
     const listEnrollmentRequests = new ListEnrollmentRequests(deps.enrollmentRequestsRepo);
     const getEnrollmentRequest = new GetEnrollmentRequest(deps.enrollmentRequestsRepo);
     const listMyEnrollmentRequests = new ListMyEnrollmentRequests(deps.enrollmentRequestsRepo, deps.dependentsRepo);
+    const listSchoolCourses = deps.categoriesRepo
+        ? new ListSchoolCourses(deps.coursesRepo, deps.categoriesRepo)
+        : undefined;
 
     // Montar routers prontos
     const studentsRouterInstance = studentsRouter({
@@ -93,7 +97,8 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
         listMyCourses,
         listAllCourses,
         listStudentPayments,
-        listMyEnrollmentRequests
+        listMyEnrollmentRequests,
+        listSchoolCourses
     });
 
     const listMyDependents = new ListMyDependents(deps.dependentsRepo);

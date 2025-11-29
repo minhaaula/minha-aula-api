@@ -8,6 +8,7 @@ import { ListStudentPayments } from '../../../app/use-cases/list-student-payment
 import { GetMyProfile } from '../../../app/use-cases/get-my-profile';
 import { ListMyEnrollmentRequests } from '../../../app/use-cases/list-my-enrollment-requests';
 import { UpdateStudentProfile } from '../../../app/use-cases/update-student-profile';
+import { ListSchoolCourses } from '../../../app/use-cases/list-school-courses';
 import { requirePersona } from '../middlewares/require-persona';
 import { UserPersonaEnum } from '../../../domain/value-objects/user-persona';
 import { AuthenticatedRequest } from '../middlewares/auth';
@@ -23,6 +24,7 @@ export function studentsRouter(deps: {
     getMyProfile?: GetMyProfile;
     listMyEnrollmentRequests?: ListMyEnrollmentRequests;
     updateStudentProfile?: UpdateStudentProfile;
+    listSchoolCourses?: ListSchoolCourses;
 }) {
     const r = Router();
 
@@ -231,6 +233,19 @@ export function studentsRouter(deps: {
                 userId: authReq.user.sub
             });
             res.json(result);
+        }));
+    }
+
+    if (deps.listSchoolCourses) {
+        r.get('/schools/:schoolId/courses', asyncHandler(async (req, res) => {
+            const paramsSchema = z.object({
+                schoolId: z.string().uuid()
+            });
+
+            const { schoolId } = paramsSchema.parse(req.params);
+
+            const courses = await deps.listSchoolCourses!.exec({ schoolId });
+            res.json({ courses });
         }));
     }
 
