@@ -26,6 +26,7 @@ import { ListStudentPayments } from '../../app/use-cases/list-student-payments';
 import { ListMyDependents } from '../../app/use-cases/list-my-dependents';
 import { GetMyProfile } from '../../app/use-cases/get-my-profile';
 import { ListMyEnrollmentRequests } from '../../app/use-cases/list-my-enrollment-requests';
+import { UpdateStudentProfile } from '../../app/use-cases/update-student-profile';
 import { CategoryRepositoryAdapter } from '../../infra/db/typeorm/category-repository.adapter';
 
 export type StudentsModuleDeps = {
@@ -52,6 +53,7 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
     );
     const getStudentDirectoryEntry = new GetStudentDirectoryEntry(deps.usersRepo, deps.dependentsRepo);
     const getMyProfile = new GetMyProfile(deps.usersRepo, deps.dependentsRepo);
+    const updateStudentProfile = new UpdateStudentProfile(deps.usersRepo);
     const listMyCourses = new ListMyCourses(deps.enrollmentsRepo, deps.coursesRepo, deps.schoolsRepo);
     const listAllCourses = deps.categoriesRepo
         ? new ListAllCourses(deps.coursesRepo, deps.categoriesRepo)
@@ -80,13 +82,14 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
     );
     const listEnrollmentRequests = new ListEnrollmentRequests(deps.enrollmentRequestsRepo);
     const getEnrollmentRequest = new GetEnrollmentRequest(deps.enrollmentRequestsRepo);
-    const listMyEnrollmentRequests = new ListMyEnrollmentRequests(deps.enrollmentRequestsRepo);
+    const listMyEnrollmentRequests = new ListMyEnrollmentRequests(deps.enrollmentRequestsRepo, deps.dependentsRepo);
 
     // Montar routers prontos
     const studentsRouterInstance = studentsRouter({
         listStudents,
         getStudentDirectoryEntry,
         getMyProfile,
+        updateStudentProfile,
         listMyCourses,
         listAllCourses,
         listStudentPayments,

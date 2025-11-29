@@ -3,6 +3,7 @@ import {
     EnrollmentRequestRepository,
     EnrollmentRequestWithDetails
 } from '../../ports/repositories/enrollment-request.repo';
+import { DependentRepository } from '../../ports/repositories/dependent.repo';
 
 export interface MyEnrollmentRequest {
     id: string;
@@ -27,27 +28,53 @@ export interface MyEnrollmentRequest {
 }
 
 export class ListMyEnrollmentRequests {
-    constructor(private readonly requests: EnrollmentRequestRepository) {}
+    constructor(
+        private readonly requests: EnrollmentRequestRepository,
+        private readonly dependents: DependentRepository
+    ) {}
 
     async exec(params: {
         userId: string;
-        status?: EnrollmentRequestStatus;
-        limit?: number;
-        offset?: number;
     }): Promise<{ requests: MyEnrollmentRequest[] }> {
         const userId = params.userId?.trim();
         if (!userId) {
             return { requests: [] };
         }
 
-        const limit = Math.min(Math.max(params.limit ?? 50, 1), 100);
-        const offset = Math.max(0, params.offset ?? 0);
+        // Buscar dependentes do usuário
+        const userDependents = await this.dependents.findByUserIds([userId]);
+        const dependentIds = userDependents.map((dep) => dep.id);
 
-        const allRequests = await this.requests.findMany({
+        // Buscar pedidos de matrícula do usuário (sem dependente)
+        const userRequests = await this.requests.findMany({
             requestedForUserId: userId,
-            status: params.status,
-            limit,
-            offset
+            requestedForDependentId: null,
+            status: 'PENDING'
+        });
+
+        // Buscar pedidos de matrícula dos dependentes
+        const dependentRequestsPromises = dependentIds.map((dependentId) =>
+            this.requests.findMany({
+                requestedForUserId: userId,
+                requestedForDependentId: dependentId,
+                status: 'PENDING'
+            })
+        );
+
+        const dependentRequestsArrays = await Promise.all(dependentRequestsPromises);
+        const allDependentRequests = dependentRequestsArrays.flat();
+
+        // Combinar todos os pedidos
+        const allRequests: EnrollmentRequestWithDetails[] = [
+            ...userRequests,
+            ...allDependentRequests
+        ];
+
+        // Ordenar por data de criação (mais recentes primeiro)
+        allRequests.sort((a, b) => {
+            const dateA = a.request.createdAt.getTime();
+            const dateB = b.request.createdAt.getTime();
+            return dateB - dateA;
         });
 
         const requests: MyEnrollmentRequest[] = allRequests.map((req) => ({
