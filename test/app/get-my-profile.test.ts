@@ -139,6 +139,14 @@ describe('GetMyProfile use case', () => {
         expect(profile!.email).toBe('joao@email.com');
         expect(profile!.cpf).toBe('12345678901');
         expect(profile!.phone).toBe('11999999999');
+        expect(profile!.address).toBeDefined();
+        expect(profile!.address.street).toBe('Rua Teste');
+        expect(profile!.address.number).toBe('123');
+        expect(profile!.address.complement).toBeNull();
+        expect(profile!.address.district).toBe('Centro');
+        expect(profile!.address.city).toBe('São Paulo');
+        expect(profile!.address.state).toBe('SP');
+        expect(profile!.address.zipCode).toBe('01234567');
         expect(profile!.dependents).toHaveLength(2);
         expect(profile!.dependents[0].fullName).toBe('Maria Silva');
         expect(profile!.dependents[1].fullName).toBe('Pedro Silva');
@@ -157,6 +165,7 @@ describe('GetMyProfile use case', () => {
 
         expect(profile).not.toBeNull();
         expect(profile!.id).toBe(userId);
+        expect(profile!.address).toBeDefined();
         expect(profile!.dependents).toHaveLength(0);
     });
 

@@ -8,6 +8,15 @@ export interface StudentProfile {
     cpf: string;
     phone: string;
     birthDate: Date;
+    address: {
+        street: string;
+        number: string;
+        complement: string | null;
+        district: string | null;
+        city: string;
+        state: string;
+        zipCode: string;
+    };
     createdAt: Date;
     dependents: Array<{
         id: string;
@@ -44,6 +53,7 @@ export class GetMyProfile {
             cpf: user.cpf,
             phone: user.phone,
             birthDate: user.birthDate,
+            address: user.address.toPrimitives(),
             createdAt: user.createdAt,
             dependents: dependentsList.map((dep) => ({
                 id: dep.id,

@@ -108,7 +108,8 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
         listStudentPayments,
         listMyEnrollmentRequests,
         listSchoolCourses,
-        listSchoolReviews
+        listSchoolReviews,
+        approveEnrollmentRequest
     });
 
     const listMyDependents = new ListMyDependents(deps.dependentsRepo);

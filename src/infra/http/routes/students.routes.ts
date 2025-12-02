@@ -10,6 +10,7 @@ import { ListMyEnrollmentRequests } from '../../../app/use-cases/list-my-enrollm
 import { UpdateStudentProfile } from '../../../app/use-cases/update-student-profile';
 import { ListSchoolCourses } from '../../../app/use-cases/list-school-courses';
 import { ListSchoolReviews } from '../../../app/use-cases/list-school-reviews';
+import { ApproveEnrollmentRequest } from '../../../app/use-cases/approve-enrollment-request';
 import { requirePersona } from '../middlewares/require-persona';
 import { UserPersonaEnum } from '../../../domain/value-objects/user-persona';
 import { AuthenticatedRequest } from '../middlewares/auth';
@@ -27,6 +28,7 @@ export function studentsRouter(deps: {
     updateStudentProfile?: UpdateStudentProfile;
     listSchoolCourses?: ListSchoolCourses;
     listSchoolReviews?: ListSchoolReviews;
+    approveEnrollmentRequest?: ApproveEnrollmentRequest;
 }) {
     const r = Router();
 
@@ -234,6 +236,32 @@ export function studentsRouter(deps: {
             const result = await deps.listMyEnrollmentRequests!.exec({
                 userId: authReq.user.sub
             });
+            res.json(result);
+        }));
+    }
+
+    if (deps.approveEnrollmentRequest) {
+        r.post('/enrollment-requests/:requestId/accept', requireStudent, asyncHandler(async (req, res) => {
+            const authReq = req as AuthenticatedRequest;
+            if (!authReq.user?.sub) {
+                return res.status(401).json({ 
+                    error: 'Não autorizado',
+                    code: 'UNAUTHORIZED'
+                });
+            }
+
+            const paramsSchema = z.object({ requestId: z.string().uuid() });
+            const { requestId } = paramsSchema.parse(req.params);
+            
+            const bodySchema = z.object({ notes: z.string().max(255).optional() });
+            const { notes } = bodySchema.parse(req.body ?? {});
+
+            const result = await deps.approveEnrollmentRequest!.exec({
+                requestId,
+                approverUserId: authReq.user.sub,
+                notes: notes ?? null
+            });
+
             res.json(result);
         }));
     }
