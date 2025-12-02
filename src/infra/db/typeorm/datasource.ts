@@ -23,6 +23,7 @@ import { SchoolPlanFinanceOrm } from './entities/school-plan-finance.orm';
 import { SchoolPlanInvoiceOrm } from './entities/school-plan-invoice.orm';
 import { SchoolFinancialChargeOrm } from './entities/school-financial-charge.orm';
 import { SchoolBankAccountOrm } from './entities/school-bank-account.orm';
+import { SchoolWithdrawalOrm } from './entities/school-withdrawal.orm';
 import { PasswordResetTokenOrm } from './entities/password-reset-token.orm';
 import { SchoolReviewOrm } from './entities/school-review.orm';
 
@@ -56,6 +57,7 @@ export const AppDataSource = new DataSource({
         SchoolPlanInvoiceOrm,
         SchoolFinancialChargeOrm,
         SchoolBankAccountOrm,
+        SchoolWithdrawalOrm,
         PasswordResetTokenOrm,
         SchoolReviewOrm
     ],

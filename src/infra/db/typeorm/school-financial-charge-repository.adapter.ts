@@ -1,6 +1,6 @@
 import { Between } from 'typeorm';
 import { AppDataSource } from './datasource';
-import { SchoolFinancialChargeRepository, StudentPaymentInfo } from '../../../ports/repositories/school-financial-charge.repo';
+import { SchoolFinancialChargeRepository, StudentPaymentInfo, PaidChargeSummary } from '../../../ports/repositories/school-financial-charge.repo';
 import { SchoolFinancialCharge, SchoolFinancialChargeStatus } from '../../../domain/entities/school-financial-charge';
 import { SchoolFinancialChargeOrm } from './entities/school-financial-charge.orm';
 
@@ -71,6 +71,40 @@ export class SchoolFinancialChargeRepositoryAdapter implements SchoolFinancialCh
             amountCents: row.amountCents,
             dueDate: new Date(row.dueDate),
             status: row.status as SchoolFinancialChargeStatus
+        }));
+    }
+
+    async findPaidChargesBySchoolId(schoolId: string): Promise<PaidChargeSummary[]> {
+        const queryBuilder = this.repo
+            .createQueryBuilder('charge')
+            .leftJoin('charge.ownerUser', 'owner')
+            .leftJoin('charge.student', 'studentUser')
+            .leftJoin('charge.dependent', 'dependent')
+            .leftJoin('charge.course', 'course')
+            .where('charge.schoolId = :schoolId', { schoolId })
+            .andWhere('charge.status = :status', { status: 'PAID' })
+            .andWhere('charge.paidAt IS NOT NULL')
+            .select([
+                'charge.id AS id',
+                'charge.netAmountCents AS netAmountCents',
+                'charge.paidAt AS paidAt',
+                'charge.description AS description',
+                'studentUser.fullName AS studentUserName',
+                'dependent.fullName AS dependentName',
+                'owner.fullName AS ownerName',
+                'course.name AS courseName'
+            ])
+            .orderBy('charge.paidAt', 'DESC');
+
+        const results = await queryBuilder.getRawMany();
+
+        return results.map((row: any) => ({
+            id: row.id,
+            netAmountCents: row.netAmountCents || 0,
+            paidAt: new Date(row.paidAt),
+            description: row.description,
+            studentName: row.studentUserName || row.dependentName || row.ownerName || 'N/A',
+            courseName: row.courseName || 'N/A'
         }));
     }
 

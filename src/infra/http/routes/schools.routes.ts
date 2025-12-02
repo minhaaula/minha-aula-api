@@ -86,6 +86,8 @@ export type SchoolsRouterDeps = {
     authMiddleware?: RequestHandler;
     schoolsRepo?: SchoolRepository;
     createSchoolCharge?: CreateSchoolCharge;
+    getSchoolFinancialSummary?: import('../../../app/use-cases/get-school-financial-summary').GetSchoolFinancialSummary;
+    listSchoolWithdrawals?: import('../../../app/use-cases/list-school-withdrawals').ListSchoolWithdrawals;
     listSchoolBankAccounts?: ListSchoolBankAccounts;
     createSchoolBankAccount?: CreateSchoolBankAccount;
     updateSchoolBankAccount?: UpdateSchoolBankAccount;
@@ -126,9 +128,11 @@ export function schoolsRouter(deps: SchoolsRouterDeps) {
         listSchoolPlanInvoices: deps.listSchoolPlanInvoices
     }, guards));
 
-    if (deps.createSchoolCharge) {
+    if (deps.createSchoolCharge || deps.getSchoolFinancialSummary || deps.listSchoolWithdrawals) {
         router.use('/finance', buildFinanceRoutes({
-            createSchoolCharge: deps.createSchoolCharge
+            createSchoolCharge: deps.createSchoolCharge,
+            getSchoolFinancialSummary: deps.getSchoolFinancialSummary,
+            listSchoolWithdrawals: deps.listSchoolWithdrawals
         }, guards));
     }
 

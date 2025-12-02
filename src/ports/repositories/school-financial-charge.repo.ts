@@ -9,6 +9,15 @@ export type StudentPaymentInfo = {
     status: SchoolFinancialChargeStatus;
 };
 
+export type PaidChargeSummary = {
+    id: string;
+    netAmountCents: number;
+    paidAt: Date;
+    description: string | null;
+    studentName: string;
+    courseName: string;
+};
+
 export interface SchoolFinancialChargeRepository {
     findById(id: string): Promise<SchoolFinancialCharge | null>;
     save(charge: SchoolFinancialCharge): Promise<void>;
@@ -17,5 +26,6 @@ export interface SchoolFinancialChargeRepository {
         status?: SchoolFinancialChargeStatus;
         isPaid?: boolean;
     }): Promise<StudentPaymentInfo[]>;
+    findPaidChargesBySchoolId?(schoolId: string): Promise<PaidChargeSummary[]>;
 }
 

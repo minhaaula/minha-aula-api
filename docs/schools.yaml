@@ -458,6 +458,217 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /schools/finance/summary:
+    get:
+      tags:
+        - Schools
+      summary: Obter resumo financeiro da escola
+      description: Retorna informações financeiras da escola, incluindo saques disponíveis (limite de 30), saldo disponível e total recebido no mês atual. Requer persona SCHOOL.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Resumo financeiro da escola.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  availableWithdrawals:
+                    type: array
+                    description: Lista dos últimos 30 pagamentos pagos disponíveis para saque, ordenados por data de pagamento (mais recentes primeiro)
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                          description: ID da cobrança
+                        netAmount:
+                          type: number
+                          description: Valor líquido em reais
+                        netAmountCents:
+                          type: integer
+                          format: int64
+                          description: Valor líquido em centavos
+                        paidAt:
+                          type: string
+                          format: date
+                          description: Data do pagamento
+                        description:
+                          type: string
+                          nullable: true
+                          description: Descrição da cobrança
+                        studentName:
+                          type: string
+                          description: Nome do aluno ou dependente
+                        courseName:
+                          type: string
+                          description: Nome do curso
+                      required:
+                        - id
+                        - netAmount
+                        - netAmountCents
+                        - paidAt
+                        - studentName
+                        - courseName
+                  availableBalance:
+                    type: number
+                    description: Saldo disponível total em reais (soma de todos os pagamentos pagos)
+                  availableBalanceCents:
+                    type: integer
+                    format: int64
+                    description: Saldo disponível total em centavos
+                  totalReceivedThisMonth:
+                    type: number
+                    description: Total recebido no mês atual em reais
+                  totalReceivedThisMonthCents:
+                    type: integer
+                    format: int64
+                    description: Total recebido no mês atual em centavos
+                required:
+                  - availableWithdrawals
+                  - availableBalance
+                  - availableBalanceCents
+                  - totalReceivedThisMonth
+                  - totalReceivedThisMonthCents
+        '401':
+          description: Não autorizado. Token inválido ou ausente.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado. Requer persona SCHOOL.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '501':
+          description: Funcionalidade de resumo financeiro não configurada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /schools/finance/withdrawals:
+    get:
+      tags:
+        - Schools
+      summary: Listar histórico de saques da escola
+      description: Retorna o histórico de saques realizados pela escola, com opção de filtrar por mês e ano. Requer persona SCHOOL.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: month
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 12
+          description: Filtrar saques pelo mês (1-12)
+        - in: query
+          name: year
+          required: false
+          schema:
+            type: integer
+            minimum: 2000
+            maximum: 3000
+          description: Filtrar saques pelo ano
+      responses:
+        '200':
+          description: Histórico de saques da escola.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  withdrawals:
+                    type: array
+                    description: Lista de saques realizados, ordenados por data de criação (mais recentes primeiro)
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                          description: ID do saque
+                        amount:
+                          type: number
+                          description: Valor do saque em reais
+                        amountCents:
+                          type: integer
+                          format: int64
+                          description: Valor do saque em centavos
+                        bankName:
+                          type: string
+                          description: Nome do banco
+                        bankAgency:
+                          type: string
+                          description: Agência bancária
+                        bankAccount:
+                          type: string
+                          description: Número da conta bancária
+                        pixKey:
+                          type: string
+                          nullable: true
+                          description: Chave PIX utilizada (quando aplicável)
+                        status:
+                          type: string
+                          enum: [PROCESSING, COMPLETED, CANCELLED]
+                          description: Status do saque (processando, completo, cancelado)
+                        createdAt:
+                          type: string
+                          format: date
+                          description: Data de criação do saque
+                        processedAt:
+                          type: string
+                          format: date
+                          nullable: true
+                          description: Data de processamento do saque (quando completo)
+                        cancelledAt:
+                          type: string
+                          format: date
+                          nullable: true
+                          description: Data de cancelamento do saque (quando cancelado)
+                      required:
+                        - id
+                        - amount
+                        - amountCents
+                        - bankName
+                        - bankAgency
+                        - bankAccount
+                        - pixKey
+                        - status
+                        - createdAt
+                        - processedAt
+                        - cancelledAt
+                required:
+                  - withdrawals
+        '400':
+          description: Erro na validação dos parâmetros de filtro.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Não autorizado. Token inválido ou ausente.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado. Requer persona SCHOOL.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '501':
+          description: Funcionalidade de histórico de saques não configurada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /schools/courses:
     get:
       tags:

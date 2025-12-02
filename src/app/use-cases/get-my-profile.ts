@@ -46,6 +46,7 @@ export class GetMyProfile {
 
         const dependentsList = await this.dependents.findByUserIds([userId]);
 
+        const addressPrimitives = user.address.toPrimitives();
         return {
             id: user.id,
             fullName: user.fullName,
@@ -53,7 +54,15 @@ export class GetMyProfile {
             cpf: user.cpf,
             phone: user.phone,
             birthDate: user.birthDate,
-            address: user.address.toPrimitives(),
+            address: {
+                street: addressPrimitives.street,
+                number: addressPrimitives.number,
+                complement: addressPrimitives.complement ?? null,
+                district: addressPrimitives.district ?? null,
+                city: addressPrimitives.city,
+                state: addressPrimitives.state,
+                zipCode: addressPrimitives.zipCode
+            },
             createdAt: user.createdAt,
             dependents: dependentsList.map((dep) => ({
                 id: dep.id,

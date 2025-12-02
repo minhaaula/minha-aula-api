@@ -55,6 +55,9 @@ import { ApproveEnrollmentRequest } from '../../app/use-cases/approve-enrollment
 import { IssueEnrollmentFeeBoleto } from '../../app/use-cases/issue-enrollment-fee-boleto';
 import { GetEnrollmentRequest } from '../../app/use-cases/get-enrollment-request';
 import { CreateSchoolCharge } from '../../app/use-cases/create-school-charge';
+import { GetSchoolFinancialSummary } from '../../app/use-cases/get-school-financial-summary';
+import { ListSchoolWithdrawals } from '../../app/use-cases/list-school-withdrawals';
+import { SchoolWithdrawalRepositoryAdapter } from '../../infra/db/typeorm/school-withdrawal-repository.adapter';
 import { landingRouter } from '../../infra/http/routes/landing.routes';
 import { SchoolBankAccountRepositoryAdapter } from '../../infra/db/typeorm/school-bank-account-repository.adapter';
 import { ListSchoolBankAccounts } from '../../app/use-cases/list-school-bank-accounts';
@@ -184,6 +187,9 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         deps.usersRepo,
         deps.dependentsRepo
     );
+    const getSchoolFinancialSummary = new GetSchoolFinancialSummary(deps.financialChargesRepo);
+    const withdrawalsRepo = new SchoolWithdrawalRepositoryAdapter();
+    const listSchoolWithdrawals = new ListSchoolWithdrawals(withdrawalsRepo);
     const scheduleClassSession = new ScheduleClassSession(deps.classSessionsRepo, deps.classesRepo, deps.coursesRepo);
     const listClassSessions = new ListClassSessions(deps.classSessionsRepo, deps.classesRepo, deps.coursesRepo);
     const cancelClassSession = new CancelClassSession(deps.classSessionsRepo);
@@ -239,6 +245,8 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         enrollStudent,
         listEnrollmentRequests,
         createSchoolCharge,
+        getSchoolFinancialSummary,
+        listSchoolWithdrawals,
         scheduleClassSession,
         listClassSessions,
         cancelClassSession,
