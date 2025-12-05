@@ -29,6 +29,7 @@ import { ListMyEnrollmentRequests } from '../../app/use-cases/list-my-enrollment
 import { UpdateStudentProfile } from '../../app/use-cases/update-student-profile';
 import { ListSchoolCourses } from '../../app/use-cases/list-school-courses';
 import { ListSchoolReviews } from '../../app/use-cases/list-school-reviews';
+import { GetSchoolPublicDetails } from '../../app/use-cases/get-school-public-details';
 import { CategoryRepositoryAdapter } from '../../infra/db/typeorm/category-repository.adapter';
 import { SchoolReviewRepositoryAdapter } from '../../infra/db/typeorm/school-review-repository.adapter';
 
@@ -96,6 +97,7 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
     const listSchoolReviews = deps.schoolReviewsRepo
         ? new ListSchoolReviews(deps.schoolReviewsRepo, deps.storageProvider)
         : undefined;
+    const getSchoolPublicDetails = new GetSchoolPublicDetails(deps.schoolsRepo);
 
     // Montar routers prontos
     const studentsRouterInstance = studentsRouter({
@@ -109,7 +111,8 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
         listMyEnrollmentRequests,
         listSchoolCourses,
         listSchoolReviews,
-        approveEnrollmentRequest
+        approveEnrollmentRequest,
+        getSchoolPublicDetails
     });
 
     const listMyDependents = new ListMyDependents(deps.dependentsRepo);

@@ -142,6 +142,7 @@ describe('ListAllCourses use case', () => {
         expect(result.courses).toHaveLength(2);
         expect(result.courses[0].courseName).toBe('Inglês Básico');
         expect(result.courses[0].schoolName).toBe('Escola de Idiomas');
+        expect(result.courses[0].schoolId).toBe('school-1');
         expect(result.courses[0].courseDescription).toBe('Curso de inglês para iniciantes');
         expect(result.courses[0].category).toBe('Category-cat-1');
         expect(result.courses[0].subcategory).toBe('Subcategory-sub-1');
@@ -235,6 +236,7 @@ describe('ListAllCourses use case', () => {
         expect(result.courses).toHaveLength(1);
         expect(result.courses[0].courseName).toBe('Inglês Básico');
         expect(result.courses[0].schoolName).toBe('Escola de Idiomas');
+        expect(result.courses[0].schoolId).toBe('school-1');
     });
 
     it('returns empty list when no courses match filters', async () => {

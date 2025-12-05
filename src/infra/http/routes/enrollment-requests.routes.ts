@@ -152,6 +152,16 @@ export function enrollmentRequestsRouter(deps: {
 
     r.get('/:requestId', canManageRequests, async (req, res, next) => {
         try {
+            // Ignorar palavras reservadas que são rotas específicas
+            // Essas rotas devem ser registradas antes desta rota genérica
+            const reservedPaths = ['schools', 'charges'];
+            if (reservedPaths.includes(req.params.requestId)) {
+                return res.status(404).json({ 
+                    error: 'Rota não encontrada',
+                    code: 'NOT_FOUND'
+                });
+            }
+
             const paramsSchema = z.object({ requestId: z.string().uuid() });
             const { requestId } = paramsSchema.parse(req.params);
             const request = await deps.getEnrollmentRequest.exec({ requestId });
@@ -163,6 +173,13 @@ export function enrollmentRequestsRouter(deps: {
             }
             res.json(serializeEnrollmentRequest(request));
         } catch (err) {
+            // Se o erro for de validação do Zod (requestId não é UUID), retornar 404
+            if (err instanceof z.ZodError) {
+                return res.status(404).json({ 
+                    error: 'Rota não encontrada',
+                    code: 'NOT_FOUND'
+                });
+            }
             next(err);
         }
     });

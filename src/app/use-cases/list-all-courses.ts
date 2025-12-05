@@ -11,6 +11,7 @@ export interface ListAllCoursesInput {
 export interface CourseListItem {
     courseName: string;
     schoolName: string;
+    schoolId: string;
     courseDescription: string | null;
     category: string | null;
     subcategory: string | null;
@@ -53,6 +54,7 @@ export class ListAllCourses {
             return {
                 courseName: data.courseName,
                 schoolName: data.schoolName,
+                schoolId: data.schoolId,
                 courseDescription: data.courseDescription,
                 category: catInfo.category,
                 subcategory: catInfo.subcategory

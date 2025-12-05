@@ -11,6 +11,7 @@ import { UpdateStudentProfile } from '../../../app/use-cases/update-student-prof
 import { ListSchoolCourses } from '../../../app/use-cases/list-school-courses';
 import { ListSchoolReviews } from '../../../app/use-cases/list-school-reviews';
 import { ApproveEnrollmentRequest } from '../../../app/use-cases/approve-enrollment-request';
+import { GetSchoolPublicDetails } from '../../../app/use-cases/get-school-public-details';
 import { requirePersona } from '../middlewares/require-persona';
 import { UserPersonaEnum } from '../../../domain/value-objects/user-persona';
 import { AuthenticatedRequest } from '../middlewares/auth';
@@ -29,6 +30,7 @@ export function studentsRouter(deps: {
     listSchoolCourses?: ListSchoolCourses;
     listSchoolReviews?: ListSchoolReviews;
     approveEnrollmentRequest?: ApproveEnrollmentRequest;
+    getSchoolPublicDetails?: GetSchoolPublicDetails;
 }) {
     const r = Router();
 
@@ -263,6 +265,26 @@ export function studentsRouter(deps: {
             });
 
             res.json(result);
+        }));
+    }
+
+    if (deps.getSchoolPublicDetails) {
+        r.get('/schools/:schoolId', asyncHandler(async (req, res) => {
+            const paramsSchema = z.object({
+                schoolId: z.string().uuid()
+            });
+
+            const { schoolId } = paramsSchema.parse(req.params);
+
+            const school = await deps.getSchoolPublicDetails!.exec({ schoolId });
+            if (!school) {
+                return res.status(404).json({ 
+                    error: 'Escola não encontrada',
+                    code: 'SCHOOL_NOT_FOUND'
+                });
+            }
+
+            res.json(school);
         }));
     }
 
