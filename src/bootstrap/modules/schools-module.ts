@@ -280,11 +280,20 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         listSubscriptionPlans
     });
 
+    const enrollmentRequestsRouterInstance = enrollmentRequestsRouter({
+        createEnrollmentRequest,
+        approveEnrollmentRequest,
+        listEnrollmentRequests,
+        getEnrollmentRequest,
+        issueEnrollmentFeeBoleto
+    });
+
     return {
         deps: {
             schoolsRouter: schoolsRouterInstance,
             asaasWebhookRouter: asaasWebhookRouterInstance,
-            landingRouter: landingRouterInstance
+            landingRouter: landingRouterInstance,
+            enrollmentRequestsRouter: enrollmentRequestsRouterInstance
         },
         docFiles: ['schools.yaml', 'students.yaml', 'enrollment-requests.yaml', 'landing.yaml']
     };
