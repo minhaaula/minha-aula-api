@@ -1,6 +1,61 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 import { randomUUID } from 'node:crypto';
 
+// UUIDs fixos para manter a seed determinística
+const UUIDs = {
+    // Endereços das escolas (5)
+    addresses: [
+        'a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5',
+        'b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6',
+        'c3d4e5f6-a7b8-4c9d-0e1f-2a3b4c5d6e7',
+        'd4e5f6a7-b8c9-4d0e-1f2a-3b4c5d6e7f8',
+        'e5f6a7b8-c9d0-4e1f-2a3b-4c5d6e7f8a9'
+    ],
+    // Cursos (10)
+    courses: [
+        'f6a7b8c9-d0e1-4f2a-3b4c-5d6e7f8a9b0',
+        'a7b8c9d0-e1f2-4a3b-4c5d-6e7f8a9b0c1',
+        'b8c9d0e1-f2a3-4b4c-5d6e-7f8a9b0c1d2',
+        'c9d0e1f2-a3b4-4c5d-6e7f-8a9b0c1d2e3',
+        'd0e1f2a3-b4c5-4d6e-7f8a-9b0c1d2e3f4',
+        'e1f2a3b4-c5d6-4e7f-8a9b-0c1d2e3f4a5',
+        'f2a3b4c5-d6e7-4f8a-9b0c-1d2e3f4a5b6',
+        'a3b4c5d6-e7f8-4a9b-0c1d-2e3f4a5b6c7',
+        'b4c5d6e7-f8a9-4b0c-1d2e-3f4a5b6c7d8',
+        'c5d6e7f8-a9b0-4c1d-2e3f-4a5b6c7d8e9'
+    ],
+    // Classes (20)
+    classes: [
+        'd6e7f8a9-b0c1-4d2e-3f4a-5b6c7d8e9f0',
+        'e7f8a9b0-c1d2-4e3f-4a5b-6c7d8e9f0a1',
+        'f8a9b0c1-d2e3-4f4a-5b6c-7d8e9f0a1b2',
+        'a9b0c1d2-e3f4-4a5b-6c7d-8e9f0a1b2c3',
+        'b0c1d2e3-f4a5-4b6c-7d8e-9f0a1b2c3d4',
+        'c1d2e3f4-a5b6-4c7d-8e9f-0a1b2c3d4e5',
+        'd2e3f4a5-b6c7-4d8e-9f0a-1b2c3d4e5f6',
+        'e3f4a5b6-c7d8-4e9f-0a1b-2c3d4e5f6a7',
+        'f4a5b6c7-d8e9-4f0a-1b2c-3d4e5f6a7b8',
+        'a5b6c7d8-e9f0-4a1b-2c3d-4e5f6a7b8c9',
+        'b6c7d8e9-f0a1-4b2c-3d4e-5f6a7b8c9d0',
+        'c7d8e9f0-a1b2-4c3d-4e5f-6a7b8c9d0e1',
+        'd8e9f0a1-b2c3-4d4e-5f6a-7b8c9d0e1f2',
+        'e9f0a1b2-c3d4-4e5f-6a7b-8c9d0e1f2a3',
+        'f0a1b2c3-d4e5-4f6a-7b8c-9d0e1f2a3b4',
+        'a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5',
+        'b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6',
+        'c3d4e5f6-a7b8-4c9d-0e1f-2a3b4c5d6e7',
+        'd4e5f6a7-b8c9-4d0e-1f2a-3b4c5d6e7f8',
+        'e5f6a7b8-c9d0-4e1f-2a3b-4c5d6e7f8a9'
+    ],
+    // Enrollment Requests (4)
+    enrollmentRequests: [
+        'f6a7b8c9-d0e1-4f2a-3b4c-5d6e7f8a9b0',
+        'a7b8c9d0-e1f2-4a3b-4c5d-6e7f8a9b0c1',
+        'b8c9d0e1-f2a3-4b4c-5d6e-7f8a9b0c1d2',
+        'c9d0e1f2-a3b4-4c5d-6e7f-8a9b0c1d2e3'
+    ]
+};
+
 // Hash da senha: S3nh4*secreta
 const PASSWORD_HASH = 'e4579c15529747072b655137ed957ebb:fb267854b07245a9c5cbe845d6fe275a5b7d683baf649720cfd79d7efe274ac71f60766dc1218e5711bfa02b5b5f619b5d92aa9a00df3ec78e67d71c052e1099';
 
@@ -141,62 +196,83 @@ const SCHOOLS = [
     }
 ] as const;
 
-// Endereços das escolas
-const SCHOOL_ADDRESSES = SCHOOLS.map((school, index) => ({
-    id: `addr-${school.id}`,
-    schoolId: school.id,
+// Endereços das escolas (UUIDs v4)
+const SCHOOL_ADDRESSES = [
+    { id: UUIDs.addresses[0], schoolId: SCHOOLS[0].id, index: 0 },
+    { id: UUIDs.addresses[1], schoolId: SCHOOLS[1].id, index: 1 },
+    { id: UUIDs.addresses[2], schoolId: SCHOOLS[2].id, index: 2 },
+    { id: UUIDs.addresses[3], schoolId: SCHOOLS[3].id, index: 3 },
+    { id: UUIDs.addresses[4], schoolId: SCHOOLS[4].id, index: 4 }
+].map(({ id, schoolId, index }) => ({
+    id,
+    schoolId,
     street: `Rua da Escola ${index + 1}`,
     number: `${(index + 1) * 100}`,
     complement: index % 2 === 0 ? 'Bloco Principal' : null,
     district: ['Centro', 'Vila Nova', 'Jardim', 'Parque', 'Alto'][index],
     city: 'São Paulo',
     state: 'SP',
-    zipCode: `0${1000 + index}${1000 + index}00`
-})) as const;
+    zipCode: `01000${String(index).padStart(3, '0')}`
+}));
 
-// Cursos (2 por escola)
-const COURSES = SCHOOLS.flatMap((school, schoolIndex) => [
-    {
-        id: `course-${school.id}-1`,
-        schoolId: school.id,
-        name: `Programação ${schoolIndex + 1}`,
-        description: `Curso de programação da ${school.name}`,
-        isActive: true
-    },
-    {
-        id: `course-${school.id}-2`,
-        schoolId: school.id,
-        name: `Design ${schoolIndex + 1}`,
-        description: `Curso de design da ${school.name}`,
-        isActive: true
-    }
-]) as const;
+// Cursos (2 por escola) - UUIDs v4
+const COURSES = [
+    { id: UUIDs.courses[0], schoolId: SCHOOLS[0].id, schoolIndex: 0, type: 1 },
+    { id: UUIDs.courses[1], schoolId: SCHOOLS[0].id, schoolIndex: 0, type: 2 },
+    { id: UUIDs.courses[2], schoolId: SCHOOLS[1].id, schoolIndex: 1, type: 1 },
+    { id: UUIDs.courses[3], schoolId: SCHOOLS[1].id, schoolIndex: 1, type: 2 },
+    { id: UUIDs.courses[4], schoolId: SCHOOLS[2].id, schoolIndex: 2, type: 1 },
+    { id: UUIDs.courses[5], schoolId: SCHOOLS[2].id, schoolIndex: 2, type: 2 },
+    { id: UUIDs.courses[6], schoolId: SCHOOLS[3].id, schoolIndex: 3, type: 1 },
+    { id: UUIDs.courses[7], schoolId: SCHOOLS[3].id, schoolIndex: 3, type: 2 },
+    { id: UUIDs.courses[8], schoolId: SCHOOLS[4].id, schoolIndex: 4, type: 1 },
+    { id: UUIDs.courses[9], schoolId: SCHOOLS[4].id, schoolIndex: 4, type: 2 }
+].map(({ id, schoolId, schoolIndex, type }) => ({
+    id,
+    schoolId,
+    name: type === 1 ? `Programação ${schoolIndex + 1}` : `Design ${schoolIndex + 1}`,
+    description: type === 1 ? `Curso de programação da ${SCHOOLS[schoolIndex].name}` : `Curso de design da ${SCHOOLS[schoolIndex].name}`,
+    isActive: true
+}));
 
-// Classes (2 por curso)
-const COURSE_CLASSES = COURSES.flatMap((course, courseIndex) => [
-    {
-        id: `class-${course.id}-1`,
-        courseId: course.id,
-        label: `Turma A - ${course.name}`,
-        schedule: [
+// Classes (2 por curso) - UUIDs v4
+const COURSE_CLASSES = [
+    { id: UUIDs.classes[0], courseId: COURSES[0].id, courseName: COURSES[0].name, classNum: 1 },
+    { id: UUIDs.classes[1], courseId: COURSES[0].id, courseName: COURSES[0].name, classNum: 2 },
+    { id: UUIDs.classes[2], courseId: COURSES[1].id, courseName: COURSES[1].name, classNum: 1 },
+    { id: UUIDs.classes[3], courseId: COURSES[1].id, courseName: COURSES[1].name, classNum: 2 },
+    { id: UUIDs.classes[4], courseId: COURSES[2].id, courseName: COURSES[2].name, classNum: 1 },
+    { id: UUIDs.classes[5], courseId: COURSES[2].id, courseName: COURSES[2].name, classNum: 2 },
+    { id: UUIDs.classes[6], courseId: COURSES[3].id, courseName: COURSES[3].name, classNum: 1 },
+    { id: UUIDs.classes[7], courseId: COURSES[3].id, courseName: COURSES[3].name, classNum: 2 },
+    { id: UUIDs.classes[8], courseId: COURSES[4].id, courseName: COURSES[4].name, classNum: 1 },
+    { id: UUIDs.classes[9], courseId: COURSES[4].id, courseName: COURSES[4].name, classNum: 2 },
+    { id: UUIDs.classes[10], courseId: COURSES[5].id, courseName: COURSES[5].name, classNum: 1 },
+    { id: UUIDs.classes[11], courseId: COURSES[5].id, courseName: COURSES[5].name, classNum: 2 },
+    { id: UUIDs.classes[12], courseId: COURSES[6].id, courseName: COURSES[6].name, classNum: 1 },
+    { id: UUIDs.classes[13], courseId: COURSES[6].id, courseName: COURSES[6].name, classNum: 2 },
+    { id: UUIDs.classes[14], courseId: COURSES[7].id, courseName: COURSES[7].name, classNum: 1 },
+    { id: UUIDs.classes[15], courseId: COURSES[7].id, courseName: COURSES[7].name, classNum: 2 },
+    { id: UUIDs.classes[16], courseId: COURSES[8].id, courseName: COURSES[8].name, classNum: 1 },
+    { id: UUIDs.classes[17], courseId: COURSES[8].id, courseName: COURSES[8].name, classNum: 2 },
+    { id: UUIDs.classes[18], courseId: COURSES[9].id, courseName: COURSES[9].name, classNum: 1 },
+    { id: UUIDs.classes[19], courseId: COURSES[9].id, courseName: COURSES[9].name, classNum: 2 }
+].map(({ id, courseId, courseName, classNum }) => ({
+    id,
+    courseId,
+    label: classNum === 1 ? `Turma A - ${courseName}` : `Turma B - ${courseName}`,
+    schedule: classNum === 1
+        ? [
             { day: 'MONDAY', start: '09:00', end: '11:00' },
             { day: 'WEDNESDAY', start: '09:00', end: '11:00' }
-        ],
-        capacity: 20,
-        isActive: true
-    },
-    {
-        id: `class-${course.id}-2`,
-        courseId: course.id,
-        label: `Turma B - ${course.name}`,
-        schedule: [
+        ]
+        : [
             { day: 'TUESDAY', start: '14:00', end: '16:00' },
             { day: 'THURSDAY', start: '14:00', end: '16:00' }
         ],
-        capacity: 20,
-        isActive: true
-    }
-]) as const;
+    capacity: 20,
+    isActive: true
+}));
 
 // 20 Estudantes (4 por escola)
 const STUDENTS = [
@@ -566,8 +642,9 @@ const ENROLLMENTS = STUDENTS.map((student) => {
     const courseClasses = COURSE_CLASSES.filter(c => c.courseId === course.id);
     const courseClass = courseClasses[classIndex];
     
+    // Gerar UUID v4 para matrícula
     return {
-        id: `enroll-${student.id}`,
+        id: randomUUID(),
         courseClassId: courseClass.id,
         ownerUserId: student.id,
         studentType: 'USER' as const,
@@ -575,16 +652,14 @@ const ENROLLMENTS = STUDENTS.map((student) => {
         dependentId: null,
         status: 'ACTIVE' as const
     };
-}) as const;
+});
 
-// 4 Enrollment Requests (convites abertos) para 4 escolas diferentes
-// Usando IDs fixos baseados na estrutura criada
-// Formato das classes: class-{courseId}-1 ou class-{courseId}-2
+// 4 Enrollment Requests (convites abertos) para 4 escolas diferentes - UUIDs v4
 const ENROLLMENT_REQUESTS = [
     {
-        id: 'req-001',
+        id: UUIDs.enrollmentRequests[0],
         schoolId: SCHOOLS[0].id,
-        courseClassId: `class-course-${SCHOOLS[0].id}-1-1`, // Primeira classe do primeiro curso
+        courseClassId: COURSE_CLASSES[0].id, // Primeira classe do primeiro curso da escola 1
         requestedForUserId: STUDENTS[0].id,
         requestedForDependentId: null,
         status: 'PENDING' as const,
@@ -593,9 +668,9 @@ const ENROLLMENT_REQUESTS = [
         enrollmentFeeDueDate: '2024-12-05'
     },
     {
-        id: 'req-002',
+        id: UUIDs.enrollmentRequests[1],
         schoolId: SCHOOLS[1].id,
-        courseClassId: `class-course-${SCHOOLS[1].id}-1-1`, // Primeira classe do primeiro curso
+        courseClassId: COURSE_CLASSES[4].id, // Primeira classe do primeiro curso da escola 2
         requestedForUserId: STUDENTS[4].id,
         requestedForDependentId: null,
         status: 'PENDING' as const,
@@ -604,9 +679,9 @@ const ENROLLMENT_REQUESTS = [
         enrollmentFeeDueDate: '2024-12-05'
     },
     {
-        id: 'req-003',
+        id: UUIDs.enrollmentRequests[2],
         schoolId: SCHOOLS[2].id,
-        courseClassId: `class-course-${SCHOOLS[2].id}-1-1`, // Primeira classe do primeiro curso
+        courseClassId: COURSE_CLASSES[8].id, // Primeira classe do primeiro curso da escola 3
         requestedForUserId: STUDENTS[8].id,
         requestedForDependentId: null,
         status: 'PENDING' as const,
@@ -615,9 +690,9 @@ const ENROLLMENT_REQUESTS = [
         enrollmentFeeDueDate: '2024-12-05'
     },
     {
-        id: 'req-004',
+        id: UUIDs.enrollmentRequests[3],
         schoolId: SCHOOLS[3].id,
-        courseClassId: `class-course-${SCHOOLS[3].id}-1-1`, // Primeira classe do primeiro curso
+        courseClassId: COURSE_CLASSES[12].id, // Primeira classe do primeiro curso da escola 4
         requestedForUserId: STUDENTS[12].id,
         requestedForDependentId: null,
         status: 'PENDING' as const,
@@ -641,7 +716,7 @@ const FINANCIAL_CHARGES = ENROLLMENTS.flatMap((enrollment, index) => {
     // Criar algumas cobranças variadas para cada estudante
     const charges = [
         {
-            id: `charge-${enrollment.id}-1`,
+            id: randomUUID(),
             schoolId: school.id,
             ownerUserId: enrollment.ownerUserId,
             studentUserId: enrollment.studentUserId,
@@ -659,7 +734,7 @@ const FINANCIAL_CHARGES = ENROLLMENTS.flatMap((enrollment, index) => {
             paidAt: index % 3 === 0 ? new Date('2024-11-08 10:00:00') : null
         },
         {
-            id: `charge-${enrollment.id}-2`,
+            id: randomUUID(),
             schoolId: school.id,
             ownerUserId: enrollment.ownerUserId,
             studentUserId: enrollment.studentUserId,
@@ -677,7 +752,7 @@ const FINANCIAL_CHARGES = ENROLLMENTS.flatMap((enrollment, index) => {
             paidAt: null
         },
         {
-            id: `charge-${enrollment.id}-3`,
+            id: randomUUID(),
             schoolId: school.id,
             ownerUserId: enrollment.ownerUserId,
             studentUserId: enrollment.studentUserId,
@@ -697,7 +772,7 @@ const FINANCIAL_CHARGES = ENROLLMENTS.flatMap((enrollment, index) => {
     ];
     
     return charges;
-}) as const;
+});
 
 export class SeedCompleteFlow1000000000038 implements MigrationInterface {
     name = 'SeedCompleteFlow1000000000038';

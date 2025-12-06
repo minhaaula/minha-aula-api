@@ -70,6 +70,7 @@ import { ValidatePasswordResetToken } from '../../app/use-cases/validate-passwor
 import { UpdateSchoolPassword } from '../../app/use-cases/update-school-password';
 import { PasswordResetTokenRepositoryAdapter } from '../../infra/db/typeorm/password-reset-token-repository.adapter';
 import { EmailProviderPort } from '../../ports/providers/email-provider.port';
+import { GetStudentDirectoryEntry } from '../../app/use-cases/get-student-directory-entry';
 
 export type SchoolsModuleDeps = {
     schoolsRepo: SchoolRepositoryAdapter;
@@ -147,6 +148,7 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         deps.usersRepo,
         deps.dependentsRepo
     );
+    const getStudentDirectoryEntry = new GetStudentDirectoryEntry(deps.usersRepo, deps.dependentsRepo);
     const listSchoolPayments = new ListSchoolPayments(
         deps.coursesRepo,
         deps.classesRepo,
@@ -266,7 +268,8 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         requestPasswordReset,
         resetPassword,
         validatePasswordResetToken,
-        updateSchoolPassword
+        updateSchoolPassword,
+        getStudentDirectoryEntry
     });
 
     const asaasWebhookRouterInstance = asaasWebhookRouter({

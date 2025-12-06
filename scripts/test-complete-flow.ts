@@ -194,10 +194,10 @@ async function main() {
     console.log('  4. Centro Educacional (CNPJ: 44444444000444)');
     console.log('  5. Escola Futuro (CNPJ: 55555555000555)');
     console.log('\nEstudantes de exemplo:');
-    console.log('  - Pedro Oliveira (CPF: 11111111111)');
-    console.log('  - Julia Ferreira (CPF: 11111111112)');
-    console.log('  - Lucas Souza (CPF: 11111111113)');
-    console.log('  - Mariana Lima (CPF: 11111111114)');
+    console.log('  - Pedro Oliveira (CPF: 74767131090)');
+    console.log('  - Julia Ferreira (CPF: 14329910004)');
+    console.log('  - Lucas Souza (CPF: 65585863398)');
+    console.log('  - Mariana Lima (CPF: 38623008626)');
     console.log('\nSenha padrão para todos: S3nh4*secreta\n');
 }
 

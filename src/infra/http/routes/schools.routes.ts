@@ -49,6 +49,7 @@ import type { DeleteSchoolBankAccount } from '../../../app/use-cases/delete-scho
 import type { RequestPasswordReset } from '../../../app/use-cases/request-password-reset';
 import type { ResetPassword } from '../../../app/use-cases/reset-password';
 import type { UpdateSchoolPassword } from '../../../app/use-cases/update-school-password';
+import type { GetStudentDirectoryEntry } from '../../../app/use-cases/get-student-directory-entry';
 import { buildPasswordResetRoutes } from './schools/password-reset.routes';
 import { z } from 'zod';
 import { asyncHandler } from '../utils/async-handler';
@@ -96,6 +97,7 @@ export type SchoolsRouterDeps = {
     resetPassword?: ResetPassword;
     validatePasswordResetToken?: import('../../../app/use-cases/validate-password-reset-token').ValidatePasswordResetToken;
     updateSchoolPassword?: UpdateSchoolPassword;
+    getStudentDirectoryEntry?: GetStudentDirectoryEntry;
 };
 
 export function schoolsRouter(deps: SchoolsRouterDeps) {
@@ -138,7 +140,8 @@ export function schoolsRouter(deps: SchoolsRouterDeps) {
 
     if (deps.listSchoolStudents) {
         router.use('/students', buildStudentsRoutes({
-            listSchoolStudents: deps.listSchoolStudents
+            listSchoolStudents: deps.listSchoolStudents,
+            getStudentDirectoryEntry: deps.getStudentDirectoryEntry
         }, guards));
     }
 

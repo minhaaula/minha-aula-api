@@ -2,11 +2,13 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { asyncHandler } from '../../utils/async-handler';
 import type { ListSchoolStudents } from '../../../../app/use-cases/list-school-students';
+import type { GetStudentDirectoryEntry } from '../../../../app/use-cases/get-student-directory-entry';
 import type { SchoolRouteGuards } from './guards';
 import type { SchoolContextRequest } from '../../middlewares/resolve-school-context';
 
 type StudentsRoutesDeps = {
     listSchoolStudents: ListSchoolStudents;
+    getStudentDirectoryEntry?: GetStudentDirectoryEntry;
 };
 
 export function buildStudentsRoutes(deps: StudentsRoutesDeps, guards: SchoolRouteGuards) {
@@ -17,6 +19,49 @@ export function buildStudentsRoutes(deps: StudentsRoutesDeps, guards: SchoolRout
         guards.requireSchoolPersona,
         guards.resolveSchoolContext
     ] as const;
+
+    // Debug: verificar se getStudentDirectoryEntry está presente
+    console.log('[DEBUG] buildStudentsRoutes - getStudentDirectoryEntry:', deps.getStudentDirectoryEntry ? 'PRESENTE' : 'AUSENTE');
+
+    // Registrar rota /directory/:cpf ANTES da rota / para evitar conflitos
+    if (deps.getStudentDirectoryEntry) {
+        console.log('✓ Rota /schools/students/directory/:cpf registrada');
+        router.get('/directory/:cpf', ...protectedMiddleware, asyncHandler(async (req, res) => {
+            const paramsSchema = z.object({ cpf: z.string().trim().min(1) });
+            const { cpf } = paramsSchema.parse(req.params);
+
+            try {
+                const entry = await deps.getStudentDirectoryEntry!.exec({ cpf });
+                if (!entry) {
+                    return res.status(404).json({ 
+                        error: 'Aluno não encontrado',
+                        code: 'STUDENT_NOT_FOUND'
+                    });
+                }
+
+                const serialize = (person: { id: string; name: string; cpf: string; birthDate: Date | null; }) => ({
+                    id: person.id,
+                    name: person.name,
+                    cpf: person.cpf,
+                    birthDate: person.birthDate ? person.birthDate.toISOString().slice(0, 10) : null
+                });
+
+                res.json({
+                    student: serialize(entry.student),
+                    responsible: entry.responsible ? serialize(entry.responsible) : null
+                });
+            } catch (execErr) {
+                // Capturar erro de CPF inválido do use case
+                if (execErr instanceof Error && execErr.message === 'Invalid CPF') {
+                    return res.status(400).json({ 
+                        error: 'CPF inválido. Deve conter 11 dígitos',
+                        code: 'INVALID_CPF'
+                    });
+                }
+                throw execErr;
+            }
+        }));
+    }
 
     const querySchema = z.object({
         name: z.string().trim().min(1).optional(),

@@ -30,6 +30,9 @@
     "test:storage:simple": "tsx scripts/test-storage-simple.ts",
     "test:storage:access": "tsx scripts/test-file-access.ts",
     "test:flow": "tsx scripts/test-complete-flow.ts",
+    "test:invites": "tsx scripts/test-enrollment-invite-flow.ts",
+    "test:directory": "tsx scripts/test-directory-route.ts",
+    "test:schools-directory": "tsx scripts/test-schools-directory-route.ts",
     "hash:password": "tsx scripts/generate-password-hash.ts",
     "deploy:railway": "npm install && npm run test && npm run build && npm run migrate:run:prod && npm run start"
   },
