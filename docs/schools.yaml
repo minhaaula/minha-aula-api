@@ -268,6 +268,53 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /schools/students/directory/{cpf}:
+    get:
+      tags:
+        - Schools
+      summary: Buscar aluno ou dependente por CPF
+      description: Permite que escolas localizem um aluno ou dependente pelo CPF. Quando o CPF pertence a um dependente, os dados do responsável são incluídos na resposta.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: cpf
+          required: true
+          schema:
+            type: string
+            example: '39588620805'
+          description: CPF do aluno ou dependente a ser localizado (11 dígitos).
+      responses:
+        '200':
+          description: Dados do aluno ou dependente encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StudentDirectoryResponse'
+        '400':
+          description: CPF inválido. Deve conter 11 dígitos.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado ou sem contexto de escola.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Aluno ou dependente não encontrado com o CPF informado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '501':
+          description: Funcionalidade de busca de alunos não configurada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /schools/payments:
     get:
       tags:
