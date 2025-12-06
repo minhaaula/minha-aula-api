@@ -89,26 +89,45 @@ export function studentsRouter(deps: {
             const paramsSchema = z.object({ cpf: z.string().trim().min(1) });
             const { cpf } = paramsSchema.parse(req.params);
 
-            const entry = await deps.getStudentDirectoryEntry.exec({ cpf });
-            if (!entry) {
-                return res.status(404).json({ 
-                    error: 'Aluno não encontrado',
-                    code: 'STUDENT_NOT_FOUND'
+            try {
+                const entry = await deps.getStudentDirectoryEntry.exec({ cpf });
+                if (!entry) {
+                    return res.status(404).json({ 
+                        error: 'Aluno não encontrado',
+                        code: 'STUDENT_NOT_FOUND'
+                    });
+                }
+
+                const serialize = (person: { id: string; name: string; cpf: string; birthDate: Date | null; }) => ({
+                    id: person.id,
+                    name: person.name,
+                    cpf: person.cpf,
+                    birthDate: person.birthDate ? person.birthDate.toISOString().slice(0, 10) : null
+                });
+
+                res.json({
+                    student: serialize(entry.student),
+                    responsible: entry.responsible ? serialize(entry.responsible) : null
+                });
+            } catch (execErr) {
+                // Capturar erro de CPF inválido do use case
+                if (execErr instanceof Error && execErr.message === 'Invalid CPF') {
+                    return res.status(400).json({ 
+                        error: 'CPF inválido. Deve conter 11 dígitos',
+                        code: 'INVALID_CPF'
+                    });
+                }
+                throw execErr;
+            }
+        } catch (err) {
+            // Capturar erros de validação do Zod
+            if (err instanceof z.ZodError) {
+                return res.status(400).json({ 
+                    error: 'Parâmetro CPF inválido',
+                    code: 'VALIDATION_ERROR',
+                    details: err.errors
                 });
             }
-
-            const serialize = (person: { id: string; name: string; cpf: string; birthDate: Date | null; }) => ({
-                id: person.id,
-                name: person.name,
-                cpf: person.cpf,
-                birthDate: person.birthDate ? person.birthDate.toISOString().slice(0, 10) : null
-            });
-
-            res.json({
-                student: serialize(entry.student),
-                responsible: entry.responsible ? serialize(entry.responsible) : null
-            });
-        } catch (err) {
             next(err);
         }
     });

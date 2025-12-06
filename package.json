@@ -29,6 +29,8 @@
     "test:storage": "tsx scripts/test-storage.ts",
     "test:storage:simple": "tsx scripts/test-storage-simple.ts",
     "test:storage:access": "tsx scripts/test-file-access.ts",
+    "test:flow": "tsx scripts/test-complete-flow.ts",
+    "hash:password": "tsx scripts/generate-password-hash.ts",
     "deploy:railway": "npm install && npm run test && npm run build && npm run migrate:run:prod && npm run start"
   },
   "keywords": [],
