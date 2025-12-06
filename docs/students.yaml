@@ -440,6 +440,9 @@ paths:
                         courseName:
                           type: string
                           description: Nome do curso
+                        schoolId:
+                          type: string
+                          description: ID da escola
                         schoolName:
                           type: string
                           description: Nome da escola

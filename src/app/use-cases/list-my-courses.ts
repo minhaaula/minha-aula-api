@@ -4,6 +4,7 @@ import { SchoolRepository } from '../../ports/repositories/school.repo';
 
 export interface MyCourseRecord {
     courseName: string;
+    schoolId: string;
     schoolName: string;
     studentName: string;
     category: string | null;
@@ -57,6 +58,7 @@ export class ListMyCourses {
 
             return {
                 courseName: data.courseName,
+                schoolId: data.schoolId,
                 schoolName: data.schoolName,
                 studentName: data.studentName,
                 category: catInfo.category,

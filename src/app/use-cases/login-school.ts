@@ -69,9 +69,19 @@ export class LoginSchool {
     }
 
     private async findSchoolByOwnerEmail(email: string) {
+        // Primeiro tenta buscar pelo email do owner
         if (this.schools.findByOwnerEmail) {
-            return this.schools.findByOwnerEmail(email);
+            const school = await this.schools.findByOwnerEmail(email);
+            if (school) {
+                return school;
+            }
         }
+        
+        // Se não encontrou, tenta buscar pelo email da escola
+        if (this.schools.findByEmail) {
+            return this.schools.findByEmail(email);
+        }
+        
         return null;
     }
 }
