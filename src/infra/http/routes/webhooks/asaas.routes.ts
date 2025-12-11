@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { asyncHandler } from '../../utils/async-handler';
+import { log } from '../../../../shared/logger';
 import type { HandleAsaasPaymentWebhook } from '../../../../app/use-cases/handle-asaas-payment-webhook';
 import type { HandleAsaasAccountWebhook } from '../../../../app/use-cases/handle-asaas-account-webhook';
 
@@ -50,6 +51,17 @@ export function asaasWebhookRouter(deps: AsaasWebhookDeps) {
     const router = Router();
 
     router.post('/payments', asyncHandler(async (req, res) => {
+        // Log do evento recebido antes da validação
+        log.info('[Asaas Webhook] Evento de pagamento recebido:', {
+            path: '/payments',
+            body: req.body,
+            headers: {
+                'content-type': req.headers['content-type'],
+                'user-agent': req.headers['user-agent'],
+                'x-forwarded-for': req.headers['x-forwarded-for']
+            }
+        });
+
         const payload = paymentPayloadSchema.parse(req.body ?? {});
 
         const result = await deps.handleAsaasPaymentWebhook.exec({
@@ -61,6 +73,17 @@ export function asaasWebhookRouter(deps: AsaasWebhookDeps) {
     }));
 
     router.post('/accounts', asyncHandler(async (req, res) => {
+        // Log do evento recebido antes da validação
+        log.info('[Asaas Webhook] Evento de conta recebido:', {
+            path: '/accounts',
+            body: req.body,
+            headers: {
+                'content-type': req.headers['content-type'],
+                'user-agent': req.headers['user-agent'],
+                'x-forwarded-for': req.headers['x-forwarded-for']
+            }
+        });
+
         const payload = accountPayloadSchema.parse(req.body ?? {});
 
         const result = await deps.handleAsaasAccountWebhook.exec({

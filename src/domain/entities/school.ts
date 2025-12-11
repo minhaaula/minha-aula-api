@@ -16,6 +16,7 @@ export class School {
         private readonly _ownerEmail: Email | null,
         private readonly _ownerPasswordHash: string | null,
         private readonly _accountId: string | null,
+        private readonly _accountApiKey: string | null,
         private readonly _incomeValue: number
     ) {}
 
@@ -33,6 +34,7 @@ export class School {
         ownerEmail?: string | null;
         ownerPasswordHash?: string | null;
         accountId?: string | null;
+        accountApiKey?: string | null;
         incomeValue?: number;
     }) {
         const name = params.name.trim();
@@ -56,6 +58,7 @@ export class School {
         const ownerEmail = School.normalizeOwnerEmail(params.ownerEmail);
         const ownerPasswordHash = School.normalizeOwnerPasswordHash(params.ownerPasswordHash);
         const accountId = School.normalizeAccountId(params.accountId);
+        const accountApiKey = School.normalizeAccountApiKey(params.accountApiKey);
         const incomeValue = School.normalizeIncomeValue(params.incomeValue);
 
         return new School(
@@ -72,6 +75,7 @@ export class School {
             ownerEmail,
             ownerPasswordHash,
             accountId,
+            accountApiKey,
             incomeValue
         );
     }
@@ -114,6 +118,10 @@ export class School {
 
     get accountId(): string | null {
         return this._accountId;
+    }
+
+    get accountApiKey(): string | null {
+        return this._accountApiKey;
     }
 
     get incomeValue(): number {
@@ -192,6 +200,18 @@ export class School {
         return trimmed;
     }
 
+    private static normalizeAccountApiKey(value: unknown): string | null {
+        if (value === undefined || value === null) return null;
+        if (typeof value !== 'string') {
+            throw new Error('School account API key must be a string');
+        }
+        const trimmed = value.trim();
+        if (!trimmed) {
+            return null;
+        }
+        return trimmed;
+    }
+
     private static normalizeIncomeValue(value: unknown): number {
         const DEFAULT_INCOME = 5000;
         if (value === undefined || value === null) {
@@ -220,6 +240,28 @@ export class School {
             ownerPasswordHash: this.ownerPasswordHash,
             createdAt: this.createdAt,
             accountId: normalized,
+            accountApiKey: this._accountApiKey,
+            incomeValue: this._incomeValue
+        });
+    }
+
+    withAccountApiKey(accountApiKey: string | null): School {
+        const normalized = School.normalizeAccountApiKey(accountApiKey);
+        return School.create({
+            id: this.id,
+            name: this.name,
+            email: this.email,
+            phone: this.phone,
+            cnpj: this.cnpj,
+            addresses: this.addresses,
+            ownerUserId: this.ownerUserId,
+            ownerName: this.ownerName,
+            ownerCpf: this.ownerCpf,
+            ownerEmail: this.ownerEmail,
+            ownerPasswordHash: this.ownerPasswordHash,
+            createdAt: this.createdAt,
+            accountId: this._accountId,
+            accountApiKey: normalized,
             incomeValue: this._incomeValue
         });
     }

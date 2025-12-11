@@ -98,6 +98,7 @@ export class SchoolRepositoryAdapter implements SchoolRepository {
             ownerEmail: row.ownerEmail ?? null,
             ownerPasswordHash: row.ownerPasswordHash ?? null,
             accountId: row.accountId ?? null,
+            accountApiKey: row.accountApiKey ?? null,
             incomeValue: typeof row.incomeValue === 'number' ? row.incomeValue : 5000
         });
     }
@@ -123,6 +124,7 @@ export class SchoolRepositoryAdapter implements SchoolRepository {
         row.ownerEmail = school.ownerEmail;
         row.ownerPasswordHash = school.ownerPasswordHash;
         row.accountId = school.accountId;
+        row.accountApiKey = school.accountApiKey;
         row.incomeValue = school.incomeValue;
         if (existing) {
             await this.repo.manager.createQueryBuilder()

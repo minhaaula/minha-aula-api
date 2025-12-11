@@ -169,6 +169,12 @@ export class ApproveEnrollmentRequest {
 
         const dueDate = request.enrollmentFeeDueDate ?? request.firstMonthlyPaymentDate;
 
+        // Aplicar desconto do enrollment request se existir
+        const discountCents = request.discountCents ?? null;
+        const discountReason = discountCents && discountCents > 0 
+            ? 'Desconto aplicado na matrícula' 
+            : null;
+
         return SchoolFinancialCharge.create({
             id: Uuid(),
             schoolId: request.schoolId,
@@ -180,6 +186,8 @@ export class ApproveEnrollmentRequest {
             chargeType: 'ENROLLMENT',
             description: 'Enrollment fee',
             amountCents: request.enrollmentFeeCents,
+            discountCents,
+            discountReason,
             dueDate
         });
     }

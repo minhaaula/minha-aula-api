@@ -1,6 +1,8 @@
 import { SchoolFinancialChargeRepository } from '../../ports/repositories/school-financial-charge.repo';
 import { UserRepository } from '../../ports/repositories/user.repo';
+import { SchoolRepository } from '../../ports/repositories/school.repo';
 import { PaymentProviderPort } from '../../ports/providers/payment-provider.port';
+import { AsaasProvider } from '../../infra/providers/asaas/asaas-provider';
 import { Money } from '../../domain/value-objects/money';
 import { SchoolFinancialChargeStatus } from '../../domain/entities/school-financial-charge';
 import { UserPersonaEnum } from '../../domain/value-objects/user-persona';
@@ -10,10 +12,13 @@ export type IssueEnrollmentFeeBoletoResult = IssueEnrollmentFeeBoletoOutput;
 
 export class IssueEnrollmentFeeBoleto {
     private readonly allowedStatuses = new Set<SchoolFinancialChargeStatus>(['PENDING_SYNC', 'FAILED', 'OPEN', 'PAID', 'OVERDUE']);
+    // Tipos de cobrança que devem usar a conta Asaas da escola (mensalidades e cobranças dos alunos)
+    private readonly studentChargeTypes = new Set(['ENROLLMENT', 'TUITION']);
 
     constructor(
         private readonly charges: SchoolFinancialChargeRepository,
         private readonly users: UserRepository,
+        private readonly schools: SchoolRepository,
         private readonly paymentProvider: PaymentProviderPort
     ) {}
 
@@ -49,7 +54,14 @@ export class IssueEnrollmentFeeBoleto {
         const address = owner.address.toPrimitives();
         const amount = Money.of(charge.netAmountCents, 'BRL');
 
-        const boleto = await this.paymentProvider.createBoletoCharge({
+        // Para mensalidades e cobranças dos alunos, usar a conta Asaas da escola se disponível
+        const provider = await this.resolvePaymentProvider(charge);
+
+        if (!provider.createBoletoCharge) {
+            throw new Error('Payment provider does not support boleto issuance');
+        }
+
+        const boleto = await provider.createBoletoCharge({
             amount,
             dueDate: charge.dueDate,
             description: charge.description ?? 'Taxa de matrícula',
@@ -149,5 +161,35 @@ export class IssueEnrollmentFeeBoleto {
         const payload = charge.asaasPayload ?? {};
         const value = (payload as Record<string, unknown>).barcode;
         return typeof value === 'string' && value.trim().length > 0 ? value : null;
+    }
+
+    /**
+     * Resolve o provider de pagamento a ser usado.
+     * Para mensalidades e cobranças dos alunos (ENROLLMENT, TUITION), usa a conta Asaas da escola se disponível.
+     * Caso contrário, usa o provider principal.
+     */
+    private async resolvePaymentProvider(charge: import('../../domain/entities/school-financial-charge').SchoolFinancialCharge): Promise<PaymentProviderPort> {
+        // Apenas para mensalidades e cobranças dos alunos
+        if (!this.studentChargeTypes.has(charge.chargeType)) {
+            return this.paymentProvider;
+        }
+
+        // Buscar escola para verificar se tem conta Asaas
+        const school = await this.schools.findById(charge.schoolId);
+        if (!school || !school.accountId) {
+            // Se não tiver conta Asaas, usar provider principal
+            return this.paymentProvider;
+        }
+
+        // Verificar se tem API key da subconta
+        const accountApiKey = school.accountApiKey;
+        if (!accountApiKey || !accountApiKey.trim()) {
+            // Se não tiver API key, usar provider principal
+            return this.paymentProvider;
+        }
+
+        // Criar provider com a API key da subconta da escola
+        const baseUrl = process.env.ASAAS_BASE_URL || 'https://www.asaas.com/api/v3';
+        return new AsaasProvider({ apiKey: accountApiKey.trim(), baseUrl });
     }
 }

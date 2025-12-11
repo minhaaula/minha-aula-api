@@ -87,6 +87,7 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
     const issueEnrollmentFeeBoleto = new IssueEnrollmentFeeBoleto(
         deps.financialChargesRepo,
         deps.usersRepo,
+        deps.schoolsRepo,
         deps.paymentProvider
     );
     const listEnrollmentRequests = new ListEnrollmentRequests(deps.enrollmentRequestsRepo);
