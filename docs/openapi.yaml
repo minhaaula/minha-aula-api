@@ -1502,7 +1502,7 @@ components:
           type: integer
           format: int32
           nullable: true
-          description: Preço mensal do curso em centavos (ex: 15000 = R$ 150,00). Este valor será usado como valor cheio ao criar matrículas.
+          description: 'Preço mensal do curso em centavos (ex: 15000 = R$ 150,00). Este valor será usado como valor cheio ao criar matrículas.'
           example: 15000
           minimum: 0
     UpdateCourseInput:
@@ -1525,7 +1525,7 @@ components:
           type: integer
           format: int32
           nullable: true
-          description: Preço mensal do curso em centavos (ex: 15000 = R$ 150,00). Este valor será usado como valor cheio ao criar matrículas.
+          description: 'Preço mensal do curso em centavos (ex: 15000 = R$ 150,00). Este valor será usado como valor cheio ao criar matrículas.'
           example: 15000
           minimum: 0
     CourseResponse:
@@ -1550,7 +1550,7 @@ components:
           type: integer
           format: int32
           nullable: true
-          description: Preço mensal do curso em centavos (ex: 15000 = R$ 150,00). Este valor é usado como valor cheio ao criar matrículas.
+          description: 'Preço mensal do curso em centavos (ex: 15000 = R$ 150,00). Este valor é usado como valor cheio ao criar matrículas.'
           example: 15000
         createdAt:
           type: string
@@ -1721,7 +1721,7 @@ components:
           type: integer
           format: int32
           nullable: true
-          description: Valor cheio do curso em centavos (copiado do monthlyPriceCents do curso no momento da matrícula). Usado como base para cálculo de descontos.
+          description: 'Valor cheio do curso em centavos (copiado do monthlyPriceCents do curso no momento da matrícula). Usado como base para cálculo de descontos.'
           example: 15000
         enrolledAt:
           type: string
