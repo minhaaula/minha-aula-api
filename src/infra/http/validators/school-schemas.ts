@@ -51,7 +51,8 @@ export const courseCategorySchema = z.object({
 export const createCourseSchema = z.object({
     name: z.string().min(3),
     description: z.string().min(1).optional(),
-    categories: z.array(courseCategorySchema).optional()
+    categories: z.array(courseCategorySchema).optional(),
+    monthlyPriceCents: z.number().int().nonnegative().nullable().optional()
 });
 
 export const updateCourseSchema = z.object({

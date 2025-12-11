@@ -14,6 +14,7 @@ export class CreateCourse {
         name: string;
         description?: string | null;
         categories?: Array<{ categoryId: string; subcategoryIds?: string[] }>;
+        monthlyPriceCents?: number | null;
     }): Promise<{
         id: string;
         schoolId: string;
@@ -33,7 +34,8 @@ export class CreateCourse {
             schoolId: school.id,
             name: input.name,
             description: input.description ?? null,
-            categories: input.categories
+            categories: input.categories,
+            monthlyPriceCents: input.monthlyPriceCents ?? null
         });
 
         await this.courses.save(course);

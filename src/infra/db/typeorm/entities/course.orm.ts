@@ -16,6 +16,8 @@ export class CourseOrm {
 
     @Column('text', { nullable: true }) description!: string | null;
 
+    @Column('int', { name: 'monthly_price_cents', nullable: true }) monthlyPriceCents!: number | null;
+
     @Column('tinyint', { width: 1, name: 'is_active', default: () => '1' }) isActive!: boolean;
 
     @CreateDateColumn({ name: 'created_at', type: 'datetime', default: () => 'CURRENT_TIMESTAMP' }) createdAt!: Date;

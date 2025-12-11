@@ -30,6 +30,8 @@ export class EnrollmentOrm {
 
     @Column('enum', { enum: ['PENDING', 'ACTIVE', 'COMPLETED', 'CANCELLED'], default: 'ACTIVE' }) status!: EnrollmentStatus;
 
+    @Column('int', { name: 'full_amount_cents', nullable: true }) fullAmountCents!: number | null;
+
     @CreateDateColumn({ name: 'enrolled_at', type: 'datetime', default: () => 'CURRENT_TIMESTAMP' }) enrolledAt!: Date;
 
     @UpdateDateColumn({ name: 'updated_at', type: 'datetime', default: () => 'CURRENT_TIMESTAMP' }) updatedAt!: Date;

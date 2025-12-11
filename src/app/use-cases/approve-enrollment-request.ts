@@ -1,6 +1,7 @@
 import { EnrollmentRequestRepository } from '../../ports/repositories/enrollment-request.repo';
 import { EnrollmentRepository } from '../../ports/repositories/enrollment.repo';
 import { CourseClassRepository } from '../../ports/repositories/course-class.repo';
+import { CourseRepository } from '../../ports/repositories/course.repo';
 import { SchoolFinancialChargeRepository } from '../../ports/repositories/school-financial-charge.repo';
 import { AppError, ErrorCode } from '../../shared/errors';
 import { Enrollment } from '../../domain/entities/enrollment';
@@ -14,6 +15,7 @@ export class ApproveEnrollmentRequest {
         private readonly requests: EnrollmentRequestRepository,
         private readonly enrollments: EnrollmentRepository,
         private readonly classes: CourseClassRepository,
+        private readonly courses: CourseRepository,
         private readonly financialCharges: SchoolFinancialChargeRepository
     ) {}
 
@@ -31,8 +33,24 @@ export class ApproveEnrollmentRequest {
             request.requestedForDependentId
         );
 
-        // Criar matrícula
-        const enrollment = this.createEnrollmentFromRequest(request);
+        // Buscar curso para obter o valor cheio
+        const courseClass = await this.classes.findById(request.courseClassId);
+        if (!courseClass) {
+            throw AppError.fromCode(ErrorCode.COURSE_CLASS_NOT_FOUND, {
+                courseClassId: request.courseClassId,
+                requestId: request.id
+            });
+        }
+        const course = await this.courses.findById(courseClass.courseId);
+        if (!course) {
+            throw AppError.fromCode(ErrorCode.COURSE_NOT_FOUND, {
+                courseId: courseClass.courseId,
+                requestId: request.id
+            });
+        }
+
+        // Criar matrícula com valor cheio do curso
+        const enrollment = this.createEnrollmentFromRequest(request, course.monthlyPriceCents);
 
         // Criar cobrança de taxa de matrícula se aplicável
         const pendingCharge = await this.buildEnrollmentCharge(request);
@@ -114,7 +132,7 @@ export class ApproveEnrollmentRequest {
         }
     }
 
-    private createEnrollmentFromRequest(request: EnrollmentRequest): Enrollment {
+    private createEnrollmentFromRequest(request: EnrollmentRequest, fullAmountCents: number | null): Enrollment {
         const enrollmentId = Uuid();
 
         if (request.requestedForDependentId) {
@@ -122,7 +140,8 @@ export class ApproveEnrollmentRequest {
                 id: enrollmentId,
                 courseClassId: request.courseClassId,
                 ownerUserId: request.requestedForUserId,
-                dependentId: request.requestedForDependentId
+                dependentId: request.requestedForDependentId,
+                fullAmountCents
             });
         }
 
@@ -130,7 +149,8 @@ export class ApproveEnrollmentRequest {
             id: enrollmentId,
             courseClassId: request.courseClassId,
             ownerUserId: request.requestedForUserId,
-            studentUserId: request.requestedForUserId
+            studentUserId: request.requestedForUserId,
+            fullAmountCents
         });
     }
 

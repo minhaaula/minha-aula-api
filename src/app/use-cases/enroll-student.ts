@@ -39,8 +39,8 @@ export class EnrollStudent {
         // Verificar se usuário já está matriculado (se não for dependente)
         await this.ensureNoExistingEnrollment(courseClass.id, owner.id, dependentId);
 
-        // Criar matrícula
-        const enrollment = this.createEnrollment(courseClass.id, owner.id, dependentId);
+        // Criar matrícula com valor cheio do curso
+        const enrollment = this.createEnrollment(courseClass.id, owner.id, dependentId, course.monthlyPriceCents);
 
         await this.enrollments.save(enrollment);
 
@@ -152,14 +152,16 @@ export class EnrollStudent {
     private createEnrollment(
         courseClassId: string,
         ownerUserId: string,
-        dependentId: string | null
+        dependentId: string | null,
+        fullAmountCents: number | null
     ): Enrollment {
         if (dependentId) {
             return Enrollment.createForDependent({
                 id: Uuid(),
                 courseClassId,
                 ownerUserId,
-                dependentId
+                dependentId,
+                fullAmountCents
             });
         }
 
@@ -167,7 +169,8 @@ export class EnrollStudent {
             id: Uuid(),
             courseClassId,
             ownerUserId,
-            studentUserId: ownerUserId
+            studentUserId: ownerUserId,
+            fullAmountCents
         });
     }
 }

@@ -38,6 +38,7 @@ import { IssueSchoolPlanInvoice } from '../../app/use-cases/issue-school-plan-in
 import { PaymentProviderPort } from '../../ports/providers/payment-provider.port';
 import { AsaasProviderPort } from '../../ports/providers/asaas-port';
 import { HandleAsaasPaymentWebhook } from '../../app/use-cases/handle-asaas-payment-webhook';
+import { HandleAsaasAccountWebhook } from '../../app/use-cases/handle-asaas-account-webhook';
 import { asaasWebhookRouter } from '../../infra/http/routes/webhooks/asaas.routes';
 import { ListSchoolPlanInvoices } from '../../app/use-cases/list-school-plan-invoices';
 import { EnrollmentRepositoryAdapter } from '../../infra/db/typeorm/enrollment-repository';
@@ -57,6 +58,7 @@ import { GetEnrollmentRequest } from '../../app/use-cases/get-enrollment-request
 import { CreateSchoolCharge } from '../../app/use-cases/create-school-charge';
 import { GetSchoolFinancialSummary } from '../../app/use-cases/get-school-financial-summary';
 import { ListSchoolWithdrawals } from '../../app/use-cases/list-school-withdrawals';
+import { RequestSchoolWithdrawal } from '../../app/use-cases/request-school-withdrawal';
 import { SchoolWithdrawalRepositoryAdapter } from '../../infra/db/typeorm/school-withdrawal-repository.adapter';
 import { landingRouter } from '../../infra/http/routes/landing.routes';
 import { SchoolBankAccountRepositoryAdapter } from '../../infra/db/typeorm/school-bank-account-repository.adapter';
@@ -174,6 +176,7 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         deps.enrollmentRequestsRepo,
         deps.enrollmentsRepo,
         deps.classesRepo,
+        deps.coursesRepo,
         deps.financialChargesRepo
     );
     const issueEnrollmentFeeBoleto = new IssueEnrollmentFeeBoleto(
@@ -192,6 +195,21 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
     const getSchoolFinancialSummary = new GetSchoolFinancialSummary(deps.financialChargesRepo);
     const withdrawalsRepo = new SchoolWithdrawalRepositoryAdapter();
     const listSchoolWithdrawals = new ListSchoolWithdrawals(withdrawalsRepo);
+    
+    // Declarar asaasProvider antes de usar
+    const asaasProvider = typeof deps.paymentProvider.createSubAccount === 'function'
+        ? deps.paymentProvider as AsaasProviderPort
+        : undefined;
+    
+    const requestSchoolWithdrawal = deps.bankAccountsRepo && asaasProvider
+        ? new RequestSchoolWithdrawal(
+            deps.schoolsRepo,
+            deps.bankAccountsRepo,
+            withdrawalsRepo,
+            deps.financialChargesRepo,
+            asaasProvider
+        )
+        : undefined;
     const scheduleClassSession = new ScheduleClassSession(deps.classSessionsRepo, deps.classesRepo, deps.coursesRepo);
     const listClassSessions = new ListClassSessions(deps.classSessionsRepo, deps.classesRepo, deps.coursesRepo);
     const cancelClassSession = new CancelClassSession(deps.classSessionsRepo);
@@ -208,15 +226,15 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         deps.planFinancesRepo,
         deps.planInvoicesRepo
     );
-    const asaasProvider = typeof deps.paymentProvider.createSubAccount === 'function'
-        ? deps.paymentProvider as AsaasProviderPort
-        : undefined;
 
     const handleAsaasPaymentWebhook = new HandleAsaasPaymentWebhook(
         deps.planInvoicesRepo,
         deps.planFinancesRepo,
         deps.schoolsRepo,
         asaasProvider
+    );
+    const handleAsaasAccountWebhook = new HandleAsaasAccountWebhook(
+        deps.schoolsRepo
     );
     const assignSchoolPlan = new AssignSchoolPlan(
         deps.schoolsRepo,
@@ -249,6 +267,7 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         createSchoolCharge,
         getSchoolFinancialSummary,
         listSchoolWithdrawals,
+        requestSchoolWithdrawal,
         scheduleClassSession,
         listClassSessions,
         cancelClassSession,
@@ -273,7 +292,8 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
     });
 
     const asaasWebhookRouterInstance = asaasWebhookRouter({
-        handleAsaasPaymentWebhook
+        handleAsaasPaymentWebhook,
+        handleAsaasAccountWebhook
     });
 
     const landingRouterInstance = landingRouter({

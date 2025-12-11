@@ -131,7 +131,8 @@ export class CourseRepositoryAdapter implements CourseRepository {
                 : [],
             isActive: row.isActive,
             deletedAt: row.deletedAt,
-            createdAt: row.createdAt
+            createdAt: row.createdAt,
+            monthlyPriceCents: row.monthlyPriceCents
         });
     }
 
@@ -148,6 +149,7 @@ export class CourseRepositoryAdapter implements CourseRepository {
         row.schoolId = course.schoolId;
         row.name = course.name;
         row.description = course.description;
+        row.monthlyPriceCents = course.monthlyPriceCents;
         row.isActive = course.isActive;
         row.createdAt = existing?.createdAt ?? course.createdAt;
         row.deletedAt = course.deletedAt;

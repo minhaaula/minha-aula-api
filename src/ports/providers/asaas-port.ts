@@ -52,9 +52,37 @@ export type AsaasSubAccount = {
     walletId?: string;
 };
 
+export type CreateAsaasTransferInput = {
+    accountId: string;
+    amount: Money;
+    bankAccount: string;
+    bankAccountDigit?: string;
+    bankAgency: string;
+    bankAgencyDigit?: string;
+    bankCode: string;
+    accountType: 'CORRENTE' | 'POUPANCA';
+    documentHolder: string;
+    description?: string;
+    pixKey?: string;
+};
+
+export type AsaasTransferResponse = {
+    id: string;
+    status: string;
+    value: number;
+    netValue?: number;
+    transferFee?: number;
+    effectiveDate?: Date;
+    scheduleDate?: Date;
+    dateCreated: Date;
+    bankAccount?: string;
+    transactionReceiptUrl?: string;
+};
+
 export interface AsaasProviderPort {
     createBoletoCharge(input: CreateBoletoChargeInput): Promise<AsaasChargeResponse>;
     authorizeCharge(input: { amount: Money; method: PaymentMethod; customerId: string; metadata?: Record<string, string>; }): Promise<{ providerRef: string }>;
     captureCharge(providerRef: string, amount?: Money): Promise<void>;
     createSubAccount?(input: CreateAsaasSubAccountInput): Promise<AsaasSubAccount>;
+    createTransfer?(input: CreateAsaasTransferInput): Promise<AsaasTransferResponse>;
 }

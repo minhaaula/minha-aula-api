@@ -12,7 +12,8 @@ export class Course {
         private readonly _categories: CourseCategory[],
         private _isActive: boolean,
         private _deletedAt: Date | null,
-        public readonly createdAt: Date
+        public readonly createdAt: Date,
+        private readonly _monthlyPriceCents: number | null
     ) {}
 
     static create(params: {
@@ -24,6 +25,7 @@ export class Course {
         isActive?: boolean;
         deletedAt?: Date | null;
         createdAt?: Date;
+        monthlyPriceCents?: number | null;
     }) {
         const name = params.name.trim();
         if (!name) throw new Error('Course name is required');
@@ -33,6 +35,7 @@ export class Course {
         const categories = Course.normalizeCategories(params.categories);
         const deletedAt = params.deletedAt ?? null;
         const isActive = deletedAt ? false : (params.isActive ?? true);
+        const monthlyPriceCents = Course.normalizeMonthlyPriceCents(params.monthlyPriceCents);
 
         return new Course(
             params.id,
@@ -42,7 +45,8 @@ export class Course {
             categories,
             isActive,
             deletedAt,
-            params.createdAt ?? new Date()
+            params.createdAt ?? new Date(),
+            monthlyPriceCents
         );
     }
 
@@ -59,6 +63,10 @@ export class Course {
 
     get deletedAt(): Date | null {
         return this._deletedAt;
+    }
+
+    get monthlyPriceCents(): number | null {
+        return this._monthlyPriceCents;
     }
 
     deactivate() {
@@ -135,5 +143,14 @@ export class Course {
         }
 
         return normalized;
+    }
+
+    private static normalizeMonthlyPriceCents(value: unknown): number | null {
+        if (value === undefined || value === null) return null;
+        const numeric = typeof value === 'string' ? Number(value) : value;
+        if (typeof numeric !== 'number' || Number.isNaN(numeric) || numeric < 0) {
+            throw new Error('Course monthly price must be a non-negative number');
+        }
+        return Math.round(numeric);
     }
 }

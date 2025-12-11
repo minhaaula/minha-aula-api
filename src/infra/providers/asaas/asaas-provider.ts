@@ -1,7 +1,7 @@
 import { Money } from '../../../domain/value-objects/money';
 import { PaymentProviderPort, CreateChargeInput } from '../../../ports/providers/payment-provider.port';
 import { AsaasClient } from './asaas-client';
-import { AsaasChargeResponse, AsaasSubAccount, CreateAsaasSubAccountInput } from '../../../ports/providers/asaas-port';
+import { AsaasChargeResponse, AsaasSubAccount, CreateAsaasSubAccountInput, CreateAsaasTransferInput, AsaasTransferResponse } from '../../../ports/providers/asaas-port';
 import { CreateBoletoChargeInput } from '../../../ports/providers/payment-provider.port';
 
 
@@ -51,6 +51,40 @@ export class AsaasProvider implements PaymentProviderPort {
     }
 
     async createSubAccount(input: CreateAsaasSubAccountInput): Promise<AsaasSubAccount> {
+        // Validação: campos obrigatórios
+        if (!input.name || !input.name.trim()) {
+            throw new Error('SubAccount name is required');
+        }
+        if (!input.email || !input.email.trim()) {
+            throw new Error('SubAccount email is required');
+        }
+        if (!input.cpfCnpj || !input.cpfCnpj.trim()) {
+            throw new Error('SubAccount CPF/CNPJ is required');
+        }
+        // Validação: CNPJ deve ter 14 dígitos ou CPF 11 dígitos
+        const cpfCnpjDigits = input.cpfCnpj.replace(/\D/g, '');
+        if (cpfCnpjDigits.length !== 11 && cpfCnpjDigits.length !== 14) {
+            throw new Error('SubAccount CPF/CNPJ must have 11 (CPF) or 14 (CNPJ) digits');
+        }
+        // Validação: incomeValue deve ser positivo
+        if (!Number.isFinite(input.incomeValue) || input.incomeValue <= 0) {
+            throw new Error('SubAccount incomeValue must be a positive number');
+        }
+        // Validação: se address está presente, addressNumber e postalCode também devem estar
+        if (input.address) {
+            if (!input.addressNumber || !input.addressNumber.trim()) {
+                throw new Error('SubAccount addressNumber is required when address is provided');
+            }
+            if (!input.postalCode || !input.postalCode.trim()) {
+                throw new Error('SubAccount postalCode is required when address is provided');
+            }
+            // Validação: CEP deve ter 8 dígitos
+            const postalCodeDigits = input.postalCode.replace(/\D/g, '');
+            if (postalCodeDigits.length !== 8) {
+                throw new Error('SubAccount postalCode must have 8 digits');
+            }
+        }
+
         const payload = {
             name: input.name,
             email: input.email,
@@ -74,7 +108,18 @@ export class AsaasProvider implements PaymentProviderPort {
         };
 
         const response = await this.client.createSubAccount(payload);
-        console.log(response)
+        
+        // Validação: verificar se a resposta contém dados essenciais
+        if (!response.id || !response.id.trim()) {
+            throw new Error('Asaas API returned invalid response: missing account ID');
+        }
+        if (!response.name || !response.name.trim()) {
+            throw new Error('Asaas API returned invalid response: missing account name');
+        }
+        if (!response.email || !response.email.trim()) {
+            throw new Error('Asaas API returned invalid response: missing account email');
+        }
+
         return {
             id: response.id,
             name: response.name,
@@ -86,6 +131,35 @@ export class AsaasProvider implements PaymentProviderPort {
         };
     }
 
+    async createTransfer(input: CreateAsaasTransferInput): Promise<AsaasTransferResponse> {
+        const payload = {
+            value: input.amount.amount / 100,
+            bankAccount: input.bankAccount,
+            bankAccountDigit: input.bankAccountDigit ?? undefined,
+            bankAgency: input.bankAgency,
+            bankAgencyDigit: input.bankAgencyDigit ?? undefined,
+            bankCode: input.bankCode,
+            accountType: input.accountType,
+            documentHolder: input.documentHolder,
+            description: input.description ?? undefined,
+            pixKey: input.pixKey ?? undefined
+        };
+
+        const response = await this.client.createTransfer(input.accountId, payload);
+        return {
+            id: response.id,
+            status: response.status,
+            value: response.value,
+            netValue: response.netValue,
+            transferFee: response.transferFee,
+            effectiveDate: response.effectiveDate ? new Date(response.effectiveDate) : undefined,
+            scheduleDate: response.scheduleDate ? new Date(response.scheduleDate) : undefined,
+            dateCreated: new Date(response.dateCreated),
+            bankAccount: response.bankAccount,
+            transactionReceiptUrl: response.transactionReceiptUrl
+        };
+    }
+
     private resolveDefaultWebhooks(fallbackEmail: string): CreateAsaasSubAccountInput['webhooks'] | undefined {
         const url = process.env.ASAAS_SUBACCOUNT_WEBHOOK_URL?.trim();
         const email = process.env.ASAAS_SUBACCOUNT_WEBHOOK_EMAIL?.trim() || fallbackEmail;
@@ -93,26 +167,56 @@ export class AsaasProvider implements PaymentProviderPort {
             return undefined;
         }
 
-        const name = process.env.ASAAS_SUBACCOUNT_WEBHOOK_NAME?.trim() || 'Webhook para cobranças';
+        const webhooks: CreateAsaasSubAccountInput['webhooks'] = [];
         const sendType = (process.env.ASAAS_SUBACCOUNT_WEBHOOK_SEND_TYPE?.trim()?.toUpperCase() === 'SIMULTANEOUSLY')
             ? 'SIMULTANEOUSLY'
             : 'SEQUENTIALLY';
         const authToken = process.env.ASAAS_SUBACCOUNT_WEBHOOK_AUTH_TOKEN?.trim() || undefined;
-        const eventsEnv = process.env.ASAAS_SUBACCOUNT_WEBHOOK_EVENTS?.trim();
-        const events = eventsEnv && eventsEnv.length
-            ? eventsEnv.split(',').map((event) => event.trim()).filter(Boolean)
+        const apiVersion = Number(process.env.ASAAS_SUBACCOUNT_WEBHOOK_API_VERSION ?? 3) || 3;
+
+        // Webhook de pagamentos
+        const paymentEventsEnv = process.env.ASAAS_SUBACCOUNT_WEBHOOK_EVENTS?.trim();
+        const paymentEvents = paymentEventsEnv && paymentEventsEnv.length
+            ? paymentEventsEnv.split(',').map((event) => event.trim()).filter(Boolean)
             : ['PAYMENT_CREATED', 'PAYMENT_UPDATED', 'PAYMENT_CONFIRMED', 'PAYMENT_RECEIVED'];
 
-        return [{
-            name,
-            url,
+        webhooks.push({
+            name: process.env.ASAAS_SUBACCOUNT_WEBHOOK_NAME?.trim() || 'Webhook para cobranças',
+            url: `${url}/payments`,
             email,
             sendType,
             interrupted: false,
             enabled: true,
-            apiVersion: Number(process.env.ASAAS_SUBACCOUNT_WEBHOOK_API_VERSION ?? 3) || 3,
+            apiVersion,
             authToken,
-            events
-        }];
+            events: paymentEvents
+        });
+
+        // Webhook de contas (se configurado)
+        const accountWebhookUrl = process.env.ASAAS_SUBACCOUNT_ACCOUNT_WEBHOOK_URL?.trim() || url;
+        const accountEventsEnv = process.env.ASAAS_SUBACCOUNT_ACCOUNT_WEBHOOK_EVENTS?.trim();
+        const accountEvents = accountEventsEnv && accountEventsEnv.length
+            ? accountEventsEnv.split(',').map((event) => event.trim()).filter(Boolean)
+            : [
+                'ACCOUNT_STATUS_GENERAL_APPROVAL_APPROVED',
+                'ACCOUNT_STATUS_GENERAL_APPROVAL_REJECTED',
+                'ACCOUNT_STATUS_GENERAL_APPROVAL_AWAITING_APPROVAL',
+                'ACCOUNT_STATUS_GENERAL_APPROVAL_PENDING',
+                'ACCOUNT_CREATED'
+            ];
+
+        webhooks.push({
+            name: process.env.ASAAS_SUBACCOUNT_ACCOUNT_WEBHOOK_NAME?.trim() || 'Webhook para contas',
+            url: `${accountWebhookUrl}/accounts`,
+            email,
+            sendType,
+            interrupted: false,
+            enabled: true,
+            apiVersion,
+            authToken,
+            events: accountEvents
+        });
+
+        return webhooks;
     }
 }

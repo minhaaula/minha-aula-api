@@ -740,6 +740,10 @@ paths:
       tags:
         - Schools
       summary: Criar um curso para uma escola
+      description: |
+        Cria um novo curso para a escola. O campo opcional `monthlyPriceCents` define o preço mensal do curso
+        em centavos (ex: 15000 = R$ 150,00). Este valor será automaticamente copiado para o campo `fullAmountCents`
+        das matrículas criadas para turmas deste curso, servindo como base para cálculo de descontos.
       security:
         - bearerAuth: []
       requestBody:
@@ -1156,6 +1160,12 @@ paths:
       tags:
         - Schools
       summary: Matricular aluno diretamente na turma
+      description: |
+        Cria uma matrícula vinculando um aluno (ou dependente) a uma turma específica.
+        
+        O sistema automaticamente copia o valor do campo `monthlyPriceCents` do curso relacionado à turma
+        para o campo `fullAmountCents` da matrícula. Este valor cheio pode ser usado posteriormente como
+        base para cálculo de descontos.
       security:
         - bearerAuth: []
       parameters:

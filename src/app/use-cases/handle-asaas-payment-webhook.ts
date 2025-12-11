@@ -138,6 +138,20 @@ export class HandleAsaasPaymentWebhook {
             throw new Error(`School ${invoice.schoolId} not found when creating Asaas subaccount`);
         }
 
+        // Validação: verificar se a escola tem os dados obrigatórios
+        if (!school.name || !school.name.trim()) {
+            throw new Error(`School ${school.id} has invalid name for creating Asaas subaccount`);
+        }
+        if (!school.email || !school.email.trim()) {
+            throw new Error(`School ${school.id} has invalid email for creating Asaas subaccount`);
+        }
+        if (!school.cnpj || school.cnpj.length !== 14) {
+            throw new Error(`School ${school.id} has invalid CNPJ for creating Asaas subaccount`);
+        }
+        if (!school.phone || school.phone.length < 10) {
+            throw new Error(`School ${school.id} has invalid phone for creating Asaas subaccount`);
+        }
+
         const metadataAccountId = metadata.accountId ?? metadata.asaasSubAccountId ?? metadata.paymentAccountId;
         const metadataStatus = metadata.accountStatus ?? metadata.asaasSubAccountStatus ?? metadata.paymentAccountStatus;
         const rawCompanyType = metadata.accountCompanyType ?? metadata.companyType;
@@ -155,12 +169,21 @@ export class HandleAsaasPaymentWebhook {
             ? Math.round(parsedIncomeValue as number)
             : defaultIncomeValue;
 
+        // Validação: garantir que incomeValue seja válido
+        if (!Number.isFinite(incomeValue) || incomeValue <= 0) {
+            throw new Error(`Invalid income value for school ${school.id}: ${incomeValue}`);
+        }
+
         const allowedCompanyTypes = new Set(['MEI', 'LIMITED', 'INDIVIDUAL', 'ASSOCIATION']);
         const companyType = normalizedCompanyType && allowedCompanyTypes.has(normalizedCompanyType)
             ? normalizedCompanyType
             : 'LIMITED';
 
         if (school.accountId) {
+            // Validação: verificar se accountId não está vazio
+            if (!school.accountId.trim()) {
+                throw new Error(`School ${school.id} has empty accountId`);
+            }
             metadata.accountId = school.accountId;
             if (metadataStatus) {
                 metadata.accountStatus = metadataStatus;
@@ -174,6 +197,10 @@ export class HandleAsaasPaymentWebhook {
         }
 
         if (metadataAccountId) {
+            // Validação: verificar se metadataAccountId não está vazio
+            if (!metadataAccountId.trim()) {
+                throw new Error(`Invalid accountId in metadata for school ${school.id}`);
+            }
             const updatedFromMetadata = school.withAccountId(metadataAccountId);
             await this.schools.save(updatedFromMetadata);
             metadata.accountId = metadataAccountId;
@@ -188,9 +215,21 @@ export class HandleAsaasPaymentWebhook {
             return;
         }
 
+        // Validação: verificar se a escola tem endereço
         const mainAddress = school.addresses[0];
         if (!mainAddress) {
             throw new Error(`School ${school.id} has no address to create Asaas subaccount`);
+        }
+
+        // Validação: verificar se o endereço tem os campos obrigatórios
+        if (!mainAddress.street || !mainAddress.street.trim()) {
+            throw new Error(`School ${school.id} address has invalid street`);
+        }
+        if (!mainAddress.number || !mainAddress.number.trim()) {
+            throw new Error(`School ${school.id} address has invalid number`);
+        }
+        if (!mainAddress.zipCode || mainAddress.zipCode.length !== 8) {
+            throw new Error(`School ${school.id} address has invalid zip code`);
         }
 
         const subAccount = await this.asaasProvider.createSubAccount({
@@ -207,6 +246,11 @@ export class HandleAsaasPaymentWebhook {
             province: mainAddress.district ?? null,
             postalCode: mainAddress.zipCode
         });
+
+        // Validação: verificar se a resposta da API contém o ID da conta
+        if (!subAccount.id || !subAccount.id.trim()) {
+            throw new Error(`Asaas API returned invalid subaccount ID for school ${school.id}`);
+        }
 
         const updatedSchool = school.withAccountId(subAccount.id);
         await this.schools.save(updatedSchool);

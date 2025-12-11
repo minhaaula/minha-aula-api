@@ -4,6 +4,7 @@ import { asyncHandler } from '../../utils/async-handler';
 import type { CreateSchoolCharge } from '../../../../app/use-cases/create-school-charge';
 import type { GetSchoolFinancialSummary } from '../../../../app/use-cases/get-school-financial-summary';
 import type { ListSchoolWithdrawals } from '../../../../app/use-cases/list-school-withdrawals';
+import type { RequestSchoolWithdrawal } from '../../../../app/use-cases/request-school-withdrawal';
 import type { SchoolRouteGuards } from './guards';
 import type { SchoolContextRequest } from '../../middlewares/resolve-school-context';
 import type { SchoolFinancialCharge } from '../../../../domain/entities/school-financial-charge';
@@ -51,10 +52,16 @@ const toCents = (value: number) => Math.round(value * 100);
 const toCurrency = (valueInCents: number) => Number((valueInCents / 100).toFixed(2));
 const formatDate = (date: Date) => date.toISOString().split('T')[0];
 
+const requestWithdrawalSchema = z.object({
+    valor: z.number().positive('O valor deve ser maior que zero'),
+    idContaBancaria: z.string().uuid('ID da conta bancária inválido')
+});
+
 type FinanceRoutesDeps = {
     createSchoolCharge?: CreateSchoolCharge;
     getSchoolFinancialSummary?: GetSchoolFinancialSummary;
     listSchoolWithdrawals?: ListSchoolWithdrawals;
+    requestSchoolWithdrawal?: RequestSchoolWithdrawal;
 };
 
 export function buildFinanceRoutes(deps: FinanceRoutesDeps, guards: SchoolRouteGuards) {
@@ -150,6 +157,26 @@ export function buildFinanceRoutes(deps: FinanceRoutesDeps, guards: SchoolRouteG
                     processedAt: withdrawal.processedAt ? formatDate(withdrawal.processedAt) : null,
                     cancelledAt: withdrawal.cancelledAt ? formatDate(withdrawal.cancelledAt) : null
                 }))
+            });
+        }));
+    }
+
+    if (deps.requestSchoolWithdrawal) {
+        router.post('/withdrawals', ...protectedMiddleware, asyncHandler(async (req, res) => {
+            const schoolId = (req as SchoolContextRequest).schoolId as string;
+            const body = requestWithdrawalSchema.parse(req.body);
+
+            const result = await deps.requestSchoolWithdrawal!.exec({
+                schoolId,
+                amount: body.valor,
+                bankAccountId: body.idContaBancaria
+            });
+
+            res.status(201).json({
+                id: result.withdrawalId,
+                valor: result.amount,
+                valorCentavos: result.amountCents,
+                status: result.status
             });
         }));
     }

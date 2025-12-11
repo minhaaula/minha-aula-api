@@ -1498,6 +1498,13 @@ components:
           description: Categorias vinculadas ao curso com suas subcategorias.
           items:
             $ref: '#/components/schemas/SchoolCategoryLinkInput'
+        monthlyPriceCents:
+          type: integer
+          format: int32
+          nullable: true
+          description: Preço mensal do curso em centavos (ex: 15000 = R$ 150,00). Este valor será usado como valor cheio ao criar matrículas.
+          example: 15000
+          minimum: 0
     UpdateCourseInput:
       type: object
       properties:
@@ -1514,6 +1521,13 @@ components:
           description: Categorias vinculadas ao curso com suas subcategorias.
           items:
             $ref: '#/components/schemas/SchoolCategoryLinkInput'
+        monthlyPriceCents:
+          type: integer
+          format: int32
+          nullable: true
+          description: Preço mensal do curso em centavos (ex: 15000 = R$ 150,00). Este valor será usado como valor cheio ao criar matrículas.
+          example: 15000
+          minimum: 0
     CourseResponse:
       type: object
       properties:
@@ -1532,6 +1546,12 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/SchoolCategoryLink'
+        monthlyPriceCents:
+          type: integer
+          format: int32
+          nullable: true
+          description: Preço mensal do curso em centavos (ex: 15000 = R$ 150,00). Este valor é usado como valor cheio ao criar matrículas.
+          example: 15000
         createdAt:
           type: string
           format: date-time
@@ -1697,6 +1717,12 @@ components:
         status:
           type: string
           enum: [PENDING, ACTIVE, COMPLETED, CANCELLED]
+        fullAmountCents:
+          type: integer
+          format: int32
+          nullable: true
+          description: Valor cheio do curso em centavos (copiado do monthlyPriceCents do curso no momento da matrícula). Usado como base para cálculo de descontos.
+          example: 15000
         enrolledAt:
           type: string
           format: date-time
