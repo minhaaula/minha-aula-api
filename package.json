@@ -34,6 +34,7 @@
     "test:directory": "tsx scripts/test-directory-route.ts",
     "test:schools-directory": "tsx scripts/test-schools-directory-route.ts",
     "hash:password": "tsx scripts/generate-password-hash.ts",
+    "cron:monthly-charges": "tsx src/infra/cron/generate-monthly-charges.ts",
     "deploy:railway": "npm install && npm run test && npm run build && npm run migrate:run:prod && npm run start"
   },
   "keywords": [],

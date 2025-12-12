@@ -218,7 +218,7 @@ export function studentsRouter(deps: {
     if (deps.listStudentPayments) {
         const paymentsQuerySchema = z.object({
             status: z.enum(['pendente', 'atrasado', 'pago']).optional(),
-            isPaid: z.coerce.boolean().optional()
+            isPaid: z.union([z.boolean(), z.string().transform((val) => val === 'true')]).optional()
         });
 
         r.get('/payments', requireStudent, asyncHandler(async (req, res) => {
@@ -230,9 +230,20 @@ export function studentsRouter(deps: {
                 });
             }
 
+            // Parse isPaid corretamente (query strings vêm como strings)
+            let isPaid: boolean | undefined = undefined;
+            if (req.query.isPaid !== undefined) {
+                const isPaidValue = req.query.isPaid;
+                if (typeof isPaidValue === 'string') {
+                    isPaid = isPaidValue.toLowerCase() === 'true';
+                } else if (typeof isPaidValue === 'boolean') {
+                    isPaid = isPaidValue;
+                }
+            }
+
             const query = paymentsQuerySchema.parse({
                 status: typeof req.query.status === 'string' ? req.query.status : undefined,
-                isPaid: typeof req.query.isPaid !== 'undefined' ? req.query.isPaid : undefined
+                isPaid
             });
 
             const result = await deps.listStudentPayments!.exec({

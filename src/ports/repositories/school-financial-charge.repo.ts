@@ -27,5 +27,7 @@ export interface SchoolFinancialChargeRepository {
         isPaid?: boolean;
     }): Promise<StudentPaymentInfo[]>;
     findPaidChargesBySchoolId?(schoolId: string): Promise<PaidChargeSummary[]>;
+    findLastTuitionCharge?(enrollmentId: string, courseClassId: string, ownerUserId: string, studentUserId: string | null, dependentId: string | null): Promise<SchoolFinancialCharge | null>;
+    findTuitionChargesForMonth?(courseClassId: string, ownerUserId: string, studentUserId: string | null, dependentId: string | null, year: number, month: number): Promise<SchoolFinancialCharge[]>;
 }
 

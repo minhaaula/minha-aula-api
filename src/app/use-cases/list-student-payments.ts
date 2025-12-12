@@ -41,8 +41,9 @@ export class ListStudentPayments {
         }
 
         // Buscar pagamentos
+        // Se isPaid foi especificado, não usar statusFilter para evitar conflito
         const paymentsData = await this.financialCharges.findByOwnerUserId(userId, {
-            status: statusFilter,
+            status: input.isPaid !== undefined ? undefined : statusFilter, // Ignorar statusFilter se isPaid foi especificado
             isPaid: input.isPaid
         });
 

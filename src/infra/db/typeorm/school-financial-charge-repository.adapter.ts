@@ -46,12 +46,7 @@ export class SchoolFinancialChargeRepositoryAdapter implements SchoolFinancialCh
             ])
             .orderBy('charge.dueDate', 'DESC');
 
-        // Filtro por status específico
-        if (filters?.status) {
-            queryBuilder.andWhere('charge.status = :status', { status: filters.status });
-        }
-
-        // Filtro por isPaid (pagos ou em aberto)
+        // Filtro por isPaid (pagos ou em aberto) - tem prioridade sobre status específico
         if (filters?.isPaid !== undefined) {
             if (filters.isPaid) {
                 queryBuilder.andWhere('charge.status = :paidStatus', { paidStatus: 'PAID' });
@@ -60,6 +55,9 @@ export class SchoolFinancialChargeRepositoryAdapter implements SchoolFinancialCh
                     openStatuses: ['PENDING_SYNC', 'OPEN', 'OVERDUE'] 
                 });
             }
+        } else if (filters?.status) {
+            // Aplicar filtro de status apenas se isPaid não foi especificado
+            queryBuilder.andWhere('charge.status = :status', { status: filters.status });
         }
 
         const results = await queryBuilder.getRawMany();
@@ -106,6 +104,60 @@ export class SchoolFinancialChargeRepositoryAdapter implements SchoolFinancialCh
             studentName: row.studentUserName || row.dependentName || row.ownerName || 'N/A',
             courseName: row.courseName || 'N/A'
         }));
+    }
+
+    async findLastTuitionCharge(
+        enrollmentId: string,
+        courseClassId: string,
+        ownerUserId: string,
+        studentUserId: string | null,
+        dependentId: string | null
+    ): Promise<SchoolFinancialCharge | null> {
+        const queryBuilder = this.repo
+            .createQueryBuilder('charge')
+            .where('charge.courseClassId = :courseClassId', { courseClassId })
+            .andWhere('charge.ownerUserId = :ownerUserId', { ownerUserId })
+            .andWhere('charge.chargeType = :chargeType', { chargeType: 'TUITION' })
+            .andWhere('charge.status != :cancelledStatus', { cancelledStatus: 'CANCELLED' });
+
+        if (studentUserId) {
+            queryBuilder.andWhere('charge.studentUserId = :studentUserId', { studentUserId });
+        } else if (dependentId) {
+            queryBuilder.andWhere('charge.dependentId = :dependentId', { dependentId });
+        }
+
+        const row = await queryBuilder
+            .orderBy('charge.dueDate', 'DESC')
+            .getOne();
+
+        return row ? this.toDomain(row) : null;
+    }
+
+    async findTuitionChargesForMonth(
+        courseClassId: string,
+        ownerUserId: string,
+        studentUserId: string | null,
+        dependentId: string | null,
+        year: number,
+        month: number
+    ): Promise<SchoolFinancialCharge[]> {
+        const queryBuilder = this.repo
+            .createQueryBuilder('charge')
+            .where('charge.courseClassId = :courseClassId', { courseClassId })
+            .andWhere('charge.ownerUserId = :ownerUserId', { ownerUserId })
+            .andWhere('charge.chargeType = :chargeType', { chargeType: 'TUITION' })
+            .andWhere('YEAR(charge.dueDate) = :year', { year })
+            .andWhere('MONTH(charge.dueDate) = :month', { month })
+            .andWhere('charge.status != :cancelledStatus', { cancelledStatus: 'CANCELLED' });
+
+        if (studentUserId) {
+            queryBuilder.andWhere('charge.studentUserId = :studentUserId', { studentUserId });
+        } else if (dependentId) {
+            queryBuilder.andWhere('charge.dependentId = :dependentId', { dependentId });
+        }
+
+        const rows = await queryBuilder.getMany();
+        return rows.map((row) => this.toDomain(row));
     }
 
     private toDomain(row: SchoolFinancialChargeOrm): SchoolFinancialCharge {
