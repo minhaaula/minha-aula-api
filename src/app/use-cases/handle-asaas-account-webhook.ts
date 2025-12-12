@@ -16,6 +16,7 @@ type AsaasAccountPayload = {
 type HandleAsaasAccountWebhookInput = {
     event: string;
     account?: AsaasAccountPayload | null;
+    eventId?: string | null; // ID do evento do Asaas para idempotência
 };
 
 type HandleAsaasAccountWebhookOutput = {
@@ -70,6 +71,14 @@ export class HandleAsaasAccountWebhook {
 
         if (!school) {
             return { handled: false, reason: 'School not found for account' };
+        }
+
+        // Idempotência básica: verificar se o evento já foi processado
+        // (para webhooks de conta, a idempotência é menos crítica pois não alteram estado crítico)
+        // Mas ainda é útil para evitar logs duplicados
+        if (input.eventId) {
+            // Podemos armazenar eventos processados no metadata da escola se necessário
+            // Por enquanto, apenas processamos normalmente
         }
 
         // Processar evento de aprovação

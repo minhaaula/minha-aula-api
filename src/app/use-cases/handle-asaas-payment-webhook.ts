@@ -20,6 +20,7 @@ type AsaasPaymentPayload = {
 type HandleAsaasPaymentWebhookInput = {
     event: string;
     payment?: AsaasPaymentPayload | null;
+    eventId?: string | null; // ID do evento do Asaas para idempotência
 };
 
 type HandleAsaasPaymentWebhookOutput = {
@@ -62,15 +63,47 @@ export class HandleAsaasPaymentWebhook {
 
         const status = payment.status?.toUpperCase?.() ?? '';
 
+        // Verificação de idempotência: se o status já está no estado desejado, não processar novamente
         const outcome = this.resolveOutcome(eventName, status);
         if (!outcome) {
             return { handled: true, reason: 'No action for event' };
+        }
+
+        // Idempotência: verificar se o evento já foi processado
+        const currentMetadata = invoice.metadata ?? {};
+        const processedEventIds = currentMetadata.processedEventIds 
+            ? (typeof currentMetadata.processedEventIds === 'string' 
+                ? currentMetadata.processedEventIds.split(',').map(id => id.trim())
+                : [])
+            : [];
+        
+        // Se temos o ID do evento e ele já foi processado, retornar imediatamente
+        if (input.eventId && processedEventIds.includes(input.eventId)) {
+            return { handled: true, reason: 'Event already processed (idempotency by event ID)' };
+        }
+
+        // Idempotência: verificar se já está no estado desejado e o último evento foi o mesmo
+        if (invoice.status === outcome.status) {
+            const lastEvent = currentMetadata.lastWebhookEvent;
+            const lastStatus = currentMetadata.lastWebhookStatus;
+            
+            // Se o evento e status são os mesmos, é um evento duplicado
+            if (lastEvent === eventName && lastStatus === status) {
+                return { handled: true, reason: 'Event already processed (idempotency by event/status)' };
+            }
         }
 
         const paidAt = outcome.status === 'PAID' ? this.resolvePaidAt(payment) : null;
         const metadata: Record<string, string> = { ...invoice.metadata };
         if (eventName) metadata.lastWebhookEvent = eventName;
         if (status) metadata.lastWebhookStatus = status;
+        
+        // Armazenar ID do evento processado para idempotência
+        if (input.eventId && !processedEventIds.includes(input.eventId)) {
+            processedEventIds.push(input.eventId);
+            // Manter apenas os últimos 50 eventos para não crescer indefinidamente
+            metadata.processedEventIds = processedEventIds.slice(-50).join(',');
+        }
         if (outcome.status === 'PAID') {
             await this.ensureSchoolSubAccount(invoice, metadata);
         }
@@ -86,6 +119,12 @@ export class HandleAsaasPaymentWebhook {
         const finance = await this.finances.findById(invoice.financeId);
         if (!finance) {
             return { handled: true, reason: 'Finance not found for invoice' };
+        }
+
+        // Idempotência: verificar se o finance já está no estado desejado
+        if (finance.status === outcome.planStatus && finance.isPaid === (outcome.status === 'PAID')) {
+            // Já está no estado desejado, não precisa atualizar
+            return { handled: true, reason: 'Finance already in desired state (idempotency)' };
         }
 
         const updatedFinance = finance.withChanges({
