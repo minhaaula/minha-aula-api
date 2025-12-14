@@ -17,6 +17,7 @@ export class School {
         private readonly _ownerPasswordHash: string | null,
         private readonly _accountId: string | null,
         private readonly _accountApiKey: string | null,
+        private readonly _walletId: string | null,
         private readonly _incomeValue: number
     ) {}
 
@@ -35,6 +36,7 @@ export class School {
         ownerPasswordHash?: string | null;
         accountId?: string | null;
         accountApiKey?: string | null;
+        walletId?: string | null;
         incomeValue?: number;
     }) {
         const name = params.name.trim();
@@ -59,6 +61,7 @@ export class School {
         const ownerPasswordHash = School.normalizeOwnerPasswordHash(params.ownerPasswordHash);
         const accountId = School.normalizeAccountId(params.accountId);
         const accountApiKey = School.normalizeAccountApiKey(params.accountApiKey);
+        const walletId = School.normalizeWalletId(params.walletId);
         const incomeValue = School.normalizeIncomeValue(params.incomeValue);
 
         return new School(
@@ -76,6 +79,7 @@ export class School {
             ownerPasswordHash,
             accountId,
             accountApiKey,
+            walletId,
             incomeValue
         );
     }
@@ -122,6 +126,10 @@ export class School {
 
     get accountApiKey(): string | null {
         return this._accountApiKey;
+    }
+
+    get walletId(): string | null {
+        return this._walletId;
     }
 
     get incomeValue(): number {
@@ -212,6 +220,18 @@ export class School {
         return trimmed;
     }
 
+    private static normalizeWalletId(value: unknown): string | null {
+        if (value === undefined || value === null) return null;
+        if (typeof value !== 'string') {
+            throw new Error('School wallet id must be a string');
+        }
+        const trimmed = value.trim();
+        if (!trimmed) {
+            return null;
+        }
+        return trimmed;
+    }
+
     private static normalizeIncomeValue(value: unknown): number {
         const DEFAULT_INCOME = 5000;
         if (value === undefined || value === null) {
@@ -241,6 +261,7 @@ export class School {
             createdAt: this.createdAt,
             accountId: normalized,
             accountApiKey: this._accountApiKey,
+            walletId: this._walletId,
             incomeValue: this._incomeValue
         });
     }
@@ -262,6 +283,29 @@ export class School {
             createdAt: this.createdAt,
             accountId: this._accountId,
             accountApiKey: normalized,
+            walletId: this._walletId,
+            incomeValue: this._incomeValue
+        });
+    }
+
+    withWalletId(walletId: string | null): School {
+        const normalized = School.normalizeWalletId(walletId);
+        return School.create({
+            id: this.id,
+            name: this.name,
+            email: this.email,
+            phone: this.phone,
+            cnpj: this.cnpj,
+            addresses: this.addresses,
+            ownerUserId: this.ownerUserId,
+            ownerName: this.ownerName,
+            ownerCpf: this.ownerCpf,
+            ownerEmail: this.ownerEmail,
+            ownerPasswordHash: this.ownerPasswordHash,
+            createdAt: this.createdAt,
+            accountId: this._accountId,
+            accountApiKey: this._accountApiKey,
+            walletId: normalized,
             incomeValue: this._incomeValue
         });
     }

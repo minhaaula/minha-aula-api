@@ -11,6 +11,8 @@ type AsaasAccountPayload = {
     companyType?: string | null;
     dateCreated?: string | null;
     dateUpdated?: string | null;
+    apiKey?: string | null; // API Key da conta
+    walletId?: string | null; // Wallet ID da conta
 };
 
 type HandleAsaasAccountWebhookInput = {
@@ -83,9 +85,53 @@ export class HandleAsaasAccountWebhook {
 
         // Processar evento de aprovação
         if (APPROVED_EVENTS.has(eventName)) {
-            // Atualizar status da conta na escola (se necessário)
-            // Por enquanto, apenas logamos que a conta foi aprovada
-            // O accountId já está salvo quando a conta é criada
+            let needsUpdate = false;
+            let updatedSchool = school;
+            
+            // Atualizar accountId se ainda não estiver salvo
+            if (account.id && !school.accountId) {
+                updatedSchool = updatedSchool.withAccountId(account.id);
+                needsUpdate = true;
+            }
+            
+            // Se o webhook trouxer o apiKey, salvar também
+            if (account.apiKey && account.apiKey.trim() && !school.accountApiKey) {
+                updatedSchool = updatedSchool.withAccountApiKey(account.apiKey.trim());
+                needsUpdate = true;
+            }
+            
+            // Se o webhook trouxer o walletId, salvar também
+            if (account.walletId && account.walletId.trim() && !school.walletId) {
+                updatedSchool = updatedSchool.withWalletId(account.walletId.trim());
+                needsUpdate = true;
+            }
+            
+            if (needsUpdate) {
+                await this.schools.save(updatedSchool);
+                return { handled: true, reason: 'Account approved and saved' };
+            }
+            
+            // Se já tem accountId mas não tem apiKey/walletId e o webhook trouxer, atualizar
+            if (account.id && school.accountId === account.id) {
+                let partialUpdate = false;
+                let partialUpdatedSchool = school;
+                
+                if (account.apiKey && account.apiKey.trim() && !school.accountApiKey) {
+                    partialUpdatedSchool = partialUpdatedSchool.withAccountApiKey(account.apiKey.trim());
+                    partialUpdate = true;
+                }
+                
+                if (account.walletId && account.walletId.trim() && !school.walletId) {
+                    partialUpdatedSchool = partialUpdatedSchool.withWalletId(account.walletId.trim());
+                    partialUpdate = true;
+                }
+                
+                if (partialUpdate) {
+                    await this.schools.save(partialUpdatedSchool);
+                    return { handled: true, reason: 'Account API key or wallet ID saved' };
+                }
+            }
+            
             return { handled: true, reason: 'Account approved' };
         }
 

@@ -26,6 +26,8 @@
     "test:email": "tsx scripts/test-email.ts",
     "test:password-reset": "tsx scripts/test-password-reset-flow.ts",
     "test:bank-accounts": "tsx scripts/test-bank-accounts-routes.ts",
+    "test:pix": "tsx scripts/test-generate-pix.ts",
+    "test:asaas-account": "tsx scripts/test-create-asaas-account.ts",
     "test:storage": "tsx scripts/test-storage.ts",
     "test:storage:simple": "tsx scripts/test-storage-simple.ts",
     "test:storage:access": "tsx scripts/test-file-access.ts",

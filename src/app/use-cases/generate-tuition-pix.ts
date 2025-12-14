@@ -214,6 +214,7 @@ export class GenerateTuitionPix {
         const school = await this.schools.findById(charge.schoolId);
         if (!school || !school.accountId) {
             // Se não tiver conta Asaas, usar provider principal
+            console.log(`[GenerateTuitionPix] Usando provider principal (escola ${charge.schoolId} não tem accountId)`);
             return this.paymentProvider;
         }
 
@@ -221,12 +222,13 @@ export class GenerateTuitionPix {
         const accountApiKey = school.accountApiKey;
         if (!accountApiKey || !accountApiKey.trim()) {
             // Se não tiver API key, usar provider principal
+            console.log(`[GenerateTuitionPix] Usando provider principal (escola ${charge.schoolId} não tem accountApiKey)`);
             return this.paymentProvider;
         }
 
         // Criar provider com a API key da subconta da escola
         const baseUrl = process.env.ASAAS_BASE_URL || 'https://www.asaas.com/api/v3';
-        return new AsaasProvider({ apiKey: accountApiKey.trim(), baseUrl });
+                return new AsaasProvider({ apiKey: accountApiKey.trim(), baseUrl });
     }
 }
 

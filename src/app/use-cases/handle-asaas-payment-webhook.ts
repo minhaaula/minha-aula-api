@@ -291,10 +291,13 @@ export class HandleAsaasPaymentWebhook {
             throw new Error(`Asaas API returned invalid subaccount ID for school ${school.id}`);
         }
 
-        // Atualizar escola com accountId e accountApiKey
+        // Atualizar escola com accountId, accountApiKey e walletId
         let updatedSchool = school.withAccountId(subAccount.id);
         if (subAccount.apiKey) {
             updatedSchool = updatedSchool.withAccountApiKey(subAccount.apiKey);
+        }
+        if (subAccount.walletId) {
+            updatedSchool = updatedSchool.withWalletId(subAccount.walletId);
         }
         await this.schools.save(updatedSchool);
 

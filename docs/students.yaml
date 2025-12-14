@@ -692,8 +692,19 @@ paths:
       description: |
         Gera um pagamento PIX na Asaas para uma mensalidade específica. 
         Se a mensalidade já tiver um PIX gerado, retorna os dados do PIX existente.
-        O PIX é gerado usando a conta Asaas da escola quando disponível.
+        
+        **Importante:** O PIX é gerado usando a conta Asaas da escola (subconta) quando disponível.
+        O sistema verifica automaticamente se a escola possui `accountId` e `accountApiKey` salvos.
+        Se a escola tiver uma subconta configurada na Asaas, o PIX será criado na conta da escola.
+        Caso contrário, será usado o provider principal da Asaas.
+        
         Requer persona STUDENT e a mensalidade deve pertencer ao estudante autenticado.
+        
+        **Status permitidos para geração de PIX:**
+        - PENDING_SYNC
+        - FAILED
+        - OPEN
+        - OVERDUE
       security:
         - bearerAuth: []
       parameters:
