@@ -2,6 +2,7 @@ import axios, { AxiosInstance, AxiosError } from 'axios';
 import { AsaasCreateBoletoPayload, AsaasCreateChargeResponse } from './dto/boleto-charge';
 import { AsaasCreateSubAccountPayload, AsaasSubAccountResponse } from './dto/subaccount';
 import { AsaasCreateTransferPayload, AsaasCreateTransferResponse } from './dto/transfer';
+import { AsaasCreatePixPayload, AsaasCreatePixResponse } from './dto/pix-charge';
 
 export class AsaasClient {
     private http: AxiosInstance;
@@ -18,6 +19,30 @@ export class AsaasClient {
     async createBoletoCharge(payload: AsaasCreateBoletoPayload): Promise<AsaasCreateChargeResponse> {
         try {
             const { data } = await this.http.post<AsaasCreateChargeResponse>('/payments', payload);
+            return data;
+        } catch (error) {
+            throw this.toDomainError(error);
+        }
+    }
+
+    async createPixCharge(payload: AsaasCreatePixPayload): Promise<AsaasCreatePixResponse> {
+        try {
+            const { data } = await this.http.post<AsaasCreatePixResponse>('/payments', payload);
+            
+            // Buscar QR Code do PIX após criar a cobrança
+            if (data.id) {
+                try {
+                    const qrCodeResponse = await this.http.get<{ encodedImage: string; payload: string }>(`/payments/${data.id}/pixQrCode`);
+                    if (qrCodeResponse.data) {
+                        data.pixQrCode = qrCodeResponse.data.encodedImage;
+                        data.pixCopiaECola = qrCodeResponse.data.payload;
+                    }
+                } catch (qrError) {
+                    // Se falhar ao buscar QR Code, continuar sem ele
+                    console.warn('Failed to fetch PIX QR Code:', qrError);
+                }
+            }
+            
             return data;
         } catch (error) {
             throw this.toDomainError(error);

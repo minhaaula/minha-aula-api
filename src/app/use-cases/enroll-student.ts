@@ -155,13 +155,17 @@ export class EnrollStudent {
         dependentId: string | null,
         fullAmountCents: number | null
     ): Enrollment {
+        // Valor padrão: dia 10 (pode ser configurável no futuro)
+        const paymentDueDay = 10;
+
         if (dependentId) {
             return Enrollment.createForDependent({
                 id: Uuid(),
                 courseClassId,
                 ownerUserId,
                 dependentId,
-                fullAmountCents
+                fullAmountCents,
+                paymentDueDay
             });
         }
 
@@ -170,7 +174,8 @@ export class EnrollStudent {
             courseClassId,
             ownerUserId,
             studentUserId: ownerUserId,
-            fullAmountCents
+            fullAmountCents,
+            paymentDueDay
         });
     }
 }

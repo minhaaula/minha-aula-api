@@ -30,6 +30,7 @@ import { UpdateStudentProfile } from '../../app/use-cases/update-student-profile
 import { ListSchoolCourses } from '../../app/use-cases/list-school-courses';
 import { ListSchoolReviews } from '../../app/use-cases/list-school-reviews';
 import { GetSchoolPublicDetails } from '../../app/use-cases/get-school-public-details';
+import { GenerateTuitionPix } from '../../app/use-cases/generate-tuition-pix';
 import { CategoryRepositoryAdapter } from '../../infra/db/typeorm/category-repository.adapter';
 import { SchoolReviewRepositoryAdapter } from '../../infra/db/typeorm/school-review-repository.adapter';
 
@@ -100,6 +101,13 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
         ? new ListSchoolReviews(deps.schoolReviewsRepo, deps.storageProvider)
         : undefined;
     const getSchoolPublicDetails = new GetSchoolPublicDetails(deps.schoolsRepo);
+    const generateTuitionPix = new GenerateTuitionPix(
+        deps.financialChargesRepo,
+        deps.usersRepo,
+        deps.schoolsRepo,
+        deps.coursesRepo,
+        deps.paymentProvider
+    );
 
     // Montar routers prontos
     const studentsRouterInstance = studentsRouter({
@@ -114,7 +122,8 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
         listSchoolCourses,
         listSchoolReviews,
         approveEnrollmentRequest,
-        getSchoolPublicDetails
+        getSchoolPublicDetails,
+        generateTuitionPix
     });
 
     const listMyDependents = new ListMyDependents(deps.dependentsRepo);

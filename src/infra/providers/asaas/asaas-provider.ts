@@ -1,5 +1,5 @@
 import { Money } from '../../../domain/value-objects/money';
-import { PaymentProviderPort, CreateChargeInput } from '../../../ports/providers/payment-provider.port';
+import { PaymentProviderPort, CreateChargeInput, CreatePixChargeInput } from '../../../ports/providers/payment-provider.port';
 import { AsaasClient } from './asaas-client';
 import { AsaasChargeResponse, AsaasSubAccount, CreateAsaasSubAccountInput, CreateAsaasTransferInput, AsaasTransferResponse } from '../../../ports/providers/asaas-port';
 import { CreateBoletoChargeInput } from '../../../ports/providers/payment-provider.port';
@@ -46,6 +46,36 @@ export class AsaasProvider implements PaymentProviderPort {
             boletoUrl: response.boletoUrl ?? response.bankSlipUrl ?? response.invoiceUrl,
             barcode: response.bankSlipBarcode,
             digitableLine: response.bankSlipDigitableLine,
+            dueDate: new Date(response.dueDate)
+        };
+    }
+
+    async createPixCharge(input: CreatePixChargeInput): Promise<{ providerRef: string; pixQrCode?: string; pixCopiaECola?: string; invoiceUrl?: string; dueDate: Date; }> {
+        const payload = {
+            customer: {
+                name: input.customer.name,
+                email: input.customer.email,
+                cpfCnpj: input.customer.cpfCnpj,
+                postalCode: input.customer.postalCode,
+                addressNumber: input.customer.addressNumber,
+                addressComplement: input.customer.addressComplement ?? undefined,
+                phone: input.customer.phone ?? undefined
+            },
+            value: input.amount.amount / 100,
+            dueDate: input.dueDate.toISOString().slice(0, 10),
+            description: input.description ?? undefined,
+            externalReference: input.externalReference ?? undefined,
+            metadata: input.metadata,
+            billingType: 'PIX' as const
+        };
+
+        const response = await this.client.createPixCharge(payload);
+
+        return {
+            providerRef: response.id,
+            pixQrCode: response.pixQrCode,
+            pixCopiaECola: response.pixCopiaECola,
+            invoiceUrl: response.invoiceUrl,
             dueDate: new Date(response.dueDate)
         };
     }

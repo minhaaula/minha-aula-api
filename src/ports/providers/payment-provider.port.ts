@@ -27,8 +27,18 @@ export interface CreateBoletoChargeInput {
     metadata?: Record<string,string>;
 }
 
+export interface CreatePixChargeInput {
+    amount: Money;
+    customer: BoletoCustomer;
+    dueDate: Date;
+    description?: string | null;
+    externalReference?: string | null;
+    metadata?: Record<string,string>;
+}
+
 export interface PaymentProviderPort {
     authorize(input: CreateChargeInput): Promise<{ providerRef: string }>;
     capture(providerRef: string, amount?: Money): Promise<void>;
     createBoletoCharge?(input: CreateBoletoChargeInput): Promise<{ providerRef: string; boletoUrl?: string; digitableLine?: string; barcode?: string; dueDate: Date; }>;
+    createPixCharge?(input: CreatePixChargeInput): Promise<{ providerRef: string; pixQrCode?: string; pixCopiaECola?: string; invoiceUrl?: string; dueDate: Date; }>;
 }

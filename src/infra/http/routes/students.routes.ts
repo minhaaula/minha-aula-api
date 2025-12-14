@@ -12,6 +12,7 @@ import { ListSchoolCourses } from '../../../app/use-cases/list-school-courses';
 import { ListSchoolReviews } from '../../../app/use-cases/list-school-reviews';
 import { ApproveEnrollmentRequest } from '../../../app/use-cases/approve-enrollment-request';
 import { GetSchoolPublicDetails } from '../../../app/use-cases/get-school-public-details';
+import { GenerateTuitionPix } from '../../../app/use-cases/generate-tuition-pix';
 import { requirePersona } from '../middlewares/require-persona';
 import { UserPersonaEnum } from '../../../domain/value-objects/user-persona';
 import { AuthenticatedRequest } from '../middlewares/auth';
@@ -31,6 +32,7 @@ export function studentsRouter(deps: {
     listSchoolReviews?: ListSchoolReviews;
     approveEnrollmentRequest?: ApproveEnrollmentRequest;
     getSchoolPublicDetails?: GetSchoolPublicDetails;
+    generateTuitionPix?: GenerateTuitionPix;
 }) {
     const r = Router();
 
@@ -353,6 +355,33 @@ export function studentsRouter(deps: {
                 limit: query.limit,
                 offset: query.offset
             });
+            res.json(result);
+        }));
+    }
+
+    if (deps.generateTuitionPix) {
+        r.post('/charges/:chargeId/payments/pix', requireStudent, asyncHandler(async (req, res) => {
+            const authReq = req as AuthenticatedRequest;
+            if (!authReq.user?.sub) {
+                return res.status(401).json({ 
+                    error: 'Não autorizado',
+                    code: 'UNAUTHORIZED'
+                });
+            }
+
+            const paramsSchema = z.object({
+                chargeId: z.string().uuid()
+            });
+            const { chargeId } = paramsSchema.parse(req.params);
+
+            const result = await deps.generateTuitionPix!.exec({
+                chargeId,
+                requester: {
+                    id: authReq.user.sub,
+                    persona: UserPersonaEnum.STUDENT
+                }
+            });
+
             res.json(result);
         }));
     }

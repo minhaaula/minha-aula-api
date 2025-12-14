@@ -635,6 +635,10 @@ paths:
                     items:
                       type: object
                       properties:
+                        chargeId:
+                          type: string
+                          format: uuid
+                          description: ID da mensalidade (cobrança)
                         courseName:
                           type: string
                           description: Nome do curso
@@ -654,6 +658,7 @@ paths:
                           enum: [pendente, atrasado, pago, cancelado, falhou]
                           description: Status do pagamento
                       required:
+                        - chargeId
                         - courseName
                         - studentName
                         - amountCents
@@ -675,6 +680,112 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '501':
           description: Funcionalidade de listagem de pagamentos não configurada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /students/charges/{chargeId}/payments/pix:
+    post:
+      tags:
+        - Students
+      summary: Gerar PIX para mensalidade
+      description: |
+        Gera um pagamento PIX na Asaas para uma mensalidade específica. 
+        Se a mensalidade já tiver um PIX gerado, retorna os dados do PIX existente.
+        O PIX é gerado usando a conta Asaas da escola quando disponível.
+        Requer persona STUDENT e a mensalidade deve pertencer ao estudante autenticado.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: chargeId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID da mensalidade (cobrança) para a qual o PIX será gerado
+      responses:
+        '200':
+          description: PIX gerado com sucesso ou PIX existente retornado.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  chargeId:
+                    type: string
+                    format: uuid
+                    description: ID da mensalidade
+                  paymentProviderRef:
+                    type: string
+                    description: ID do pagamento na Asaas
+                  pixQrCode:
+                    type: string
+                    nullable: true
+                    description: QR Code do PIX em formato base64 (para exibição em imagem)
+                  pixCopiaECola:
+                    type: string
+                    nullable: true
+                    description: Código PIX copia e cola para pagamento
+                  invoiceUrl:
+                    type: string
+                    format: uri
+                    nullable: true
+                    description: URL da fatura na Asaas
+                  dueDate:
+                    type: string
+                    format: date
+                    description: Data de vencimento da mensalidade
+                  status:
+                    type: string
+                    enum: [PENDING_SYNC, OPEN, PAID, OVERDUE, CANCELLED, FAILED]
+                    description: Status da mensalidade
+                  amountCents:
+                    type: integer
+                    format: int64
+                    description: Valor da mensalidade em centavos
+                  courseName:
+                    type: string
+                    description: Nome do curso
+                required:
+                  - chargeId
+                  - paymentProviderRef
+                  - dueDate
+                  - status
+                  - amountCents
+                  - courseName
+        '400':
+          description: Erro na requisição. ID da mensalidade inválido, mensalidade não é do tipo TUITION ou status não permite geração de PIX.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Não autorizado. Token inválido ou ausente.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado. Requer persona STUDENT ou a mensalidade não pertence ao estudante autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Mensalidade não encontrada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Erro ao gerar PIX na Asaas ou configuração do provedor de pagamento não suporta PIX.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '501':
+          description: Funcionalidade de geração de PIX não configurada.
           content:
             application/json:
               schema:

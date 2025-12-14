@@ -8,6 +8,7 @@ export interface ListStudentPaymentsInput {
 }
 
 export interface StudentPaymentRecord {
+    chargeId: string;
     courseName: string;
     studentName: string;
     amountCents: number;
@@ -49,6 +50,7 @@ export class ListStudentPayments {
 
         // Mapear para o formato de resposta
         const payments: StudentPaymentRecord[] = paymentsData.map((data) => ({
+            chargeId: data.chargeId,
             courseName: data.courseName,
             studentName: data.studentName,
             amountCents: data.amountCents,

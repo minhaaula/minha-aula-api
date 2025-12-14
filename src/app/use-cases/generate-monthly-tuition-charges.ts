@@ -37,12 +37,33 @@ export class GenerateMonthlyTuitionCharges {
 
     async exec(input: GenerateMonthlyTuitionChargesInput = {}): Promise<GenerateMonthlyTuitionChargesOutput> {
         const now = new Date();
-        const targetMonth = input.targetMonth ?? (now.getMonth() + 2); // Próximo mês (0-indexed + 2)
-        const targetYear = input.targetYear ?? (targetMonth > 12 ? now.getFullYear() + 1 : now.getFullYear());
-        const normalizedMonth = targetMonth > 12 ? targetMonth - 12 : targetMonth;
+        const currentDay = now.getDate();
+        const currentMonth = now.getMonth() + 1; // 1-12
+        const currentYear = now.getFullYear();
+
+        // Se não especificado, calcular mês/ano baseado na lógica: gerar 10 dias antes do vencimento
+        // Exemplo: se vence dia 10, gera no dia 1 do mesmo mês
+        let targetMonth: number;
+        let targetYear: number;
+
+        if (input.targetMonth && input.targetYear) {
+            targetMonth = input.targetMonth;
+            targetYear = input.targetYear;
+        } else {
+            // Calcular para o próximo mês (gerar cobranças que vencem no próximo mês)
+            targetMonth = currentMonth + 1;
+            targetYear = currentYear;
+            if (targetMonth > 12) {
+                targetMonth = 1;
+                targetYear = currentYear + 1;
+            }
+        }
 
         log.info('[GenerateMonthlyTuitionCharges] Iniciando geração de cobranças mensais', {
-            targetMonth: normalizedMonth,
+            currentDay,
+            currentMonth,
+            currentYear,
+            targetMonth,
             targetYear
         });
 
@@ -62,7 +83,8 @@ export class GenerateMonthlyTuitionCharges {
                     status: row.status as any,
                     enrolledAt: row.enrolledAt,
                     updatedAt: row.updatedAt,
-                    fullAmountCents: row.fullAmountCents
+                    fullAmountCents: row.fullAmountCents,
+                    paymentDueDay: row.paymentDueDay
                 });
             }
             return Enrollment.createForDependent({
@@ -73,8 +95,39 @@ export class GenerateMonthlyTuitionCharges {
                 status: row.status as any,
                 enrolledAt: row.enrolledAt,
                 updatedAt: row.updatedAt,
-                fullAmountCents: row.fullAmountCents
+                fullAmountCents: row.fullAmountCents,
+                paymentDueDay: row.paymentDueDay
             });
+        });
+
+        // Filtrar apenas enrollments que devem ter cobrança gerada hoje
+        // Lógica: gerar 10 dias antes do vencimento
+        // Exemplo: se vence dia 10, gera no dia 1 do mesmo mês (10 - 10 + 1 = 1)
+        // Exemplo: se vence dia 5, gera no dia 26 do mês anterior (5 - 10 = -5, então último dia do mês anterior - 4)
+        const enrollmentsToProcess = activeEnrollments.filter((enrollment) => {
+            const dueDay = enrollment.paymentDueDay; // Dia do mês que vence (1-31)
+            const generationDay = dueDay - 10; // Dia que deve gerar (10 dias antes)
+            
+            // Se generationDay for negativo ou zero, gerar no mês anterior
+            // Exemplo: se vence dia 5, generationDay = -5, então gera no dia (último dia - 4) do mês anterior
+            if (generationDay <= 0) {
+                // Calcular último dia do mês anterior
+                const lastMonth = currentMonth === 1 ? 12 : currentMonth - 1;
+                const lastMonthYear = currentMonth === 1 ? currentYear - 1 : currentYear;
+                const lastDayOfLastMonth = new Date(lastMonthYear, lastMonth, 0).getDate();
+                const adjustedGenerationDay = lastDayOfLastMonth + generationDay + 1; // +1 porque generationDay é negativo
+                // Verificar se hoje é o mês anterior e o dia correto
+                return currentDay === adjustedGenerationDay && currentMonth === lastMonth && currentYear === lastMonthYear;
+            }
+            
+            // Se generationDay é positivo, gerar no mesmo mês
+            return currentDay === generationDay;
+        });
+
+        log.info('[GenerateMonthlyTuitionCharges] Matrículas filtradas para processamento', {
+            total: activeEnrollments.length,
+            toProcess: enrollmentsToProcess.length,
+            currentDay
         });
 
         log.info('[GenerateMonthlyTuitionCharges] Matrículas ativas encontradas', {
@@ -88,9 +141,9 @@ export class GenerateMonthlyTuitionCharges {
             details: []
         };
 
-        for (const enrollment of activeEnrollments) {
+        for (const enrollment of enrollmentsToProcess) {
             try {
-                const detail = await this.processEnrollment(enrollment, normalizedMonth, targetYear);
+                const detail = await this.processEnrollment(enrollment, currentMonth, currentYear);
                 result.details.push(detail);
 
                 if (detail.status === 'generated') {
@@ -127,8 +180,8 @@ export class GenerateMonthlyTuitionCharges {
 
     private async processEnrollment(
         enrollment: import('../../domain/entities/enrollment').Enrollment,
-        targetMonth: number,
-        targetYear: number
+        currentMonth: number,
+        currentYear: number
     ): Promise<GenerateMonthlyTuitionChargesOutput['details'][0]> {
         // Buscar dados do curso e turma
         const courseClass = await this.classes.findById(enrollment.courseClassId);
@@ -176,13 +229,32 @@ export class GenerateMonthlyTuitionCharges {
             };
         }
 
+        // Calcular data de vencimento baseada no paymentDueDay do enrollment
+        const dueDay = enrollment.paymentDueDay; // Dia do mês que vence (1-31)
+        
+        // Calcular mês/ano de vencimento
+        // Se hoje é o dia de gerar (10 dias antes), a cobrança vence no próximo mês
+        let dueMonth = currentMonth + 1;
+        let dueYear = currentYear;
+        if (dueMonth > 12) {
+            dueMonth = 1;
+            dueYear = currentYear + 1;
+        }
+        
+        // Ajustar se o dia de vencimento não existe no mês (ex: 31 em fevereiro)
+        const daysInMonth = new Date(dueYear, dueMonth, 0).getDate();
+        const adjustedDueDay = Math.min(dueDay, daysInMonth);
+        
+        const dueDate = new Date(dueYear, dueMonth - 1, adjustedDueDay); // setMonth usa 0-11
+
+        // Verificar se já existe cobrança para este mês/ano de vencimento
         const existingCharges = await this.charges.findTuitionChargesForMonth(
             enrollment.courseClassId,
             enrollment.ownerUserId,
             enrollment.studentUserId,
             enrollment.dependentId,
-            targetYear,
-            targetMonth
+            dueYear,
+            dueMonth
         );
 
         if (existingCharges.length > 0) {
@@ -191,47 +263,16 @@ export class GenerateMonthlyTuitionCharges {
                 courseName: course.name,
                 studentName: 'N/A',
                 status: 'skipped',
-                reason: `Já existe ${existingCharges.length} cobrança(s) para ${targetMonth}/${targetYear}`
+                reason: `Já existe ${existingCharges.length} cobrança(s) para ${dueMonth}/${dueYear}`
             };
         }
-
-        // Buscar última cobrança para calcular data de vencimento
-        let dueDate: Date;
-        if (this.charges.findLastTuitionCharge) {
-            const lastCharge = await this.charges.findLastTuitionCharge(
-                enrollment.id,
-                enrollment.courseClassId,
-                enrollment.ownerUserId,
-                enrollment.studentUserId,
-                enrollment.dependentId
-            );
-
-            if (lastCharge) {
-                // Calcular próximo mês a partir da última cobrança
-                dueDate = new Date(lastCharge.dueDate);
-                dueDate.setMonth(dueDate.getMonth() + 1);
-            } else {
-                // Se não há última cobrança, usar data de matrícula + 1 mês
-                dueDate = new Date(enrollment.enrolledAt);
-                dueDate.setMonth(dueDate.getMonth() + 1);
-            }
-        } else {
-            // Fallback: usar data de matrícula + 1 mês
-            dueDate = new Date(enrollment.enrolledAt);
-            dueDate.setMonth(dueDate.getMonth() + 1);
-        }
-
-        // Ajustar para o mês/ano alvo
-        dueDate.setFullYear(targetYear);
-        dueDate.setMonth(targetMonth - 1); // setMonth usa 0-11
-        dueDate.setDate(10); // Dia 10 de cada mês
 
         // Criar cobrança
         const monthNames = [
             'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
             'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
         ];
-        const monthName = monthNames[targetMonth - 1];
+        const monthName = monthNames[dueMonth - 1];
 
         const charge = SchoolFinancialCharge.create({
             id: Uuid(),
@@ -242,7 +283,7 @@ export class GenerateMonthlyTuitionCharges {
             courseId: course.id,
             courseClassId: enrollment.courseClassId,
             chargeType: 'TUITION',
-            description: `Mensalidade - ${monthName} ${targetYear}`,
+            description: `Mensalidade - ${monthName} ${dueYear}`,
             amountCents: monthlyPrice,
             discountCents: null,
             discountReason: null,
@@ -256,7 +297,7 @@ export class GenerateMonthlyTuitionCharges {
             courseName: course.name,
             studentName: 'N/A',
             status: 'generated',
-            reason: `Cobrança criada para ${monthName}/${targetYear}`
+            reason: `Cobrança criada para ${monthName}/${dueYear} (vencimento: dia ${adjustedDueDay})`
         };
     }
 }

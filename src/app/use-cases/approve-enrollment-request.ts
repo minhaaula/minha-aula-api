@@ -134,6 +134,9 @@ export class ApproveEnrollmentRequest {
 
     private createEnrollmentFromRequest(request: EnrollmentRequest, fullAmountCents: number | null): Enrollment {
         const enrollmentId = Uuid();
+        
+        // Extrair o dia de vencimento do firstMonthlyPaymentDate
+        const paymentDueDay = request.firstMonthlyPaymentDate.getDate();
 
         if (request.requestedForDependentId) {
             return Enrollment.createForDependent({
@@ -141,7 +144,8 @@ export class ApproveEnrollmentRequest {
                 courseClassId: request.courseClassId,
                 ownerUserId: request.requestedForUserId,
                 dependentId: request.requestedForDependentId,
-                fullAmountCents
+                fullAmountCents,
+                paymentDueDay
             });
         }
 
@@ -150,7 +154,8 @@ export class ApproveEnrollmentRequest {
             courseClassId: request.courseClassId,
             ownerUserId: request.requestedForUserId,
             studentUserId: request.requestedForUserId,
-            fullAmountCents
+            fullAmountCents,
+            paymentDueDay
         });
     }
 
