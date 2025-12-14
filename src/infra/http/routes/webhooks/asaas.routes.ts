@@ -85,7 +85,8 @@ const accountPayloadSchema = z.object({
             personType: z.string().optional().nullable(),
             companyType: z.string().optional().nullable(),
             dateCreated: z.string().optional().nullable(),
-            dateUpdated: z.string().optional().nullable()
+            dateUpdated: z.string().optional().nullable(),
+            apiKey: z.string().optional().nullable() // API Key da conta
         })
         .optional()
         .nullable()
