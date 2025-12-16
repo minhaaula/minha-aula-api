@@ -33,7 +33,10 @@ paths:
     post:
       tags:
         - Auth
-      summary: Autenticar usuário e gerar token de acesso
+      summary: Autenticar usuário e gerar tokens de acesso
+      description: |
+        Autentica um usuário e retorna um access token (validade curta) e um refresh token (validade de 30 dias).
+        O refresh token deve ser usado para obter novos access tokens quando o atual expirar.
       requestBody:
         required: true
         content:
@@ -49,6 +52,57 @@ paths:
                 $ref: '#/components/schemas/LoginResponse'
         '400':
           description: Credenciais inválidas ou erro de validação.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /auth/refresh:
+    post:
+      tags:
+        - Auth
+      summary: Obter novo access token usando refresh token
+      description: |
+        Gera um novo access token válido a partir de um refresh token.
+        O refresh token deve ter sido obtido no login e tem validade de 30 dias.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - refreshToken
+              properties:
+                refreshToken:
+                  type: string
+                  description: Refresh token obtido no login
+                  example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+      responses:
+        '200':
+          description: Novo access token gerado com sucesso.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accessToken:
+                    type: string
+                    description: Novo token de acesso JWT
+                  expiresIn:
+                    type: integer
+                    format: int32
+                    description: Tempo de expiração do access token em segundos
+                required:
+                  - accessToken
+                  - expiresIn
+        '400':
+          description: Refresh token inválido ou erro de validação.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Refresh token expirado ou inválido.
           content:
             application/json:
               schema:

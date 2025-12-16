@@ -1,6 +1,7 @@
 import { ModuleBuildResult, ModuleSetupContext } from './types';
 import { RegisterUser } from '../../app/use-cases/register-user';
 import { LoginUser } from '../../app/use-cases/login-user';
+import { RefreshToken } from '../../app/use-cases/refresh-token';
 import { authRouter } from '../../infra/http/routes/auth.routes';
 import { ScryptPasswordHasher } from '../../infra/auth/scrypt-password-hasher';
 import { HmacTokenProvider } from '../../infra/auth/hmac-token-provider';
@@ -36,6 +37,12 @@ export function buildAuthModule(deps: AuthModuleDeps, ctx: ModuleSetupContext): 
         deps.schoolsRepo
     );
     const updateUserPassword = new UpdateUserPassword(deps.usersRepo, deps.passwordHasher);
+    const refreshToken = new RefreshToken(
+        deps.tokenProvider,
+        deps.usersRepo,
+        deps.schoolsRepo,
+        deps.tokenTtl
+    );
     
     // Reset de senha
     const resetTokensRepo = new PasswordResetTokenRepositoryAdapter();
@@ -52,6 +59,7 @@ export function buildAuthModule(deps: AuthModuleDeps, ctx: ModuleSetupContext): 
     const router = authRouter({
         registerUser,
         loginUser,
+        refreshToken,
         updateUserPassword,
         requestUserPasswordReset,
         resetUserPassword,

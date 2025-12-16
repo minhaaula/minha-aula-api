@@ -7,6 +7,7 @@ import { AppError, ErrorCode } from '../../shared/errors';
 import { Enrollment } from '../../domain/entities/enrollment';
 import { EnrollmentRequest } from '../../domain/entities/enrollment-request';
 import { SchoolFinancialCharge } from '../../domain/entities/school-financial-charge';
+import { UserPersonaEnum } from '../../domain/value-objects/user-persona';
 import { Uuid } from '../../shared/uuid';
 import type { ApproveEnrollmentRequestInput, ApproveEnrollmentRequestOutput } from '../types/enrollment.types';
 import type { IssueEnrollmentFeeBoleto } from './issue-enrollment-fee-boleto';
@@ -81,7 +82,7 @@ export class ApproveEnrollmentRequest {
                 await this.issueEnrollmentFeeBoleto.exec({
                     chargeId: pendingCharge.id,
                     requester: {
-                        persona: 'STUDENT' as const,
+                        persona: UserPersonaEnum.STUDENT,
                         id: input.approverUserId,
                         schoolId: request.schoolId
                     }
@@ -112,7 +113,7 @@ export class ApproveEnrollmentRequest {
                             await this.generateTuitionPix.exec({
                                 chargeId: firstTuitionCharge.id,
                                 requester: {
-                                    persona: 'STUDENT' as const,
+                                    persona: UserPersonaEnum.STUDENT,
                                     id: input.approverUserId,
                                     schoolId: request.schoolId
                                 }
@@ -299,6 +300,12 @@ export class ApproveEnrollmentRequest {
         const monthName = monthNames[firstPaymentDate.getMonth()];
         const year = firstPaymentDate.getFullYear();
 
+        // Garantir que amountCents seja um número válido
+        const monthlyPrice = enrollment.fullAmountCents ?? course.monthlyPriceCents;
+        if (!monthlyPrice || monthlyPrice <= 0) {
+            return null; // Não criar cobrança se não houver preço definido
+        }
+
         const charge = SchoolFinancialCharge.create({
             id: Uuid(),
             schoolId: course.schoolId,
@@ -309,7 +316,7 @@ export class ApproveEnrollmentRequest {
             courseClassId: enrollment.courseClassId,
             chargeType: 'TUITION',
             description: `Mensalidade - ${monthName} ${year}`,
-            amountCents: enrollment.fullAmountCents ?? course.monthlyPriceCents,
+            amountCents: monthlyPrice,
             discountCents: null,
             discountReason: null,
             dueDate: firstPaymentDate

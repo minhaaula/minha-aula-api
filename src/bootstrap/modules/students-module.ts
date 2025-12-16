@@ -23,6 +23,7 @@ import { GetStudentDirectoryEntry } from '../../app/use-cases/get-student-direct
 import { ListMyCourses } from '../../app/use-cases/list-my-courses';
 import { ListAllCourses } from '../../app/use-cases/list-all-courses';
 import { ListStudentPayments } from '../../app/use-cases/list-student-payments';
+import { GetStudentPaymentDetails } from '../../app/use-cases/get-student-payment-details';
 import { ListMyDependents } from '../../app/use-cases/list-my-dependents';
 import { GetMyProfile } from '../../app/use-cases/get-my-profile';
 import { ListMyEnrollmentRequests } from '../../app/use-cases/list-my-enrollment-requests';
@@ -68,6 +69,13 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
         ? new ListAllCourses(deps.coursesRepo, deps.categoriesRepo)
         : undefined;
     const listStudentPayments = new ListStudentPayments(deps.financialChargesRepo);
+    const getStudentPaymentDetails = new GetStudentPaymentDetails(
+        deps.financialChargesRepo,
+        deps.usersRepo,
+        deps.dependentsRepo,
+        deps.coursesRepo,
+        deps.classesRepo
+    );
     const listSchools = new ListSchools(deps.schoolsRepo);
     const createEnrollmentRequest = new CreateEnrollmentRequest(
         deps.schoolsRepo,
@@ -120,6 +128,7 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
         listMyCourses,
         listAllCourses,
         listStudentPayments,
+        getStudentPaymentDetails,
         listMyEnrollmentRequests,
         listSchoolCourses,
         listSchoolReviews,

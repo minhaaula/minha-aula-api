@@ -2,6 +2,7 @@ import { Router, type RequestHandler } from 'express';
 import { z } from 'zod';
 import { RegisterUser } from '../../../app/use-cases/register-user';
 import { LoginUser } from '../../../app/use-cases/login-user';
+import { RefreshToken } from '../../../app/use-cases/refresh-token';
 import { USER_PERSONAS } from '../../../domain/value-objects/user-persona';
 import { UpdateUserPassword } from '../../../app/use-cases/update-user-password';
 import { RequestUserPasswordReset } from '../../../app/use-cases/request-user-password-reset';
@@ -15,6 +16,7 @@ const cpfSchema = cpfNumberSchema();
 export function authRouter({
     registerUser,
     loginUser,
+    refreshToken,
     updateUserPassword,
     requestUserPasswordReset,
     resetUserPassword,
@@ -23,6 +25,7 @@ export function authRouter({
 }: {
     registerUser: RegisterUser;
     loginUser: LoginUser;
+    refreshToken?: RefreshToken;
     updateUserPassword: UpdateUserPassword;
     requestUserPasswordReset?: RequestUserPasswordReset;
     resetUserPassword?: ResetUserPassword;
@@ -84,6 +87,22 @@ export function authRouter({
             next(e);
         }
     });
+
+    if (refreshToken) {
+        const refreshTokenSchema = z.object({
+            refreshToken: z.string().min(1, 'Refresh token é obrigatório')
+        });
+
+        r.post('/refresh', async (req, res, next) => {
+            try {
+                const dto = refreshTokenSchema.parse(req.body);
+                const result = await refreshToken.exec(dto);
+                res.json(result);
+            } catch (e) {
+                next(e);
+            }
+        });
+    }
 
     r.patch('/password', requireAuth, async (req, res, next) => {
         try {

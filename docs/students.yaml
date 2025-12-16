@@ -684,6 +684,210 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /students/payments/{paymentId}:
+    get:
+      tags:
+        - Students
+      summary: Obter detalhes de um pagamento específico
+      description: |
+        Retorna os detalhes completos de um pagamento específico realizado pelo estudante.
+        Inclui informações sobre data, valor, tipo de pagamento (PIX, boleto ou manual),
+        chave PIX (quando aplicável), banco de origem, nome do estudante, curso, etc.
+        Requer persona STUDENT e o pagamento deve pertencer ao estudante autenticado.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: paymentId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID do pagamento (cobrança) para obter os detalhes
+      responses:
+        '200':
+          description: Detalhes do pagamento encontrado.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                    description: ID do pagamento
+                  amount:
+                    type: number
+                    description: Valor do pagamento em reais
+                  amountCents:
+                    type: integer
+                    format: int64
+                    description: Valor do pagamento em centavos
+                  discount:
+                    type: number
+                    nullable: true
+                    description: Valor do desconto em reais
+                  discountCents:
+                    type: integer
+                    format: int64
+                    nullable: true
+                    description: Valor do desconto em centavos
+                  discountReason:
+                    type: string
+                    nullable: true
+                    description: Motivo do desconto
+                  netAmount:
+                    type: number
+                    description: Valor líquido (valor - desconto) em reais
+                  netAmountCents:
+                    type: integer
+                    format: int64
+                    description: Valor líquido em centavos
+                  status:
+                    type: string
+                    enum: [PENDING_SYNC, OPEN, PAID, OVERDUE, CANCELLED, FAILED]
+                    description: Status do pagamento
+                  chargeType:
+                    type: string
+                    enum: [TUITION, ENROLLMENT, MATERIALS, DAILY, OTHER]
+                    description: Tipo de cobrança
+                  description:
+                    type: string
+                    nullable: true
+                    description: Descrição da cobrança
+                  dueDate:
+                    type: string
+                    format: date-time
+                    description: Data de vencimento
+                  paidAt:
+                    type: string
+                    format: date-time
+                    nullable: true
+                    description: Data de pagamento (quando pago)
+                  type:
+                    type: string
+                    enum: [PIX, BOLETO, MANUAL]
+                    nullable: true
+                    description: Tipo de pagamento (PIX, boleto ou manual)
+                  pixKey:
+                    type: string
+                    nullable: true
+                    description: Chave PIX utilizada no pagamento
+                  pixQrCode:
+                    type: string
+                    nullable: true
+                    description: QR Code do PIX em formato base64
+                  pixCopiaECola:
+                    type: string
+                    nullable: true
+                    description: Código PIX copia e cola
+                  boletoUrl:
+                    type: string
+                    format: uri
+                    nullable: true
+                    description: URL do boleto
+                  digitableLine:
+                    type: string
+                    nullable: true
+                    description: Linha digitável do boleto
+                  barcode:
+                    type: string
+                    nullable: true
+                    description: Código de barras do boleto
+                  bankName:
+                    type: string
+                    nullable: true
+                    description: Nome do banco
+                  bankOrigin:
+                    type: string
+                    nullable: true
+                    description: Banco de origem do pagamento
+                  studentName:
+                    type: string
+                    description: Nome do estudante (usuário ou dependente)
+                  studentId:
+                    type: string
+                    format: uuid
+                    description: ID do estudante
+                  studentType:
+                    type: string
+                    enum: [USER, DEPENDENT]
+                    description: Tipo do estudante (usuário ou dependente)
+                  courseName:
+                    type: string
+                    description: Nome do curso
+                  courseId:
+                    type: string
+                    format: uuid
+                    description: ID do curso
+                  className:
+                    type: string
+                    nullable: true
+                    description: Nome da turma
+                  classId:
+                    type: string
+                    format: uuid
+                    nullable: true
+                    description: ID da turma
+                  asaasPaymentId:
+                    type: string
+                    nullable: true
+                    description: ID do pagamento na Asaas
+                  createdAt:
+                    type: string
+                    format: date-time
+                    description: Data de criação do pagamento
+                  updatedAt:
+                    type: string
+                    format: date-time
+                    description: Data de última atualização
+                required:
+                  - id
+                  - amount
+                  - amountCents
+                  - netAmount
+                  - netAmountCents
+                  - status
+                  - chargeType
+                  - dueDate
+                  - type
+                  - studentName
+                  - studentId
+                  - studentType
+                  - courseName
+                  - courseId
+                  - createdAt
+                  - updatedAt
+        '400':
+          description: Erro na requisição. ID do pagamento inválido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Não autorizado. Token inválido ou ausente.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado. Requer persona STUDENT ou o pagamento não pertence ao estudante autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Pagamento não encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '501':
+          description: Funcionalidade de detalhes de pagamento não configurada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /students/charges/{chargeId}/payments/pix:
     post:
       tags:

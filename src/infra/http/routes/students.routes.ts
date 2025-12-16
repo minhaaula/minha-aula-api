@@ -5,6 +5,7 @@ import { GetStudentDirectoryEntry } from '../../../app/use-cases/get-student-dir
 import { ListMyCourses } from '../../../app/use-cases/list-my-courses';
 import { ListAllCourses } from '../../../app/use-cases/list-all-courses';
 import { ListStudentPayments } from '../../../app/use-cases/list-student-payments';
+import { GetStudentPaymentDetails } from '../../../app/use-cases/get-student-payment-details';
 import { GetMyProfile } from '../../../app/use-cases/get-my-profile';
 import { ListMyEnrollmentRequests } from '../../../app/use-cases/list-my-enrollment-requests';
 import { UpdateStudentProfile } from '../../../app/use-cases/update-student-profile';
@@ -25,6 +26,7 @@ export function studentsRouter(deps: {
     listMyCourses?: ListMyCourses;
     listAllCourses?: ListAllCourses;
     listStudentPayments?: ListStudentPayments;
+    getStudentPaymentDetails?: GetStudentPaymentDetails;
     getMyProfile?: GetMyProfile;
     listMyEnrollmentRequests?: ListMyEnrollmentRequests;
     updateStudentProfile?: UpdateStudentProfile;
@@ -254,6 +256,30 @@ export function studentsRouter(deps: {
                 isPaid: query.isPaid
             });
             res.json(result);
+        }));
+    }
+
+    if (deps.getStudentPaymentDetails) {
+        r.get('/payments/:paymentId', requireStudent, asyncHandler(async (req, res) => {
+            const authReq = req as AuthenticatedRequest;
+            if (!authReq.user?.sub) {
+                return res.status(401).json({ 
+                    error: 'Não autorizado',
+                    code: 'UNAUTHORIZED'
+                });
+            }
+
+            const paramsSchema = z.object({ 
+                paymentId: z.string().uuid('ID do pagamento inválido')
+            });
+            const { paymentId } = paramsSchema.parse(req.params);
+
+            const details = await deps.getStudentPaymentDetails!.exec({
+                paymentId,
+                userId: authReq.user.sub
+            });
+
+            res.json(details);
         }));
     }
 

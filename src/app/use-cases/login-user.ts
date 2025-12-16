@@ -19,7 +19,7 @@ export class LoginUser {
         this.allowedPersonas = this.resolveAllowedPersonas(activeModules);
     }
 
-    async exec(input: { cpf: string; password: string; }): Promise<{ accessToken: string; userId: string; fullName: string; email: string; cpf: string; persona: string; expiresIn: number; schoolId?: string; }> {
+    async exec(input: { cpf: string; password: string; }): Promise<{ accessToken: string; refreshToken: string; userId: string; fullName: string; email: string; cpf: string; persona: string; expiresIn: number; refreshTokenExpiresIn: number; schoolId?: string; }> {
         const cpf = this.normalizeCpf(input.cpf);
         const user = await this.users.findByCpf(cpf);
 
@@ -49,14 +49,24 @@ export class LoginUser {
         }
         const accessToken = await this.tokens.sign(payload, { expiresIn });
 
+        // Gerar refresh token com validade de 30 dias (2592000 segundos)
+        const refreshTokenExpiresIn = 30 * 24 * 60 * 60; // 30 dias em segundos
+        const refreshPayload: AuthTokenPayload & { type: string } = {
+            ...payload,
+            type: 'refresh'
+        };
+        const refreshToken = await this.tokens.sign(refreshPayload, { expiresIn: refreshTokenExpiresIn });
+
         return {
             accessToken,
+            refreshToken,
             userId: user.id,
             fullName: user.fullName,
             email: user.email.value,
             cpf: user.cpf,
             persona: user.persona,
             expiresIn,
+            refreshTokenExpiresIn,
             schoolId: payload.schoolId
         };
     }

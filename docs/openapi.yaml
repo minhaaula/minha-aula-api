@@ -243,6 +243,10 @@ components:
       properties:
         accessToken:
           type: string
+          description: Token de acesso JWT
+        refreshToken:
+          type: string
+          description: Token de refresh para obter novo access token (validade de 30 dias)
         userId:
           type: string
           format: uuid
@@ -263,18 +267,26 @@ components:
         expiresIn:
           type: integer
           format: int32
+          description: Tempo de expiração do access token em segundos
+        refreshTokenExpiresIn:
+          type: integer
+          format: int32
+          description: Tempo de expiração do refresh token em segundos (30 dias)
         schoolId:
           type: string
           format: uuid
           nullable: true
+          description: ID da escola (apenas para persona SCHOOL)
       required:
         - accessToken
+        - refreshToken
         - userId
         - fullName
         - email
         - cpf
         - persona
         - expiresIn
+        - refreshTokenExpiresIn
     CreatePaymentInput:
       type: object
       required:
