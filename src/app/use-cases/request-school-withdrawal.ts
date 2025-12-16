@@ -4,6 +4,7 @@ import { SchoolBankAccountRepository } from '../../ports/repositories/school-ban
 import { SchoolWithdrawalRepository } from '../../ports/repositories/school-withdrawal.repo';
 import { SchoolFinancialChargeRepository } from '../../ports/repositories/school-financial-charge.repo';
 import { AsaasProviderPort } from '../../ports/providers/asaas-port';
+import { AsaasProvider } from '../../infra/providers/asaas/asaas-provider';
 import { Money } from '../../domain/value-objects/money';
 import { Uuid } from '../../shared/uuid';
 
@@ -56,6 +57,11 @@ export class RequestSchoolWithdrawal {
             throw new Error('Escola não possui conta ASSAAS configurada');
         }
 
+        // Verificar se a escola tem API key da conta ASSAAS
+        if (!school.accountApiKey || !school.accountApiKey.trim()) {
+            throw new Error('Escola não possui API key da conta ASSAAS configurada');
+        }
+
         // Buscar conta bancária
         const bankAccount = await this.bankAccounts.findById(input.bankAccountId);
         if (!bankAccount) {
@@ -103,35 +109,40 @@ export class RequestSchoolWithdrawal {
         // Salvar saque no banco
         await this.withdrawals.save(withdrawal);
 
-        // Tentar criar transferência no ASSAAS
-        if (this.asaasProvider?.createTransfer) {
-            try {
-                const transferResult = await this.asaasProvider.createTransfer({
-                    accountId: school.accountId,
-                    amount: Money.of(amountCents, 'BRL'),
-                    bankAccount: bankAccount.bankAccount,
-                    bankAccountDigit: bankAccount.bankAccountDigit ?? undefined,
-                    bankAgency: bankAccount.bankAgency,
-                    bankAgencyDigit: bankAccount.bankAgencyDigit ?? undefined,
-                    bankCode: bankAccount.bankCode ? String(bankAccount.bankCode) : '',
-                    accountType: bankAccount.bankAccountType,
-                    documentHolder: bankAccount.bankAccountHolderDocument,
-                    pixKey: bankAccount.pixKey ?? undefined
-                });
+        // Criar provider com a API key da subconta da escola
+        const baseUrl = process.env.ASAAS_BASE_URL || 'https://www.asaas.com/api/v3';
+        const schoolAsaasProvider = new AsaasProvider({ 
+            apiKey: school.accountApiKey.trim(), 
+            baseUrl 
+        });
 
-                // Se a transferência foi criada com sucesso, atualizar status
-                if (transferResult.status === 'DONE' || transferResult.status === 'COMPLETED') {
-                    withdrawal.markAsCompleted(transferResult.effectiveDate);
-                } else if (transferResult.status === 'CANCELLED' || transferResult.status === 'FAILED') {
-                    withdrawal.markAsCancelled();
-                }
+        // Tentar criar transferência no ASSAAS usando a API key da escola
+        try {
+            const transferResult = await schoolAsaasProvider.createTransfer({
+                accountId: school.accountId,
+                amount: Money.of(amountCents, 'BRL'),
+                bankAccount: bankAccount.bankAccount,
+                bankAccountDigit: bankAccount.bankAccountDigit ?? undefined,
+                bankAgency: bankAccount.bankAgency,
+                bankAgencyDigit: bankAccount.bankAgencyDigit ?? undefined,
+                bankCode: bankAccount.bankCode ? String(bankAccount.bankCode) : '',
+                accountType: bankAccount.bankAccountType,
+                documentHolder: bankAccount.bankAccountHolderDocument,
+                pixKey: bankAccount.pixKey ?? undefined
+            });
 
-                await this.withdrawals.save(withdrawal);
-            } catch (error) {
-                // Se houver erro na transferência, manter como PROCESSING
-                // O erro será tratado posteriormente via webhook ou processo assíncrono
-                console.error('Erro ao criar transferência no ASSAAS:', error);
+            // Se a transferência foi criada com sucesso, atualizar status
+            if (transferResult.status === 'DONE' || transferResult.status === 'COMPLETED') {
+                withdrawal.markAsCompleted(transferResult.effectiveDate);
+            } else if (transferResult.status === 'CANCELLED' || transferResult.status === 'FAILED') {
+                withdrawal.markAsCancelled();
             }
+
+            await this.withdrawals.save(withdrawal);
+        } catch (error) {
+            // Se houver erro na transferência, manter como PROCESSING
+            // O erro será tratado posteriormente via webhook ou processo assíncrono
+            console.error('Erro ao criar transferência no ASSAAS:', error);
         }
 
         return {

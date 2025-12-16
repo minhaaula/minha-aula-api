@@ -14,10 +14,17 @@
  *   npx tsx scripts/test-create-asaas-account.ts
  * 
  * Variáveis de ambiente necessárias:
- *   - ASAAS_API_KEY: Chave de API principal da Asaas
- *   - ASAAS_BASE_URL: URL base da API (opcional, padrão: https://www.asaas.com/api/v3)
+ *   - ASAAS_API_KEY: Chave de API principal da Asaas (sandbox ou produção)
+ *   - ASAAS_BASE_URL: URL base da API (opcional, padrão: https://api-sandbox.asaas.com/v3)
+ *     - Sandbox: https://api-sandbox.asaas.com/v3
+ *     - Produção: https://www.asaas.com/api/v3
  *   - ASAAS_SUBACCOUNT_WEBHOOK_URL: URL base para webhooks (opcional)
  *   - ACCOUNT_EXTERNAL_REF: ID da escola (UUID) para salvar as informações no banco (opcional)
+ * 
+ * Nota: Este script está configurado para usar o ambiente SANDBOX por padrão.
+ * Para usar em produção, defina ASAAS_BASE_URL para https://www.asaas.com/api/v3
+ * 
+ * Documentação completa: docs/ASAAS_SANDBOX_KYC.md
  */
 
 import axios from 'axios';
@@ -75,20 +82,28 @@ async function createAsaasAccount() {
     const baseAccountData = {
         name: process.env.ACCOUNT_NAME || 'Escola Teste ' + Date.now(),
         email: process.env.ACCOUNT_EMAIL || `teste-${Date.now()}@example.com`,
-        cpfCnpj: process.env.ACCOUNT_CNPJ || '69603295000197', // CNPJ de teste
-        phone: process.env.ACCOUNT_PHONE || '11988616889',
+        cpfCnpj: process.env.ACCOUNT_CNPJ || '56484997000157', // CNPJ de teste
+        phone: process.env.ACCOUNT_PHONE || '11991443780',
         companyType: process.env.ACCOUNT_COMPANY_TYPE || 'LIMITED',
         incomeValue: Number(process.env.ACCOUNT_INCOME_VALUE || '5000'),
         externalReference: process.env.ACCOUNT_EXTERNAL_REF || `test-${Date.now()}`,
         address: process.env.ACCOUNT_ADDRESS || 'Rua Teste',
         addressNumber: process.env.ACCOUNT_ADDRESS_NUMBER || '123',
-        complement: process.env.ACCOUNT_COMPLEMENT || null,
+        complement: process.env.ACCOUNT_COMPLEMENT || undefined,
         province: process.env.ACCOUNT_DISTRICT || 'Centro',
-        postalCode: process.env.ACCOUNT_POSTAL_CODE || '01234567'
+        postalCode: process.env.ACCOUNT_POSTAL_CODE || '03679180'
     };
 
     // Adicionar webhooks se configurado
     const accountData: any = { ...baseAccountData };
+    
+    // Remover campos null/undefined para evitar problemas com a API
+    Object.keys(accountData).forEach(key => {
+        if (accountData[key] === null || accountData[key] === undefined) {
+            delete accountData[key];
+        }
+    });
+    
     if (WEBHOOK_BASE_URL) {
         accountData.webhooks = [
             {
@@ -144,6 +159,19 @@ async function createAsaasAccount() {
     try {
         // Criar conta na Asaas
         console.log('🔄 Criando conta na Asaas...');
+        
+        // Remover campos null/undefined novamente após adicionar webhooks
+        Object.keys(accountData).forEach(key => {
+            if (accountData[key] === null || accountData[key] === undefined || accountData[key] === '') {
+                delete accountData[key];
+            }
+        });
+        
+        // Garantir que postalCode está presente (a cidade é inferida do CEP)
+        if (!accountData.postalCode || accountData.postalCode.trim() === '') {
+            throw new Error('Campo postalCode é obrigatório - a cidade é inferida do CEP');
+        }
+        console.log('📤 Payload sendo enviado:', JSON.stringify(accountData, null, 2));
         const createResponse = await axios.post<AsaasSubAccountResponse>(
             `${ASAAS_BASE_URL}/accounts`,
             accountData,

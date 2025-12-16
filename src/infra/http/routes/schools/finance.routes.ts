@@ -53,8 +53,8 @@ const toCurrency = (valueInCents: number) => Number((valueInCents / 100).toFixed
 const formatDate = (date: Date) => date.toISOString().split('T')[0];
 
 const requestWithdrawalSchema = z.object({
-    valor: z.number().positive('O valor deve ser maior que zero'),
-    idContaBancaria: z.string().uuid('ID da conta bancária inválido')
+    amount: z.number().positive('O valor deve ser maior que zero'),
+    bankAccountId: z.string().uuid('ID da conta bancária inválido')
 });
 
 type FinanceRoutesDeps = {
@@ -168,14 +168,14 @@ export function buildFinanceRoutes(deps: FinanceRoutesDeps, guards: SchoolRouteG
 
             const result = await deps.requestSchoolWithdrawal!.exec({
                 schoolId,
-                amount: body.valor,
-                bankAccountId: body.idContaBancaria
+                amount: body.amount,
+                bankAccountId: body.bankAccountId
             });
 
             res.status(201).json({
                 id: result.withdrawalId,
-                valor: result.amount,
-                valorCentavos: result.amountCents,
+                amount: result.amount,
+                amountCents: result.amountCents,
                 status: result.status
             });
         }));

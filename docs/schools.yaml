@@ -716,6 +716,92 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags:
+        - Schools
+      summary: Solicitar saque do saldo disponível
+      description: |
+        Solicita um saque do valor disponível na conta Asaas da escola para uma conta bancária pessoal cadastrada.
+        O saque será processado usando a API key da conta Asaas da escola.
+        Requer persona SCHOOL e que a escola tenha conta Asaas configurada com API key.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+              schema:
+                type: object
+                required:
+                  - amount
+                  - bankAccountId
+                properties:
+                  amount:
+                    type: number
+                    minimum: 0.01
+                    description: Valor do saque em reais (ex: 100.50)
+                  bankAccountId:
+                    type: string
+                    format: uuid
+                    description: ID da conta bancária cadastrada para receber o saque
+      responses:
+        '201':
+          description: Solicitação de saque criada com sucesso.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                    description: ID do saque criado
+                  amount:
+                    type: number
+                    description: Valor do saque em reais
+                  amountCents:
+                    type: integer
+                    format: int64
+                    description: Valor do saque em centavos
+                  status:
+                    type: string
+                    enum: [PROCESSING, COMPLETED, CANCELLED]
+                    description: Status do saque (processando, completo, cancelado)
+                required:
+                  - id
+                  - amount
+                  - amountCents
+                  - status
+        '400':
+          description: Erro de validação dos dados ou saldo insuficiente.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Não autorizado. Token inválido ou ausente.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado. Requer persona SCHOOL.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Conta bancária não encontrada ou não pertence à escola.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '501':
+          description: Funcionalidade de solicitação de saque não configurada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /schools/courses:
     get:
       tags:
