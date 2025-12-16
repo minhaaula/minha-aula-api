@@ -25,6 +25,8 @@ export interface ApproveEnrollmentRequestOutput {
     enrollmentId: string;
     status: string;
     enrollmentFeeChargeId: string | null;
+    enrollmentFeeBoletoGenerated?: boolean;
+    firstTuitionChargeId?: string | null;
 }
 
 export interface ListEnrollmentRequestsInput {

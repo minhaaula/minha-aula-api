@@ -63,6 +63,7 @@ export interface SchoolPaymentRecord {
     asaasPaymentId: string | null;
     asaasInvoiceUrl: string | null;
     paidAt: Date | null;
+    type: 'PIX' | 'BOLETO' | 'MANUAL' | null;
     createdAt: Date;
     updatedAt: Date;
     student: {

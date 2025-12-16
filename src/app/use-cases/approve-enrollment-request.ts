@@ -9,6 +9,8 @@ import { EnrollmentRequest } from '../../domain/entities/enrollment-request';
 import { SchoolFinancialCharge } from '../../domain/entities/school-financial-charge';
 import { Uuid } from '../../shared/uuid';
 import type { ApproveEnrollmentRequestInput, ApproveEnrollmentRequestOutput } from '../types/enrollment.types';
+import type { IssueEnrollmentFeeBoleto } from './issue-enrollment-fee-boleto';
+import type { GenerateTuitionPix } from './generate-tuition-pix';
 
 export class ApproveEnrollmentRequest {
     constructor(
@@ -16,7 +18,9 @@ export class ApproveEnrollmentRequest {
         private readonly enrollments: EnrollmentRepository,
         private readonly classes: CourseClassRepository,
         private readonly courses: CourseRepository,
-        private readonly financialCharges: SchoolFinancialChargeRepository
+        private readonly financialCharges: SchoolFinancialChargeRepository,
+        private readonly issueEnrollmentFeeBoleto?: IssueEnrollmentFeeBoleto,
+        private readonly generateTuitionPix?: GenerateTuitionPix
     ) {}
 
     async exec(input: ApproveEnrollmentRequestInput): Promise<ApproveEnrollmentRequestOutput> {
@@ -70,11 +74,68 @@ export class ApproveEnrollmentRequest {
 
         await this.requests.save(request);
 
+        // Gerar boleto de matrícula automaticamente (se houver cobrança)
+        let enrollmentFeeBoletoGenerated = false;
+        if (pendingCharge && this.issueEnrollmentFeeBoleto) {
+            try {
+                await this.issueEnrollmentFeeBoleto.exec({
+                    chargeId: pendingCharge.id,
+                    requester: {
+                        persona: 'STUDENT' as const,
+                        id: input.approverUserId,
+                        schoolId: request.schoolId
+                    }
+                });
+                enrollmentFeeBoletoGenerated = true;
+            } catch (error) {
+                // Log erro mas não falha a aprovação
+                console.error('Erro ao gerar boleto de matrícula automaticamente:', error);
+            }
+        }
+
+        // Gerar primeira mensalidade se a data de vencimento já passou ou está no mesmo mês
+        let firstTuitionChargeId: string | null = null;
+        if (course.monthlyPriceCents && course.monthlyPriceCents > 0) {
+            try {
+                const firstTuitionCharge = await this.createFirstTuitionCharge(
+                    enrollment,
+                    course,
+                    courseClass,
+                    request.firstMonthlyPaymentDate
+                );
+                if (firstTuitionCharge) {
+                    firstTuitionChargeId = firstTuitionCharge.id;
+                    
+                    // Gerar PIX da mensalidade automaticamente
+                    if (this.generateTuitionPix) {
+                        try {
+                            await this.generateTuitionPix.exec({
+                                chargeId: firstTuitionCharge.id,
+                                requester: {
+                                    persona: 'STUDENT' as const,
+                                    id: input.approverUserId,
+                                    schoolId: request.schoolId
+                                }
+                            });
+                        } catch (error) {
+                            // Log erro mas não falha a aprovação
+                            console.error('Erro ao gerar PIX da primeira mensalidade automaticamente:', error);
+                        }
+                    }
+                }
+            } catch (error) {
+                // Log erro mas não falha a aprovação
+                console.error('Erro ao gerar primeira mensalidade automaticamente:', error);
+            }
+        }
+
         return {
             requestId: request.id,
             enrollmentId: enrollment.id,
             status: request.status,
-            enrollmentFeeChargeId: pendingCharge ? pendingCharge.id : null
+            enrollmentFeeChargeId: pendingCharge ? pendingCharge.id : null,
+            enrollmentFeeBoletoGenerated,
+            firstTuitionChargeId
         };
     }
 
@@ -195,5 +256,66 @@ export class ApproveEnrollmentRequest {
             discountReason,
             dueDate
         });
+    }
+
+    private async createFirstTuitionCharge(
+        enrollment: Enrollment,
+        course: import('../../domain/entities/course').Course,
+        courseClass: import('../../domain/entities/course-class').CourseClass,
+        firstMonthlyPaymentDate: Date
+    ): Promise<SchoolFinancialCharge | null> {
+        const now = new Date();
+        const firstPaymentDate = new Date(firstMonthlyPaymentDate);
+        
+        // Só criar se a data de vencimento já passou ou está no mesmo mês
+        const isSameMonth = firstPaymentDate.getMonth() === now.getMonth() && 
+                           firstPaymentDate.getFullYear() === now.getFullYear();
+        const isPast = firstPaymentDate < now;
+        
+        if (!isSameMonth && !isPast) {
+            return null; // Ainda não é hora de gerar
+        }
+
+        // Verificar se já existe cobrança para este mês/ano
+        if (this.financialCharges.findTuitionChargesForMonth) {
+            const existingCharges = await this.financialCharges.findTuitionChargesForMonth(
+                enrollment.courseClassId,
+                enrollment.ownerUserId,
+                enrollment.studentUserId,
+                enrollment.dependentId,
+                firstPaymentDate.getFullYear(),
+                firstPaymentDate.getMonth() + 1
+            );
+            
+            if (existingCharges.length > 0) {
+                return null; // Já existe cobrança
+            }
+        }
+
+        const monthNames = [
+            'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+            'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+        ];
+        const monthName = monthNames[firstPaymentDate.getMonth()];
+        const year = firstPaymentDate.getFullYear();
+
+        const charge = SchoolFinancialCharge.create({
+            id: Uuid(),
+            schoolId: course.schoolId,
+            ownerUserId: enrollment.ownerUserId,
+            studentUserId: enrollment.studentUserId,
+            dependentId: enrollment.dependentId,
+            courseId: course.id,
+            courseClassId: enrollment.courseClassId,
+            chargeType: 'TUITION',
+            description: `Mensalidade - ${monthName} ${year}`,
+            amountCents: enrollment.fullAmountCents ?? course.monthlyPriceCents,
+            discountCents: null,
+            discountReason: null,
+            dueDate: firstPaymentDate
+        });
+
+        await this.financialCharges.save(charge);
+        return charge;
     }
 }

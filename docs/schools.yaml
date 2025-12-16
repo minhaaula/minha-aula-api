@@ -251,7 +251,7 @@ paths:
             minimum: 1
             maximum: 100
             default: 50
-          description: Número máximo de resultados a retornar (padrão: 50, máximo: 100).
+          description: 'Número máximo de resultados a retornar (padrão: 50, máximo: 100)'
         - in: query
           name: offset
           required: false
@@ -259,7 +259,7 @@ paths:
             type: integer
             minimum: 0
             default: 0
-          description: Número de resultados a pular para paginação (padrão: 0).
+          description: 'Número de resultados a pular para paginação (padrão: 0)'
       responses:
         '200':
           description: Lista de alunos matriculados na escola.
@@ -756,7 +756,7 @@ paths:
                   amount:
                     type: number
                     minimum: 0.01
-                    description: Valor do saque em reais (ex: 100.50)
+                    description: 'Valor do saque em reais (ex: 100.50)'
                   bankAccountId:
                     type: string
                     format: uuid

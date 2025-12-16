@@ -54,6 +54,7 @@ import { ListEnrollmentRequests } from '../../app/use-cases/list-enrollment-requ
 import { CreateEnrollmentRequest } from '../../app/use-cases/create-enrollment-request';
 import { ApproveEnrollmentRequest } from '../../app/use-cases/approve-enrollment-request';
 import { IssueEnrollmentFeeBoleto } from '../../app/use-cases/issue-enrollment-fee-boleto';
+import { GenerateTuitionPix } from '../../app/use-cases/generate-tuition-pix';
 import { GetEnrollmentRequest } from '../../app/use-cases/get-enrollment-request';
 import { CreateSchoolCharge } from '../../app/use-cases/create-school-charge';
 import { GetSchoolFinancialSummary } from '../../app/use-cases/get-school-financial-summary';
@@ -172,18 +173,27 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         deps.enrollmentsRepo,
         deps.enrollmentRequestsRepo
     );
-    const approveEnrollmentRequest = new ApproveEnrollmentRequest(
-        deps.enrollmentRequestsRepo,
-        deps.enrollmentsRepo,
-        deps.classesRepo,
-        deps.coursesRepo,
-        deps.financialChargesRepo
-    );
     const issueEnrollmentFeeBoleto = new IssueEnrollmentFeeBoleto(
         deps.financialChargesRepo,
         deps.usersRepo,
         deps.schoolsRepo,
         deps.paymentProvider
+    );
+    const generateTuitionPix = new GenerateTuitionPix(
+        deps.financialChargesRepo,
+        deps.usersRepo,
+        deps.schoolsRepo,
+        deps.coursesRepo,
+        deps.paymentProvider
+    );
+    const approveEnrollmentRequest = new ApproveEnrollmentRequest(
+        deps.enrollmentRequestsRepo,
+        deps.enrollmentsRepo,
+        deps.classesRepo,
+        deps.coursesRepo,
+        deps.financialChargesRepo,
+        issueEnrollmentFeeBoleto,
+        generateTuitionPix
     );
     const getEnrollmentRequest = new GetEnrollmentRequest(deps.enrollmentRequestsRepo);
     const createSchoolCharge = new CreateSchoolCharge(

@@ -78,18 +78,27 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
         deps.enrollmentsRepo,
         deps.enrollmentRequestsRepo
     );
-    const approveEnrollmentRequest = new ApproveEnrollmentRequest(
-        deps.enrollmentRequestsRepo,
-        deps.enrollmentsRepo,
-        deps.classesRepo,
-        deps.coursesRepo,
-        deps.financialChargesRepo
-    );
     const issueEnrollmentFeeBoleto = new IssueEnrollmentFeeBoleto(
         deps.financialChargesRepo,
         deps.usersRepo,
         deps.schoolsRepo,
         deps.paymentProvider
+    );
+    const generateTuitionPix = new GenerateTuitionPix(
+        deps.financialChargesRepo,
+        deps.usersRepo,
+        deps.schoolsRepo,
+        deps.coursesRepo,
+        deps.paymentProvider
+    );
+    const approveEnrollmentRequest = new ApproveEnrollmentRequest(
+        deps.enrollmentRequestsRepo,
+        deps.enrollmentsRepo,
+        deps.classesRepo,
+        deps.coursesRepo,
+        deps.financialChargesRepo,
+        issueEnrollmentFeeBoleto,
+        generateTuitionPix
     );
     const listEnrollmentRequests = new ListEnrollmentRequests(deps.enrollmentRequestsRepo);
     const getEnrollmentRequest = new GetEnrollmentRequest(deps.enrollmentRequestsRepo);
@@ -101,13 +110,6 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
         ? new ListSchoolReviews(deps.schoolReviewsRepo, deps.storageProvider)
         : undefined;
     const getSchoolPublicDetails = new GetSchoolPublicDetails(deps.schoolsRepo);
-    const generateTuitionPix = new GenerateTuitionPix(
-        deps.financialChargesRepo,
-        deps.usersRepo,
-        deps.schoolsRepo,
-        deps.coursesRepo,
-        deps.paymentProvider
-    );
 
     // Montar routers prontos
     const studentsRouterInstance = studentsRouter({

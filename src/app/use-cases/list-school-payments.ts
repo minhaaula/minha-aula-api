@@ -68,6 +68,7 @@ export class ListSchoolPayments {
                 'charge.dueDate AS charge_due_date',
                 'charge.asaasPaymentId AS charge_asaas_payment_id',
                 'charge.asaasInvoiceUrl AS charge_asaas_invoice_url',
+                'charge.asaasPayload AS charge_asaas_payload',
                 'charge.paidAt AS charge_paid_at',
                 'charge.createdAt AS charge_created_at',
                 'charge.updatedAt AS charge_updated_at',
@@ -170,6 +171,25 @@ export class ListSchoolPayments {
                 }
             }
 
+            // Determinar tipo de pagamento baseado no payload
+            const paymentType = this.determinePaymentType(
+                row.charge_asaas_payload,
+                row.charge_asaas_payment_id,
+                row.charge_status
+            );
+
+            // Converter datas para Date se forem strings
+            const convertToDate = (value: any): Date => {
+                if (value instanceof Date) return value;
+                if (!value) return value;
+                return new Date(value);
+            };
+
+            const paidAt = row.charge_paid_at ? convertToDate(row.charge_paid_at) : null;
+            const dueDate = convertToDate(row.charge_due_date);
+            const createdAt = convertToDate(row.charge_created_at);
+            const updatedAt = convertToDate(row.charge_updated_at);
+
             results.push({
                 id: row.charge_id,
                 amountCents: row.charge_amount_cents,
@@ -179,12 +199,13 @@ export class ListSchoolPayments {
                 status: row.charge_status as SchoolFinancialChargeStatus,
                 chargeType: row.charge_charge_type,
                 description: row.charge_description,
-                dueDate: row.charge_due_date,
+                dueDate,
                 asaasPaymentId: row.charge_asaas_payment_id,
                 asaasInvoiceUrl: row.charge_asaas_invoice_url,
-                paidAt: row.charge_paid_at,
-                createdAt: row.charge_created_at,
-                updatedAt: row.charge_updated_at,
+                paidAt,
+                type: paymentType,
+                createdAt,
+                updatedAt,
                 student: {
                     id: studentId || ownerId,
                     fullName: studentName,
@@ -234,5 +255,49 @@ export class ListSchoolPayments {
 
         const classes = await this.classes.findByCourseIds(courseIds);
         return classes.filter((cls) => cls.isActive);
+    }
+
+    private determinePaymentType(
+        asaasPayload: any,
+        asaasPaymentId: string | null,
+        status: string
+    ): 'PIX' | 'BOLETO' | 'MANUAL' | null {
+        // Se não está pago, não tem tipo
+        if (status !== 'PAID') {
+            return null;
+        }
+
+        // Se não tem paymentId, provavelmente foi pago manualmente
+        if (!asaasPaymentId) {
+            return 'MANUAL';
+        }
+
+        // Verificar payload para determinar tipo
+        if (asaasPayload && typeof asaasPayload === 'object') {
+            // Verificar se tem dados de PIX
+            if (asaasPayload.pixQrCode || asaasPayload.pixCopiaECola) {
+                return 'PIX';
+            }
+            
+            // Verificar se tem dados de boleto
+            if (asaasPayload.digitableLine || asaasPayload.barcode) {
+                return 'BOLETO';
+            }
+
+            // Verificar billingType do Asaas se disponível
+            if (asaasPayload.billingType) {
+                const billingType = String(asaasPayload.billingType).toUpperCase();
+                if (billingType === 'PIX') {
+                    return 'PIX';
+                }
+                if (billingType === 'BOLETO' || billingType === 'BANK_SLIP') {
+                    return 'BOLETO';
+                }
+            }
+        }
+
+        // Se tem paymentId mas não conseguimos determinar o tipo, assume manual
+        // (pode ser que foi pago via outro método ou o payload não está completo)
+        return 'MANUAL';
     }
 }
