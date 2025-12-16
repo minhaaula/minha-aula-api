@@ -66,7 +66,9 @@ export function buildStudentsRoutes(deps: StudentsRoutesDeps, guards: SchoolRout
     const querySchema = z.object({
         name: z.string().trim().min(1).optional(),
         courseId: z.string().uuid().optional(),
-        classId: z.string().uuid().optional()
+        classId: z.string().uuid().optional(),
+        limit: z.coerce.number().int().positive().max(100).optional(),
+        offset: z.coerce.number().int().min(0).optional()
     });
 
     router.get('/', ...protectedMiddleware, asyncHandler(async (req, res) => {
@@ -75,17 +77,29 @@ export function buildStudentsRoutes(deps: StudentsRoutesDeps, guards: SchoolRout
         const query = querySchema.parse({
             name: typeof req.query.name === 'string' ? req.query.name : undefined,
             courseId: typeof req.query.courseId === 'string' ? req.query.courseId : undefined,
-            classId: typeof req.query.classId === 'string' ? req.query.classId : undefined
+            classId: typeof req.query.classId === 'string' ? req.query.classId : undefined,
+            limit: req.query.limit,
+            offset: req.query.offset
         });
 
-        const students = await deps.listSchoolStudents.exec({
+        const result = await deps.listSchoolStudents.exec({
             schoolId,
             name: query.name,
             courseId: query.courseId,
-            classId: query.classId
+            classId: query.classId,
+            limit: query.limit,
+            offset: query.offset
         });
 
-        res.json({ students });
+        res.json({
+            students: result.students,
+            pagination: {
+                total: result.total,
+                limit: result.limit,
+                offset: result.offset,
+                hasMore: result.offset + result.limit < result.total
+            }
+        });
     }));
 
     return router;

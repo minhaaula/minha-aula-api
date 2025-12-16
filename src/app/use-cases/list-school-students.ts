@@ -16,6 +16,15 @@ type ListSchoolStudentsInput = {
     name?: string | null;
     courseId?: string | null;
     classId?: string | null;
+    limit?: number;
+    offset?: number;
+};
+
+export type ListSchoolStudentsOutput = {
+    students: SchoolStudentRecord[];
+    total: number;
+    limit: number;
+    offset: number;
 };
 
 export type SchoolStudentRecord = {
@@ -45,32 +54,61 @@ export class ListSchoolStudents {
         private readonly dependents: DependentRepository
     ) {}
 
-    async exec(input: ListSchoolStudentsInput): Promise<SchoolStudentRecord[]> {
+    async exec(input: ListSchoolStudentsInput): Promise<ListSchoolStudentsOutput> {
         const schoolId = input.schoolId?.trim();
         const courseIdFilter = input.courseId?.trim() || null;
         const classIdFilter = input.classId?.trim() || null;
         const nameFilter = input.name?.trim().toLowerCase() || null;
+        const limit = Math.min(Math.max(input.limit ?? 50, 1), 100);
+        const offset = Math.max(0, input.offset ?? 0);
 
-        if (!schoolId) return [];
+        if (!schoolId) {
+            return {
+                students: [],
+                total: 0,
+                limit,
+                offset
+            };
+        }
 
         const courses = await this.resolveCourses(schoolId, courseIdFilter, classIdFilter);
         if (!courses || courses.length === 0) {
-            return [];
+            return {
+                students: [],
+                total: 0,
+                limit,
+                offset
+            };
         }
 
         const classes = await this.resolveClasses(courses, classIdFilter);
         if (!classes || classes.length === 0) {
-            return [];
+            return {
+                students: [],
+                total: 0,
+                limit,
+                offset
+            };
         }
 
         const enrollments = await this.enrollments.findActiveByClassIds(classes.map((cls) => cls.id));
         if (enrollments.length === 0) {
-            return [];
+            return {
+                students: [],
+                total: 0,
+                limit,
+                offset
+            };
         }
 
         const owners = await this.loadOwners(enrollments);
         if (owners.size === 0) {
-            return [];
+            return {
+                students: [],
+                total: 0,
+                limit,
+                offset
+            };
         }
 
         const dependentsByOwner = await this.loadDependents(Array.from(owners.keys()));
@@ -134,7 +172,16 @@ export class ListSchoolStudents {
             });
         }
 
-        return results.sort((a, b) => b.enrolledAt.getTime() - a.enrolledAt.getTime());
+        const sortedResults = results.sort((a, b) => b.enrolledAt.getTime() - a.enrolledAt.getTime());
+        const total = sortedResults.length;
+        const paginatedResults = sortedResults.slice(offset, offset + limit);
+
+        return {
+            students: paginatedResults,
+            total,
+            limit,
+            offset
+        };
     }
 
     private async resolveCourses(

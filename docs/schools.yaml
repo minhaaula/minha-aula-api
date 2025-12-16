@@ -228,7 +228,7 @@ paths:
           required: false
           schema:
             type: string
-          description: Filtrar alunos cujo nome (ou do dependente) contenha o valor informado.
+          description: Filtrar alunos cujo nome (ou do dependente) contenha o valor informado (case insensitive).
         - in: query
           name: courseId
           required: false
@@ -243,6 +243,23 @@ paths:
             type: string
             format: uuid
           description: Filtrar matrículas de uma turma específica.
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+          description: Número máximo de resultados a retornar (padrão: 50, máximo: 100).
+        - in: query
+          name: offset
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+          description: Número de resultados a pular para paginação (padrão: 0).
       responses:
         '200':
           description: Lista de alunos matriculados na escola.

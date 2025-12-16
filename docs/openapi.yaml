@@ -1320,11 +1320,35 @@ components:
       type: object
       required:
         - students
+        - pagination
       properties:
         students:
           type: array
           items:
             $ref: '#/components/schemas/SchoolStudentEnrollmentResponse'
+        pagination:
+          type: object
+          required:
+            - total
+            - limit
+            - offset
+            - hasMore
+          properties:
+            total:
+              type: integer
+              format: int32
+              description: Total de resultados encontrados (após aplicar filtros)
+            limit:
+              type: integer
+              format: int32
+              description: Número máximo de resultados solicitados
+            offset:
+              type: integer
+              format: int32
+              description: Número de resultados pulados
+            hasMore:
+              type: boolean
+              description: Indica se há mais resultados disponíveis além dos retornados
     SchoolPaymentRecord:
       type: object
       required:
