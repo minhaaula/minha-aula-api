@@ -58,6 +58,7 @@ import { GenerateTuitionPix } from '../../app/use-cases/generate-tuition-pix';
 import { GetEnrollmentRequest } from '../../app/use-cases/get-enrollment-request';
 import { CreateSchoolCharge } from '../../app/use-cases/create-school-charge';
 import { GetSchoolFinancialSummary } from '../../app/use-cases/get-school-financial-summary';
+import { GetSchoolDashboard } from '../../app/use-cases/get-school-dashboard';
 import { ListSchoolWithdrawals } from '../../app/use-cases/list-school-withdrawals';
 import { RequestSchoolWithdrawal } from '../../app/use-cases/request-school-withdrawal';
 import { SchoolWithdrawalRepositoryAdapter } from '../../infra/db/typeorm/school-withdrawal-repository.adapter';
@@ -204,6 +205,13 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         deps.dependentsRepo
     );
     const getSchoolFinancialSummary = new GetSchoolFinancialSummary(deps.financialChargesRepo);
+    const getSchoolDashboard = new GetSchoolDashboard(
+        deps.coursesRepo,
+        deps.classesRepo,
+        deps.enrollmentsRepo,
+        deps.financialChargesRepo,
+        deps.enrollmentRequestsRepo
+    );
     const withdrawalsRepo = new SchoolWithdrawalRepositoryAdapter();
     const listSchoolWithdrawals = new ListSchoolWithdrawals(withdrawalsRepo);
     
@@ -277,6 +285,7 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         listEnrollmentRequests,
         createSchoolCharge,
         getSchoolFinancialSummary,
+        getSchoolDashboard,
         listSchoolWithdrawals,
         requestSchoolWithdrawal,
         scheduleClassSession,

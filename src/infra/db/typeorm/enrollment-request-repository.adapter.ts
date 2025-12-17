@@ -95,6 +95,12 @@ export class EnrollmentRequestRepositoryAdapter implements EnrollmentRequestRepo
         }));
     }
 
+    async countPendingBySchoolId(schoolId: string): Promise<number> {
+        return await this.repo.count({
+            where: { schoolId, status: 'PENDING' }
+        });
+    }
+
     async save(request: EnrollmentRequest): Promise<void> {
         await this.repo.save(this.toOrm(request));
     }

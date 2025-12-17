@@ -66,6 +66,49 @@ export class EnrollmentRepositoryAdapter implements EnrollmentRepository {
         }));
     }
 
+    async findRecentBySchoolId(schoolId: string, limit: number): Promise<EnrollmentWithDetails[]> {
+        const results = await this.repo
+            .createQueryBuilder('enrollment')
+            .leftJoin('enrollment.courseClass', 'class')
+            .leftJoin('class.course', 'course')
+            .leftJoin('course.school', 'school')
+            .leftJoin('enrollment.studentUser', 'user')
+            .leftJoin('enrollment.dependent', 'dependent')
+            .where('school.id = :schoolId', { schoolId })
+            .select([
+                'COALESCE(user.id, dependent.id) as studentId',
+                'COALESCE(user.fullName, dependent.fullName) as studentName',
+                'COALESCE(user.cpf, dependent.cpf) as studentCpf',
+                'enrollment.enrolledAt as createdAt',
+                'course.name as courseName',
+                'class.label as className',
+                'school.name as schoolName'
+            ])
+            .orderBy('enrollment.enrolledAt', 'DESC')
+            .limit(limit)
+            .getRawMany();
+
+        return results.map((row: any) => ({
+            studentId: row.studentId,
+            studentName: row.studentName,
+            studentCpf: row.studentCpf,
+            createdAt: new Date(row.createdAt),
+            courseName: row.courseName,
+            className: row.className,
+            schoolName: row.schoolName
+        }));
+    }
+
+    async countActiveBySchoolId(schoolId: string): Promise<number> {
+        return await this.repo
+            .createQueryBuilder('enrollment')
+            .leftJoin('enrollment.courseClass', 'class')
+            .leftJoin('class.course', 'course')
+            .where('course.schoolId = :schoolId', { schoolId })
+            .andWhere('enrollment.status = :status', { status: 'ACTIVE' })
+            .getCount();
+    }
+
     async findMyCourses(userId: string): Promise<import('../../../ports/repositories/enrollment.repo').MyCourseData[]> {
         const results = await this.repo
             .createQueryBuilder('enrollment')

@@ -68,6 +68,12 @@ export class CourseRepositoryAdapter implements CourseRepository {
         return rows.map((row) => this.toDomain(row));
     }
 
+    async countActiveBySchoolId(schoolId: string): Promise<number> {
+        return await this.repo.count({
+            where: { schoolId, isActive: true, deletedAt: null as any }
+        });
+    }
+
     async findCategoriesByCourseIds(courseIds: string[]): Promise<import('../../../ports/repositories/course.repo').CourseCategoryInfo[]> {
         if (courseIds.length === 0) return [];
 

@@ -38,6 +38,15 @@ export class CourseClassRepositoryAdapter implements CourseClassRepository {
         return rows.map((row) => this.toDomain(row));
     }
 
+    async countActiveBySchoolId(schoolId: string): Promise<number> {
+        return await this.repo
+            .createQueryBuilder('class')
+            .leftJoin('class.course', 'course')
+            .where('course.schoolId = :schoolId', { schoolId })
+            .andWhere('class.isActive = :isActive', { isActive: true })
+            .getCount();
+    }
+
     async save(courseClass: CourseClass): Promise<void> {
         await this.repo.save(this.toOrm(courseClass));
     }

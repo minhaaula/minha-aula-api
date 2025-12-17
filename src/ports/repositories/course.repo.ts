@@ -20,6 +20,7 @@ export interface CourseRepository {
     findByIdIncludingDeleted?(id: string): Promise<Course | null>;
     findBySchoolAndName(schoolId: string, name: string): Promise<Course | null>;
     findBySchoolId(schoolId: string): Promise<Course[]>;
+    countActiveBySchoolId?(schoolId: string): Promise<number>;
     save(course: Course): Promise<void>;
     findCategoriesByCourseIds?(courseIds: string[]): Promise<CourseCategoryInfo[]>;
     findAllWithFilters?(filters: {

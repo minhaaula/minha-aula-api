@@ -1470,6 +1470,98 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /schools/dashboard:
+    get:
+      tags:
+        - Schools
+      summary: Dados consolidados para o dashboard da escola
+      description: Retorna métricas, histórico de receita, pagamentos em atraso e matrículas recentes para a escola autenticada.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Dados do dashboard recuperados com sucesso.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  summary:
+                    type: object
+                    properties:
+                      totalStudents:
+                        type: integer
+                        description: Total de alunos ativos na escola
+                      totalClasses:
+                        type: integer
+                        description: Total de turmas ativas
+                      totalCourses:
+                        type: integer
+                        description: Total de cursos ativos
+                      revenueForecast:
+                        type: number
+                        format: double
+                        description: Previsão de receita para o mês atual em reais
+                      revenueForecastCents:
+                        type: integer
+                        description: Previsão de receita para o mês atual em centavos
+                      revenueChangePercentage:
+                        type: number
+                        format: double
+                        description: Porcentagem de mudança de receita em relação ao mês anterior
+                      pendingEnrollmentRequests:
+                        type: integer
+                        description: Quantidade de solicitações de matrícula pendentes
+                  overduePayments:
+                    type: object
+                    properties:
+                      totalAmount:
+                        type: number
+                        format: double
+                        description: Valor total em atraso em reais
+                      totalAmountCents:
+                        type: integer
+                        description: Valor total em atraso em centavos
+                      count:
+                        type: integer
+                        description: Quantidade de pagamentos em atraso
+                  recentEnrollments:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        studentId:
+                          type: string
+                          format: uuid
+                        studentName:
+                          type: string
+                        courseName:
+                          type: string
+                        className:
+                          type: string
+                        enrolledAt:
+                          type: string
+                          format: date-time
+                  revenueHistory:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        month:
+                          type: string
+                          description: 'Mês no formato YYYY-MM'
+                          example: "2024-03"
+                        value:
+                          type: number
+                          format: double
+                          description: Receita total do mês em reais
+                        valueCents:
+                          type: integer
+                          description: Receita total do mês em centavos
+        '401':
+          description: Não autenticado.
+        '403':
+          description: Sem permissão (apenas persona SCHOOL).
     put:
       tags:
         - Schools

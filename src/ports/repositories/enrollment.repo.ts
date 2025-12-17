@@ -26,5 +26,7 @@ export interface EnrollmentRepository {
     findActiveByClassIds(classIds: string[]): Promise<Enrollment[]>;
     save(enrollment: Enrollment): Promise<void>;
     findRecent?(limit: number): Promise<EnrollmentWithDetails[]>;
+    findRecentBySchoolId?(schoolId: string, limit: number): Promise<EnrollmentWithDetails[]>;
+    countActiveBySchoolId?(schoolId: string): Promise<number>;
     findMyCourses?(userId: string): Promise<MyCourseData[]>;
 }

@@ -160,6 +160,54 @@ export class SchoolFinancialChargeRepositoryAdapter implements SchoolFinancialCh
         return rows.map((row) => this.toDomain(row));
     }
 
+    async getRevenueHistory(schoolId: string, monthsLimit: number): Promise<Array<{ month: string; valueCents: number }>> {
+        const results = await this.repo.createQueryBuilder('charge')
+            .select([
+                "DATE_FORMAT(charge.paidAt, '%Y-%m') AS month",
+                'SUM(charge.netAmountCents) AS valueCents'
+            ])
+            .where('charge.schoolId = :schoolId', { schoolId })
+            .andWhere('charge.status = :status', { status: 'PAID' })
+            .andWhere('charge.paidAt IS NOT NULL')
+            .groupBy('month')
+            .orderBy('month', 'DESC')
+            .limit(monthsLimit)
+            .getRawMany();
+
+        return results.map(row => ({
+            month: row.month,
+            valueCents: Number(row.valueCents)
+        })).reverse();
+    }
+
+    async getOverdueSummary(schoolId: string): Promise<{ totalAmountCents: number; count: number }> {
+        const result = await this.repo.createQueryBuilder('charge')
+            .select([
+                'SUM(charge.netAmountCents) AS totalAmountCents',
+                'COUNT(charge.id) AS count'
+            ])
+            .where('charge.schoolId = :schoolId', { schoolId })
+            .andWhere('charge.status = :status', { status: 'OVERDUE' })
+            .getRawOne();
+
+        return {
+            totalAmountCents: Number(result.totalAmountCents || 0),
+            count: Number(result.count || 0)
+        };
+    }
+
+    async getRevenueForecast(schoolId: string, month: number, year: number): Promise<number> {
+        const result = await this.repo.createQueryBuilder('charge')
+            .select('SUM(charge.netAmountCents) AS total')
+            .where('charge.schoolId = :schoolId', { schoolId })
+            .andWhere('charge.status IN (:...statuses)', { statuses: ['PENDING_SYNC', 'OPEN', 'OVERDUE'] })
+            .andWhere('MONTH(charge.dueDate) = :month', { month })
+            .andWhere('YEAR(charge.dueDate) = :year', { year })
+            .getRawOne();
+
+        return Number(result.total || 0);
+    }
+
     private toDomain(row: SchoolFinancialChargeOrm): SchoolFinancialCharge {
         return SchoolFinancialCharge.restore({
             id: row.id,

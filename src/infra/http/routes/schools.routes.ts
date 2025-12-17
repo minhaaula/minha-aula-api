@@ -51,6 +51,7 @@ import type { ResetPassword } from '../../../app/use-cases/reset-password';
 import type { UpdateSchoolPassword } from '../../../app/use-cases/update-school-password';
 import type { GetStudentDirectoryEntry } from '../../../app/use-cases/get-student-directory-entry';
 import { buildPasswordResetRoutes } from './schools/password-reset.routes';
+import { buildDashboardRoutes } from './schools/dashboard.routes';
 import { z } from 'zod';
 import { asyncHandler } from '../utils/async-handler';
 import { AuthenticatedRequest } from '../middlewares/auth';
@@ -99,6 +100,7 @@ export type SchoolsRouterDeps = {
     validatePasswordResetToken?: import('../../../app/use-cases/validate-password-reset-token').ValidatePasswordResetToken;
     updateSchoolPassword?: UpdateSchoolPassword;
     getStudentDirectoryEntry?: GetStudentDirectoryEntry;
+    getSchoolDashboard?: import('../../../app/use-cases/get-school-dashboard').GetSchoolDashboard;
 };
 
 export function schoolsRouter(deps: SchoolsRouterDeps) {
@@ -130,6 +132,12 @@ export function schoolsRouter(deps: SchoolsRouterDeps) {
         issueSchoolPlanInvoice: deps.issueSchoolPlanInvoice,
         listSchoolPlanInvoices: deps.listSchoolPlanInvoices
     }, guards));
+
+    if (deps.getSchoolDashboard) {
+        router.use('/dashboard', buildDashboardRoutes({
+            getSchoolDashboard: deps.getSchoolDashboard
+        }, guards));
+    }
 
     if (deps.createSchoolCharge || deps.getSchoolFinancialSummary || deps.listSchoolWithdrawals || deps.requestSchoolWithdrawal) {
         router.use('/finance', buildFinanceRoutes({

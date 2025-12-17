@@ -22,5 +22,6 @@ export interface EnrollmentRequestRepository {
         limit?: number;
         offset?: number;
     }): Promise<EnrollmentRequestWithDetails[]>;
+    countPendingBySchoolId?(schoolId: string): Promise<number>;
     save(request: EnrollmentRequest): Promise<void>;
 }
