@@ -97,6 +97,8 @@ export function buildStudentsRoutes(deps: StudentsRoutesDeps, guards: SchoolRout
                 total: result.total,
                 limit: result.limit,
                 offset: result.offset,
+                totalPage: Math.ceil(result.total / result.limit),
+                currentPage: Math.floor(result.offset / result.limit) + 1,
                 hasMore: result.offset + result.limit < result.total
             }
         });

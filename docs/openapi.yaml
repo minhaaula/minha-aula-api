@@ -1344,6 +1344,8 @@ components:
             - total
             - limit
             - offset
+            - totalPage
+            - currentPage
             - hasMore
           properties:
             total:
@@ -1358,6 +1360,14 @@ components:
               type: integer
               format: int32
               description: Número de resultados pulados
+            totalPage:
+              type: integer
+              format: int32
+              description: Total de páginas disponíveis
+            currentPage:
+              type: integer
+              format: int32
+              description: Página atual (iniciando em 1)
             hasMore:
               type: boolean
               description: Indica se há mais resultados disponíveis além dos retornados
