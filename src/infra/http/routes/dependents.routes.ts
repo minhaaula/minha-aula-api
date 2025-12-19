@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { AddDependent } from '../../../app/use-cases/add-dependent';
 import { ListMyDependents } from '../../../app/use-cases/list-my-dependents';
+import { DeleteDependent } from '../../../app/use-cases/delete-dependent';
 import { AuthenticatedRequest } from '../middlewares/auth';
 import { requirePersona } from '../middlewares/require-persona';
 import { UserPersonaEnum } from '../../../domain/value-objects/user-persona';
@@ -10,6 +11,7 @@ import { asyncHandler } from '../utils/async-handler';
 export function dependentsRouter(deps: { 
     addDependent: AddDependent;
     listMyDependents?: ListMyDependents;
+    deleteDependent?: DeleteDependent;
 }) {
     const r = Router();
 
@@ -52,6 +54,33 @@ export function dependentsRouter(deps: {
 
             const result = await deps.listMyDependents!.exec({ userId: authReq.user.sub });
             res.json(result);
+        }));
+    }
+
+    if (deps.deleteDependent) {
+        r.delete('/:id', requireStudentPersona, asyncHandler(async (req, res) => {
+            const authReq = req as AuthenticatedRequest;
+            if (!authReq.user?.sub) {
+                return res.status(401).json({ 
+                    error: 'Não autorizado',
+                    code: 'UNAUTHORIZED'
+                });
+            }
+
+            const dependentId = req.params.id?.trim();
+            if (!dependentId) {
+                return res.status(400).json({ 
+                    error: 'ID do dependente é obrigatório',
+                    code: 'INVALID_IDENTIFIERS'
+                });
+            }
+
+            await deps.deleteDependent!.exec({
+                ownerUserId: authReq.user.sub,
+                dependentId
+            });
+
+            res.status(204).send();
         }));
     }
 

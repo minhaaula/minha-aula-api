@@ -20,6 +20,8 @@ export class DependentOrm {
 
     @CreateDateColumn({ name: 'created_at', type: 'datetime', default: () => 'CURRENT_TIMESTAMP' }) createdAt!: Date;
 
+    @Column('datetime', { name: 'deleted_at', nullable: true }) deletedAt!: Date | null;
+
     @ManyToOne(() => UserOrm, { onDelete: 'CASCADE' })
     @JoinColumn({ name: 'user_id' })
     user!: UserOrm;

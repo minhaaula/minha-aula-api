@@ -2,7 +2,7 @@ import { AppDataSource } from './datasource';
 import { DependentRepository } from '../../../ports/repositories/dependent.repo';
 import { Dependent } from '../../../domain/entities/dependent';
 import { DependentOrm } from './entities/dependent.orm';
-import { In } from 'typeorm';
+import { In, IsNull } from 'typeorm';
 
 export class DependentRepositoryAdapter implements DependentRepository {
     private readonly repo = AppDataSource.getRepository(DependentOrm);
@@ -15,20 +15,26 @@ export class DependentRepositoryAdapter implements DependentRepository {
     async findByCpf(cpf: string): Promise<Dependent | null> {
         const normalized = cpf.replace(/\D/g, '');
         if (normalized.length !== 11) return null;
-        const row = await this.repo.findOne({ where: { cpf: normalized } });
+        const row = await this.repo.findOne({ 
+            where: { cpf: normalized, deletedAt: IsNull() } 
+        });
         return row ? this.toDomain(row) : null;
     }
 
     async findByUserAndFullName(userId: string, fullName: string): Promise<Dependent | null> {
         const cleaned = fullName.trim();
         if (!cleaned) return null;
-        const row = await this.repo.findOne({ where: { userId, fullName: cleaned } });
+        const row = await this.repo.findOne({ 
+            where: { userId, fullName: cleaned, deletedAt: IsNull() } 
+        });
         return row ? this.toDomain(row) : null;
     }
 
     async findByUserIds(userIds: string[]): Promise<Dependent[]> {
         if (!userIds.length) return [];
-        const rows = await this.repo.find({ where: { userId: In(userIds) } });
+        const rows = await this.repo.find({ 
+            where: { userId: In(userIds), deletedAt: IsNull() } 
+        });
         return rows.map((row) => this.toDomain(row));
     }
 
@@ -44,7 +50,8 @@ export class DependentRepositoryAdapter implements DependentRepository {
             cpf: row.cpf,
             birthDate: row.birthDate ? new Date(row.birthDate) : null,
             relationship: row.relationship,
-            createdAt: new Date(row.createdAt)
+            createdAt: new Date(row.createdAt),
+            deletedAt: row.deletedAt ? new Date(row.deletedAt) : null
         });
     }
 
@@ -57,6 +64,7 @@ export class DependentRepositoryAdapter implements DependentRepository {
         row.birthDate = dependent.birthDate;
         row.relationship = dependent.relationship;
         row.createdAt = dependent.createdAt;
+        row.deletedAt = dependent.deletedAt;
         return row;
     }
 }

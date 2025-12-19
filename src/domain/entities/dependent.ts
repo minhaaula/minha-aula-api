@@ -6,7 +6,8 @@ export class Dependent {
         private readonly _cpf: string | null,
         public readonly birthDate: Date | null,
         public readonly relationship: string | null,
-        public readonly createdAt: Date
+        public readonly createdAt: Date,
+        private _deletedAt: Date | null = null
     ) {}
 
     static create(params: {
@@ -17,6 +18,7 @@ export class Dependent {
         birthDate?: Date | null;
         relationship?: string | null;
         createdAt?: Date;
+        deletedAt?: Date | null;
     }) {
         const userId = params.userId.trim();
         if (!userId) throw new Error('User id is required');
@@ -33,12 +35,21 @@ export class Dependent {
             cpf,
             birthDate,
             relationship,
-            params.createdAt ?? new Date()
+            params.createdAt ?? new Date(),
+            params.deletedAt ?? null
         );
     }
 
     get cpf(): string | null {
         return this._cpf;
+    }
+
+    get deletedAt(): Date | null {
+        return this._deletedAt;
+    }
+
+    markAsDeleted(): void {
+        this._deletedAt = new Date();
     }
 
     private static normalizeCpf(value?: string | null): string | null {

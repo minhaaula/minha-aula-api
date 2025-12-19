@@ -30,6 +30,14 @@ export class EnrollmentRepositoryAdapter implements EnrollmentRepository {
         return rows.map((row) => this.toDomain(row));
     }
 
+    async findActiveByDependentId(dependentId: string): Promise<Enrollment[]> {
+        const rows = await this.repo.createQueryBuilder('enrollment')
+            .where('enrollment.dependentId = :dependentId', { dependentId })
+            .andWhere('enrollment.status = :status', { status: 'ACTIVE' })
+            .getMany();
+        return rows.map((row) => this.toDomain(row));
+    }
+
     async save(enrollment: Enrollment): Promise<void> {
         await this.repo.save(this.toOrm(enrollment));
     }
