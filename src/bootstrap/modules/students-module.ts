@@ -10,6 +10,7 @@ import { SchoolFinancialChargeRepositoryAdapter } from '../../infra/db/typeorm/s
 import { AddDependent } from '../../app/use-cases/add-dependent';
 import { CreateEnrollmentRequest } from '../../app/use-cases/create-enrollment-request';
 import { ApproveEnrollmentRequest } from '../../app/use-cases/approve-enrollment-request';
+import { RejectEnrollmentRequest } from '../../app/use-cases/reject-enrollment-request';
 import { IssueEnrollmentFeeBoleto } from '../../app/use-cases/issue-enrollment-fee-boleto';
 import { dependentsRouter } from '../../infra/http/routes/dependents.routes';
 import { enrollmentRequestsRouter } from '../../infra/http/routes/enrollment-requests.routes';
@@ -110,6 +111,7 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
         issueEnrollmentFeeBoleto,
         generateTuitionPix
     );
+    const rejectEnrollmentRequest = new RejectEnrollmentRequest(deps.enrollmentRequestsRepo);
     const listEnrollmentRequests = new ListEnrollmentRequests(deps.enrollmentRequestsRepo);
     const getEnrollmentRequest = new GetEnrollmentRequest(deps.enrollmentRequestsRepo);
     const listMyEnrollmentRequests = new ListMyEnrollmentRequests(deps.enrollmentRequestsRepo, deps.dependentsRepo);
@@ -135,6 +137,7 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
         listSchoolCourses,
         listSchoolReviews,
         approveEnrollmentRequest,
+        rejectEnrollmentRequest,
         getSchoolPublicDetails,
         generateTuitionPix
     });

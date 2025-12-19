@@ -12,6 +12,7 @@ import { UpdateStudentProfile } from '../../../app/use-cases/update-student-prof
 import { ListSchoolCourses } from '../../../app/use-cases/list-school-courses';
 import { ListSchoolReviews } from '../../../app/use-cases/list-school-reviews';
 import { ApproveEnrollmentRequest } from '../../../app/use-cases/approve-enrollment-request';
+import { RejectEnrollmentRequest } from '../../../app/use-cases/reject-enrollment-request';
 import { GetSchoolPublicDetails } from '../../../app/use-cases/get-school-public-details';
 import { GenerateTuitionPix } from '../../../app/use-cases/generate-tuition-pix';
 import { requirePersona } from '../middlewares/require-persona';
@@ -33,6 +34,7 @@ export function studentsRouter(deps: {
     listSchoolCourses?: ListSchoolCourses;
     listSchoolReviews?: ListSchoolReviews;
     approveEnrollmentRequest?: ApproveEnrollmentRequest;
+    rejectEnrollmentRequest?: RejectEnrollmentRequest;
     getSchoolPublicDetails?: GetSchoolPublicDetails;
     generateTuitionPix?: GenerateTuitionPix;
 }) {
@@ -319,6 +321,32 @@ export function studentsRouter(deps: {
             const result = await deps.approveEnrollmentRequest!.exec({
                 requestId,
                 approverUserId: authReq.user.sub,
+                notes: notes ?? null
+            });
+
+            res.json(result);
+        }));
+    }
+
+    if (deps.rejectEnrollmentRequest) {
+        r.post('/enrollment-requests/:requestId/reject', requireStudent, asyncHandler(async (req, res) => {
+            const authReq = req as AuthenticatedRequest;
+            if (!authReq.user?.sub) {
+                return res.status(401).json({ 
+                    error: 'Não autorizado',
+                    code: 'UNAUTHORIZED'
+                });
+            }
+
+            const paramsSchema = z.object({ requestId: z.string().uuid() });
+            const { requestId } = paramsSchema.parse(req.params);
+            
+            const bodySchema = z.object({ notes: z.string().max(255).optional() });
+            const { notes } = bodySchema.parse(req.body ?? {});
+
+            const result = await deps.rejectEnrollmentRequest!.exec({
+                requestId,
+                rejectorUserId: authReq.user.sub,
                 notes: notes ?? null
             });
 

@@ -1238,6 +1238,104 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /students/enrollment-requests/{requestId}/reject:
+    post:
+      tags:
+        - Students
+      summary: Rejeitar pedido de matrícula
+      description: |
+        Permite ao estudante rejeitar um pedido de matrícula pendente que foi criado para ele ou para um de seus dependentes.
+        Ao rejeitar, o status do pedido é alterado para REJECTED e nenhuma matrícula é criada.
+        Requer persona STUDENT e o pedido deve pertencer ao estudante autenticado.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: requestId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID do pedido de matrícula a ser rejeitado
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                notes:
+                  type: string
+                  maxLength: 255
+                  nullable: true
+                  description: Observações opcionais sobre a rejeição do pedido
+                  example: Não tenho interesse no curso no momento
+              example:
+                notes: Não tenho interesse no curso no momento
+      responses:
+        '200':
+          description: Pedido de matrícula rejeitado com sucesso.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  requestId:
+                    type: string
+                    format: uuid
+                    description: ID do pedido de matrícula rejeitado
+                  status:
+                    type: string
+                    enum: [REJECTED]
+                    description: Status do pedido após rejeição (sempre REJECTED)
+                  rejectedAt:
+                    type: string
+                    format: date-time
+                    description: Data e hora da rejeição
+                  rejectedByUserId:
+                    type: string
+                    format: uuid
+                    description: ID do usuário que rejeitou o pedido
+                  notes:
+                    type: string
+                    nullable: true
+                    description: Observações sobre a rejeição
+                required:
+                  - requestId
+                  - status
+                  - rejectedAt
+                  - rejectedByUserId
+                  - notes
+        '400':
+          description: Erro na requisição. Pedido inválido, já decidido ou não autorizado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Não autorizado. Token inválido ou ausente.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado. Requer persona STUDENT ou o pedido não pertence ao estudante autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Pedido de matrícula não encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '501':
+          description: Funcionalidade de rejeitar pedido de matrícula não configurada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /students/schools/{schoolId}:
     get:
       tags:
