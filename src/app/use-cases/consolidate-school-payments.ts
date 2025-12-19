@@ -12,11 +12,11 @@ export interface ConsolidateSchoolPaymentsInput {
 }
 
 export interface ConsolidateSchoolPaymentsOutput {
-    totalMensalidadesPendentes: number;
-    totalMensalidadesEmAtraso: number;
-    totalMensalidadesPagas: number;
-    totalAReceber: number;
-    totalRecebido: number;
+    pendentes: number; // Quantidade de itens pendentes
+    pagos: number; // Quantidade de itens pagos
+    vencidos: number; // Quantidade de itens vencidos
+    totalAReceber: number; // Valor monetário em centavos (pendentes + vencidos)
+    totalRecebido: number; // Valor monetário em centavos (pagos)
 }
 
 export class ConsolidateSchoolPayments {
@@ -46,9 +46,9 @@ export class ConsolidateSchoolPayments {
         
         if (activeCourses.length === 0) {
             return {
-                totalMensalidadesPendentes: 0,
-                totalMensalidadesEmAtraso: 0,
-                totalMensalidadesPagas: 0,
+                pendentes: 0,
+                pagos: 0,
+                vencidos: 0,
                 totalAReceber: 0,
                 totalRecebido: 0
             };
@@ -75,9 +75,12 @@ export class ConsolidateSchoolPayments {
 
         const charges = await queryBuilder.getRawMany();
 
-        let totalMensalidadesPendentes = 0;
-        let totalMensalidadesEmAtraso = 0;
-        let totalMensalidadesPagas = 0;
+        let quantidadePendentes = 0;
+        let quantidadeVencidos = 0;
+        let quantidadePagos = 0;
+        let valorPendentes = 0;
+        let valorVencidos = 0;
+        let valorPagos = 0;
 
         for (const charge of charges) {
             const amountCents = charge.net_amount_cents || 0;
@@ -88,25 +91,30 @@ export class ConsolidateSchoolPayments {
 
             // Mensalidades pagas
             if (status === 'PAID') {
-                totalMensalidadesPagas += amountCents;
+                quantidadePagos += 1;
+                valorPagos += amountCents;
             }
             // Mensalidades em atraso (status OVERDUE ou qualquer status pendente com data vencida)
             else if (status === 'OVERDUE' || ((status === 'OPEN' || status === 'PENDING_SYNC') && isOverdue)) {
-                totalMensalidadesEmAtraso += amountCents;
+                quantidadeVencidos += 1;
+                valorVencidos += amountCents;
             }
             // Mensalidades pendentes (OPEN ou PENDING_SYNC que não estão em atraso)
             else if (status === 'OPEN' || status === 'PENDING_SYNC') {
-                totalMensalidadesPendentes += amountCents;
+                quantidadePendentes += 1;
+                valorPendentes += amountCents;
             }
         }
 
-        const totalAReceber = totalMensalidadesPendentes + totalMensalidadesEmAtraso;
-        const totalRecebido = totalMensalidadesPagas;
+        // Total a receber = valor de pendentes + valor de vencidos
+        const totalAReceber = valorPendentes + valorVencidos;
+        // Total recebido = valor de pagos
+        const totalRecebido = valorPagos;
 
         return {
-            totalMensalidadesPendentes,
-            totalMensalidadesEmAtraso,
-            totalMensalidadesPagas,
+            pendentes: quantidadePendentes,
+            pagos: quantidadePagos,
+            vencidos: quantidadeVencidos,
             totalAReceber,
             totalRecebido
         };
