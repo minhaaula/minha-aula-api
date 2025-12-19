@@ -411,9 +411,9 @@ paths:
       summary: Consolidado de pagamentos dos estudantes da escola
       description: |
         Retorna os totais consolidados de mensalidades dos alunos da escola para um mês e ano específicos.
-        - `pendentes`, `pagos` e `vencidos` são quantidades (número de itens)
-        - `totalAReceber` e `totalRecebido` são valores monetários em centavos
-        - `totalAReceber` inclui pendentes e vencidos
+        - `pending`, `paid` e `overdue` são quantidades (número de itens)
+        - `totalToReceive` e `totalReceived` são valores monetários em centavos
+        - `totalToReceive` inclui pendentes e vencidos
       security:
         - bearerAuth: []
       parameters:
@@ -443,37 +443,37 @@ paths:
               schema:
                 type: object
                 properties:
-                  pendentes:
+                  pending:
                     type: integer
                     format: int32
-                    description: Quantidade de mensalidades pendentes. Inclui status OPEN ou PENDING_SYNC com data de vencimento ainda não passada.
+                    description: Quantity of pending charges. Includes OPEN or PENDING_SYNC status with due date not yet passed.
                     example: 15
-                  pagos:
+                  paid:
                     type: integer
                     format: int32
-                    description: Quantidade de mensalidades pagas. Status PAID.
+                    description: Quantity of paid charges. Status PAID.
                     example: 45
-                  vencidos:
+                  overdue:
                     type: integer
                     format: int32
-                    description: Quantidade de mensalidades vencidas. Inclui status OVERDUE ou status pendente com data de vencimento passada.
+                    description: Quantity of overdue charges. Includes OVERDUE status or pending status with past due date.
                     example: 5
-                  totalAReceber:
+                  totalToReceive:
                     type: integer
                     format: int64
-                    description: Total a receber em centavos. Soma dos valores de pendentes e vencidos.
+                    description: Total to receive in cents. Sum of pending and overdue values.
                     example: 200000
-                  totalRecebido:
+                  totalReceived:
                     type: integer
                     format: int64
-                    description: Total recebido em centavos. Soma dos valores das mensalidades pagas.
+                    description: Total received in cents. Sum of paid charges values.
                     example: 450000
                 required:
-                  - pendentes
-                  - pagos
-                  - vencidos
-                  - totalAReceber
-                  - totalRecebido
+                  - pending
+                  - paid
+                  - overdue
+                  - totalToReceive
+                  - totalReceived
         '400':
           description: Erro na requisição. Mês ou ano inválidos ou não fornecidos.
           content:

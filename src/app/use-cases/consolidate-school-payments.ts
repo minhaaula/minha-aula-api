@@ -12,11 +12,11 @@ export interface ConsolidateSchoolPaymentsInput {
 }
 
 export interface ConsolidateSchoolPaymentsOutput {
-    pendentes: number; // Quantidade de itens pendentes
-    pagos: number; // Quantidade de itens pagos
-    vencidos: number; // Quantidade de itens vencidos
-    totalAReceber: number; // Valor monetário em centavos (pendentes + vencidos)
-    totalRecebido: number; // Valor monetário em centavos (pagos)
+    pending: number; // Quantity of pending items
+    paid: number; // Quantity of paid items
+    overdue: number; // Quantity of overdue items
+    totalToReceive: number; // Monetary value in cents (pending + overdue)
+    totalReceived: number; // Monetary value in cents (paid)
 }
 
 export class ConsolidateSchoolPayments {
@@ -46,11 +46,11 @@ export class ConsolidateSchoolPayments {
         
         if (activeCourses.length === 0) {
             return {
-                pendentes: 0,
-                pagos: 0,
-                vencidos: 0,
-                totalAReceber: 0,
-                totalRecebido: 0
+                pending: 0,
+                paid: 0,
+                overdue: 0,
+                totalToReceive: 0,
+                totalReceived: 0
             };
         }
 
@@ -106,17 +106,17 @@ export class ConsolidateSchoolPayments {
             }
         }
 
-        // Total a receber = valor de pendentes + valor de vencidos
-        const totalAReceber = valorPendentes + valorVencidos;
-        // Total recebido = valor de pagos
-        const totalRecebido = valorPagos;
+        // Total to receive = value of pending + value of overdue
+        const totalToReceive = valorPendentes + valorVencidos;
+        // Total received = value of paid
+        const totalReceived = valorPagos;
 
         return {
-            pendentes: quantidadePendentes,
-            pagos: quantidadePagos,
-            vencidos: quantidadeVencidos,
-            totalAReceber,
-            totalRecebido
+            pending: quantidadePendentes,
+            paid: quantidadePagos,
+            overdue: quantidadeVencidos,
+            totalToReceive,
+            totalReceived
         };
     }
 }
