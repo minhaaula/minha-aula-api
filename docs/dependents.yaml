@@ -110,6 +110,79 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
   /dependents/{id}:
+    put:
+      tags:
+        - Dependents
+      summary: Editar um dependente
+      description: |
+        Atualiza os dados de um dependente do usuário autenticado.
+        O CPF não pode ser alterado. Apenas nome completo, data de nascimento e relacionamento podem ser atualizados.
+        Requer persona STUDENT.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID do dependente a ser editado
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fullName:
+                  type: string
+                  minLength: 3
+                  description: Nome completo do dependente
+                  example: João Pedro Silva
+                birthDate:
+                  type: string
+                  format: date
+                  nullable: true
+                  description: Data de nascimento do dependente (formato YYYY-MM-DD)
+                  example: '2010-05-15'
+                relationship:
+                  type: string
+                  nullable: true
+                  description: "Relacionamento com o responsável (ex: Filho, Filha)"
+                  example: Filho
+              required: []
+      responses:
+        '200':
+          description: Dependente atualizado com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DependentResponse'
+        '400':
+          description: Erro de validação (ID inválido, dependente não encontrado ou dados inválidos).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Não autorizado. Token inválido ou ausente.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado ou dependente não pertence ao usuário. Requer persona STUDENT.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Nome já está em uso por outro dependente do mesmo usuário.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     delete:
       tags:
         - Dependents

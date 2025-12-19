@@ -26,6 +26,7 @@ import { ListStudentPayments } from '../../app/use-cases/list-student-payments';
 import { GetStudentPaymentDetails } from '../../app/use-cases/get-student-payment-details';
 import { ListMyDependents } from '../../app/use-cases/list-my-dependents';
 import { DeleteDependent } from '../../app/use-cases/delete-dependent';
+import { UpdateDependent } from '../../app/use-cases/update-dependent';
 import { GetMyProfile } from '../../app/use-cases/get-my-profile';
 import { ListMyEnrollmentRequests } from '../../app/use-cases/list-my-enrollment-requests';
 import { UpdateStudentProfile } from '../../app/use-cases/update-student-profile';
@@ -144,11 +145,13 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
         deps.enrollmentsRepo,
         deps.enrollmentRequestsRepo
     );
+    const updateDependent = new UpdateDependent(deps.dependentsRepo);
     
     const dependentsRouterInstance = dependentsRouter({
         addDependent,
         listMyDependents,
-        deleteDependent
+        deleteDependent,
+        updateDependent
     });
 
     const enrollmentRequestsRouterInstance = enrollmentRequestsRouter({
