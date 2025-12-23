@@ -1479,6 +1479,44 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+    put:
+      tags:
+        - Schools
+      summary: Atualizar dados da escola autenticada
+      description: Permite que uma escola autenticada atualize seus próprios dados.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateSchoolInput'
+      responses:
+        '200':
+          description: Dados da escola atualizados com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchoolResponse'
+        '400':
+          description: Dados inválidos para atualização da escola.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Escola não encontrada para o usuário autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '501':
+          description: Funcionalidade de atualização de escola não configurada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /schools/dashboard:
     get:
       tags:
@@ -1571,43 +1609,6 @@ paths:
           description: Não autenticado.
         '403':
           description: Sem permissão (apenas persona SCHOOL).
-    put:
-      tags:
-        - Schools
-      summary: Atualizar dados da escola autenticada
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UpdateSchoolInput'
-      responses:
-        '200':
-          description: Dados da escola atualizados com sucesso.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SchoolResponse'
-        '400':
-          description: Dados inválidos para atualização da escola.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          description: Escola não encontrada para o usuário autenticado.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '501':
-          description: Funcionalidade de atualização de escola não configurada.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
   /schools/categories:
     get:
       tags:

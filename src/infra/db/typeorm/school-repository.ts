@@ -100,7 +100,12 @@ export class SchoolRepositoryAdapter implements SchoolRepository {
             accountId: row.accountId ?? null,
             accountApiKey: row.accountApiKey ?? null,
             walletId: row.walletId ?? null,
-            incomeValue: typeof row.incomeValue === 'number' ? row.incomeValue : 5000
+            incomeValue: typeof row.incomeValue === 'number' ? row.incomeValue : 5000,
+            facebookLink: row.facebookLink ?? null,
+            instagramLink: row.instagramLink ?? null,
+            tiktokLink: row.tiktokLink ?? null,
+            youtubeLink: row.youtubeLink ?? null,
+            siteLink: row.siteLink ?? null
         });
     }
 
@@ -128,6 +133,11 @@ export class SchoolRepositoryAdapter implements SchoolRepository {
         row.accountApiKey = school.accountApiKey;
         row.walletId = school.walletId;
         row.incomeValue = school.incomeValue;
+        row.facebookLink = school.facebookLink;
+        row.instagramLink = school.instagramLink;
+        row.tiktokLink = school.tiktokLink;
+        row.youtubeLink = school.youtubeLink;
+        row.siteLink = school.siteLink;
         if (existing) {
             await this.repo.manager.createQueryBuilder()
                 .delete()

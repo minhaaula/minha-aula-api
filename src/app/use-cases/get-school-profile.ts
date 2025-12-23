@@ -38,6 +38,13 @@ export class GetSchoolProfile {
         ownerEmail: string | null;
         incomeValue: number;
         bankAccounts: BankAccountView[];
+        links: {
+            facebook: string | null;
+            instagram: string | null;
+            tiktok: string | null;
+            youtube: string | null;
+            site: string | null;
+        };
     } | null> {
         const schoolId = input.schoolId.trim();
         if (!schoolId) return null;
@@ -78,7 +85,14 @@ export class GetSchoolProfile {
                 isActive: account.isActive,
                 createdAt: account.createdAt,
                 updatedAt: account.updatedAt
-            }))
+            })),
+            links: {
+                facebook: school.facebookLink,
+                instagram: school.instagramLink,
+                tiktok: school.tiktokLink,
+                youtube: school.youtubeLink,
+                site: school.siteLink
+            }
         };
     }
 }

@@ -40,7 +40,14 @@ export const updateSchoolSchema = z.object({
     ownerUserId: z.string().trim().min(1).nullable().optional(),
     ownerPassword: z.string().min(8).nullable().optional(),
     incomeValue: z.number().int().positive().optional(),
-    addresses: z.array(addressSchema).optional()
+    addresses: z.array(addressSchema).optional(),
+    links: z.object({
+        facebook: z.string().trim().nullable().optional(),
+        instagram: z.string().trim().nullable().optional(),
+        tiktok: z.string().trim().nullable().optional(),
+        youtube: z.string().trim().nullable().optional(),
+        site: z.string().trim().nullable().optional()
+    }).optional()
 });
 
 export const courseCategorySchema = z.object({

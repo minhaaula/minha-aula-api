@@ -18,7 +18,12 @@ export class School {
         private readonly _accountId: string | null,
         private readonly _accountApiKey: string | null,
         private readonly _walletId: string | null,
-        private readonly _incomeValue: number
+        private readonly _incomeValue: number,
+        private readonly _facebookLink: string | null,
+        private readonly _instagramLink: string | null,
+        private readonly _tiktokLink: string | null,
+        private readonly _youtubeLink: string | null,
+        private readonly _siteLink: string | null
     ) {}
 
     static create(params: {
@@ -38,6 +43,11 @@ export class School {
         accountApiKey?: string | null;
         walletId?: string | null;
         incomeValue?: number;
+        facebookLink?: string | null;
+        instagramLink?: string | null;
+        tiktokLink?: string | null;
+        youtubeLink?: string | null;
+        siteLink?: string | null;
     }) {
         const name = params.name.trim();
         if (!name) throw new Error('School name is required');
@@ -63,6 +73,11 @@ export class School {
         const accountApiKey = School.normalizeAccountApiKey(params.accountApiKey);
         const walletId = School.normalizeWalletId(params.walletId);
         const incomeValue = School.normalizeIncomeValue(params.incomeValue);
+        const facebookLink = School.normalizeLink(params.facebookLink);
+        const instagramLink = School.normalizeLink(params.instagramLink);
+        const tiktokLink = School.normalizeLink(params.tiktokLink);
+        const youtubeLink = School.normalizeLink(params.youtubeLink);
+        const siteLink = School.normalizeLink(params.siteLink);
 
         return new School(
             params.id,
@@ -80,7 +95,12 @@ export class School {
             accountId,
             accountApiKey,
             walletId,
-            incomeValue
+            incomeValue,
+            facebookLink,
+            instagramLink,
+            tiktokLink,
+            youtubeLink,
+            siteLink
         );
     }
 
@@ -134,6 +154,26 @@ export class School {
 
     get incomeValue(): number {
         return this._incomeValue;
+    }
+
+    get facebookLink(): string | null {
+        return this._facebookLink;
+    }
+
+    get instagramLink(): string | null {
+        return this._instagramLink;
+    }
+
+    get tiktokLink(): string | null {
+        return this._tiktokLink;
+    }
+
+    get youtubeLink(): string | null {
+        return this._youtubeLink;
+    }
+
+    get siteLink(): string | null {
+        return this._siteLink;
     }
 
     private static normalizePhone(value: string) {
@@ -244,6 +284,16 @@ export class School {
         return Math.round(numeric);
     }
 
+    private static normalizeLink(value: unknown): string | null {
+        if (value === undefined || value === null) return null;
+        if (typeof value !== 'string') {
+            throw new Error('Link must be a string');
+        }
+        const trimmed = value.trim();
+        if (!trimmed) return null;
+        return trimmed;
+    }
+
     withAccountId(accountId: string): School {
         const normalized = School.normalizeAccountId(accountId);
         return School.create({
@@ -262,7 +312,12 @@ export class School {
             accountId: normalized,
             accountApiKey: this._accountApiKey,
             walletId: this._walletId,
-            incomeValue: this._incomeValue
+            incomeValue: this._incomeValue,
+            facebookLink: this._facebookLink,
+            instagramLink: this._instagramLink,
+            tiktokLink: this._tiktokLink,
+            youtubeLink: this._youtubeLink,
+            siteLink: this._siteLink
         });
     }
 
@@ -284,7 +339,12 @@ export class School {
             accountId: this._accountId,
             accountApiKey: normalized,
             walletId: this._walletId,
-            incomeValue: this._incomeValue
+            incomeValue: this._incomeValue,
+            facebookLink: this._facebookLink,
+            instagramLink: this._instagramLink,
+            tiktokLink: this._tiktokLink,
+            youtubeLink: this._youtubeLink,
+            siteLink: this._siteLink
         });
     }
 
@@ -306,7 +366,12 @@ export class School {
             accountId: this._accountId,
             accountApiKey: this._accountApiKey,
             walletId: normalized,
-            incomeValue: this._incomeValue
+            incomeValue: this._incomeValue,
+            facebookLink: this._facebookLink,
+            instagramLink: this._instagramLink,
+            tiktokLink: this._tiktokLink,
+            youtubeLink: this._youtubeLink,
+            siteLink: this._siteLink
         });
     }
 }

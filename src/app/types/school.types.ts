@@ -46,6 +46,13 @@ export interface UpdateSchoolInput {
     ownerUserId?: string | null;
     ownerPassword?: string | null;
     incomeValue?: number;
+    links?: {
+        facebook?: string | null;
+        instagram?: string | null;
+        tiktok?: string | null;
+        youtube?: string | null;
+        site?: string | null;
+    };
 }
 
 export interface UpdateSchoolOutput {
@@ -61,6 +68,13 @@ export interface UpdateSchoolOutput {
     ownerCpf: string | null;
     ownerEmail: string | null;
     incomeValue: number;
+    links: {
+        facebook: string | null;
+        instagram: string | null;
+        tiktok: string | null;
+        youtube: string | null;
+        site: string | null;
+    };
 }
 
 export interface SchoolSummary {
@@ -102,5 +116,12 @@ export interface GetSchoolProfileOutput {
     ownerEmail: string | null;
     incomeValue: number;
     bankAccounts: BankAccountOutput[];
+    links: {
+        facebook: string | null;
+        instagram: string | null;
+        tiktok: string | null;
+        youtube: string | null;
+        site: string | null;
+    };
 }
 

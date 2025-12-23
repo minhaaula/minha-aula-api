@@ -51,6 +51,21 @@ export class SchoolOrm {
     @Column('int', { name: 'income_value', default: 5000 })
     incomeValue!: number;
 
+    @Column('varchar', { length: 500, name: 'facebook_link', nullable: true })
+    facebookLink!: string | null;
+
+    @Column('varchar', { length: 500, name: 'instagram_link', nullable: true })
+    instagramLink!: string | null;
+
+    @Column('varchar', { length: 500, name: 'tiktok_link', nullable: true })
+    tiktokLink!: string | null;
+
+    @Column('varchar', { length: 500, name: 'youtube_link', nullable: true })
+    youtubeLink!: string | null;
+
+    @Column('varchar', { length: 500, name: 'site_link', nullable: true })
+    siteLink!: string | null;
+
     @OneToMany(() => SchoolAddressOrm, (address) => address.school, {
         cascade: ['insert', 'update'],
         orphanedRowAction: 'delete'

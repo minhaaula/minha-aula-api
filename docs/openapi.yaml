@@ -544,6 +544,35 @@ components:
           format: int32
           description: Valor de receita mensal estimada em centavos
           example: 50000
+        links:
+          type: object
+          description: Links das redes sociais e site da escola
+          properties:
+            facebook:
+              type: string
+              nullable: true
+              description: Link do Facebook
+              example: "https://facebook.com/escola"
+            instagram:
+              type: string
+              nullable: true
+              description: Link do Instagram
+              example: "https://instagram.com/escola"
+            tiktok:
+              type: string
+              nullable: true
+              description: Link do TikTok
+              example: "https://tiktok.com/@escola"
+            youtube:
+              type: string
+              nullable: true
+              description: Link do YouTube
+              example: "https://youtube.com/@escola"
+            site:
+              type: string
+              nullable: true
+              description: Link do site
+              example: "https://escola.com.br"
     SchoolLoginInput:
       type: object
       required:
@@ -625,6 +654,41 @@ components:
           description: Lista de contas bancárias da escola
           items:
             $ref: '#/components/schemas/BankAccount'
+        links:
+          type: object
+          description: Links das redes sociais e site da escola
+          properties:
+            facebook:
+              type: string
+              nullable: true
+              description: Link do Facebook
+              example: "https://facebook.com/escola"
+            instagram:
+              type: string
+              nullable: true
+              description: Link do Instagram
+              example: "https://instagram.com/escola"
+            tiktok:
+              type: string
+              nullable: true
+              description: Link do TikTok
+              example: "https://tiktok.com/@escola"
+            youtube:
+              type: string
+              nullable: true
+              description: Link do YouTube
+              example: "https://youtube.com/@escola"
+            site:
+              type: string
+              nullable: true
+              description: Link do site
+              example: "https://escola.com.br"
+          required:
+            - facebook
+            - instagram
+            - tiktok
+            - youtube
+            - site
       required:
         - id
         - name
@@ -633,6 +697,7 @@ components:
         - cnpj
         - addresses
         - createdAt
+        - links
     SubscriptionPlanSummary:
       type: object
       properties:

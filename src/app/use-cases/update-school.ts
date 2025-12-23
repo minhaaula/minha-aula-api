@@ -54,6 +54,12 @@ export class UpdateSchool {
 
         const incomeValue = input.incomeValue !== undefined ? input.incomeValue : school.incomeValue;
 
+        const facebookLink = input.links?.facebook !== undefined ? input.links.facebook : school.facebookLink;
+        const instagramLink = input.links?.instagram !== undefined ? input.links.instagram : school.instagramLink;
+        const tiktokLink = input.links?.tiktok !== undefined ? input.links.tiktok : school.tiktokLink;
+        const youtubeLink = input.links?.youtube !== undefined ? input.links.youtube : school.youtubeLink;
+        const siteLink = input.links?.site !== undefined ? input.links.site : school.siteLink;
+
         const ownerFields = [ownerName ?? null, ownerCpf ?? null, ownerEmail ?? null];
         const ownerInfoProvided = ownerFields.some((value) => value !== null);
         if (ownerInfoProvided) {
@@ -82,7 +88,14 @@ export class UpdateSchool {
             ownerPasswordHash,
             createdAt: school.createdAt,
             accountId: school.accountId,
-            incomeValue
+            accountApiKey: school.accountApiKey,
+            walletId: school.walletId,
+            incomeValue,
+            facebookLink,
+            instagramLink,
+            tiktokLink,
+            youtubeLink,
+            siteLink
         });
 
         await this.schools.save(updated);
@@ -99,7 +112,14 @@ export class UpdateSchool {
             ownerName: updated.ownerName,
             ownerCpf: updated.ownerCpf,
             ownerEmail: updated.ownerEmail,
-            incomeValue: updated.incomeValue
+            incomeValue: updated.incomeValue,
+            links: {
+                facebook: updated.facebookLink,
+                instagram: updated.instagramLink,
+                tiktok: updated.tiktokLink,
+                youtube: updated.youtubeLink,
+                site: updated.siteLink
+            }
         };
     }
 }
