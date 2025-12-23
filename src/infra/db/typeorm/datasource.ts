@@ -26,6 +26,7 @@ import { SchoolBankAccountOrm } from './entities/school-bank-account.orm';
 import { SchoolWithdrawalOrm } from './entities/school-withdrawal.orm';
 import { PasswordResetTokenOrm } from './entities/password-reset-token.orm';
 import { SchoolReviewOrm } from './entities/school-review.orm';
+import { SchoolImageOrm } from './entities/school-image.orm';
 
 export const AppDataSource = new DataSource({
     type: 'mysql',
@@ -59,7 +60,8 @@ export const AppDataSource = new DataSource({
         SchoolBankAccountOrm,
         SchoolWithdrawalOrm,
         PasswordResetTokenOrm,
-        SchoolReviewOrm
+        SchoolReviewOrm,
+        SchoolImageOrm
     ],
     synchronize: false,
     migrations: ['dist/infra/db/typeorm/migrations/*.js'],

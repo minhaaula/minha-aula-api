@@ -75,6 +75,10 @@ import { UpdateSchoolPassword } from '../../app/use-cases/update-school-password
 import { PasswordResetTokenRepositoryAdapter } from '../../infra/db/typeorm/password-reset-token-repository.adapter';
 import { EmailProviderPort } from '../../ports/providers/email-provider.port';
 import { GetStudentDirectoryEntry } from '../../app/use-cases/get-student-directory-entry';
+import { StorageProviderPort } from '../../ports/providers/storage-provider.port';
+import { UploadSchoolImage } from '../../app/use-cases/upload-school-image';
+import { ListSchoolImages } from '../../app/use-cases/list-school-images';
+import { SchoolImageRepositoryAdapter } from '../../infra/db/typeorm/school-image-repository.adapter';
 
 export type SchoolsModuleDeps = {
     schoolsRepo: SchoolRepositoryAdapter;
@@ -97,6 +101,7 @@ export type SchoolsModuleDeps = {
     bankAccountsRepo?: SchoolBankAccountRepositoryAdapter;
     emailProvider?: EmailProviderPort;
     frontendBaseUrl?: string;
+    storageProvider?: StorageProviderPort;
 };
 
 export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupContext): ModuleBuildResult {
@@ -262,6 +267,13 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         issueSchoolPlanInvoice
     );
     const listCategories = new ListCategories(deps.categoriesRepo);
+    const schoolImagesRepo = new SchoolImageRepositoryAdapter();
+    const uploadSchoolImage = deps.storageProvider
+        ? new UploadSchoolImage(deps.schoolsRepo, schoolImagesRepo, deps.storageProvider)
+        : undefined;
+    const listSchoolImages = deps.storageProvider
+        ? new ListSchoolImages(schoolImagesRepo, deps.storageProvider)
+        : undefined;
 
     // Montar routers prontos
     const schoolsRouterInstance = schoolsRouter({
@@ -308,7 +320,9 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         resetPassword,
         validatePasswordResetToken,
         updateSchoolPassword,
-        getStudentDirectoryEntry
+        getStudentDirectoryEntry,
+        uploadSchoolImage,
+        listSchoolImages
     });
 
     const asaasWebhookRouterInstance = asaasWebhookRouter({

@@ -52,6 +52,7 @@ import type { UpdateSchoolPassword } from '../../../app/use-cases/update-school-
 import type { GetStudentDirectoryEntry } from '../../../app/use-cases/get-student-directory-entry';
 import { buildPasswordResetRoutes } from './schools/password-reset.routes';
 import { buildDashboardRoutes } from './schools/dashboard.routes';
+import { buildImagesRoutes } from './schools/images.routes';
 import { z } from 'zod';
 import { asyncHandler } from '../utils/async-handler';
 import { AuthenticatedRequest } from '../middlewares/auth';
@@ -101,6 +102,8 @@ export type SchoolsRouterDeps = {
     updateSchoolPassword?: UpdateSchoolPassword;
     getStudentDirectoryEntry?: GetStudentDirectoryEntry;
     getSchoolDashboard?: import('../../../app/use-cases/get-school-dashboard').GetSchoolDashboard;
+    uploadSchoolImage?: import('../../../app/use-cases/upload-school-image').UploadSchoolImage;
+    listSchoolImages?: import('../../../app/use-cases/list-school-images').ListSchoolImages;
 };
 
 export function schoolsRouter(deps: SchoolsRouterDeps) {
@@ -136,6 +139,13 @@ export function schoolsRouter(deps: SchoolsRouterDeps) {
     if (deps.getSchoolDashboard) {
         router.use('/dashboard', buildDashboardRoutes({
             getSchoolDashboard: deps.getSchoolDashboard
+        }, guards));
+    }
+
+    if (deps.uploadSchoolImage || deps.listSchoolImages) {
+        router.use('/images', buildImagesRoutes({
+            uploadSchoolImage: deps.uploadSchoolImage,
+            listSchoolImages: deps.listSchoolImages
         }, guards));
     }
 

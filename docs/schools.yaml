@@ -2006,3 +2006,182 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /schools/images:
+    post:
+      tags:
+        - Schools
+      summary: Enviar imagem da escola
+      description: |
+        Faz upload de uma imagem para a escola autenticada. A imagem é armazenada no bucket configurado.
+        - Apenas um arquivo por vez
+        - Tipos aceitos: JPEG, JPG, PNG, WEBP, GIF
+        - Tamanho máximo: 5MB
+        - A imagem é armazenada na pasta `schools/{schoolId}/images/{category}/`
+        - Categorias disponíveis: GALLERY (padrão), LOGO, BANNER, COVER, OTHER
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - image
+              properties:
+                image:
+                  type: string
+                  format: binary
+                  description: Arquivo de imagem (JPEG, JPG, PNG, WEBP ou GIF)
+                category:
+                  type: string
+                  description: 'Categoria da imagem (GALLERY, LOGO, BANNER, COVER, OTHER). Padrão: GALLERY'
+                  enum: [GALLERY, LOGO, BANNER, COVER, OTHER]
+            encoding:
+              image:
+                contentType: image/jpeg, image/jpg, image/png, image/webp, image/gif
+      responses:
+        '201':
+          description: Imagem enviada com sucesso.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                    description: ID da imagem salva no banco de dados
+                  url:
+                    type: string
+                    format: uri
+                    description: URL assinada da imagem (válida por 1 hora)
+                    example: "https://storage.example.com/schools/abc123/images/def456.jpg?signature=..."
+                  key:
+                    type: string
+                    description: Chave do arquivo no storage
+                    example: "schools/abc123/images/gallery/def456.jpg"
+                  category:
+                    type: string
+                    description: Categoria da imagem
+                    example: "GALLERY"
+                required:
+                  - id
+                  - url
+                  - key
+                  - category
+        '400':
+          description: Erro de validação (arquivo inválido, muito grande ou tipo não permitido).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Não autorizado. Token inválido ou ausente.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado. Requer persona SCHOOL.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Escola não encontrada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '501':
+          description: Funcionalidade de upload de imagens não configurada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    get:
+      tags:
+        - Schools
+      summary: Listar imagens da escola
+      description: |
+        Retorna todas as imagens enviadas pela escola autenticada.
+        As URLs retornadas são assinadas e válidas por 1 hora.
+        Pode filtrar por categoria usando o parâmetro query `category`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: category
+          required: false
+          schema:
+            type: string
+            enum: [GALLERY, LOGO, BANNER, COVER, OTHER]
+          description: Filtrar imagens por categoria (opcional)
+      responses:
+        '200':
+          description: Lista de imagens da escola.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  images:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                          description: ID da imagem
+                        url:
+                          type: string
+                          format: uri
+                          description: URL assinada da imagem (válida por 1 hora)
+                        key:
+                          type: string
+                          description: Chave do arquivo no storage
+                        contentType:
+                          type: string
+                          description: Tipo MIME da imagem
+                          example: "image/jpeg"
+                        originalFileName:
+                          type: string
+                          description: Nome original do arquivo enviado
+                        category:
+                          type: string
+                          description: Categoria da imagem
+                          enum: [GALLERY, LOGO, BANNER, COVER, OTHER]
+                        createdAt:
+                          type: string
+                          format: date-time
+                          description: Data de criação da imagem
+                      required:
+                        - id
+                        - url
+                        - key
+                        - contentType
+                        - originalFileName
+                        - category
+                        - createdAt
+                required:
+                  - images
+        '401':
+          description: Não autorizado. Token inválido ou ausente.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado. Requer persona SCHOOL.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '501':
+          description: Funcionalidade de listagem de imagens não configurada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
