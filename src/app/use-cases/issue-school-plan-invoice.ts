@@ -2,6 +2,7 @@ import { Money } from '../../domain/value-objects/money';
 import { SchoolRepository } from '../../ports/repositories/school.repo';
 import { SchoolPlanFinanceRepository } from '../../ports/repositories/school-plan-finance.repo';
 import { SchoolPlanInvoiceRepository } from '../../ports/repositories/school-plan-invoice.repo';
+import { DiscountCouponRepository } from '../../ports/repositories/discount-coupon.repo';
 import { PaymentProviderPort } from '../../ports/providers/payment-provider.port';
 import { SchoolPlanInvoice } from '../../domain/entities/school-plan-invoice';
 import { SchoolPlanFinance } from '../../domain/entities/school-plan-finance';
@@ -9,11 +10,13 @@ import { calculateNextBillingDate } from '../utils/billing-cycle';
 import { presentSchoolPlanInvoice, SchoolPlanInvoiceView } from '../presenters/school-plan-invoice.presenter';
 import { presentSchoolPlanFinance, SchoolPlanFinanceView } from '../presenters/school-plan-finance.presenter';
 import { Uuid } from '../../shared/uuid';
+import { AppError, ErrorCode } from '../../shared/errors';
 
 type IssueSchoolPlanInvoiceInput = {
     schoolId: string;
     dueDate?: Date;
     description?: string | null;
+    couponCode?: string | null;
 };
 
 export type IssueSchoolPlanInvoiceResult = {
@@ -33,7 +36,8 @@ export class IssueSchoolPlanInvoice {
         private readonly schools: SchoolRepository,
         private readonly finances: SchoolPlanFinanceRepository,
         private readonly invoices: SchoolPlanInvoiceRepository,
-        private readonly paymentProvider: PaymentProviderPort
+        private readonly paymentProvider: PaymentProviderPort,
+        private readonly coupons?: DiscountCouponRepository
     ) {}
 
     async exec(input: IssueSchoolPlanInvoiceInput): Promise<IssueSchoolPlanInvoiceResult> {
@@ -51,6 +55,29 @@ export class IssueSchoolPlanInvoice {
         const plan = finance.plan;
         const baseDue = input.dueDate ?? finance.nextDueAt ?? calculateNextBillingDate(plan.billingCycle);
         const dueDate = new Date(baseDue);
+
+        // Validar cupom se fornecido
+        let coupon = null;
+        if (input.couponCode && this.coupons) {
+            const couponCode = input.couponCode.trim().toUpperCase();
+            coupon = await this.coupons.findByCode(couponCode);
+            if (!coupon) {
+                throw AppError.fromCode(ErrorCode.NOT_FOUND, {
+                    message: 'Cupom não encontrado',
+                    couponCode
+                });
+            }
+            if (!coupon.isValid()) {
+                if (coupon.isExpired()) {
+                    throw AppError.fromCode(ErrorCode.VALIDATION_ERROR, {
+                        message: 'Cupom expirado'
+                    });
+                }
+                throw AppError.fromCode(ErrorCode.VALIDATION_ERROR, {
+                    message: 'Cupom inválido ou inativo'
+                });
+            }
+        }
 
         const existingInvoice = await this.invoices.findByFinanceIdAndDueDate(finance.id, dueDate);
         if (existingInvoice) {
@@ -79,8 +106,22 @@ export class IssueSchoolPlanInvoice {
             financeId: finance.id
         };
 
+        // Calcular valores com desconto se houver cupom
+        const originalAmountCents = plan.amountCents;
+        let amountCents = originalAmountCents;
+        let discountAmountCents = 0;
+        let discountPercentage: number | null = null;
+        let discountCouponId: string | null = null;
+
+        if (coupon) {
+            discountPercentage = coupon.percentage;
+            discountAmountCents = coupon.calculateDiscount(originalAmountCents);
+            amountCents = coupon.calculateDiscountedAmount(originalAmountCents);
+            discountCouponId = coupon.id;
+        }
+
         const charge = await this.paymentProvider.createBoletoCharge({
-            amount: Money.of(plan.amountCents, plan.currency),
+            amount: Money.of(amountCents, plan.currency),
             customer: {
                 name: customerName,
                 email: customerEmail,
@@ -91,7 +132,7 @@ export class IssueSchoolPlanInvoice {
                 phone: school.phone
             },
             dueDate,
-            description: input.description ?? `Assinatura ${plan.name}`,
+            description: input.description ?? `Assinatura ${plan.name}${coupon ? ` - Cupom ${coupon.code}` : ''}`,
             externalReference: `${finance.id}:${dueDate.toISOString().slice(0, 10)}`,
             metadata
         });
@@ -101,22 +142,90 @@ export class IssueSchoolPlanInvoice {
             financeId: finance.id,
             schoolId,
             planId: plan.id,
-            amountCents: plan.amountCents,
+            amountCents,
             currency: plan.currency,
             dueDate: charge.dueDate,
-            description: input.description ?? `Assinatura ${plan.name}`,
+            description: input.description ?? `Assinatura ${plan.name}${coupon ? ` - Cupom ${coupon.code}` : ''}`,
             providerRef: charge.providerRef,
             boletoUrl: charge.boletoUrl ?? null,
             digitableLine: charge.digitableLine ?? null,
             barcode: charge.barcode ?? null,
             externalReference: `${finance.id}:${charge.dueDate.toISOString().slice(0, 10)}`,
             metadata,
-            paidAt: null
+            paidAt: null,
+            discountCouponId,
+            discountPercentage,
+            discountAmountCents,
+            originalAmountCents
         });
 
         await this.invoices.save(invoice);
 
-        const nextDueAt = calculateNextBillingDate(plan.billingCycle, charge.dueDate);
+        // Se houver cupom, gerar parcelas adicionais com desconto
+        const invoices: SchoolPlanInvoice[] = [invoice];
+        if (coupon && coupon.durationMonths > 1) {
+            let currentDueDate = new Date(charge.dueDate);
+            for (let month = 1; month < coupon.durationMonths; month++) {
+                currentDueDate = calculateNextBillingDate(plan.billingCycle, currentDueDate);
+                
+                // Verificar se já existe invoice para esta data
+                const existing = await this.invoices.findByFinanceIdAndDueDate(finance.id, currentDueDate);
+                if (existing) {
+                    continue; // Pular se já existe
+                }
+
+                // Verificar se ainda está dentro da validade do cupom
+                if (currentDueDate > coupon.validUntil) {
+                    break; // Parar se passou da validade
+                }
+
+                const additionalCharge = await this.paymentProvider.createBoletoCharge({
+                    amount: Money.of(amountCents, plan.currency),
+                    customer: {
+                        name: customerName,
+                        email: customerEmail,
+                        cpfCnpj: customerTaxId,
+                        postalCode: address.zipCode,
+                        addressNumber: address.number,
+                        addressComplement: address.complement ?? undefined,
+                        phone: school.phone
+                    },
+                    dueDate: currentDueDate,
+                    description: `Assinatura ${plan.name} - Cupom ${coupon.code} (${month + 1}/${coupon.durationMonths})`,
+                    externalReference: `${finance.id}:${currentDueDate.toISOString().slice(0, 10)}`,
+                    metadata
+                });
+
+                const additionalInvoice = SchoolPlanInvoice.create({
+                    id: Uuid(),
+                    financeId: finance.id,
+                    schoolId,
+                    planId: plan.id,
+                    amountCents,
+                    currency: plan.currency,
+                    dueDate: additionalCharge.dueDate,
+                    description: `Assinatura ${plan.name} - Cupom ${coupon.code} (${month + 1}/${coupon.durationMonths})`,
+                    providerRef: additionalCharge.providerRef,
+                    boletoUrl: additionalCharge.boletoUrl ?? null,
+                    digitableLine: additionalCharge.digitableLine ?? null,
+                    barcode: additionalCharge.barcode ?? null,
+                    externalReference: `${finance.id}:${additionalCharge.dueDate.toISOString().slice(0, 10)}`,
+                    metadata,
+                    paidAt: null,
+                    discountCouponId,
+                    discountPercentage,
+                    discountAmountCents,
+                    originalAmountCents
+                });
+
+                await this.invoices.save(additionalInvoice);
+                invoices.push(additionalInvoice);
+            }
+        }
+
+        // Calcular próxima data de vencimento (após todas as parcelas do cupom)
+        const lastInvoiceDate = invoices[invoices.length - 1].dueDate;
+        const nextDueAt = calculateNextBillingDate(plan.billingCycle, lastInvoiceDate);
         const updatedFinance = SchoolPlanFinance.create({
             id: finance.id,
             schoolId: finance.schoolId,
@@ -134,7 +243,7 @@ export class IssueSchoolPlanInvoice {
 
         return {
             finance: updatedFinance,
-            invoice,
+            invoice: invoices[0], // Retornar primeira invoice
             alreadyExists: false
         };
     }

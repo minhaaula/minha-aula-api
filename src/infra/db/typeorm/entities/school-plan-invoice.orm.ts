@@ -66,6 +66,18 @@ export class SchoolPlanInvoiceOrm {
     @Column('varchar', { length: 255, name: 'external_reference', nullable: true })
     externalReference!: string | null;
 
+    @Column('char', { length: 36, name: 'discount_coupon_id', nullable: true })
+    discountCouponId!: string | null;
+
+    @Column('decimal', { precision: 5, scale: 2, name: 'discount_percentage', nullable: true })
+    discountPercentage!: number | null;
+
+    @Column('int', { name: 'discount_amount_cents', default: 0 })
+    discountAmountCents!: number;
+
+    @Column('int', { name: 'original_amount_cents' })
+    originalAmountCents!: number;
+
     @Column('json', { nullable: true })
     metadata!: Record<string, string> | null;
 

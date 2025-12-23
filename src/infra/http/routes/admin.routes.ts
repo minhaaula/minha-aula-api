@@ -7,12 +7,16 @@ import { LoginAdmin } from '../../../app/use-cases/login-admin';
 import { GetAdminDashboard } from '../../../app/use-cases/get-admin-dashboard';
 import { requirePersona } from '../middlewares/require-persona';
 import { UserPersonaEnum } from '../../../domain/value-objects/user-persona';
+import { buildCouponsRoutes } from './admin/coupons.routes';
 
 type AdminRouterDeps = {
     getAdminStatus: GetAdminStatus;
     listSchoolsWithPlans: ListSchoolsWithPlans;
     loginAdmin: LoginAdmin;
     getAdminDashboard?: GetAdminDashboard;
+    createDiscountCoupon?: import('../../../app/use-cases/create-discount-coupon').CreateDiscountCoupon;
+    listDiscountCoupons?: import('../../../app/use-cases/list-discount-coupons').ListDiscountCoupons;
+    validateDiscountCoupon?: import('../../../app/use-cases/validate-discount-coupon').ValidateDiscountCoupon;
     authMiddleware?: RequestHandler;
 };
 
@@ -28,7 +32,16 @@ function buildAuthGuards(authMiddleware?: RequestHandler) {
     return { requireAuth };
 }
 
-export function adminRouter({ getAdminStatus, listSchoolsWithPlans, loginAdmin, getAdminDashboard, authMiddleware }: AdminRouterDeps) {
+export function adminRouter({ 
+    getAdminStatus, 
+    listSchoolsWithPlans, 
+    loginAdmin, 
+    getAdminDashboard,
+    createDiscountCoupon,
+    listDiscountCoupons,
+    validateDiscountCoupon,
+    authMiddleware 
+}: AdminRouterDeps) {
     const router = Router();
     const { requireAuth } = buildAuthGuards(authMiddleware);
     const requireAdminPersona = requirePersona(UserPersonaEnum.ADMIN);
@@ -61,6 +74,13 @@ export function adminRouter({ getAdminStatus, listSchoolsWithPlans, loginAdmin, 
             res.json(dashboard);
         }));
     }
+
+    // Rotas de cupons de desconto
+    router.use('/coupons', buildCouponsRoutes({
+        createDiscountCoupon,
+        listDiscountCoupons,
+        validateDiscountCoupon
+    }, authMiddleware));
 
     return router;
 }

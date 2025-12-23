@@ -20,6 +20,10 @@ export class SchoolPlanInvoice {
         public readonly externalReference: string | null,
         public readonly metadata: Record<string, string>,
         public readonly paidAt: Date | null,
+        public readonly discountCouponId: string | null,
+        public readonly discountPercentage: number | null,
+        public readonly discountAmountCents: number,
+        public readonly originalAmountCents: number,
         public readonly createdAt: Date,
         public readonly updatedAt: Date
     ) {}
@@ -41,6 +45,10 @@ export class SchoolPlanInvoice {
         externalReference?: string | null;
         metadata?: Record<string, string>;
         paidAt?: Date | null;
+        discountCouponId?: string | null;
+        discountPercentage?: number | null;
+        discountAmountCents?: number;
+        originalAmountCents?: number;
         createdAt?: Date;
         updatedAt?: Date;
     }): SchoolPlanInvoice {
@@ -83,6 +91,10 @@ export class SchoolPlanInvoice {
         const externalReference = params.externalReference?.trim() ?? null;
         const metadata = params.metadata ? { ...params.metadata } : {};
         const paidAt = params.paidAt ?? null;
+        const discountCouponId = params.discountCouponId?.trim() ?? null;
+        const discountPercentage = params.discountPercentage ?? null;
+        const originalAmountCents = params.originalAmountCents ?? amountCents;
+        const discountAmountCents = params.discountAmountCents ?? 0;
         const createdAt = params.createdAt ?? new Date();
         const updatedAt = params.updatedAt ?? createdAt;
 
@@ -103,6 +115,10 @@ export class SchoolPlanInvoice {
             externalReference,
             metadata,
             paidAt,
+            discountCouponId,
+            discountPercentage,
+            discountAmountCents,
+            originalAmountCents,
             createdAt,
             updatedAt
         );
@@ -149,6 +165,10 @@ export class SchoolPlanInvoice {
                 : (changes.externalReference?.trim() ?? null),
             metadata,
             changes.paidAt === undefined ? this.paidAt : changes.paidAt,
+            this.discountCouponId,
+            this.discountPercentage,
+            this.discountAmountCents,
+            this.originalAmountCents,
             this.createdAt,
             changes.updatedAt ?? new Date()
         );

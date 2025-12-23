@@ -79,6 +79,7 @@ import { StorageProviderPort } from '../../ports/providers/storage-provider.port
 import { UploadSchoolImage } from '../../app/use-cases/upload-school-image';
 import { ListSchoolImages } from '../../app/use-cases/list-school-images';
 import { SchoolImageRepositoryAdapter } from '../../infra/db/typeorm/school-image-repository.adapter';
+import { DiscountCouponRepositoryAdapter } from '../../infra/db/typeorm/discount-coupon-repository.adapter';
 
 export type SchoolsModuleDeps = {
     schoolsRepo: SchoolRepositoryAdapter;
@@ -246,11 +247,13 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
     const loginSchool = new LoginSchool(deps.schoolsRepo, deps.passwordHasher, deps.tokenProvider, deps.tokenTtl);
     const getActiveSchoolPlan = new GetActiveSchoolPlan(deps.planFinancesRepo);
     const listSubscriptionPlans = new ListSubscriptionPlans(deps.subscriptionPlansRepo);
+    const couponsRepo = new DiscountCouponRepositoryAdapter();
     const issueSchoolPlanInvoice = new IssueSchoolPlanInvoice(
         deps.schoolsRepo,
         deps.planFinancesRepo,
         deps.planInvoicesRepo,
-        deps.paymentProvider
+        deps.paymentProvider,
+        couponsRepo
     );
     const listSchoolPlanInvoices = new ListSchoolPlanInvoices(
         deps.planFinancesRepo,

@@ -53,7 +53,8 @@ export function buildPlansRoutes(deps: PlansRoutesDeps, guards: SchoolRouteGuard
             const result = await deps.issueSchoolPlanInvoice!.execView({
                 schoolId,
                 dueDate,
-                description: data.description ?? null
+                description: data.description ?? null,
+                couponCode: data.couponCode ?? null
             });
 
             res.status(result.alreadyExists ? 200 : 201).json(result);

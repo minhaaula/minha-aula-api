@@ -64,6 +64,10 @@ export class SchoolPlanInvoiceRepositoryAdapter implements SchoolPlanInvoiceRepo
         row.digitableLine = invoice.digitableLine;
         row.barcode = invoice.barcode;
         row.externalReference = invoice.externalReference;
+        row.discountCouponId = invoice.discountCouponId;
+        row.discountPercentage = invoice.discountPercentage;
+        row.discountAmountCents = invoice.discountAmountCents;
+        row.originalAmountCents = invoice.originalAmountCents;
         row.metadata = Object.keys(invoice.metadata).length ? { ...invoice.metadata } : null;
         if (!existing) {
             row.createdAt = invoice.createdAt;
@@ -91,6 +95,10 @@ export class SchoolPlanInvoiceRepositoryAdapter implements SchoolPlanInvoiceRepo
             externalReference: row.externalReference,
             metadata: row.metadata ? { ...row.metadata } : undefined,
             paidAt: row.paidAt,
+            discountCouponId: row.discountCouponId,
+            discountPercentage: row.discountPercentage ? Number(row.discountPercentage) : undefined,
+            discountAmountCents: row.discountAmountCents,
+            originalAmountCents: row.originalAmountCents,
             createdAt: row.createdAt,
             updatedAt: row.updatedAt
         });
