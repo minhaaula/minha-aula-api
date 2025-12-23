@@ -23,6 +23,13 @@ export class AddDependent {
 
         const normalizedCpf = this.normalizeCpf(input.cpf);
         if (normalizedCpf) {
+            // Verificar se CPF já está cadastrado como usuário
+            const existingUser = await this.users.findByCpf(normalizedCpf);
+            if (existingUser) {
+                throw AppError.fromCode(ErrorCode.CPF_ALREADY_REGISTERED, { cpf: normalizedCpf });
+            }
+            
+            // Verificar se CPF já está cadastrado como dependente
             const existingCpf = await this.dependents.findByCpf(normalizedCpf);
             if (existingCpf) {
                 throw AppError.fromCode(ErrorCode.CPF_ALREADY_REGISTERED, { cpf: normalizedCpf });

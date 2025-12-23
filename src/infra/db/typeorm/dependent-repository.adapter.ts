@@ -2,7 +2,8 @@ import { AppDataSource } from './datasource';
 import { DependentRepository } from '../../../ports/repositories/dependent.repo';
 import { Dependent } from '../../../domain/entities/dependent';
 import { DependentOrm } from './entities/dependent.orm';
-import { In, IsNull } from 'typeorm';
+import { In, IsNull, QueryFailedError } from 'typeorm';
+import { AppError, ErrorCode } from '../../../shared/errors';
 
 export class DependentRepositoryAdapter implements DependentRepository {
     private readonly repo = AppDataSource.getRepository(DependentOrm);
@@ -39,7 +40,21 @@ export class DependentRepositoryAdapter implements DependentRepository {
     }
 
     async save(dependent: Dependent): Promise<void> {
-        await this.repo.save(this.toOrm(dependent));
+        try {
+            await this.repo.save(this.toOrm(dependent));
+        } catch (error) {
+            // Tratar erro de duplicação de CPF
+            if (error instanceof QueryFailedError) {
+                const errorMessage = error.message || '';
+                if (errorMessage.includes('idx_dependents_cpf') || errorMessage.includes('Duplicate entry')) {
+                    const cpf = dependent.cpf;
+                    if (cpf) {
+                        throw AppError.fromCode(ErrorCode.CPF_ALREADY_REGISTERED, { cpf });
+                    }
+                }
+            }
+            throw error;
+        }
     }
 
     private toDomain(row: DependentOrm): Dependent {

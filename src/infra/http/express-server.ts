@@ -3,7 +3,7 @@ import swaggerUi from 'swagger-ui-express';
 import { requestLogger } from './middlewares/request-logger';
 import { loadOpenApiDocument } from './swagger/load-openapi';
 import type { ModuleName } from '../../bootstrap/module-config';
-import { AppError } from '../../shared/errors';
+import { AppError, ErrorCode } from '../../shared/errors';
 
 const SWAGGER_REALM = 'Swagger UI';
 
@@ -179,6 +179,28 @@ export function makeServer(deps: AppDependencies & Record<string, any>) {
                 error: err.message,
                 code: err.code,
                 ...(err.details && { details: err.details })
+            });
+        }
+        
+        // Tratar erros de duplicação do banco de dados
+        if (err?.code === 'ER_DUP_ENTRY' || (err?.message && err.message.includes('Duplicate entry'))) {
+            const errorMessage = err.message || '';
+            
+            // Erro de CPF duplicado em dependentes
+            if (errorMessage.includes('idx_dependents_cpf')) {
+                const cpfMatch = errorMessage.match(/Duplicate entry '([^']+)'/);
+                const cpf = cpfMatch ? cpfMatch[1] : null;
+                return res.status(409).json({
+                    error: 'CPF já cadastrado',
+                    code: ErrorCode.CPF_ALREADY_REGISTERED,
+                    ...(cpf && { details: { cpf } })
+                });
+            }
+            
+            // Erro genérico de duplicação
+            return res.status(409).json({
+                error: 'Recurso já existe',
+                code: ErrorCode.ALREADY_EXISTS
             });
         }
         
