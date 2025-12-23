@@ -689,6 +689,47 @@ components:
             - tiktok
             - youtube
             - site
+        images:
+          type: array
+          description: Lista de imagens da escola
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: ID da imagem
+              url:
+                type: string
+                format: uri
+                description: URL assinada da imagem (válida por 1 hora)
+              key:
+                type: string
+                description: Chave do arquivo no storage
+              contentType:
+                type: string
+                description: Tipo MIME da imagem
+                example: "image/jpeg"
+              originalFileName:
+                type: string
+                description: Nome original do arquivo enviado
+              category:
+                type: string
+                description: Categoria da imagem
+                enum: [GALLERY, LOGO, BANNER, COVER, OTHER]
+                example: "GALLERY"
+              createdAt:
+                type: string
+                format: date-time
+                description: Data de criação da imagem
+            required:
+              - id
+              - url
+              - key
+              - contentType
+              - originalFileName
+              - category
+              - createdAt
       required:
         - id
         - name

@@ -123,5 +123,14 @@ export interface GetSchoolProfileOutput {
         youtube: string | null;
         site: string | null;
     };
+    images: Array<{
+        id: string;
+        url: string;
+        key: string;
+        contentType: string;
+        originalFileName: string;
+        category: string;
+        createdAt: Date;
+    }>;
 }
 

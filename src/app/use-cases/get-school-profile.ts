@@ -1,6 +1,8 @@
 import { SchoolRepository } from '../../ports/repositories/school.repo';
 import { type PostalAddressProps } from '../../domain/value-objects/postal-address';
 import { SchoolBankAccountRepository } from '../../ports/repositories/school-bank-account.repo';
+import { SchoolImageRepository } from '../../ports/repositories/school-image.repo';
+import { StorageProviderPort } from '../../ports/providers/storage-provider.port';
 
 type BankAccountView = {
     id: string;
@@ -21,7 +23,9 @@ type BankAccountView = {
 export class GetSchoolProfile {
     constructor(
         private readonly schools: SchoolRepository,
-        private readonly bankAccounts?: SchoolBankAccountRepository
+        private readonly bankAccounts?: SchoolBankAccountRepository,
+        private readonly schoolImages?: SchoolImageRepository,
+        private readonly storage?: StorageProviderPort
     ) {}
 
     async exec(input: { schoolId: string }): Promise<{
@@ -45,6 +49,15 @@ export class GetSchoolProfile {
             youtube: string | null;
             site: string | null;
         };
+        images: Array<{
+            id: string;
+            url: string;
+            key: string;
+            contentType: string;
+            originalFileName: string;
+            category: string;
+            createdAt: Date;
+        }>;
     } | null> {
         const schoolId = input.schoolId.trim();
         if (!schoolId) return null;
@@ -57,6 +70,48 @@ export class GetSchoolProfile {
         const accounts = this.bankAccounts
             ? await this.bankAccounts.findBySchoolId(schoolId)
             : [];
+
+        // Buscar imagens da escola
+        let images: Array<{
+            id: string;
+            url: string;
+            key: string;
+            contentType: string;
+            originalFileName: string;
+            category: string;
+            createdAt: Date;
+        }> = [];
+
+        if (this.schoolImages && this.storage) {
+            const schoolImages = await this.schoolImages.findBySchoolId(schoolId);
+            images = await Promise.all(
+                schoolImages.map(async (image) => {
+                    try {
+                        const url = await this.storage!.getFileUrl(image.key, 3600);
+                        return {
+                            id: image.id,
+                            url,
+                            key: image.key,
+                            contentType: image.contentType,
+                            originalFileName: image.originalFileName,
+                            category: image.category,
+                            createdAt: image.createdAt
+                        };
+                    } catch (error) {
+                        console.warn(`Failed to generate signed URL for image key: ${image.key}`, error);
+                        return {
+                            id: image.id,
+                            url: '',
+                            key: image.key,
+                            contentType: image.contentType,
+                            originalFileName: image.originalFileName,
+                            category: image.category,
+                            createdAt: image.createdAt
+                        };
+                    }
+                })
+            );
+        }
 
         return {
             id: school.id,
@@ -92,7 +147,8 @@ export class GetSchoolProfile {
                 tiktok: school.tiktokLink,
                 youtube: school.youtubeLink,
                 site: school.siteLink
-            }
+            },
+            images
         };
     }
 }

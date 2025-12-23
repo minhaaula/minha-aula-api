@@ -116,7 +116,13 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
     const updateCourse = new UpdateCourse(deps.schoolsRepo, deps.coursesRepo);
     const listCourseClasses = new ListCourseClasses(deps.coursesRepo, deps.classesRepo);
     const getCourseClass = new GetCourseClass(deps.coursesRepo, deps.classesRepo);
-    const getSchoolProfile = new GetSchoolProfile(deps.schoolsRepo, deps.bankAccountsRepo);
+    const schoolImagesRepo = new SchoolImageRepositoryAdapter();
+    const getSchoolProfile = new GetSchoolProfile(
+        deps.schoolsRepo,
+        deps.bankAccountsRepo,
+        schoolImagesRepo,
+        deps.storageProvider
+    );
     const updateSchool = new UpdateSchool(deps.schoolsRepo, deps.passwordHasher);
     
     const listSchoolBankAccounts = deps.bankAccountsRepo
@@ -267,7 +273,6 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         issueSchoolPlanInvoice
     );
     const listCategories = new ListCategories(deps.categoriesRepo);
-    const schoolImagesRepo = new SchoolImageRepositoryAdapter();
     const uploadSchoolImage = deps.storageProvider
         ? new UploadSchoolImage(deps.schoolsRepo, schoolImagesRepo, deps.storageProvider)
         : undefined;
