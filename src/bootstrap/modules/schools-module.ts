@@ -48,6 +48,7 @@ import { EnrollStudent } from '../../app/use-cases/enroll-student';
 import { DeleteCourseClass } from '../../app/use-cases/delete-course-class';
 import { ListSchoolStudents } from '../../app/use-cases/list-school-students';
 import { ListSchoolPayments } from '../../app/use-cases/list-school-payments';
+import { ListPaidSchoolPayments } from '../../app/use-cases/list-paid-school-payments';
 import { ConsolidateSchoolPayments } from '../../app/use-cases/consolidate-school-payments';
 import { enrollmentRequestsRouter } from '../../infra/http/routes/enrollment-requests.routes';
 import { ListEnrollmentRequests } from '../../app/use-cases/list-enrollment-requests';
@@ -166,6 +167,12 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
     );
     const getStudentDirectoryEntry = new GetStudentDirectoryEntry(deps.usersRepo, deps.dependentsRepo);
     const listSchoolPayments = new ListSchoolPayments(
+        deps.coursesRepo,
+        deps.classesRepo,
+        deps.usersRepo,
+        deps.dependentsRepo
+    );
+    const listPaidSchoolPayments = new ListPaidSchoolPayments(
         deps.coursesRepo,
         deps.classesRepo,
         deps.usersRepo,
@@ -300,6 +307,7 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         updateSchool,
         listSchoolStudents,
         listSchoolPayments,
+        listPaidSchoolPayments,
         consolidateSchoolPayments,
         enrollStudent,
         listEnrollmentRequests,

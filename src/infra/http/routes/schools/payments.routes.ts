@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { asyncHandler } from '../../utils/async-handler';
 import type { ListSchoolPayments } from '../../../../app/use-cases/list-school-payments';
+import type { ListPaidSchoolPayments } from '../../../../app/use-cases/list-paid-school-payments';
 import type { ConsolidateSchoolPayments } from '../../../../app/use-cases/consolidate-school-payments';
 import type { SchoolRouteGuards } from './guards';
 import type { SchoolContextRequest } from '../../middlewares/resolve-school-context';
@@ -9,6 +10,7 @@ import { SchoolFinancialChargeStatus } from '../../../../domain/entities/school-
 
 type PaymentsRoutesDeps = {
     listSchoolPayments: ListSchoolPayments;
+    listPaidSchoolPayments?: ListPaidSchoolPayments;
     consolidateSchoolPayments?: ConsolidateSchoolPayments;
 };
 
@@ -86,6 +88,43 @@ export function buildPaymentsRoutes(deps: PaymentsRoutesDeps, guards: SchoolRout
 
         res.json(consolidated);
     }));
+
+    if (deps.listPaidSchoolPayments) {
+        const paidPaymentsQuerySchema = z.object({
+            studentName: z.string().trim().min(1).optional(),
+            limit: z.coerce.number().int().positive().max(100).optional(),
+            offset: z.coerce.number().int().min(0).optional()
+        });
+
+        router.get('/paid', ...protectedMiddleware, asyncHandler(async (req, res) => {
+            const schoolId = (req as SchoolContextRequest).schoolId as string;
+
+            const query = paidPaymentsQuerySchema.parse({
+                studentName: typeof req.query.studentName === 'string' ? req.query.studentName : undefined,
+                limit: req.query.limit,
+                offset: req.query.offset
+            });
+
+            const result = await deps.listPaidSchoolPayments!.exec({
+                schoolId,
+                studentName: query.studentName,
+                limit: query.limit,
+                offset: query.offset
+            });
+
+            res.json({
+                payments: result.payments,
+                pagination: {
+                    total: result.total,
+                    limit: result.limit,
+                    offset: result.offset,
+                    totalPage: Math.ceil(result.total / result.limit),
+                    currentPage: Math.floor(result.offset / result.limit) + 1,
+                    hasMore: result.offset + result.limit < result.total
+                }
+            });
+        }));
+    }
 
     return router;
 }

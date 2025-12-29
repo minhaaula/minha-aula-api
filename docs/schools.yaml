@@ -492,6 +492,109 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /schools/payments/paid:
+    get:
+      tags:
+        - Schools
+      summary: Listar pagamentos pagos dos alunos da escola
+      description: |
+        Retorna apenas os pagamentos com status PAID de todos os alunos matriculados na escola.
+        Não requer filtro de mês e ano, permitindo buscar todos os pagamentos pagos.
+        Suporta paginação e filtro opcional por nome do aluno.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: studentName
+          required: false
+          schema:
+            type: string
+          description: Filtrar pagamentos de alunos cujo nome (ou do dependente) contenha o valor informado.
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            maximum: 100
+            default: 50
+          description: Número máximo de resultados por página (máximo 100).
+        - in: query
+          name: offset
+          required: false
+          schema:
+            type: integer
+            format: int32
+            minimum: 0
+            default: 0
+          description: Número de resultados a serem pulados (para paginação).
+      responses:
+        '200':
+          description: Lista paginada de pagamentos pagos encontrados.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - payments
+                  - pagination
+                properties:
+                  payments:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SchoolPaymentRecord'
+                  pagination:
+                    type: object
+                    required:
+                      - total
+                      - limit
+                      - offset
+                      - totalPage
+                      - currentPage
+                      - hasMore
+                    properties:
+                      total:
+                        type: integer
+                        format: int32
+                        description: Total de resultados encontrados (após aplicar filtros)
+                      limit:
+                        type: integer
+                        format: int32
+                        description: Número máximo de resultados solicitados
+                      offset:
+                        type: integer
+                        format: int32
+                        description: Número de resultados pulados
+                      totalPage:
+                        type: integer
+                        format: int32
+                        description: Total de páginas disponíveis
+                      currentPage:
+                        type: integer
+                        format: int32
+                        description: Página atual (iniciando em 1)
+                      hasMore:
+                        type: boolean
+                        description: Indica se há mais resultados disponíveis além dos retornados
+        '400':
+          description: Erro na requisição.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado ou sem contexto de escola.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '501':
+          description: Funcionalidade de listagem de pagamentos pagos não configurada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /schools/finance/charges:
     post:
       tags:

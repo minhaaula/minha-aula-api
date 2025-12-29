@@ -85,6 +85,20 @@ export interface SchoolPaymentRecord {
     } | null;
 }
 
+export interface ListPaidSchoolPaymentsInput {
+    schoolId: string;
+    studentName?: string | null;
+    limit?: number;
+    offset?: number;
+}
+
+export interface ListPaidSchoolPaymentsOutput {
+    payments: SchoolPaymentRecord[];
+    total: number;
+    limit: number;
+    offset: number;
+}
+
 export interface HandleAsaasPaymentWebhookInput {
     event: string;
     payment?: {

@@ -1121,6 +1121,42 @@
 							}
 						},
 						{
+							"name": "GET /schools/payments/paid",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{school_token}}",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{base_url}}/schools/payments/paid?studentName=&limit=50&offset=0",
+									"host": ["{{base_url}}"],
+									"path": ["schools", "payments", "paid"],
+									"query": [
+										{
+											"key": "studentName",
+											"value": "",
+											"description": "Filtrar por nome do aluno (opcional)"
+										},
+										{
+											"key": "limit",
+											"value": "50",
+											"description": "Número máximo de resultados (máximo 100)"
+										},
+										{
+											"key": "offset",
+											"value": "0",
+											"description": "Número de resultados a serem pulados"
+										}
+									]
+								},
+								"description": "Listar pagamentos pagos (apenas status PAID), sem filtro de mês/ano, com paginação"
+							}
+						},
+						{
 							"name": "POST /schools/finance/charges",
 							"request": {
 								"method": "POST",
