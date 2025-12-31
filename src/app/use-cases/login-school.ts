@@ -1,4 +1,6 @@
 import { SchoolRepository } from '../../ports/repositories/school.repo';
+import { SchoolPlanFinanceRepository } from '../../ports/repositories/school-plan-finance.repo';
+import { SchoolPlanInvoiceRepository } from '../../ports/repositories/school-plan-invoice.repo';
 import { PasswordHasherPort } from '../../ports/providers/password-hasher.port';
 import { TokenProviderPort } from '../../ports/providers/token-provider.port';
 import { AuthTokenPayload } from '../contracts/auth-token-payload';
@@ -9,7 +11,9 @@ export class LoginSchool {
         private readonly schools: SchoolRepository,
         private readonly hasher: PasswordHasherPort,
         private readonly tokens: TokenProviderPort,
-        private readonly defaultTtl: number
+        private readonly defaultTtl: number,
+        private readonly finances?: SchoolPlanFinanceRepository,
+        private readonly invoices?: SchoolPlanInvoiceRepository
     ) {}
 
     async exec(input: { email: string; password: string; }): Promise<{
@@ -18,6 +22,8 @@ export class LoginSchool {
         ownerName: string;
         ownerEmail: string;
         expiresIn: number;
+        status?: string;
+        isOverdue?: boolean;
     }> {
         const email = this.normalizeEmail(input.email);
         const school = await this.findSchoolByOwnerEmail(email);
@@ -51,12 +57,46 @@ export class LoginSchool {
 
         const accessToken = await this.tokens.sign(payload, { expiresIn });
 
+        // Verificar se a escola está atrasada
+        let status: string | undefined;
+        let isOverdue = false;
+
+        if (this.finances && this.invoices) {
+            const finance = await this.finances.findActiveBySchoolId(school.id);
+            if (finance) {
+                status = finance.status;
+                
+                // Buscar todas as invoices do finance
+                const allInvoices = await this.invoices.findByFinanceId(finance.id);
+                
+                // Verificar se há alguma invoice não paga e atrasada
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                
+                for (const invoice of allInvoices) {
+                    // Verificar se a invoice não está paga e não está cancelada
+                    if (invoice.status !== 'PAID' && invoice.status !== 'CANCELLED') {
+                        const dueDate = new Date(invoice.dueDate);
+                        dueDate.setHours(0, 0, 0, 0);
+                        
+                        // Se a data de vencimento é anterior a hoje, está atrasada
+                        if (dueDate < today) {
+                            isOverdue = true;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
         return {
             accessToken,
             schoolId: school.id,
             ownerName,
             ownerEmail,
-            expiresIn
+            expiresIn,
+            status,
+            isOverdue
         };
     }
 

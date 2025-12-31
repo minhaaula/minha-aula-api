@@ -252,7 +252,14 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
     const scheduleClassSession = new ScheduleClassSession(deps.classSessionsRepo, deps.classesRepo, deps.coursesRepo);
     const listClassSessions = new ListClassSessions(deps.classSessionsRepo, deps.classesRepo, deps.coursesRepo);
     const cancelClassSession = new CancelClassSession(deps.classSessionsRepo);
-    const loginSchool = new LoginSchool(deps.schoolsRepo, deps.passwordHasher, deps.tokenProvider, deps.tokenTtl);
+    const loginSchool = new LoginSchool(
+        deps.schoolsRepo,
+        deps.passwordHasher,
+        deps.tokenProvider,
+        deps.tokenTtl,
+        deps.planFinancesRepo,
+        deps.planInvoicesRepo
+    );
     const getActiveSchoolPlan = new GetActiveSchoolPlan(deps.planFinancesRepo);
     const listSubscriptionPlans = new ListSubscriptionPlans(deps.subscriptionPlansRepo);
     const couponsRepo = new DiscountCouponRepositoryAdapter();

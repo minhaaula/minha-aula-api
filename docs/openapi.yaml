@@ -589,26 +589,44 @@ components:
           minLength: 8
     SchoolLoginResponse:
       type: object
-      properties:
-        accessToken:
-          type: string
-        schoolId:
-          type: string
-          format: uuid
-        ownerName:
-          type: string
-        ownerEmail:
-          type: string
-          format: email
-        expiresIn:
-          type: integer
-          format: int32
       required:
         - accessToken
         - schoolId
         - ownerName
         - ownerEmail
         - expiresIn
+      properties:
+        accessToken:
+          type: string
+          description: Token JWT para autenticação
+        schoolId:
+          type: string
+          format: uuid
+          description: ID da escola
+        ownerName:
+          type: string
+          description: Nome do responsável pela escola
+        ownerEmail:
+          type: string
+          format: email
+          description: Email do responsável pela escola
+        expiresIn:
+          type: integer
+          description: Tempo de expiração do token em segundos
+        status:
+          type: string
+          nullable: true
+          description: Status do plano da escola (TRIAL, ACTIVE, PAST_DUE, SUSPENDED, CANCELLED)
+          enum:
+            - TRIAL
+            - ACTIVE
+            - PAST_DUE
+            - SUSPENDED
+            - CANCELLED
+        isOverdue:
+          type: boolean
+          nullable: true
+          description: Indica se a escola possui faturas atrasadas não pagas
     SchoolResponse:
       type: object
       properties:
