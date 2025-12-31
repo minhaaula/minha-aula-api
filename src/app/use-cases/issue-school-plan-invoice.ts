@@ -54,7 +54,18 @@ export class IssueSchoolPlanInvoice {
 
         const plan = finance.plan;
         const baseDue = input.dueDate ?? finance.nextDueAt ?? calculateNextBillingDate(plan.billingCycle);
-        const dueDate = new Date(baseDue);
+        let dueDate = new Date(baseDue);
+        
+        // Garantir que a data de vencimento seja sempre no futuro (pelo menos hoje)
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        dueDate.setHours(0, 0, 0, 0);
+        
+        // Se a data está no passado, usar amanhã
+        if (dueDate < today) {
+            dueDate = new Date(today);
+            dueDate.setDate(dueDate.getDate() + 1);
+        }
 
         // Validar cupom se fornecido
         let coupon = null;
