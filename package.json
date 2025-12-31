@@ -24,6 +24,7 @@
     "worker": "tsx watch src/infra/messaging/bullmq/outbox-worker.ts",
     "simulate:asaas-webhook": "tsx scripts/simulate-asaas-webhook.ts",
     "test:email": "tsx scripts/test-email.ts",
+    "test:sendgrid": "tsx scripts/test-sendgrid-email.ts",
     "test:password-reset": "tsx scripts/test-password-reset-flow.ts",
     "test:bank-accounts": "tsx scripts/test-bank-accounts-routes.ts",
     "test:pix": "tsx scripts/test-generate-pix.ts",

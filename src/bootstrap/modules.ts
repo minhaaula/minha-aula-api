@@ -32,6 +32,7 @@ import { AsaasProvider } from '../infra/providers/asaas/asaas-provider';
 import { PaymentProviderPort } from '../ports/providers/payment-provider.port';
 import { AsaasProviderPort } from '../ports/providers/asaas-port';
 import { NodemailerEmailProvider } from '../infra/providers/nodemailer/email-provider';
+import { TwilioSendGridEmailProvider } from '../infra/providers/twilio/email-provider';
 import { EmailProviderPort } from '../ports/providers/email-provider.port';
 import { S3StorageProvider } from '../infra/providers/s3/storage-provider';
 import { StorageProviderPort } from '../ports/providers/storage-provider.port';
@@ -90,30 +91,57 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
     const authMiddleware = makeAuthMiddleware(tokenProvider);
 
     // Configurar email provider
+    // Prioridade: Twilio SendGrid > Nodemailer
     let emailProvider: EmailProviderPort | undefined;
-    const emailHost = process.env.EMAIL_HOST;
-    const emailPort = process.env.EMAIL_PORT;
-    const emailUser = process.env.EMAIL_USER;
-    const emailPass = process.env.EMAIL_PASS;
     const frontendBaseUrl = process.env.FRONTEND_BASE_URL;
 
-    if (emailHost && emailPort && emailUser && emailPass) {
+    // Tentar configurar Twilio SendGrid primeiro
+    const sendgridApiKey = process.env.SENDGRID_API_KEY;
+    const sendgridFrom = process.env.SENDGRID_FROM_EMAIL;
+
+    if (sendgridApiKey && sendgridFrom) {
         try {
-            emailProvider = new NodemailerEmailProvider({
-                host: emailHost,
-                port: Number(emailPort),
-                auth: {
-                    user: emailUser,
-                    pass: emailPass
-                },
-                from: process.env.EMAIL_FROM
+            emailProvider = new TwilioSendGridEmailProvider({
+                apiKey: sendgridApiKey,
+                from: sendgridFrom,
+                fromName: process.env.SENDGRID_FROM_NAME
             });
-            console.log('EmailProvider configurado com sucesso:', { host: emailHost, port: emailPort });
+            console.log('EmailProvider configurado com sucesso: Twilio SendGrid', { from: sendgridFrom });
         } catch (error) {
-            console.error('Erro ao configurar EmailProvider:', error);
+            console.error('Erro ao configurar Twilio SendGrid EmailProvider:', error);
+            // Fallback para Nodemailer se SendGrid falhar
         }
-    } else {
-        console.warn('EmailProvider não configurado. Variáveis necessárias: EMAIL_HOST, EMAIL_PORT, EMAIL_USER, EMAIL_PASS');
+    }
+
+    // Fallback para Nodemailer se SendGrid não estiver configurado
+    if (!emailProvider) {
+        const emailHost = process.env.EMAIL_HOST;
+        const emailPort = process.env.EMAIL_PORT;
+        const emailUser = process.env.EMAIL_USER;
+        const emailPass = process.env.EMAIL_PASS;
+
+        if (emailHost && emailPort && emailUser && emailPass) {
+            try {
+                emailProvider = new NodemailerEmailProvider({
+                    host: emailHost,
+                    port: Number(emailPort),
+                    auth: {
+                        user: emailUser,
+                        pass: emailPass
+                    },
+                    from: process.env.EMAIL_FROM
+                });
+                console.log('EmailProvider configurado com sucesso: Nodemailer', { host: emailHost, port: emailPort });
+            } catch (error) {
+                console.error('Erro ao configurar Nodemailer EmailProvider:', error);
+            }
+        }
+    }
+
+    if (!emailProvider) {
+        console.warn('EmailProvider não configurado. Configure uma das opções:');
+        console.warn('  - Twilio SendGrid: SENDGRID_API_KEY, SENDGRID_FROM_EMAIL');
+        console.warn('  - Nodemailer: EMAIL_HOST, EMAIL_PORT, EMAIL_USER, EMAIL_PASS');
     }
 
     // Configurar storage provider (Railway Storage)
