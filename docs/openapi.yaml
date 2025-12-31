@@ -1117,6 +1117,69 @@ components:
           minLength: 3
           maxLength: 50
           description: Código do cupom de desconto a ser aplicado na fatura.
+    ValidateSchoolCouponInput:
+      type: object
+      required:
+        - couponCode
+      properties:
+        couponCode:
+          type: string
+          minLength: 3
+          maxLength: 50
+          description: Código do cupom de desconto a ser validado.
+        planId:
+          type: string
+          format: uuid
+          nullable: true
+          description: ID do plano para calcular o desconto aplicado (opcional).
+    ValidateSchoolCouponOutput:
+      type: object
+      required:
+        - isValid
+      properties:
+        isValid:
+          type: boolean
+          description: Indica se o cupom é válido.
+        coupon:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: string
+              format: uuid
+            code:
+              type: string
+            percentage:
+              type: number
+              format: decimal
+            validUntil:
+              type: string
+              format: date
+            durationMonths:
+              type: integer
+        discount:
+          type: object
+          nullable: true
+          properties:
+            percentage:
+              type: number
+              format: decimal
+            originalAmountCents:
+              type: integer
+              description: Valor original em centavos.
+            discountAmountCents:
+              type: integer
+              description: Valor do desconto em centavos.
+            finalAmountCents:
+              type: integer
+              description: Valor final após desconto em centavos.
+            currency:
+              type: string
+              description: Moeda (ex: BRL).
+        error:
+          type: string
+          nullable: true
+          description: Mensagem de erro caso o cupom seja inválido.
     SubcategorySummary:
       type: object
       properties:

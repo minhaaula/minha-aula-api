@@ -35,6 +35,7 @@ import type { SchoolRepository } from '../../../ports/repositories/school.repo';
 import { buildPublicSchoolRoutes } from './schools/public.routes';
 import { buildProfileRoutes } from './schools/profile.routes';
 import { buildPlansRoutes } from './schools/plans.routes';
+import { buildCouponsRoutes } from './schools/coupons.routes';
 import { buildCoursesRoutes } from './schools/courses.routes';
 import { buildStudentsRoutes } from './schools/students.routes';
 import { buildPaymentsRoutes } from './schools/payments.routes';
@@ -106,6 +107,7 @@ export type SchoolsRouterDeps = {
     getSchoolDashboard?: import('../../../app/use-cases/get-school-dashboard').GetSchoolDashboard;
     uploadSchoolImage?: import('../../../app/use-cases/upload-school-image').UploadSchoolImage;
     listSchoolImages?: import('../../../app/use-cases/list-school-images').ListSchoolImages;
+    validateSchoolCoupon?: import('../../../app/use-cases/validate-school-coupon').ValidateSchoolCoupon;
 };
 
 export function schoolsRouter(deps: SchoolsRouterDeps) {
@@ -136,6 +138,10 @@ export function schoolsRouter(deps: SchoolsRouterDeps) {
         getActiveSchoolPlan: deps.getActiveSchoolPlan,
         issueSchoolPlanInvoice: deps.issueSchoolPlanInvoice,
         listSchoolPlanInvoices: deps.listSchoolPlanInvoices
+    }, guards));
+
+    router.use('/coupons', buildCouponsRoutes({
+        validateSchoolCoupon: deps.validateSchoolCoupon
     }, guards));
 
     if (deps.getSchoolDashboard) {

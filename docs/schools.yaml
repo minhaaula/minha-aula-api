@@ -1794,6 +1794,41 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /schools/coupons/validate:
+    post:
+      tags:
+        - Schools
+      summary: Validar cupom de desconto
+      description: >-
+        Valida um cupom de desconto e retorna informações sobre o desconto aplicado.
+        Se um planId for fornecido, calcula o valor de desconto baseado no preço do plano.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ValidateSchoolCouponInput'
+      responses:
+        '200':
+          description: Resultado da validação do cupom.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidateSchoolCouponOutput'
+        '400':
+          description: Dados inválidos.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Cupom ou plano não encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /schools/plan/invoices:
     post:
       tags:

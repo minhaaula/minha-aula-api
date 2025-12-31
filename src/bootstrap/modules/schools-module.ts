@@ -81,6 +81,7 @@ import { UploadSchoolImage } from '../../app/use-cases/upload-school-image';
 import { ListSchoolImages } from '../../app/use-cases/list-school-images';
 import { SchoolImageRepositoryAdapter } from '../../infra/db/typeorm/school-image-repository.adapter';
 import { DiscountCouponRepositoryAdapter } from '../../infra/db/typeorm/discount-coupon-repository.adapter';
+import { ValidateSchoolCoupon } from '../../app/use-cases/validate-school-coupon';
 
 export type SchoolsModuleDeps = {
     schoolsRepo: SchoolRepositoryAdapter;
@@ -282,6 +283,10 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         deps.planFinancesRepo,
         issueSchoolPlanInvoice
     );
+    const validateSchoolCoupon = new ValidateSchoolCoupon(
+        couponsRepo,
+        deps.subscriptionPlansRepo
+    );
     const listCategories = new ListCategories(deps.categoriesRepo);
     const uploadSchoolImage = deps.storageProvider
         ? new UploadSchoolImage(deps.schoolsRepo, schoolImagesRepo, deps.storageProvider)
@@ -338,7 +343,8 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         updateSchoolPassword,
         getStudentDirectoryEntry,
         uploadSchoolImage,
-        listSchoolImages
+        listSchoolImages,
+        validateSchoolCoupon
     });
 
     const asaasWebhookRouterInstance = asaasWebhookRouter({

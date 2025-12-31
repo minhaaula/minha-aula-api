@@ -1302,6 +1302,33 @@
 							}
 						},
 						{
+							"name": "POST /schools/coupons/validate",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{school_token}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"couponCode\": \"CUPOM123\",\n  \"planId\": \"plan-uuid\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/schools/coupons/validate",
+									"host": ["{{base_url}}"],
+									"path": ["schools", "coupons", "validate"]
+								},
+								"description": "Validar cupom de desconto e retornar valor de desconto aplicado"
+							}
+						},
+						{
 							"name": "POST /schools/plan/invoices",
 							"request": {
 								"method": "POST",
