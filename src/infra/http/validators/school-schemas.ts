@@ -135,7 +135,8 @@ export const sessionIdParamsSchema = z.object({
 
 export const assignSchoolPlanSchema = z.object({
     planId: z.string().uuid(),
-    notes: z.string().trim().min(1).optional()
+    notes: z.string().trim().min(1).optional(),
+    couponCode: z.string().trim().min(3).max(50).optional().nullable()
 });
 
 export const issuePlanInvoiceSchema = z.object({

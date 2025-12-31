@@ -1272,7 +1272,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "{\n  \"planId\": \"plan-uuid\",\n  \"notes\": \"Observações sobre o plano\"\n}"
+									"raw": "{\n  \"planId\": \"plan-uuid\",\n  \"notes\": \"Observações sobre o plano\",\n  \"couponCode\": \"CUPOM123\"\n}"
 								},
 								"url": {
 									"raw": "{{base_url}}/schools/plan",

@@ -25,7 +25,8 @@ export function buildPlansRoutes(deps: PlansRoutesDeps, guards: SchoolRouteGuard
             const result = await deps.assignSchoolPlan!.exec({
                 schoolId,
                 planId: data.planId,
-                notes: data.notes ?? null
+                notes: data.notes ?? null,
+                couponCode: data.couponCode ?? null
             });
 
             res.status(200).json(result);

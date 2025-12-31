@@ -12,6 +12,7 @@ type AssignSchoolPlanInput = {
     schoolId: string;
     planId: string;
     notes?: string | null;
+    couponCode?: string | null;
 };
 
 type AssignSchoolPlanOutput = SchoolPlanFinanceView & {
@@ -67,7 +68,8 @@ export class AssignSchoolPlan {
         if (this.invoiceIssuer) {
             const issued = await this.invoiceIssuer.exec({
                 schoolId,
-                dueDate: finance.nextDueAt ?? undefined
+                dueDate: finance.nextDueAt ?? undefined,
+                couponCode: input.couponCode ?? null
             });
             financeForOutput = issued.finance;
             invoiceView = presentSchoolPlanInvoice(issued.invoice);

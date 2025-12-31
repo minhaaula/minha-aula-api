@@ -1111,6 +1111,12 @@ components:
           type: string
           nullable: true
           description: Observações internas para o plano selecionado.
+        couponCode:
+          type: string
+          nullable: true
+          minLength: 3
+          maxLength: 50
+          description: Código do cupom de desconto a ser aplicado na fatura.
     SubcategorySummary:
       type: object
       properties:
