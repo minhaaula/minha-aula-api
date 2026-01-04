@@ -748,6 +748,10 @@ components:
               - originalFileName
               - category
               - createdAt
+        isOverdue:
+          type: boolean
+          nullable: true
+          description: Indica se a escola possui faturas atrasadas não pagas
       required:
         - id
         - name

@@ -132,5 +132,6 @@ export interface GetSchoolProfileOutput {
         category: string;
         createdAt: Date;
     }>;
+    isOverdue?: boolean;
 }
 

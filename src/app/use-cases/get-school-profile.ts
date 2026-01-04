@@ -3,6 +3,8 @@ import { type PostalAddressProps } from '../../domain/value-objects/postal-addre
 import { SchoolBankAccountRepository } from '../../ports/repositories/school-bank-account.repo';
 import { SchoolImageRepository } from '../../ports/repositories/school-image.repo';
 import { StorageProviderPort } from '../../ports/providers/storage-provider.port';
+import { SchoolPlanFinanceRepository } from '../../ports/repositories/school-plan-finance.repo';
+import { SchoolPlanInvoiceRepository } from '../../ports/repositories/school-plan-invoice.repo';
 
 type BankAccountView = {
     id: string;
@@ -25,7 +27,9 @@ export class GetSchoolProfile {
         private readonly schools: SchoolRepository,
         private readonly bankAccounts?: SchoolBankAccountRepository,
         private readonly schoolImages?: SchoolImageRepository,
-        private readonly storage?: StorageProviderPort
+        private readonly storage?: StorageProviderPort,
+        private readonly finances?: SchoolPlanFinanceRepository,
+        private readonly invoices?: SchoolPlanInvoiceRepository
     ) {}
 
     async exec(input: { schoolId: string }): Promise<{
@@ -58,6 +62,7 @@ export class GetSchoolProfile {
             category: string;
             createdAt: Date;
         }>;
+        isOverdue?: boolean;
     } | null> {
         const schoolId = input.schoolId.trim();
         if (!schoolId) return null;
@@ -71,7 +76,6 @@ export class GetSchoolProfile {
             ? await this.bankAccounts.findBySchoolId(schoolId)
             : [];
 
-        // Buscar imagens da escola
         let images: Array<{
             id: string;
             url: string;
@@ -113,6 +117,30 @@ export class GetSchoolProfile {
             );
         }
 
+        let isOverdue = false;
+
+        if (this.finances && this.invoices) {
+            const finance = await this.finances.findActiveBySchoolId(school.id);
+            if (finance) {
+                const allInvoices = await this.invoices.findByFinanceId(finance.id);
+                
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                
+                for (const invoice of allInvoices) {
+                    if (invoice.status !== 'PAID' && invoice.status !== 'CANCELLED') {
+                        const dueDate = new Date(invoice.dueDate);
+                        dueDate.setHours(0, 0, 0, 0);
+                        
+                        if (dueDate < today) {
+                            isOverdue = true;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
         return {
             id: school.id,
             name: school.name,
@@ -148,7 +176,8 @@ export class GetSchoolProfile {
                 youtube: school.youtubeLink,
                 site: school.siteLink
             },
-            images
+            images,
+            isOverdue
         };
     }
 }

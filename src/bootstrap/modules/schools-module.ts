@@ -124,7 +124,9 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         deps.schoolsRepo,
         deps.bankAccountsRepo,
         schoolImagesRepo,
-        deps.storageProvider
+        deps.storageProvider,
+        deps.planFinancesRepo,
+        deps.planInvoicesRepo
     );
     const updateSchool = new UpdateSchool(deps.schoolsRepo, deps.passwordHasher);
     
