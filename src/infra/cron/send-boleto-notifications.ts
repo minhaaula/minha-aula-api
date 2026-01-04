@@ -57,9 +57,9 @@ async function main() {
         // Configurar email provider
         // Prioridade: Mailchimp > Twilio SendGrid > Nodemailer
         let emailProvider: any = null;
-        const { TwilioSendGridEmailProvider } = await import('../providers/twilio/email-provider');
-        const { NodemailerEmailProvider } = await import('../providers/nodemailer/email-provider');
-        const { MailchimpEmailProvider } = await import('../providers/mailchimp/email-provider');
+        const { TwilioSendGridEmailProvider } = await import('../providers/twilio/email-provider.js');
+        const { NodemailerEmailProvider } = await import('../providers/nodemailer/email-provider.js');
+        const { MailchimpEmailProvider } = await import('../providers/mailchimp/email-provider.js');
 
         // Tentar Mailchimp primeiro
         const mailchimpApiKey = process.env.MAILCHIMP_API_KEY;
