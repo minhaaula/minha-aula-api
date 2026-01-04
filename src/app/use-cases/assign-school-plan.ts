@@ -43,7 +43,6 @@ export class AssignSchoolPlan {
         const current = await this.finances.findActiveBySchoolId(schoolId);
         const createdAt = current?.createdAt ?? new Date();
         
-        // Garantir que a data de vencimento seja sempre no futuro
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         
@@ -51,16 +50,14 @@ export class AssignSchoolPlan {
         if (current?.nextDueAt) {
             const nextDue = new Date(current.nextDueAt);
             nextDue.setHours(0, 0, 0, 0);
-            // Se a data está no passado, usar amanhã como base
-            baseNextDueAt = nextDue < today ? addDays(new Date(), 1) : nextDue;
+            baseNextDueAt = nextDue <= today ? addDays(new Date(), 1) : nextDue;
         } else {
-            // Se não há plano existente, usar amanhã
             baseNextDueAt = addDays(new Date(), 1);
         }
         
         const nextDueAt = this.invoiceIssuer
             ? baseNextDueAt
-            : (current?.nextDueAt && new Date(current.nextDueAt) >= today 
+            : (current?.nextDueAt && new Date(current.nextDueAt) > today 
                 ? current.nextDueAt 
                 : calculateNextBillingDate(plan.billingCycle, baseNextDueAt));
         const finance = SchoolPlanFinance.create({

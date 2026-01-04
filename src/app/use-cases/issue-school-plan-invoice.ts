@@ -56,37 +56,21 @@ export class IssueSchoolPlanInvoice {
         const baseDue = input.dueDate ?? finance.nextDueAt ?? calculateNextBillingDate(plan.billingCycle);
         let dueDate = new Date(baseDue);
         
-        // Garantir que a data de vencimento seja sempre no futuro (pelo menos hoje)
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         dueDate.setHours(0, 0, 0, 0);
         
-        // Se a data está no passado, usar amanhã
-        if (dueDate < today) {
+        if (dueDate <= today) {
             dueDate = new Date(today);
             dueDate.setDate(dueDate.getDate() + 1);
         }
 
-        // Validar cupom se fornecido
         let coupon = null;
         if (input.couponCode && this.coupons) {
             const couponCode = input.couponCode.trim().toUpperCase();
-            coupon = await this.coupons.findByCode(couponCode);
-            if (!coupon) {
-                throw AppError.fromCode(ErrorCode.NOT_FOUND, {
-                    message: 'Cupom não encontrado',
-                    couponCode
-                });
-            }
-            if (!coupon.isValid()) {
-                if (coupon.isExpired()) {
-                    throw AppError.fromCode(ErrorCode.VALIDATION_ERROR, {
-                        message: 'Cupom expirado'
-                    });
-                }
-                throw AppError.fromCode(ErrorCode.VALIDATION_ERROR, {
-                    message: 'Cupom inválido ou inativo'
-                });
+            const foundCoupon = await this.coupons.findByCode(couponCode);
+            if (foundCoupon && foundCoupon.isValid()) {
+                coupon = foundCoupon;
             }
         }
 
@@ -117,7 +101,6 @@ export class IssueSchoolPlanInvoice {
             financeId: finance.id
         };
 
-        // Calcular valores com desconto se houver cupom
         const originalAmountCents = plan.amountCents;
         let amountCents = originalAmountCents;
         let discountAmountCents = 0;
@@ -172,22 +155,25 @@ export class IssueSchoolPlanInvoice {
 
         await this.invoices.save(invoice);
 
-        // Se houver cupom, gerar parcelas adicionais com desconto
         const invoices: SchoolPlanInvoice[] = [invoice];
         if (coupon && coupon.durationMonths > 1) {
             let currentDueDate = new Date(charge.dueDate);
             for (let month = 1; month < coupon.durationMonths; month++) {
                 currentDueDate = calculateNextBillingDate(plan.billingCycle, currentDueDate);
+                currentDueDate.setHours(0, 0, 0, 0);
                 
-                // Verificar se já existe invoice para esta data
+                if (currentDueDate <= today) {
+                    currentDueDate = new Date(today);
+                    currentDueDate.setDate(currentDueDate.getDate() + 1);
+                }
+                
                 const existing = await this.invoices.findByFinanceIdAndDueDate(finance.id, currentDueDate);
                 if (existing) {
-                    continue; // Pular se já existe
+                    continue;
                 }
 
-                // Verificar se ainda está dentro da validade do cupom
                 if (currentDueDate > coupon.validUntil) {
-                    break; // Parar se passou da validade
+                    break;
                 }
 
                 const additionalCharge = await this.paymentProvider.createBoletoCharge({
@@ -234,7 +220,6 @@ export class IssueSchoolPlanInvoice {
             }
         }
 
-        // Calcular próxima data de vencimento (após todas as parcelas do cupom)
         const lastInvoiceDate = invoices[invoices.length - 1].dueDate;
         const nextDueAt = calculateNextBillingDate(plan.billingCycle, lastInvoiceDate);
         const updatedFinance = SchoolPlanFinance.create({
@@ -254,7 +239,7 @@ export class IssueSchoolPlanInvoice {
 
         return {
             finance: updatedFinance,
-            invoice: invoices[0], // Retornar primeira invoice
+            invoice: invoices[0],
             alreadyExists: false
         };
     }
