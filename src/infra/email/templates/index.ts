@@ -4,6 +4,8 @@
 
 export * from './password-reset.template';
 export * from './welcome.template';
+export * from './boleto-notification.template';
 export * from './base-template';
+
 
 

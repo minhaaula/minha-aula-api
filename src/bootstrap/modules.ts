@@ -33,6 +33,7 @@ import { PaymentProviderPort } from '../ports/providers/payment-provider.port';
 import { AsaasProviderPort } from '../ports/providers/asaas-port';
 import { NodemailerEmailProvider } from '../infra/providers/nodemailer/email-provider';
 import { TwilioSendGridEmailProvider } from '../infra/providers/twilio/email-provider';
+import { MailchimpEmailProvider } from '../infra/providers/mailchimp/email-provider';
 import { EmailProviderPort } from '../ports/providers/email-provider.port';
 import { S3StorageProvider } from '../infra/providers/s3/storage-provider';
 import { StorageProviderPort } from '../ports/providers/storage-provider.port';
@@ -91,29 +92,49 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
     const authMiddleware = makeAuthMiddleware(tokenProvider);
 
     // Configurar email provider
-    // Prioridade: Twilio SendGrid > Nodemailer
+    // Prioridade: Mailchimp > Twilio SendGrid > Nodemailer
     let emailProvider: EmailProviderPort | undefined;
     const frontendBaseUrl = process.env.FRONTEND_BASE_URL;
 
-    // Tentar configurar Twilio SendGrid primeiro
-    const sendgridApiKey = process.env.SENDGRID_API_KEY;
-    const sendgridFrom = process.env.SENDGRID_FROM_EMAIL;
+    // Tentar configurar Mailchimp primeiro
+    const mailchimpApiKey = process.env.MAILCHIMP_API_KEY;
+    const mailchimpFrom = process.env.MAILCHIMP_FROM_EMAIL;
 
-    if (sendgridApiKey && sendgridFrom) {
+    if (mailchimpApiKey && mailchimpFrom) {
         try {
-            emailProvider = new TwilioSendGridEmailProvider({
-                apiKey: sendgridApiKey,
-                from: sendgridFrom,
-                fromName: process.env.SENDGRID_FROM_NAME
+            emailProvider = new MailchimpEmailProvider({
+                apiKey: mailchimpApiKey,
+                from: mailchimpFrom,
+                fromName: process.env.MAILCHIMP_FROM_NAME
             });
-            console.log('EmailProvider configurado com sucesso: Twilio SendGrid', { from: sendgridFrom });
+            console.log('EmailProvider configurado com sucesso: Mailchimp', { from: mailchimpFrom });
         } catch (error) {
-            console.error('Erro ao configurar Twilio SendGrid EmailProvider:', error);
-            // Fallback para Nodemailer se SendGrid falhar
+            console.error('Erro ao configurar Mailchimp EmailProvider:', error);
+            // Fallback para SendGrid se Mailchimp falhar
         }
     }
 
-    // Fallback para Nodemailer se SendGrid não estiver configurado
+    // Fallback para Twilio SendGrid se Mailchimp não estiver configurado
+    if (!emailProvider) {
+        const sendgridApiKey = process.env.SENDGRID_API_KEY;
+        const sendgridFrom = process.env.SENDGRID_FROM_EMAIL;
+
+        if (sendgridApiKey && sendgridFrom) {
+            try {
+                emailProvider = new TwilioSendGridEmailProvider({
+                    apiKey: sendgridApiKey,
+                    from: sendgridFrom,
+                    fromName: process.env.SENDGRID_FROM_NAME
+                });
+                console.log('EmailProvider configurado com sucesso: Twilio SendGrid', { from: sendgridFrom });
+            } catch (error) {
+                console.error('Erro ao configurar Twilio SendGrid EmailProvider:', error);
+                // Fallback para Nodemailer se SendGrid falhar
+            }
+        }
+    }
+
+    // Fallback para Nodemailer se Mailchimp e SendGrid não estiverem configurados
     if (!emailProvider) {
         const emailHost = process.env.EMAIL_HOST;
         const emailPort = process.env.EMAIL_PORT;
@@ -140,6 +161,7 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
 
     if (!emailProvider) {
         console.warn('EmailProvider não configurado. Configure uma das opções:');
+        console.warn('  - Mailchimp: MAILCHIMP_API_KEY, MAILCHIMP_FROM_EMAIL');
         console.warn('  - Twilio SendGrid: SENDGRID_API_KEY, SENDGRID_FROM_EMAIL');
         console.warn('  - Nodemailer: EMAIL_HOST, EMAIL_PORT, EMAIL_USER, EMAIL_PASS');
     }
