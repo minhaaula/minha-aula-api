@@ -38,3 +38,4 @@ export function getWelcomeTemplate(data: WelcomeTemplateData): EmailTemplate {
 
 
 
+
