@@ -861,9 +861,20 @@ components:
           type: string
           nullable: true
           description: Texto exibido na cobrança gerada.
+        couponCode:
+          type: string
+          nullable: true
+          minLength: 3
+          maxLength: 50
+          description: >-
+            Código do cupom de desconto a ser aplicado na fatura. 
+            Se o cupom tiver duração maior que 1 mês (durationMonths > 1), 
+            serão geradas múltiplas faturas automaticamente, uma para cada mês 
+            até o limite da duração do cupom ou até a data de validade do cupom.
       example:
         dueDate: '2024-07-15T00:00:00.000Z'
         description: Assinatura Minha Aula - Julho
+        couponCode: 'VAMOS'
     SchoolPlanInvoice:
       type: object
       properties:
@@ -1139,6 +1150,66 @@ components:
           minLength: 3
           maxLength: 50
           description: Código do cupom de desconto a ser aplicado na fatura.
+    Notification:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Identificador único da notificação
+        scope:
+          type: string
+          enum: [USER, SCHOOL, CLASS]
+          description: Escopo da notificação
+        schoolId:
+          type: string
+          format: uuid
+          nullable: true
+          description: ID da escola relacionada (se aplicável)
+        userId:
+          type: string
+          format: uuid
+          nullable: true
+          description: ID do usuário relacionado (se aplicável)
+        courseClassId:
+          type: string
+          format: uuid
+          nullable: true
+          description: ID da turma relacionada (se aplicável)
+        title:
+          type: string
+          description: Título da notificação
+        message:
+          type: string
+          description: Mensagem da notificação
+        metadata:
+          type: object
+          nullable: true
+          description: Dados adicionais em formato JSON
+        sentAt:
+          type: string
+          format: date-time
+          description: Data e hora em que a notificação foi enviada
+        readAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Data e hora em que a notificação foi lida (null se não lida)
+      required:
+        - id
+        - scope
+        - title
+        - message
+        - sentAt
+    NotificationListResponse:
+      type: object
+      properties:
+        notifications:
+          type: array
+          items:
+            $ref: '#/components/schemas/Notification'
+      required:
+        - notifications
     ValidateSchoolCouponInput:
       type: object
       required:

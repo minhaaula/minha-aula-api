@@ -117,6 +117,11 @@ paths:
         Emite uma nova fatura para o plano atual da escola. Informe
         opcionalmente uma data de vencimento específica ou uma descrição para o
         boleto. Se já existir uma fatura na mesma data, ela será reutilizada.
+        
+        **Cupons de desconto:** Se um `couponCode` for fornecido e o cupom tiver
+        `durationMonths > 1`, o sistema gerará automaticamente múltiplas faturas
+        (uma para cada mês) até o limite da duração do cupom ou até a data de
+        validade do cupom. Todas as faturas geradas terão o desconto aplicado.
       security:
         - bearerAuth: []
       x-codeSamples:
@@ -144,6 +149,12 @@ paths:
                 value:
                   dueDate: '2024-07-15T00:00:00.000Z'
                   description: Assinatura Minha Aula - Julho
+              withCoupon:
+                summary: Gerar cobrança com cupom de desconto
+                value:
+                  dueDate: '2024-07-15T00:00:00.000Z'
+                  description: Assinatura Minha Aula - Julho
+                  couponCode: 'VAMOS'
       responses:
         '201':
           description: Fatura criada com sucesso.

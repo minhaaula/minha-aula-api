@@ -1645,3 +1645,80 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /students/notifications:
+    get:
+      tags:
+        - Students
+      summary: Listar notificações do aluno
+      description: >-
+        Retorna todas as notificações relacionadas ao aluno autenticado.
+        As notificações são ordenadas por data de envio (mais recentes primeiro).
+        Suporta paginação através dos parâmetros limit e offset.
+        Requer persona STUDENT.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+          description: Número máximo de notificações a retornar (máximo 100)
+        - in: query
+          name: offset
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+          description: Número de notificações a pular (para paginação)
+      responses:
+        '200':
+          description: Lista de notificações encontradas.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationListResponse'
+              examples:
+                default:
+                  summary: Exemplo de notificações
+                  value:
+                    notifications:
+                      - id: '550e8400-e29b-41d4-a716-446655440000'
+                        scope: USER
+                        schoolId: null
+                        userId: '789e4567-e89b-12d3-a456-426614174000'
+                        courseClassId: null
+                        title: 'Pagamento pendente'
+                        message: 'Você tem um pagamento pendente que vence em 3 dias.'
+                        metadata:
+                          chargeId: '123e4567-e89b-12d3-a456-426614174001'
+                          dueDate: '2024-07-18'
+                        sentAt: '2024-07-15T10:30:00.000Z'
+                        readAt: null
+                      - id: '660e8400-e29b-41d4-a716-446655440001'
+                        scope: CLASS
+                        schoolId: 'a585a342-650a-4ab7-a606-07ae09bb72e1'
+                        userId: '789e4567-e89b-12d3-a456-426614174000'
+                        courseClassId: '456e4567-e89b-12d3-a456-426614174002'
+                        title: 'Aula hoje às 14h'
+                        message: 'Você tem uma aula de Matemática hoje às 14:00.'
+                        metadata:
+                          classSessionId: '789e4567-e89b-12d3-a456-426614174003'
+                        sentAt: '2024-07-15T08:00:00.000Z'
+                        readAt: '2024-07-15T08:15:00.000Z'
+        '401':
+          description: Usuário não autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado. Requer persona STUDENT.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'

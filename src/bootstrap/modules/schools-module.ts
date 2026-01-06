@@ -25,6 +25,7 @@ import { ListSubscriptionPlans } from '../../app/use-cases/list-subscription-pla
 import { AssignSchoolPlan } from '../../app/use-cases/assign-school-plan';
 import { CategoryRepositoryAdapter } from '../../infra/db/typeorm/category-repository.adapter';
 import { ListCategories } from '../../app/use-cases/list-categories';
+import { ListSchools } from '../../app/use-cases/list-schools';
 import { ListSchoolCourses } from '../../app/use-cases/list-school-courses';
 import { GetSchoolCourse } from '../../app/use-cases/get-school-course';
 import { ListCourseClasses } from '../../app/use-cases/list-course-classes';
@@ -82,6 +83,9 @@ import { ListSchoolImages } from '../../app/use-cases/list-school-images';
 import { SchoolImageRepositoryAdapter } from '../../infra/db/typeorm/school-image-repository.adapter';
 import { DiscountCouponRepositoryAdapter } from '../../infra/db/typeorm/discount-coupon-repository.adapter';
 import { ValidateSchoolCoupon } from '../../app/use-cases/validate-school-coupon';
+import { NotificationRepositoryAdapter } from '../../infra/db/typeorm/notification-repository.adapter';
+import { ListSchoolNotifications } from '../../app/use-cases/list-school-notifications';
+import { buildNotificationsRoutes } from '../../infra/http/routes/schools/notifications.routes';
 
 export type SchoolsModuleDeps = {
     schoolsRepo: SchoolRepositoryAdapter;
@@ -105,6 +109,7 @@ export type SchoolsModuleDeps = {
     emailProvider?: EmailProviderPort;
     frontendBaseUrl?: string;
     storageProvider?: StorageProviderPort;
+    notificationsRepo?: NotificationRepositoryAdapter;
 };
 
 export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupContext): ModuleBuildResult {
@@ -297,11 +302,15 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         deps.subscriptionPlansRepo
     );
     const listCategories = new ListCategories(deps.categoriesRepo);
+    const listSchools = new ListSchools(deps.schoolsRepo);
     const uploadSchoolImage = deps.storageProvider
         ? new UploadSchoolImage(deps.schoolsRepo, schoolImagesRepo, deps.storageProvider)
         : undefined;
     const listSchoolImages = deps.storageProvider
         ? new ListSchoolImages(schoolImagesRepo, deps.storageProvider)
+        : undefined;
+    const listSchoolNotifications = deps.notificationsRepo
+        ? new ListSchoolNotifications(deps.notificationsRepo)
         : undefined;
 
     // Montar routers prontos
@@ -353,7 +362,8 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         getStudentDirectoryEntry,
         uploadSchoolImage,
         listSchoolImages,
-        validateSchoolCoupon
+        validateSchoolCoupon,
+        listSchoolNotifications
     });
 
     const asaasWebhookRouterInstance = asaasWebhookRouter({

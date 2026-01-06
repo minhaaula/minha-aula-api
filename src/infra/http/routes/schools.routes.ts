@@ -42,12 +42,14 @@ import { buildPaymentsRoutes } from './schools/payments.routes';
 import { buildSessionsRoutes } from './schools/sessions.routes';
 import { buildFinanceRoutes } from './schools/finance.routes';
 import { buildBankAccountsRoutes } from './schools/bank-accounts.routes';
+import { buildNotificationsRoutes } from './schools/notifications.routes';
 import type { SchoolRouteGuards } from './schools/guards';
 import { makeResolveSchoolContextMiddleware } from '../middlewares/resolve-school-context';
 import type { ListSchoolBankAccounts } from '../../../app/use-cases/list-school-bank-accounts';
 import type { CreateSchoolBankAccount } from '../../../app/use-cases/create-school-bank-account';
 import type { UpdateSchoolBankAccount } from '../../../app/use-cases/update-school-bank-account';
 import type { DeleteSchoolBankAccount } from '../../../app/use-cases/delete-school-bank-account';
+import type { ListSchoolNotifications } from '../../../app/use-cases/list-school-notifications';
 import type { RequestPasswordReset } from '../../../app/use-cases/request-password-reset';
 import type { ResetPassword } from '../../../app/use-cases/reset-password';
 import type { UpdateSchoolPassword } from '../../../app/use-cases/update-school-password';
@@ -108,6 +110,7 @@ export type SchoolsRouterDeps = {
     uploadSchoolImage?: import('../../../app/use-cases/upload-school-image').UploadSchoolImage;
     listSchoolImages?: import('../../../app/use-cases/list-school-images').ListSchoolImages;
     validateSchoolCoupon?: import('../../../app/use-cases/validate-school-coupon').ValidateSchoolCoupon;
+    listSchoolNotifications?: ListSchoolNotifications;
 };
 
 export function schoolsRouter(deps: SchoolsRouterDeps) {
@@ -202,6 +205,12 @@ export function schoolsRouter(deps: SchoolsRouterDeps) {
         listClassSessions: deps.listClassSessions,
         cancelClassSession: deps.cancelClassSession
     }, guards));
+
+    if (deps.listSchoolNotifications) {
+        router.use('/notifications', buildNotificationsRoutes({
+            listSchoolNotifications: deps.listSchoolNotifications
+        }, guards));
+    }
 
     router.use('/bank-accounts', buildBankAccountsRoutes({
         listSchoolBankAccounts: deps.listSchoolBankAccounts,

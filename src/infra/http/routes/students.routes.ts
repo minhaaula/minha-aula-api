@@ -15,6 +15,7 @@ import { ApproveEnrollmentRequest } from '../../../app/use-cases/approve-enrollm
 import { RejectEnrollmentRequest } from '../../../app/use-cases/reject-enrollment-request';
 import { GetSchoolPublicDetails } from '../../../app/use-cases/get-school-public-details';
 import { GenerateTuitionPix } from '../../../app/use-cases/generate-tuition-pix';
+import { ListStudentNotifications } from '../../../app/use-cases/list-student-notifications';
 import { requirePersona } from '../middlewares/require-persona';
 import { UserPersonaEnum } from '../../../domain/value-objects/user-persona';
 import { AuthenticatedRequest } from '../middlewares/auth';
@@ -37,6 +38,7 @@ export function studentsRouter(deps: {
     rejectEnrollmentRequest?: RejectEnrollmentRequest;
     getSchoolPublicDetails?: GetSchoolPublicDetails;
     generateTuitionPix?: GenerateTuitionPix;
+    listStudentNotifications?: ListStudentNotifications;
 }) {
     const r = Router();
 
@@ -434,6 +436,36 @@ export function studentsRouter(deps: {
                     id: authReq.user.sub,
                     persona: UserPersonaEnum.STUDENT
                 }
+            });
+
+            res.json(result);
+        }));
+    }
+
+    if (deps.listStudentNotifications) {
+        r.get('/notifications', requireStudent, asyncHandler(async (req, res) => {
+            const authReq = req as AuthenticatedRequest;
+            if (!authReq.user?.sub) {
+                return res.status(401).json({ 
+                    error: 'Não autorizado',
+                    code: 'UNAUTHORIZED'
+                });
+            }
+
+            const querySchema = z.object({
+                limit: z.coerce.number().int().positive().max(100).optional(),
+                offset: z.coerce.number().int().min(0).optional()
+            });
+
+            const query = querySchema.parse({
+                limit: req.query.limit,
+                offset: req.query.offset
+            });
+
+            const result = await deps.listStudentNotifications!.exec({
+                userId: authReq.user.sub,
+                limit: query.limit,
+                offset: query.offset
             });
 
             res.json(result);

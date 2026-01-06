@@ -37,6 +37,8 @@ import { GetSchoolPublicDetails } from '../../app/use-cases/get-school-public-de
 import { GenerateTuitionPix } from '../../app/use-cases/generate-tuition-pix';
 import { CategoryRepositoryAdapter } from '../../infra/db/typeorm/category-repository.adapter';
 import { SchoolReviewRepositoryAdapter } from '../../infra/db/typeorm/school-review-repository.adapter';
+import { NotificationRepositoryAdapter } from '../../infra/db/typeorm/notification-repository.adapter';
+import { ListStudentNotifications } from '../../app/use-cases/list-student-notifications';
 
 import { StorageProviderPort } from '../../ports/providers/storage-provider.port';
 
@@ -53,6 +55,7 @@ export type StudentsModuleDeps = {
     categoriesRepo?: CategoryRepositoryAdapter;
     schoolReviewsRepo?: SchoolReviewRepositoryAdapter;
     storageProvider?: StorageProviderPort;
+    notificationsRepo?: NotificationRepositoryAdapter;
 };
 
 export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupContext): ModuleBuildResult {
@@ -122,6 +125,9 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
         ? new ListSchoolReviews(deps.schoolReviewsRepo, deps.storageProvider)
         : undefined;
     const getSchoolPublicDetails = new GetSchoolPublicDetails(deps.schoolsRepo);
+    const listStudentNotifications = deps.notificationsRepo
+        ? new ListStudentNotifications(deps.notificationsRepo)
+        : undefined;
 
     // Montar routers prontos
     const studentsRouterInstance = studentsRouter({
@@ -139,7 +145,8 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
         approveEnrollmentRequest,
         rejectEnrollmentRequest,
         getSchoolPublicDetails,
-        generateTuitionPix
+        generateTuitionPix,
+        listStudentNotifications
     });
 
     const listMyDependents = new ListMyDependents(deps.dependentsRepo);

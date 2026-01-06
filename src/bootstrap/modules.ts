@@ -18,6 +18,7 @@ import { SubscriptionPlanRepositoryAdapter } from '../infra/db/typeorm/subscript
 import { CategoryRepositoryAdapter } from '../infra/db/typeorm/category-repository.adapter';
 import { SchoolBankAccountRepositoryAdapter } from '../infra/db/typeorm/school-bank-account-repository.adapter';
 import { SchoolReviewRepositoryAdapter } from '../infra/db/typeorm/school-review-repository.adapter';
+import { NotificationRepositoryAdapter } from '../infra/db/typeorm/notification-repository.adapter';
 import { OutboxProducer } from '../infra/messaging/bullmq/outbox-producer';
 import { ScryptPasswordHasher } from '../infra/auth/scrypt-password-hasher';
 import { HmacTokenProvider } from '../infra/auth/hmac-token-provider';
@@ -83,6 +84,7 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
     const enrollmentsRepo = new EnrollmentRepositoryAdapter();
     const enrollmentRequestsRepo = new EnrollmentRequestRepositoryAdapter();
     const schoolReviewsRepo = new SchoolReviewRepositoryAdapter();
+    const notificationsRepo = new NotificationRepositoryAdapter();
     const outbox = new OutboxProducer();
 
     const passwordHasher = new ScryptPasswordHasher();
@@ -289,7 +291,8 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
                     bankAccountsRepo,
                     emailProvider,
                     frontendBaseUrl,
-                    storageProvider
+                    storageProvider,
+                    notificationsRepo
                 }, ctx);
                 mergeModuleResult(serverDeps, docFiles, result);
                 break;
@@ -310,7 +313,8 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
                     paymentProvider,
                     categoriesRepo,
                     schoolReviewsRepo,
-                    storageProvider
+                    storageProvider,
+                    notificationsRepo
                 }, ctx);
                 mergeModuleResult(serverDeps, docFiles, result);
                 break;
