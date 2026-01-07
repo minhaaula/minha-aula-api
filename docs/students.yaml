@@ -1722,3 +1722,38 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /students/notifications/read-all:
+    put:
+      tags:
+        - Students
+      summary: Marcar todas as notificações como lidas
+      description: >-
+        Marca todas as notificações não lidas do aluno autenticado como lidas de uma vez.
+        Retorna o número de notificações que foram marcadas como lidas.
+        Requer persona STUDENT.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Notificações marcadas como lidas com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MarkAllNotificationsAsReadResponse'
+              examples:
+                default:
+                  summary: Exemplo de resposta
+                  value:
+                    markedCount: 5
+        '401':
+          description: Usuário não autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado. Requer persona STUDENT.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'

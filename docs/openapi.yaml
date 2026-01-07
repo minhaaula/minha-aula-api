@@ -1210,6 +1210,15 @@ components:
             $ref: '#/components/schemas/Notification'
       required:
         - notifications
+    MarkAllNotificationsAsReadResponse:
+      type: object
+      properties:
+        markedCount:
+          type: integer
+          minimum: 0
+          description: Número de notificações marcadas como lidas
+      required:
+        - markedCount
     ValidateSchoolCouponInput:
       type: object
       required:
