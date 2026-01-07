@@ -39,6 +39,7 @@ import { CategoryRepositoryAdapter } from '../../infra/db/typeorm/category-repos
 import { SchoolReviewRepositoryAdapter } from '../../infra/db/typeorm/school-review-repository.adapter';
 import { NotificationRepositoryAdapter } from '../../infra/db/typeorm/notification-repository.adapter';
 import { ListStudentNotifications } from '../../app/use-cases/list-student-notifications';
+import { ReadAllNotifications } from '../../app/use-cases/read-all-notifications';
 
 import { StorageProviderPort } from '../../ports/providers/storage-provider.port';
 
@@ -128,8 +129,10 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
     const listStudentNotifications = deps.notificationsRepo
         ? new ListStudentNotifications(deps.notificationsRepo)
         : undefined;
+    const readAllNotifications = deps.notificationsRepo
+        ? new ReadAllNotifications(deps.notificationsRepo)
+        : undefined;
 
-    // Montar routers prontos
     const studentsRouterInstance = studentsRouter({
         listStudents,
         getStudentDirectoryEntry,
@@ -146,7 +149,8 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
         rejectEnrollmentRequest,
         getSchoolPublicDetails,
         generateTuitionPix,
-        listStudentNotifications
+        listStudentNotifications,
+        readAllNotifications
     });
 
     const listMyDependents = new ListMyDependents(deps.dependentsRepo);

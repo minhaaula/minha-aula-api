@@ -16,6 +16,7 @@ import { RejectEnrollmentRequest } from '../../../app/use-cases/reject-enrollmen
 import { GetSchoolPublicDetails } from '../../../app/use-cases/get-school-public-details';
 import { GenerateTuitionPix } from '../../../app/use-cases/generate-tuition-pix';
 import { ListStudentNotifications } from '../../../app/use-cases/list-student-notifications';
+import { ReadAllNotifications } from '../../../app/use-cases/read-all-notifications';
 import { requirePersona } from '../middlewares/require-persona';
 import { UserPersonaEnum } from '../../../domain/value-objects/user-persona';
 import { AuthenticatedRequest } from '../middlewares/auth';
@@ -39,6 +40,7 @@ export function studentsRouter(deps: {
     getSchoolPublicDetails?: GetSchoolPublicDetails;
     generateTuitionPix?: GenerateTuitionPix;
     listStudentNotifications?: ListStudentNotifications;
+    readAllNotifications?: ReadAllNotifications;
 }) {
     const r = Router();
 
@@ -118,7 +120,6 @@ export function studentsRouter(deps: {
                     responsible: entry.responsible ? serialize(entry.responsible) : null
                 });
             } catch (execErr) {
-                // Capturar erro de CPF inválido do use case
                 if (execErr instanceof Error && execErr.message === 'Invalid CPF') {
                     return res.status(400).json({ 
                         error: 'CPF inválido. Deve conter 11 dígitos',
@@ -128,7 +129,6 @@ export function studentsRouter(deps: {
                 throw execErr;
             }
         } catch (err) {
-            // Capturar erros de validação do Zod
             if (err instanceof z.ZodError) {
                 return res.status(400).json({ 
                     error: 'Parâmetro CPF inválido',
@@ -238,7 +238,6 @@ export function studentsRouter(deps: {
                 });
             }
 
-            // Parse isPaid corretamente (query strings vêm como strings)
             let isPaid: boolean | undefined = undefined;
             if (req.query.isPaid !== undefined) {
                 const isPaidValue = req.query.isPaid;
@@ -466,6 +465,24 @@ export function studentsRouter(deps: {
                 userId: authReq.user.sub,
                 limit: query.limit,
                 offset: query.offset
+            });
+
+            res.json(result);
+        }));
+    }
+
+    if (deps.readAllNotifications) {
+        r.put('/notifications/read-all', requireStudent, asyncHandler(async (req, res) => {
+            const authReq = req as AuthenticatedRequest;
+            if (!authReq.user?.sub) {
+                return res.status(401).json({ 
+                    error: 'Não autorizado',
+                    code: 'UNAUTHORIZED'
+                });
+            }
+
+            const result = await deps.readAllNotifications!.exec({
+                userId: authReq.user.sub
             });
 
             res.json(result);

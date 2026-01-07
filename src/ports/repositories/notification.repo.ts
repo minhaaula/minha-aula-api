@@ -26,4 +26,5 @@ export interface NotificationRepository {
         limit?: number;
         offset?: number;
     }): Promise<NotificationListItem[]>;
+    markAllAsReadByUserId?(userId: string): Promise<number>;
 }

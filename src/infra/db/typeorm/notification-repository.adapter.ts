@@ -57,6 +57,19 @@ export class NotificationRepositoryAdapter implements NotificationRepository {
         return rows.map(row => this.toListItem(row));
     }
 
+    async markAllAsReadByUserId(userId: string): Promise<number> {
+        const readAt = new Date();
+        const result = await this.repo
+            .createQueryBuilder()
+            .update(NotificationOrm)
+            .set({ readAt })
+            .where('userId = :userId', { userId })
+            .andWhere('readAt IS NULL')
+            .execute();
+
+        return result.affected ?? 0;
+    }
+
     private toDomain(row: NotificationOrm): Notification {
         return Notification.create({
             id: row.id,
