@@ -21,6 +21,7 @@ export function enrollmentRequestsRouter(deps: {
     const r = Router();
 
     const canManageRequests = requirePersona(UserPersonaEnum.ADMIN, UserPersonaEnum.SCHOOL);
+    const canCreateRequest = requirePersona(UserPersonaEnum.ADMIN, UserPersonaEnum.SCHOOL, UserPersonaEnum.STUDENT);
     const canIssueEnrollmentFeeBoleto = requirePersona(UserPersonaEnum.ADMIN, UserPersonaEnum.SCHOOL, UserPersonaEnum.STUDENT);
 
     type SerializableRequest = EnrollmentRequest | EnrollmentRequestWithDetails;
@@ -184,14 +185,21 @@ export function enrollmentRequestsRouter(deps: {
         }
     });
 
-    r.post('/schools/classes/:classId/requests', canManageRequests, async (req, res, next) => {
+    r.post('/schools/classes/:classId/requests', canCreateRequest, async (req, res, next) => {
         try {
             const paramsSchema = z.object({
                 classId: z.string().uuid()
             });
             const { classId } = paramsSchema.parse(req.params);
+            const authReq = req as AuthenticatedRequest;
+            const persona = authReq.user?.persona;
+            const loggedUserId = authReq.user?.sub;
+
+            // Para STUDENT, requestedForUserId é opcional e será preenchido automaticamente
             const bodySchema = z.object({
-                requestedForUserId: z.string().uuid(),
+                requestedForUserId: persona === UserPersonaEnum.STUDENT 
+                    ? z.string().uuid().optional() 
+                    : z.string().uuid(),
                 requestedForDependentId: z.string().uuid().optional(),
                 notes: z.string().max(255).optional(),
                 discont: z.coerce.number().min(0).optional(),
@@ -201,9 +209,8 @@ export function enrollmentRequestsRouter(deps: {
                 firstMonthlyPaymentDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
             });
             const data = bodySchema.parse(req.body);
-            const authReq = req as AuthenticatedRequest;
-            const persona = authReq.user?.persona;
 
+            // Determinar schoolId
             let schoolId = data.schoolId;
             if (persona === UserPersonaEnum.SCHOOL) {
                 const contextSchoolId = authReq.user?.schoolId;
@@ -223,10 +230,32 @@ export function enrollmentRequestsRouter(deps: {
                 });
             }
 
+            // Para STUDENT, usar automaticamente o ID do usuário logado
+            let requestedForUserId: string;
+            if (persona === UserPersonaEnum.STUDENT) {
+                if (!loggedUserId) {
+                    return res.status(401).json({ 
+                        error: 'Usuário não autenticado',
+                        code: 'UNAUTHORIZED'
+                    });
+                }
+                // Para STUDENT, sempre usar o ID do usuário logado
+                requestedForUserId = loggedUserId;
+            } else {
+                // Para ADMIN e SCHOOL, usar o ID enviado (obrigatório)
+                if (!data.requestedForUserId) {
+                    return res.status(400).json({ 
+                        error: 'requestedForUserId é obrigatório',
+                        code: 'REQUIRED_FIELD'
+                    });
+                }
+                requestedForUserId = data.requestedForUserId;
+            }
+
             const request = await deps.createEnrollmentRequest.exec({
                 schoolId,
                 courseClassId: classId,
-                requestedForUserId: data.requestedForUserId,
+                requestedForUserId,
                 requestedForDependentId: data.requestedForDependentId ?? null,
                 notes: data.notes ?? null,
                 discount: data.discont ?? null,

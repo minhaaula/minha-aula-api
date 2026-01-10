@@ -2106,24 +2106,39 @@ components:
         id:
           type: string
           format: uuid
+          description: |
+            ID do dependente. **Use este ID no campo `requestedForDependentId` ao criar uma solicitação de matrícula para este dependente.**
+          example: "660e8400-e29b-41d4-a716-446655440001"
         userId:
           type: string
           format: uuid
+          description: ID do usuário responsável (pai/mãe) ao qual o dependente pertence
+          example: "550e8400-e29b-41d4-a716-446655440000"
         fullName:
           type: string
+          description: Nome completo do dependente
+          example: "João Pedro Silva"
         cpf:
           type: string
           nullable: true
+          description: CPF do dependente (apenas dígitos)
+          example: "12345678909"
         birthDate:
           type: string
           format: date
           nullable: true
+          description: Data de nascimento do dependente
+          example: "2015-05-20"
         relationship:
           type: string
           nullable: true
+          description: Relação do dependente com o responsável (ex: Filho, Filha, etc.)
+          example: "Filho"
         createdAt:
           type: string
           format: date-time
+          description: Data e hora de criação do registro
+          example: "2024-12-15T10:30:00.000Z"
       required:
         - id
         - userId
@@ -2140,6 +2155,10 @@ components:
           format: uuid
           description: |
             ID do usuário responsável pela matrícula.
+            
+            **Comportamento por persona:**
+            - **STUDENT**: Este campo é **opcional**. Se não enviado, será automaticamente preenchido com o ID do usuário logado.
+            - **SCHOOL/ADMIN**: Este campo é **obrigatório** e deve ser enviado.
             
             **Importante:** 
             - Se for matrícula de aluno próprio: use o ID do próprio aluno

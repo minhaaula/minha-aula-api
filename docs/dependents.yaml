@@ -86,11 +86,25 @@ paths:
               $ref: '#/components/schemas/AddDependentInput'
       responses:
         '201':
-          description: Dependente cadastrado com sucesso.
+          description: |
+            Dependente cadastrado com sucesso. 
+            
+            **Importante:** O campo `id` retornado deve ser usado no campo `requestedForDependentId` ao criar uma solicitação de matrícula para este dependente via `POST /enrollment-requests/schools/classes/{classId}/requests`.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/DependentResponse'
+              examples:
+                success:
+                  summary: Dependente criado
+                  value:
+                    id: "660e8400-e29b-41d4-a716-446655440001"
+                    userId: "550e8400-e29b-41d4-a716-446655440000"
+                    fullName: "João Pedro Silva"
+                    cpf: "12345678909"
+                    birthDate: "2015-05-20"
+                    relationship: "Filho"
+                    createdAt: "2024-12-15T10:30:00.000Z"
         '400':
           description: Erro de validação ou usuário não encontrado.
           content:

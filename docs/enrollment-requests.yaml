@@ -144,6 +144,10 @@ paths:
       description: |
         Cria uma solicitação de matrícula para um aluno ou dependente em uma turma específica.
         
+        **Comportamento por persona:**
+        - **STUDENT**: O `requestedForUserId` é automaticamente preenchido com o ID do usuário logado. Não é necessário enviar este campo.
+        - **SCHOOL/ADMIN**: O `requestedForUserId` é obrigatório e deve ser enviado no body.
+        
         **Importante ao matricular um dependente:**
         - `requestedForUserId` deve ser o ID do **responsável** (pai/mãe), não do dependente
         - `requestedForDependentId` deve ser o ID do **dependente** que será matriculado
@@ -167,22 +171,33 @@ paths:
             schema:
               $ref: '#/components/schemas/CreateEnrollmentRequestInput'
             examples:
-              student:
-                summary: Matrícula de aluno (próprio usuário)
+              student_own:
+                summary: Matrícula de aluno próprio (STUDENT - requestedForUserId opcional)
+                description: Para persona STUDENT, o requestedForUserId é opcional e será preenchido automaticamente
                 value:
-                  requestedForUserId: "550e8400-e29b-41d4-a716-446655440000"
                   requestedForDependentId: null
                   notes: "Aluno interessado em iniciar o curso"
                   discont: 0
                   enrollmentFeeAmount: 100.00
                   enrollmentFeeDueDate: "2024-12-15"
                   firstMonthlyPaymentDate: "2024-12-20"
-              dependent:
-                summary: Matrícula de dependente
+              student_dependent:
+                summary: Matrícula de dependente (STUDENT - requestedForUserId opcional)
+                description: Para persona STUDENT, o requestedForUserId é opcional e será preenchido automaticamente
                 value:
-                  requestedForUserId: "550e8400-e29b-41d4-a716-446655440000"
                   requestedForDependentId: "660e8400-e29b-41d4-a716-446655440001"
                   notes: "Matrícula para filho do responsável"
+                  discont: 0
+                  enrollmentFeeAmount: 100.00
+                  enrollmentFeeDueDate: "2024-12-15"
+                  firstMonthlyPaymentDate: "2024-12-20"
+              school_admin:
+                summary: Matrícula criada por SCHOOL/ADMIN (requestedForUserId obrigatório)
+                description: Para persona SCHOOL ou ADMIN, o requestedForUserId é obrigatório
+                value:
+                  requestedForUserId: "550e8400-e29b-41d4-a716-446655440000"
+                  requestedForDependentId: null
+                  notes: "Aluno interessado em iniciar o curso"
                   discont: 0
                   enrollmentFeeAmount: 100.00
                   enrollmentFeeDueDate: "2024-12-15"
