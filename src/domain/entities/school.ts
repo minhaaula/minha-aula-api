@@ -18,6 +18,7 @@ export class School {
         private readonly _accountId: string | null,
         private readonly _accountApiKey: string | null,
         private readonly _walletId: string | null,
+        private readonly _onboardingUrl: string | null,
         private readonly _incomeValue: number,
         private readonly _facebookLink: string | null,
         private readonly _instagramLink: string | null,
@@ -42,6 +43,7 @@ export class School {
         accountId?: string | null;
         accountApiKey?: string | null;
         walletId?: string | null;
+        onboardingUrl?: string | null;
         incomeValue?: number;
         facebookLink?: string | null;
         instagramLink?: string | null;
@@ -72,6 +74,7 @@ export class School {
         const accountId = School.normalizeAccountId(params.accountId);
         const accountApiKey = School.normalizeAccountApiKey(params.accountApiKey);
         const walletId = School.normalizeWalletId(params.walletId);
+        const onboardingUrl = School.normalizeLink(params.onboardingUrl);
         const incomeValue = School.normalizeIncomeValue(params.incomeValue);
         const facebookLink = School.normalizeLink(params.facebookLink);
         const instagramLink = School.normalizeLink(params.instagramLink);
@@ -95,6 +98,7 @@ export class School {
             accountId,
             accountApiKey,
             walletId,
+            onboardingUrl,
             incomeValue,
             facebookLink,
             instagramLink,
@@ -150,6 +154,10 @@ export class School {
 
     get walletId(): string | null {
         return this._walletId;
+    }
+
+    get onboardingUrl(): string | null {
+        return this._onboardingUrl;
     }
 
     get incomeValue(): number {
@@ -312,6 +320,7 @@ export class School {
             accountId: normalized,
             accountApiKey: this._accountApiKey,
             walletId: this._walletId,
+            onboardingUrl: this._onboardingUrl,
             incomeValue: this._incomeValue,
             facebookLink: this._facebookLink,
             instagramLink: this._instagramLink,
@@ -339,6 +348,7 @@ export class School {
             accountId: this._accountId,
             accountApiKey: normalized,
             walletId: this._walletId,
+            onboardingUrl: this._onboardingUrl,
             incomeValue: this._incomeValue,
             facebookLink: this._facebookLink,
             instagramLink: this._instagramLink,
@@ -366,6 +376,35 @@ export class School {
             accountId: this._accountId,
             accountApiKey: this._accountApiKey,
             walletId: normalized,
+            onboardingUrl: this._onboardingUrl,
+            incomeValue: this._incomeValue,
+            facebookLink: this._facebookLink,
+            instagramLink: this._instagramLink,
+            tiktokLink: this._tiktokLink,
+            youtubeLink: this._youtubeLink,
+            siteLink: this._siteLink
+        });
+    }
+
+    withOnboardingUrl(onboardingUrl: string | null): School {
+        const normalized = School.normalizeLink(onboardingUrl);
+        return School.create({
+            id: this.id,
+            name: this.name,
+            email: this.email,
+            phone: this.phone,
+            cnpj: this.cnpj,
+            addresses: this.addresses,
+            ownerUserId: this.ownerUserId,
+            ownerName: this.ownerName,
+            ownerCpf: this.ownerCpf,
+            ownerEmail: this.ownerEmail,
+            ownerPasswordHash: this.ownerPasswordHash,
+            createdAt: this.createdAt,
+            accountId: this._accountId,
+            accountApiKey: this._accountApiKey,
+            walletId: this._walletId,
+            onboardingUrl: normalized,
             incomeValue: this._incomeValue,
             facebookLink: this._facebookLink,
             instagramLink: this._instagramLink,

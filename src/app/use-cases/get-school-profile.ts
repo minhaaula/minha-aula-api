@@ -63,6 +63,7 @@ export class GetSchoolProfile {
             createdAt: Date;
         }>;
         isOverdue?: boolean;
+        onboardingUrl?: string | null;
     } | null> {
         const schoolId = input.schoolId.trim();
         if (!schoolId) return null;
@@ -177,7 +178,8 @@ export class GetSchoolProfile {
                 site: school.siteLink
             },
             images,
-            isOverdue
+            isOverdue,
+            onboardingUrl: school.onboardingUrl
         };
     }
 }

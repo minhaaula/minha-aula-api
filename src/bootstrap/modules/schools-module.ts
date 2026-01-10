@@ -32,6 +32,7 @@ import { ListCourseClasses } from '../../app/use-cases/list-course-classes';
 import { GetCourseClass } from '../../app/use-cases/get-course-class';
 import { GetSchoolProfile } from '../../app/use-cases/get-school-profile';
 import { UpdateSchool } from '../../app/use-cases/update-school';
+import { GetSchoolPendingDocuments } from '../../app/use-cases/get-school-pending-documents';
 import { UpdateCourse } from '../../app/use-cases/update-course';
 import { DeleteCourse } from '../../app/use-cases/delete-course';
 import { SchoolPlanInvoiceRepositoryAdapter } from '../../infra/db/typeorm/school-plan-invoice-repository.adapter';
@@ -113,7 +114,12 @@ export type SchoolsModuleDeps = {
 };
 
 export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupContext): ModuleBuildResult {
-    const createSchool = new CreateSchool(deps.schoolsRepo, deps.passwordHasher);
+    // Declarar asaasProvider antes de usar
+    const asaasProvider = typeof deps.paymentProvider.createSubAccount === 'function'
+        ? deps.paymentProvider as AsaasProviderPort
+        : undefined;
+    
+    const createSchool = new CreateSchool(deps.schoolsRepo, deps.passwordHasher, asaasProvider);
     const createCourse = new CreateCourse(deps.schoolsRepo, deps.coursesRepo);
     const createCourseClass = new CreateCourseClass(deps.coursesRepo, deps.classesRepo);
     const updateCourseClass = new UpdateCourseClass(deps.coursesRepo, deps.classesRepo);
@@ -134,6 +140,9 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         deps.planInvoicesRepo
     );
     const updateSchool = new UpdateSchool(deps.schoolsRepo, deps.passwordHasher);
+    const getSchoolPendingDocuments = asaasProvider
+        ? new GetSchoolPendingDocuments(deps.schoolsRepo, asaasProvider)
+        : undefined;
     
     const listSchoolBankAccounts = deps.bankAccountsRepo
         ? new ListSchoolBankAccounts(deps.bankAccountsRepo)
@@ -241,11 +250,6 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
     );
     const withdrawalsRepo = new SchoolWithdrawalRepositoryAdapter();
     const listSchoolWithdrawals = new ListSchoolWithdrawals(withdrawalsRepo);
-    
-    // Declarar asaasProvider antes de usar
-    const asaasProvider = typeof deps.paymentProvider.createSubAccount === 'function'
-        ? deps.paymentProvider as AsaasProviderPort
-        : undefined;
     
     const requestSchoolWithdrawal = deps.bankAccountsRepo && asaasProvider
         ? new RequestSchoolWithdrawal(
@@ -363,7 +367,8 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         uploadSchoolImage,
         listSchoolImages,
         validateSchoolCoupon,
-        listSchoolNotifications
+        listSchoolNotifications,
+        getSchoolPendingDocuments
     });
 
     const asaasWebhookRouterInstance = asaasWebhookRouter({

@@ -32,6 +32,8 @@ export type AsaasSubAccountResponse = {
     externalReference?: string;
     apiKey?: string
     walletId?: string
+    onboardingUrl?: string;
+    kycUrl?: string;
 };
 
 export type AsaasCreateSubAccountWebhookPayload = {

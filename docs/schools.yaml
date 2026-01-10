@@ -195,6 +195,10 @@ paths:
       tags:
         - Schools
       summary: Criar uma nova escola
+      description: |
+        Cria uma nova escola e automaticamente cria uma subconta no Asaas para processamento de pagamentos.
+        O sistema busca o link de onboarding (KYC) e retorna no campo `kycUrl` para que o frontend possa
+        redirecionar o usuário para completar a verificação de identidade.
       requestBody:
         required: true
         content:
@@ -203,11 +207,37 @@ paths:
               $ref: '#/components/schemas/CreateSchoolInput'
       responses:
         '201':
-          description: Escola criada com sucesso.
+          description: Escola criada com sucesso. O campo `kycUrl` contém o link para completar o KYC no Asaas.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/SchoolResponse'
+              examples:
+                default:
+                  summary: Escola criada com link de KYC
+                  value:
+                    id: "a585a342-650a-4ab7-a606-07ae09bb72e1"
+                    name: "Escola do Futuro"
+                    email: "contato@escoladofuturo.com.br"
+                    phone: "11987654321"
+                    cnpj: "12345678000190"
+                    addresses: []
+                    createdAt: "2024-07-15T10:00:00.000Z"
+                    ownerUserId: "9f17b6f3-7af8-45be-8f4a-4d982f5a9f0c"
+                    ownerName: "Maria Silva"
+                    ownerCpf: "12345678901"
+                    ownerEmail: "diretoria@escoladofuturo.com.br"
+                    incomeValue: 50000
+                    bankAccounts: []
+                    links:
+                      facebook: null
+                      instagram: null
+                      tiktok: null
+                      youtube: null
+                      site: null
+                    images: []
+                    isOverdue: false
+                    kycUrl: "https://beta.cadastro.io/c33ef9ae605f350c052be72ab094d0b7"
         '400':
           description: Erro de validação.
           content:
@@ -2405,6 +2435,86 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '501':
           description: Funcionalidade de listagem de imagens não configurada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /schools/kyc/documents:
+    get:
+      tags:
+        - Schools
+      summary: Consultar documentos pendentes de KYC
+      description: |
+        Retorna os documentos pendentes de KYC (Know Your Customer) da escola autenticada no Asaas.
+        Este endpoint busca os documentos diretamente da API do Asaas usando a API key da subconta da escola.
+        
+        O sistema automaticamente extrai o `onboardingUrl` dos documentos pendentes e atualiza o registro
+        da escola se um novo link for encontrado. O link de onboarding permite que a escola complete
+        o processo de verificação de identidade e envie os documentos necessários.
+        
+        **Nota:** Após a criação da subconta no Asaas, pode levar até 15 segundos para que os documentos
+        pendentes estejam disponíveis. Este endpoint retorna os documentos disponíveis no momento da consulta.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Documentos pendentes de KYC encontrados.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KycDocumentsResponse'
+              examples:
+                default:
+                  summary: Exemplo de documentos pendentes
+                  value:
+                    documents:
+                      - id: "bdc1ca13-3842-4a09-bb98-4a9e961f23f2"
+                        type: "IDENTIFICATION"
+                        title: "Documentos de identificação"
+                        description: "Para enviar esse documento acesse nosso aplicativo ou utilize o link de onboarding."
+                        status: "NOT_SENT"
+                        onboardingUrl: "https://beta.cadastro.io/c33ef9ae605f350c052be72ab094d0b7"
+                        onboardingUrlExpirationDate: "2025-03-04T00:00:00.000Z"
+                        responsible:
+                          name: "diretor"
+                          type: "PARTNER"
+                      - id: "7fc6dbc2-f1b1-485a-8eee-c041254560bc"
+                        type: "SOCIAL_CONTRACT"
+                        title: "Contrato Social"
+                        description: "O contrato social só será aceito contendo todas as páginas e o registro na junta comercial."
+                        status: "NOT_SENT"
+                        onboardingUrl: null
+                        onboardingUrlExpirationDate: null
+                        responsible:
+                          name: null
+                          type: "LIMITED_COMPANY"
+                    onboardingUrl: "https://beta.cadastro.io/c33ef9ae605f350c052be72ab094d0b7"
+        '400':
+          description: Erro na requisição ou escola sem conta Asaas configurada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Não autorizado. Token inválido ou ausente.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado. Requer persona SCHOOL.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Escola não encontrada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '501':
+          description: Funcionalidade de consulta de documentos KYC não configurada.
           content:
             application/json:
               schema:

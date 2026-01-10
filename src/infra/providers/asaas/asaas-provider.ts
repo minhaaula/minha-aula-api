@@ -1,7 +1,7 @@
 import { Money } from '../../../domain/value-objects/money';
 import { PaymentProviderPort, CreateChargeInput, CreatePixChargeInput } from '../../../ports/providers/payment-provider.port';
 import { AsaasClient } from './asaas-client';
-import { AsaasChargeResponse, AsaasSubAccount, CreateAsaasSubAccountInput, CreateAsaasTransferInput, AsaasTransferResponse } from '../../../ports/providers/asaas-port';
+import { AsaasChargeResponse, AsaasSubAccount, CreateAsaasSubAccountInput, CreateAsaasTransferInput, AsaasTransferResponse, AsaasAccountDetails } from '../../../ports/providers/asaas-port';
 import { CreateBoletoChargeInput } from '../../../ports/providers/payment-provider.port';
 
 
@@ -115,27 +115,36 @@ export class AsaasProvider implements PaymentProviderPort {
             }
         }
 
-        const payload = {
+        const payload: any = {
             name: input.name,
             email: input.email,
             cpfCnpj: input.cpfCnpj,
-            birthDate: input.birthDate ?? undefined,
-            phone: input.phone ?? undefined,
-            mobilePhone: input.mobilePhone ?? undefined,
-            companyType: input.companyType ?? undefined,
-            incomeValue: input.incomeValue,
-            externalReference: input.externalReference ?? undefined,
-            observations: input.observations ?? undefined,
-            additionalEmails: input.additionalEmails ?? undefined,
-            address: input.address ?? undefined,
-            addressNumber: input.addressNumber ?? undefined,
-            complement: input.complement ?? undefined,
-            province: input.province ?? undefined,
-            postalCode: input.postalCode ?? undefined,
-            municipalInscription: input.municipalInscription ?? undefined,
-            stateInscription: input.stateInscription ?? undefined,
-            webhooks: input.webhooks ?? this.resolveDefaultWebhooks(input.email)
+            incomeValue: input.incomeValue
         };
+
+        // Adicionar campos opcionais apenas se tiverem valor (conforme documentação do Asaas)
+        if (input.birthDate) payload.birthDate = input.birthDate;
+        if (input.phone) payload.phone = input.phone;
+        if (input.mobilePhone) payload.mobilePhone = input.mobilePhone;
+        if (input.companyType) payload.companyType = input.companyType;
+        if (input.externalReference) payload.externalReference = input.externalReference;
+        if (input.observations) payload.observations = input.observations;
+        if (input.additionalEmails) payload.additionalEmails = input.additionalEmails;
+        if (input.address) payload.address = input.address;
+        if (input.addressNumber) payload.addressNumber = input.addressNumber;
+        if (input.complement) payload.complement = input.complement;
+        if (input.province) payload.province = input.province;
+        if (input.postalCode) payload.postalCode = input.postalCode;
+        if (input.municipalInscription) payload.municipalInscription = input.municipalInscription;
+        if (input.stateInscription) payload.stateInscription = input.stateInscription;
+        
+        // Webhooks sempre adicionar se configurado
+        const webhooks = input.webhooks ?? this.resolveDefaultWebhooks(input.email);
+        if (webhooks) payload.webhooks = webhooks;
+
+        // Log do payload para debug
+        console.log('📤 Payload sendo enviado para o Asaas:');
+        console.log(JSON.stringify(payload, null, 2));
 
         const response = await this.client.createSubAccount(payload);
         
@@ -187,6 +196,26 @@ export class AsaasProvider implements PaymentProviderPort {
             dateCreated: new Date(response.dateCreated),
             bankAccount: response.bankAccount,
             transactionReceiptUrl: response.transactionReceiptUrl
+        };
+    }
+
+    async getAccount(accountId: string): Promise<AsaasAccountDetails> {
+        if (!accountId || !accountId.trim()) {
+            throw new Error('Account ID is required');
+        }
+
+        const response = await this.client.getAccount(accountId);
+        
+        return {
+            id: response.id,
+            name: response.name,
+            email: response.email,
+            status: response.status,
+            externalReference: response.externalReference ?? null,
+            apiKey: response.apiKey,
+            walletId: response.walletId,
+            onboardingUrl: response.onboardingUrl,
+            kycUrl: response.kycUrl
         };
     }
 

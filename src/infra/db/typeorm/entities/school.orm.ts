@@ -48,6 +48,9 @@ export class SchoolOrm {
     @Column('varchar', { length: 191, name: 'wallet_id', nullable: true })
     walletId!: string | null;
 
+    @Column('varchar', { length: 500, name: 'onboarding_url', nullable: true })
+    onboardingUrl!: string | null;
+
     @Column('int', { name: 'income_value', default: 5000 })
     incomeValue!: number;
 

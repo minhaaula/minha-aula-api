@@ -96,6 +96,24 @@ export class AsaasClient {
         }
     }
 
+    async getAccount(accountId: string): Promise<AsaasSubAccountResponse & { onboardingUrl?: string; kycUrl?: string }> {
+        try {
+            const { data } = await this.http.get<AsaasSubAccountResponse & { onboardingUrl?: string; kycUrl?: string }>(`/accounts/${accountId}`);
+            
+            // Validação: verificar se a resposta da API é válida
+            if (!data || typeof data !== 'object') {
+                throw new Error('Asaas API returned invalid response: response is not an object');
+            }
+            if (!data.id || typeof data.id !== 'string' || !data.id.trim()) {
+                throw new Error('Asaas API returned invalid response: missing or invalid account ID');
+            }
+
+            return data;
+        } catch (error) {
+            throw this.toDomainError(error);
+        }
+    }
+
     private toDomainError(error: unknown): Error {
         if (axios.isAxiosError(error)) {
             const axiosError = error as AxiosError<any>;

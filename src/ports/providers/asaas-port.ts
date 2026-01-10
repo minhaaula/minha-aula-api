@@ -52,6 +52,18 @@ export type AsaasSubAccount = {
     walletId?: string;
 };
 
+export type AsaasAccountDetails = {
+    id: string;
+    name: string;
+    email: string;
+    status?: string;
+    externalReference?: string | null;
+    apiKey?: string;
+    walletId?: string;
+    onboardingUrl?: string;
+    kycUrl?: string;
+};
+
 export type CreateAsaasTransferInput = {
     accountId: string;
     amount: Money;
@@ -85,4 +97,5 @@ export interface AsaasProviderPort {
     captureCharge(providerRef: string, amount?: Money): Promise<void>;
     createSubAccount?(input: CreateAsaasSubAccountInput): Promise<AsaasSubAccount>;
     createTransfer?(input: CreateAsaasTransferInput): Promise<AsaasTransferResponse>;
+    getAccount?(accountId: string): Promise<AsaasAccountDetails>;
 }

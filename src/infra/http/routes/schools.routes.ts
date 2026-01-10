@@ -43,6 +43,7 @@ import { buildSessionsRoutes } from './schools/sessions.routes';
 import { buildFinanceRoutes } from './schools/finance.routes';
 import { buildBankAccountsRoutes } from './schools/bank-accounts.routes';
 import { buildNotificationsRoutes } from './schools/notifications.routes';
+import { buildKycRoutes } from './schools/kyc.routes';
 import type { SchoolRouteGuards } from './schools/guards';
 import { makeResolveSchoolContextMiddleware } from '../middlewares/resolve-school-context';
 import type { ListSchoolBankAccounts } from '../../../app/use-cases/list-school-bank-accounts';
@@ -111,6 +112,7 @@ export type SchoolsRouterDeps = {
     listSchoolImages?: import('../../../app/use-cases/list-school-images').ListSchoolImages;
     validateSchoolCoupon?: import('../../../app/use-cases/validate-school-coupon').ValidateSchoolCoupon;
     listSchoolNotifications?: ListSchoolNotifications;
+    getSchoolPendingDocuments?: import('../../../app/use-cases/get-school-pending-documents').GetSchoolPendingDocuments;
 };
 
 export function schoolsRouter(deps: SchoolsRouterDeps) {
@@ -209,6 +211,12 @@ export function schoolsRouter(deps: SchoolsRouterDeps) {
     if (deps.listSchoolNotifications) {
         router.use('/notifications', buildNotificationsRoutes({
             listSchoolNotifications: deps.listSchoolNotifications
+        }, guards));
+    }
+
+    if (deps.getSchoolPendingDocuments) {
+        router.use('/kyc', buildKycRoutes({
+            getSchoolPendingDocuments: deps.getSchoolPendingDocuments
         }, guards));
     }
 

@@ -489,6 +489,12 @@ components:
           description: Lista de endereços físicos da escola.
           items:
             $ref: '#/components/schemas/SchoolAddress'
+        incomeValue:
+          type: integer
+          format: int32
+          nullable: true
+          description: Valor de receita mensal estimada em centavos (usado para criação da subconta no Asaas)
+          example: 50000
     UpdateSchoolInput:
       type: object
       properties:
@@ -752,6 +758,18 @@ components:
           type: boolean
           nullable: true
           description: Indica se a escola possui faturas atrasadas não pagas
+        onboardingUrl:
+          type: string
+          nullable: true
+          format: uri
+          description: Link para completar o processo de KYC/onboarding no Asaas (retornado em GET /schools/me)
+          example: "https://beta.cadastro.io/c33ef9ae605f350c052be72ab094d0b7"
+        kycUrl:
+          type: string
+          nullable: true
+          format: uri
+          description: Link para completar o processo de KYC/onboarding no Asaas (retornado em POST /schools, mesmo que onboardingUrl)
+          example: "https://beta.cadastro.io/c33ef9ae605f350c052be72ab094d0b7"
       required:
         - id
         - name
@@ -2417,3 +2435,71 @@ components:
             $ref: '#/components/schemas/BankAccount'
       required:
         - accounts
+    PendingDocument:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: ID do documento pendente
+        type:
+          type: string
+          description: Tipo do documento
+          example: "IDENTIFICATION"
+        title:
+          type: string
+          description: Título do documento
+          example: "Documentos de identificação"
+        description:
+          type: string
+          description: Descrição do documento
+        status:
+          type: string
+          description: Status do documento
+          example: "NOT_SENT"
+        onboardingUrl:
+          type: string
+          nullable: true
+          format: uri
+          description: Link de onboarding para enviar o documento (quando disponível)
+          example: "https://beta.cadastro.io/c33ef9ae605f350c052be72ab094d0b7"
+        onboardingUrlExpirationDate:
+          type: string
+          nullable: true
+          format: date-time
+          description: Data de expiração do link de onboarding
+        responsible:
+          type: object
+          nullable: true
+          properties:
+            name:
+              type: string
+              nullable: true
+              description: Nome do responsável pelo documento
+            type:
+              type: string
+              description: Tipo de responsável
+              example: "PARTNER"
+      required:
+        - id
+        - type
+        - title
+        - description
+        - status
+    KycDocumentsResponse:
+      type: object
+      properties:
+        documents:
+          type: array
+          description: Lista de documentos pendentes de KYC
+          items:
+            $ref: '#/components/schemas/PendingDocument'
+        onboardingUrl:
+          type: string
+          nullable: true
+          format: uri
+          description: Link principal para completar o processo de KYC/onboarding (extraído dos documentos pendentes)
+          example: "https://beta.cadastro.io/c33ef9ae605f350c052be72ab094d0b7"
+      required:
+        - documents
+        - onboardingUrl

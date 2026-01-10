@@ -31,6 +31,7 @@ export interface CreateSchoolOutput {
     ownerCpf: string | null;
     ownerEmail: string | null;
     incomeValue: number;
+    kycUrl?: string | null;
 }
 
 export interface UpdateSchoolInput {
@@ -133,5 +134,6 @@ export interface GetSchoolProfileOutput {
         createdAt: Date;
     }>;
     isOverdue?: boolean;
+    onboardingUrl?: string | null;
 }
 

@@ -30,6 +30,8 @@
     "test:pix": "tsx scripts/test-generate-pix.ts",
     "create:vamos-coupon": "tsx scripts/create-vamos-coupon.ts",
     "test:asaas-account": "tsx scripts/test-create-asaas-account.ts",
+    "test:kyc": "tsx scripts/test-kyc-flow.ts",
+    "test:create-school": "tsx scripts/test-create-school-full-flow.ts",
     "test:storage": "tsx scripts/test-storage.ts",
     "test:storage:simple": "tsx scripts/test-storage-simple.ts",
     "test:storage:access": "tsx scripts/test-file-access.ts",
