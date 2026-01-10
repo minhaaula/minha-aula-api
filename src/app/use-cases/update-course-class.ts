@@ -16,12 +16,14 @@ export class UpdateCourseClass {
         label?: string;
         classes?: CourseClassScheduleEntry[];
         capacity?: number | null;
+        monthlyPriceCents?: number | null;
     }): Promise<{
         id: string;
         courseId: string;
         label: string;
         classes: ReadonlyArray<CourseClassScheduleEntry>;
         capacity: number | null;
+        monthlyPriceCents: number | null;
         createdAt: Date;
     }> {
         const schoolId = input.schoolId.trim();
@@ -62,12 +64,17 @@ export class UpdateCourseClass {
             ? input.capacity ?? null
             : courseClass.capacity;
 
+        const monthlyPriceCents = input.monthlyPriceCents !== undefined
+            ? input.monthlyPriceCents ?? null
+            : courseClass.monthlyPriceCents;
+
         const updatedClass = CourseClass.create({
             id: courseClass.id,
             courseId: courseClass.courseId,
             label,
             schedule,
             capacity,
+            monthlyPriceCents,
             isActive: courseClass.isActive,
             createdAt: courseClass.createdAt
         });
@@ -80,6 +87,7 @@ export class UpdateCourseClass {
             label: updatedClass.label,
             classes: updatedClass.schedule.map((entry) => ({ ...entry })),
             capacity: updatedClass.capacity,
+            monthlyPriceCents: updatedClass.monthlyPriceCents,
             createdAt: updatedClass.createdAt
         };
     }

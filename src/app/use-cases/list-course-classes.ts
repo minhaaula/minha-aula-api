@@ -16,6 +16,7 @@ export class ListCourseClasses {
         label: string;
         classes: ReadonlyArray<CourseClassScheduleEntry>;
         capacity: number | null;
+        monthlyPriceCents: number | null;
         createdAt: Date;
     }> | null> {
         const schoolId = input.schoolId.trim();
@@ -43,6 +44,7 @@ export class ListCourseClasses {
                     label: courseClass.label,
                     classes: courseClass.schedule.map((entry) => ({ ...entry })),
                     capacity: courseClass.capacity,
+                    monthlyPriceCents: courseClass.monthlyPriceCents,
                     createdAt: courseClass.createdAt
                 }));
         }
@@ -71,6 +73,7 @@ export class ListCourseClasses {
                     label: courseClass.label,
                     classes: courseClass.schedule.map((entry) => ({ ...entry })),
                     capacity: courseClass.capacity,
+                    monthlyPriceCents: courseClass.monthlyPriceCents,
                     createdAt: courseClass.createdAt
                 };
             });

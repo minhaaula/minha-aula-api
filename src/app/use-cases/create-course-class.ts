@@ -16,12 +16,14 @@ export class CreateCourseClass {
         label: string;
         classes: CourseClassScheduleEntry[];
         capacity?: number | null;
+        monthlyPriceCents?: number | null;
     }): Promise<{
         id: string;
         courseId: string;
         label: string;
         classes: ReadonlyArray<CourseClassScheduleEntry>;
         capacity: number | null;
+        monthlyPriceCents: number | null;
         createdAt: Date;
     }> {
         const courseId = input.courseId.trim();
@@ -41,7 +43,8 @@ export class CreateCourseClass {
             courseId: course.id,
             label,
             schedule: input.classes,
-            capacity: input.capacity ?? null
+            capacity: input.capacity ?? null,
+            monthlyPriceCents: input.monthlyPriceCents ?? null
         });
 
         await this.classes.save(courseClass);
@@ -52,6 +55,7 @@ export class CreateCourseClass {
             label: courseClass.label,
             classes: courseClass.schedule.map((entry) => ({ ...entry })),
             capacity: courseClass.capacity,
+            monthlyPriceCents: courseClass.monthlyPriceCents,
             createdAt: courseClass.createdAt
         };
     }

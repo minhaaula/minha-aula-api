@@ -1174,6 +1174,9 @@ paths:
       tags:
         - Schools
       summary: Listar turmas da escola
+      description: |
+        Retorna a lista de todas as turmas da escola, opcionalmente filtradas por curso.
+        Cada turma inclui o campo `monthlyPriceCents` com o valor da mensalidade em centavos.
       security:
         - bearerAuth: []
       parameters:
@@ -1209,6 +1212,9 @@ paths:
       tags:
         - Schools
       summary: Listar turmas de um curso
+      description: |
+        Retorna a lista de turmas de um curso específico.
+        Cada turma inclui o campo `monthlyPriceCents` com o valor da mensalidade em centavos.
       security:
         - bearerAuth: []
       parameters:
@@ -1242,6 +1248,9 @@ paths:
       tags:
         - Schools
       summary: Criar uma turma para um curso
+      description: |
+        Cria uma nova turma para o curso especificado. O campo opcional `monthlyPriceCents` define o valor da mensalidade
+        específica desta turma. Se não informado, o sistema pode usar o valor do curso como padrão.
       security:
         - bearerAuth: []
       parameters:
@@ -1276,6 +1285,9 @@ paths:
       tags:
         - Schools
       summary: Obter detalhes de uma turma
+      description: |
+        Retorna os detalhes completos de uma turma específica, incluindo o campo `monthlyPriceCents`
+        com o valor da mensalidade em centavos.
       security:
         - bearerAuth: []
       parameters:
@@ -1314,6 +1326,9 @@ paths:
       tags:
         - Schools
       summary: Atualizar uma turma do curso
+      description: |
+        Atualiza os dados de uma turma existente. O campo opcional `monthlyPriceCents` permite definir ou atualizar
+        o valor da mensalidade específica desta turma.
       security:
         - bearerAuth: []
       parameters:
@@ -1456,8 +1471,8 @@ paths:
       description: |
         Cria uma matrícula vinculando um aluno (ou dependente) a uma turma específica.
         
-        O sistema automaticamente copia o valor do campo `monthlyPriceCents` do curso relacionado à turma
-        para o campo `fullAmountCents` da matrícula. Este valor cheio pode ser usado posteriormente como
+        O sistema utiliza o valor do campo `monthlyPriceCents` da turma (se definido) ou do curso relacionado
+        para preencher o campo `fullAmountCents` da matrícula. Este valor cheio pode ser usado posteriormente como
         base para cálculo de descontos.
       security:
         - bearerAuth: []

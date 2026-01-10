@@ -15,6 +15,7 @@ export class GetCourseClass {
         label: string;
         classes: ReadonlyArray<CourseClassScheduleEntry>;
         capacity: number | null;
+        monthlyPriceCents: number | null;
         createdAt: Date;
     } | null> {
         const schoolId = input.schoolId.trim();
@@ -41,6 +42,7 @@ export class GetCourseClass {
             label: courseClass.label,
             classes: courseClass.schedule.map((entry) => ({ ...entry })),
             capacity: courseClass.capacity,
+            monthlyPriceCents: courseClass.monthlyPriceCents,
             createdAt: courseClass.createdAt
         };
     }

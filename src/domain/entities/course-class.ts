@@ -13,6 +13,7 @@ export class CourseClass {
         public readonly label: string,
         public readonly schedule: ReadonlyArray<CourseClassScheduleEntry>,
         public readonly capacity: number | null,
+        private readonly _monthlyPriceCents: number | null,
         private _isActive: boolean,
         public readonly createdAt: Date
     ) {}
@@ -23,6 +24,7 @@ export class CourseClass {
         label: string;
         schedule: CourseClassScheduleEntry[];
         capacity?: number | null;
+        monthlyPriceCents?: number | null;
         isActive?: boolean;
         createdAt?: Date;
     }) {
@@ -34,6 +36,8 @@ export class CourseClass {
         if (capacity !== null && (capacity <= 0 || !Number.isInteger(capacity))) {
             throw new Error('Class capacity must be a positive integer');
         }
+
+        const monthlyPriceCents = CourseClass.normalizeMonthlyPriceCents(params.monthlyPriceCents);
 
         const schedule = Array.isArray(params.schedule) ? params.schedule : [];
         if (!schedule.length) throw new Error('Class schedule must contain at least one entry');
@@ -73,9 +77,24 @@ export class CourseClass {
             label,
             Object.freeze(normalizedSchedule.slice()),
             capacity,
+            monthlyPriceCents,
             params.isActive ?? true,
             params.createdAt ?? new Date()
         );
+    }
+
+    private static normalizeMonthlyPriceCents(value?: number | null): number | null {
+        if (value === undefined || value === null) {
+            return null;
+        }
+        if (!Number.isInteger(value) || value < 0) {
+            throw new Error('Monthly price must be a non-negative integer (in cents)');
+        }
+        return value;
+    }
+
+    get monthlyPriceCents(): number | null {
+        return this._monthlyPriceCents;
     }
 
     get isActive() {

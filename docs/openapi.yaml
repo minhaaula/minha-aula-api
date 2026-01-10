@@ -2140,6 +2140,13 @@ components:
           format: int32
           nullable: true
           minimum: 1
+        monthlyPriceCents:
+          type: integer
+          format: int32
+          nullable: true
+          minimum: 0
+          description: Valor da mensalidade em centavos (R$). Opcional.
+          example: 15000
         classes:
           type: array
           items:
@@ -2157,6 +2164,13 @@ components:
           format: int32
           nullable: true
           minimum: 1
+        monthlyPriceCents:
+          type: integer
+          format: int32
+          nullable: true
+          minimum: 0
+          description: Valor da mensalidade em centavos (R$). Opcional.
+          example: 15000
         classes:
           type: array
           items:
@@ -2181,6 +2195,12 @@ components:
           type: integer
           format: int32
           nullable: true
+        monthlyPriceCents:
+          type: integer
+          format: int32
+          nullable: true
+          description: Valor da mensalidade em centavos (R$)
+          example: 15000
         createdAt:
           type: string
           format: date-time
