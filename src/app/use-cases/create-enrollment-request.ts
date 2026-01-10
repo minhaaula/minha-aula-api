@@ -108,7 +108,10 @@ export class CreateEnrollmentRequest {
     private async validateAndLoadUser(userId: string) {
         const user = await this.users.findById(userId);
         if (!user) {
-            throw AppError.fromCode(ErrorCode.USER_NOT_FOUND, { userId });
+            throw AppError.fromCode(ErrorCode.USER_NOT_FOUND, { 
+                userId,
+                message: 'O usuário informado não foi encontrado. Verifique se o ID está correto e se o usuário existe no sistema.'
+            });
         }
         return user;
     }
@@ -123,11 +126,20 @@ export class CreateEnrollmentRequest {
         }
 
         const dependent = await this.dependents.findById(dependentId);
-        if (!dependent || dependent.userId !== ownerUserId) {
+        if (!dependent) {
             throw AppError.fromCode(ErrorCode.DEPENDENT_NOT_FOUND, {
-                message: 'Dependente não encontrado para o usuário informado',
+                message: 'Dependente não encontrado. Verifique se o ID do dependente está correto.',
                 dependentId,
                 ownerUserId
+            });
+        }
+        
+        if (dependent.userId !== ownerUserId) {
+            throw AppError.fromCode(ErrorCode.DEPENDENT_NOT_FOUND, {
+                message: 'O dependente informado não pertence ao usuário responsável. O requestedForUserId deve ser o ID do responsável (pai/mãe), não do dependente.',
+                dependentId,
+                ownerUserId,
+                actualOwnerId: dependent.userId
             });
         }
 

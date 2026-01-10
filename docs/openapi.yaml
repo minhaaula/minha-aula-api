@@ -2138,18 +2138,36 @@ components:
         requestedForUserId:
           type: string
           format: uuid
+          description: |
+            ID do usuário responsável pela matrícula.
+            
+            **Importante:** 
+            - Se for matrícula de aluno próprio: use o ID do próprio aluno
+            - Se for matrícula de dependente: use o ID do **responsável** (pai/mãe), não o ID do dependente
+          example: "550e8400-e29b-41d4-a716-446655440000"
         requestedForDependentId:
           type: string
           format: uuid
           nullable: true
+          description: |
+            ID do dependente que será matriculado. 
+            
+            **Obrigatório apenas para matrícula de dependente.**
+            - Deve ser `null` quando a matrícula é para o próprio usuário
+            - O dependente deve estar vinculado ao usuário informado em `requestedForUserId`
+          example: "660e8400-e29b-41d4-a716-446655440001"
         notes:
           type: string
           nullable: true
           maxLength: 255
+          description: Observações adicionais sobre a solicitação de matrícula
+          example: "Aluno interessado em iniciar o curso"
         discont:
           type: number
           format: double
           minimum: 0
+          description: Desconto a ser aplicado (em reais). Opcional, padrão é 0.
+          example: 0
           description: Valor do desconto em reais (R$).
         enrollmentFeeAmount:
           type: number

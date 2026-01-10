@@ -141,7 +141,15 @@ paths:
       tags:
         - Enrollment Requests
       summary: Criar uma solicitação de matrícula
-      description: Identificador da escola é inferido do usuário autenticado.
+      description: |
+        Cria uma solicitação de matrícula para um aluno ou dependente em uma turma específica.
+        
+        **Importante ao matricular um dependente:**
+        - `requestedForUserId` deve ser o ID do **responsável** (pai/mãe), não do dependente
+        - `requestedForDependentId` deve ser o ID do **dependente** que será matriculado
+        - O dependente deve estar vinculado ao usuário informado em `requestedForUserId`
+        
+        O identificador da escola é inferido automaticamente do usuário autenticado quando a persona é SCHOOL.
       security:
         - bearerAuth: []
       parameters:
@@ -158,6 +166,27 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/CreateEnrollmentRequestInput'
+            examples:
+              student:
+                summary: Matrícula de aluno (próprio usuário)
+                value:
+                  requestedForUserId: "550e8400-e29b-41d4-a716-446655440000"
+                  requestedForDependentId: null
+                  notes: "Aluno interessado em iniciar o curso"
+                  discont: 0
+                  enrollmentFeeAmount: 100.00
+                  enrollmentFeeDueDate: "2024-12-15"
+                  firstMonthlyPaymentDate: "2024-12-20"
+              dependent:
+                summary: Matrícula de dependente
+                value:
+                  requestedForUserId: "550e8400-e29b-41d4-a716-446655440000"
+                  requestedForDependentId: "660e8400-e29b-41d4-a716-446655440001"
+                  notes: "Matrícula para filho do responsável"
+                  discont: 0
+                  enrollmentFeeAmount: 100.00
+                  enrollmentFeeDueDate: "2024-12-15"
+                  firstMonthlyPaymentDate: "2024-12-20"
       responses:
         '201':
           description: Solicitação criada com sucesso.
@@ -167,6 +196,48 @@ paths:
                 $ref: '#/components/schemas/EnrollmentRequestResponse'
         '400':
           description: Erro de validação ou vínculos inválidos.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                userNotFound:
+                  summary: Usuário não encontrado
+                  value:
+                    error: "Usuário não encontrado"
+                    code: "USER_NOT_FOUND"
+                    details:
+                      userId: "a1c3aed9-2a7d-45ea-aa35-d03305b1c693"
+                      message: "O usuário informado não foi encontrado. Verifique se o ID está correto e se o usuário existe no sistema."
+                dependentNotFound:
+                  summary: Dependente não encontrado ou não pertence ao responsável
+                  value:
+                    error: "Dependente não encontrado"
+                    code: "DEPENDENT_NOT_FOUND"
+                    details:
+                      message: "O dependente informado não pertence ao usuário responsável. O requestedForUserId deve ser o ID do responsável (pai/mãe), não do dependente."
+                      dependentId: "660e8400-e29b-41d4-a716-446655440001"
+                      ownerUserId: "550e8400-e29b-41d4-a716-446655440000"
+                alreadyEnrolled:
+                  summary: Já existe matrícula para este aluno/dependente
+                  value:
+                    error: "Já matriculado nesta turma"
+                    code: "ALREADY_ENROLLED"
+                    details:
+                      courseClassId: "457eec45-6240-4f9b-b4b7-037757e44f42"
+                requestAlreadyExists:
+                  summary: Já existe solicitação pendente
+                  value:
+                    error: "Solicitação de matrícula já existe para este alvo"
+                    code: "ENROLLMENT_REQUEST_ALREADY_EXISTS"
+        '403':
+          description: Sem permissão ou contexto de escola não encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Escola, curso ou turma não encontrados.
           content:
             application/json:
               schema:
