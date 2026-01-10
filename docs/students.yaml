@@ -1341,7 +1341,7 @@ paths:
       tags:
         - Students
       summary: Obter detalhes de uma escola
-      description: Retorna os dados públicos de uma escola específica, incluindo nome, contato e endereços. Esta rota é pública e não requer autenticação.
+      description: Retorna os dados públicos de uma escola específica, incluindo nome, contato, endereços, links das redes sociais e imagens. Esta rota é pública e não requer autenticação.
       parameters:
         - in: path
           name: schoolId
@@ -1407,6 +1407,87 @@ paths:
                         - city
                         - state
                         - zipCode
+                  links:
+                    type: object
+                    description: Links das redes sociais e site da escola
+                    properties:
+                      facebook:
+                        type: string
+                        nullable: true
+                        format: uri
+                        description: Link do Facebook
+                        example: "https://facebook.com/escola"
+                      instagram:
+                        type: string
+                        nullable: true
+                        format: uri
+                        description: Link do Instagram
+                        example: "https://instagram.com/escola"
+                      tiktok:
+                        type: string
+                        nullable: true
+                        format: uri
+                        description: Link do TikTok
+                        example: "https://tiktok.com/@escola"
+                      youtube:
+                        type: string
+                        nullable: true
+                        format: uri
+                        description: Link do YouTube
+                        example: "https://youtube.com/@escola"
+                      site:
+                        type: string
+                        nullable: true
+                        format: uri
+                        description: Link do site
+                        example: "https://escola.com.br"
+                    required:
+                      - facebook
+                      - instagram
+                      - tiktok
+                      - youtube
+                      - site
+                  images:
+                    type: array
+                    description: Lista de imagens da escola (URLs assinadas válidas por 1 hora)
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                          description: ID da imagem
+                        url:
+                          type: string
+                          format: uri
+                          description: URL assinada da imagem (válida por 1 hora)
+                        key:
+                          type: string
+                          description: Chave do arquivo no storage
+                        contentType:
+                          type: string
+                          description: Tipo MIME da imagem
+                          example: "image/jpeg"
+                        originalFileName:
+                          type: string
+                          description: Nome original do arquivo enviado
+                        category:
+                          type: string
+                          description: Categoria da imagem
+                          enum: [GALLERY, LOGO, BANNER, COVER, OTHER]
+                          example: "GALLERY"
+                        createdAt:
+                          type: string
+                          format: date-time
+                          description: Data de criação da imagem
+                      required:
+                        - id
+                        - url
+                        - key
+                        - contentType
+                        - originalFileName
+                        - category
+                        - createdAt
                   createdAt:
                     type: string
                     format: date-time
@@ -1417,6 +1498,8 @@ paths:
                   - email
                   - phone
                   - addresses
+                  - links
+                  - images
                   - createdAt
         '400':
           description: Erro na requisição. ID da escola inválido.

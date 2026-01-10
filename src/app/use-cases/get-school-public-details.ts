@@ -1,8 +1,14 @@
 import { SchoolRepository } from '../../ports/repositories/school.repo';
 import { type PostalAddressProps } from '../../domain/value-objects/postal-address';
+import { SchoolImageRepository } from '../../ports/repositories/school-image.repo';
+import { StorageProviderPort } from '../../ports/providers/storage-provider.port';
 
 export class GetSchoolPublicDetails {
-    constructor(private readonly schools: SchoolRepository) {}
+    constructor(
+        private readonly schools: SchoolRepository,
+        private readonly schoolImages?: SchoolImageRepository,
+        private readonly storage?: StorageProviderPort
+    ) {}
 
     async exec(input: { schoolId: string }): Promise<{
         id: string;
@@ -10,6 +16,22 @@ export class GetSchoolPublicDetails {
         email: string;
         phone: string;
         addresses: PostalAddressProps[];
+        links: {
+            facebook: string | null;
+            instagram: string | null;
+            tiktok: string | null;
+            youtube: string | null;
+            site: string | null;
+        };
+        images: Array<{
+            id: string;
+            url: string;
+            key: string;
+            contentType: string;
+            originalFileName: string;
+            category: string;
+            createdAt: Date;
+        }>;
         createdAt: Date;
     } | null> {
         const schoolId = input.schoolId.trim();
@@ -20,12 +42,61 @@ export class GetSchoolPublicDetails {
             return null;
         }
 
+        let images: Array<{
+            id: string;
+            url: string;
+            key: string;
+            contentType: string;
+            originalFileName: string;
+            category: string;
+            createdAt: Date;
+        }> = [];
+
+        if (this.schoolImages && this.storage) {
+            const schoolImages = await this.schoolImages.findBySchoolId(schoolId);
+            images = await Promise.all(
+                schoolImages.map(async (image) => {
+                    try {
+                        const url = await this.storage!.getFileUrl(image.key, 3600);
+                        return {
+                            id: image.id,
+                            url,
+                            key: image.key,
+                            contentType: image.contentType,
+                            originalFileName: image.originalFileName,
+                            category: image.category,
+                            createdAt: image.createdAt
+                        };
+                    } catch (error) {
+                        console.warn(`Failed to generate signed URL for image key: ${image.key}`, error);
+                        return {
+                            id: image.id,
+                            url: '',
+                            key: image.key,
+                            contentType: image.contentType,
+                            originalFileName: image.originalFileName,
+                            category: image.category,
+                            createdAt: image.createdAt
+                        };
+                    }
+                })
+            );
+        }
+
         return {
             id: school.id,
             name: school.name,
             email: school.email,
             phone: school.phone,
             addresses: school.addresses.map((address) => address.toPrimitives()),
+            links: {
+                facebook: school.facebookLink,
+                instagram: school.instagramLink,
+                tiktok: school.tiktokLink,
+                youtube: school.youtubeLink,
+                site: school.siteLink
+            },
+            images,
             createdAt: school.createdAt
         };
     }

@@ -42,6 +42,7 @@ import { ListStudentNotifications } from '../../app/use-cases/list-student-notif
 import { ReadAllNotifications } from '../../app/use-cases/read-all-notifications';
 
 import { StorageProviderPort } from '../../ports/providers/storage-provider.port';
+import { SchoolImageRepositoryAdapter } from '../../infra/db/typeorm/school-image-repository.adapter';
 
 export type StudentsModuleDeps = {
     usersRepo: UserRepositoryAdapter;
@@ -125,7 +126,12 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
     const listSchoolReviews = deps.schoolReviewsRepo
         ? new ListSchoolReviews(deps.schoolReviewsRepo, deps.storageProvider)
         : undefined;
-    const getSchoolPublicDetails = new GetSchoolPublicDetails(deps.schoolsRepo);
+    const schoolImagesRepo = new SchoolImageRepositoryAdapter();
+    const getSchoolPublicDetails = new GetSchoolPublicDetails(
+        deps.schoolsRepo,
+        schoolImagesRepo,
+        deps.storageProvider
+    );
     const listStudentNotifications = deps.notificationsRepo
         ? new ListStudentNotifications(deps.notificationsRepo)
         : undefined;
