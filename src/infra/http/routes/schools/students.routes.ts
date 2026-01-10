@@ -6,9 +6,12 @@ import type { GetStudentDirectoryEntry } from '../../../../app/use-cases/get-stu
 import type { SchoolRouteGuards } from './guards';
 import type { SchoolContextRequest } from '../../middlewares/resolve-school-context';
 
+import type { GetSchoolStudentDetails } from '../../../../app/use-cases/get-school-student-details';
+
 type StudentsRoutesDeps = {
     listSchoolStudents: ListSchoolStudents;
     getStudentDirectoryEntry?: GetStudentDirectoryEntry;
+    getSchoolStudentDetails?: GetSchoolStudentDetails;
 };
 
 export function buildStudentsRoutes(deps: StudentsRoutesDeps, guards: SchoolRouteGuards) {
@@ -103,6 +106,29 @@ export function buildStudentsRoutes(deps: StudentsRoutesDeps, guards: SchoolRout
             }
         });
     }));
+
+    // Rota de detalhes do aluno por ID
+    if (deps.getSchoolStudentDetails) {
+        router.get('/:studentId', ...protectedMiddleware, asyncHandler(async (req, res) => {
+            const paramsSchema = z.object({ studentId: z.string().uuid() });
+            const { studentId } = paramsSchema.parse(req.params);
+            const schoolId = (req as SchoolContextRequest).schoolId as string;
+
+            const details = await deps.getSchoolStudentDetails!.exec({
+                schoolId,
+                studentId
+            });
+
+            if (!details) {
+                return res.status(404).json({
+                    error: 'Aluno não encontrado ou não está vinculado a esta escola',
+                    code: 'STUDENT_NOT_FOUND'
+                });
+            }
+
+            res.json(details);
+        }));
+    }
 
     return router;
 }

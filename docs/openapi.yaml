@@ -1476,6 +1476,187 @@ components:
         - id
         - name
         - cpf
+    SchoolStudentDetailsResponse:
+      type: object
+      properties:
+        student:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+              description: ID do aluno ou dependente
+            fullName:
+              type: string
+              description: Nome completo do aluno
+            email:
+              type: string
+              format: email
+              description: Email do aluno (vazio para dependentes)
+            phone:
+              type: string
+              description: Telefone do aluno (vazio para dependentes)
+            cpf:
+              type: string
+              description: CPF do aluno
+            birthDate:
+              type: string
+              format: date
+              nullable: true
+              description: Data de nascimento do aluno
+          required:
+            - id
+            - fullName
+            - email
+            - phone
+            - cpf
+        responsible:
+          type: object
+          nullable: true
+          description: Dados do responsável (apenas quando o aluno é um dependente)
+          properties:
+            id:
+              type: string
+              format: uuid
+            fullName:
+              type: string
+            email:
+              type: string
+              format: email
+            phone:
+              type: string
+            cpf:
+              type: string
+          required:
+            - id
+            - fullName
+            - email
+            - phone
+            - cpf
+        enrollments:
+          type: array
+          description: Lista de matrículas do aluno na escola
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+              course:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  name:
+                    type: string
+                required:
+                  - id
+                  - name
+              class:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  label:
+                    type: string
+                required:
+                  - id
+                  - label
+              enrolledAt:
+                type: string
+                format: date-time
+              status:
+                type: string
+                enum: [PENDING, ACTIVE, COMPLETED, CANCELLED]
+            required:
+              - id
+              - course
+              - class
+              - enrolledAt
+              - status
+        paidCharges:
+          type: array
+          description: Histórico de mensalidades pagas na escola (ordenado por data de pagamento, mais recentes primeiro)
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+              amount:
+                type: number
+                format: double
+                description: Valor bruto em reais
+              amountCents:
+                type: integer
+                description: Valor bruto em centavos
+              discount:
+                type: number
+                format: double
+                nullable: true
+                description: Desconto aplicado em reais
+              discountCents:
+                type: integer
+                nullable: true
+                description: Desconto aplicado em centavos
+              netAmount:
+                type: number
+                format: double
+                description: Valor líquido (após desconto) em reais
+              netAmountCents:
+                type: integer
+                description: Valor líquido (após desconto) em centavos
+              description:
+                type: string
+                nullable: true
+                description: Descrição da cobrança
+              dueDate:
+                type: string
+                format: date
+                description: Data de vencimento
+              paidAt:
+                type: string
+                format: date-time
+                description: Data e hora do pagamento
+              course:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  name:
+                    type: string
+                required:
+                  - id
+                  - name
+              class:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  label:
+                    type: string
+                required:
+                  - id
+                  - label
+            required:
+              - id
+              - amount
+              - amountCents
+              - netAmount
+              - netAmountCents
+              - dueDate
+              - paidAt
+              - course
+              - class
+      required:
+        - student
+        - responsible
+        - enrollments
+        - paidCharges
     StudentDirectoryResponse:
       type: object
       properties:
@@ -2132,8 +2313,8 @@ components:
         relationship:
           type: string
           nullable: true
-          description: Relação do dependente com o responsável (ex: Filho, Filha, etc.)
-          example: "Filho"
+          description: "Relação do dependente com o responsável (ex: Filho, Filha, etc.)"
+          example: Filho
         createdAt:
           type: string
           format: date-time
@@ -2187,7 +2368,6 @@ components:
           minimum: 0
           description: Desconto a ser aplicado (em reais). Opcional, padrão é 0.
           example: 0
-          description: Valor do desconto em reais (R$).
         enrollmentFeeAmount:
           type: number
           format: double

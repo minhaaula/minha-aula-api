@@ -107,6 +107,7 @@ export type SchoolsRouterDeps = {
     validatePasswordResetToken?: import('../../../app/use-cases/validate-password-reset-token').ValidatePasswordResetToken;
     updateSchoolPassword?: UpdateSchoolPassword;
     getStudentDirectoryEntry?: GetStudentDirectoryEntry;
+    getSchoolStudentDetails?: import('../../../app/use-cases/get-school-student-details').GetSchoolStudentDetails;
     getSchoolDashboard?: import('../../../app/use-cases/get-school-dashboard').GetSchoolDashboard;
     uploadSchoolImage?: import('../../../app/use-cases/upload-school-image').UploadSchoolImage;
     listSchoolImages?: import('../../../app/use-cases/list-school-images').ListSchoolImages;
@@ -174,7 +175,8 @@ export function schoolsRouter(deps: SchoolsRouterDeps) {
     if (deps.listSchoolStudents) {
         router.use('/students', buildStudentsRoutes({
             listSchoolStudents: deps.listSchoolStudents,
-            getStudentDirectoryEntry: deps.getStudentDirectoryEntry
+            getStudentDirectoryEntry: deps.getStudentDirectoryEntry,
+            getSchoolStudentDetails: deps.getSchoolStudentDetails
         }, guards));
     }
 

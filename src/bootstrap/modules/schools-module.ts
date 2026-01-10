@@ -78,6 +78,7 @@ import { UpdateSchoolPassword } from '../../app/use-cases/update-school-password
 import { PasswordResetTokenRepositoryAdapter } from '../../infra/db/typeorm/password-reset-token-repository.adapter';
 import { EmailProviderPort } from '../../ports/providers/email-provider.port';
 import { GetStudentDirectoryEntry } from '../../app/use-cases/get-student-directory-entry';
+import { GetSchoolStudentDetails } from '../../app/use-cases/get-school-student-details';
 import { StorageProviderPort } from '../../ports/providers/storage-provider.port';
 import { UploadSchoolImage } from '../../app/use-cases/upload-school-image';
 import { ListSchoolImages } from '../../app/use-cases/list-school-images';
@@ -183,6 +184,14 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         deps.dependentsRepo
     );
     const getStudentDirectoryEntry = new GetStudentDirectoryEntry(deps.usersRepo, deps.dependentsRepo);
+    const getSchoolStudentDetails = new GetSchoolStudentDetails(
+        deps.usersRepo,
+        deps.dependentsRepo,
+        deps.enrollmentsRepo,
+        deps.coursesRepo,
+        deps.classesRepo,
+        deps.financialChargesRepo
+    );
     const listSchoolPayments = new ListSchoolPayments(
         deps.coursesRepo,
         deps.classesRepo,
@@ -364,6 +373,7 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         validatePasswordResetToken,
         updateSchoolPassword,
         getStudentDirectoryEntry,
+        getSchoolStudentDetails,
         uploadSchoolImage,
         listSchoolImages,
         validateSchoolCoupon,

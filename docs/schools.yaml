@@ -362,6 +362,54 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /schools/students/{studentId}:
+    get:
+      tags:
+        - Schools
+      summary: Obter detalhes completos de um aluno
+      description: |
+        Retorna os detalhes completos de um aluno vinculado à escola, incluindo:
+        - Dados do aluno (nome, email, telefone, CPF, data de nascimento)
+        - Dados do responsável (se o aluno for um dependente)
+        - Lista de cursos e turmas em que está matriculado na escola
+        - Histórico de mensalidades pagas na escola
+        
+        **Importante:** A rota só retorna dados se o aluno estiver vinculado à escola através de matrículas ativas.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: studentId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID do aluno ou dependente
+      responses:
+        '200':
+          description: Detalhes do aluno encontrados.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchoolStudentDetailsResponse'
+        '403':
+          description: Usuário não autorizado ou sem contexto de escola.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Aluno não encontrado ou não está vinculado a esta escola.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '501':
+          description: Funcionalidade de detalhes do aluno não configurada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /schools/payments:
     get:
       tags:
