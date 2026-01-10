@@ -1672,26 +1672,52 @@ paths:
                       totalStudents:
                         type: integer
                         description: Total de alunos ativos na escola
+                        example: 12
                       totalClasses:
                         type: integer
                         description: Total de turmas ativas
+                        example: 5
                       totalCourses:
                         type: integer
                         description: Total de cursos ativos
+                        example: 4
+                      currentMonthRevenue:
+                        type: number
+                        format: double
+                        description: Receita recebida (paga) do mês atual em reais
+                        example: 2450.00
+                      currentMonthRevenueCents:
+                        type: integer
+                        description: Receita recebida (paga) do mês atual em centavos
+                        example: 245000
                       revenueForecast:
                         type: number
                         format: double
-                        description: Previsão de receita para o mês atual em reais
+                        description: Previsão de receita (cobranças pendentes/abertas) para o mês atual em reais
+                        example: 3000.00
                       revenueForecastCents:
                         type: integer
-                        description: Previsão de receita para o mês atual em centavos
+                        description: Previsão de receita (cobranças pendentes/abertas) para o mês atual em centavos
+                        example: 300000
                       revenueChangePercentage:
                         type: number
                         format: double
-                        description: Porcentagem de mudança de receita em relação ao mês anterior
+                        description: Porcentagem de mudança de receita em relação ao mês anterior (positiva ou negativa)
+                        example: 8.2
                       pendingEnrollmentRequests:
                         type: integer
                         description: Quantidade de solicitações de matrícula pendentes
+                        example: 2
+                    required:
+                      - totalStudents
+                      - totalClasses
+                      - totalCourses
+                      - currentMonthRevenue
+                      - currentMonthRevenueCents
+                      - revenueForecast
+                      - revenueForecastCents
+                      - revenueChangePercentage
+                      - pendingEnrollmentRequests
                   overduePayments:
                     type: object
                     properties:
@@ -1699,29 +1725,48 @@ paths:
                         type: number
                         format: double
                         description: Valor total em atraso em reais
+                        example: 1450.00
                       totalAmountCents:
                         type: integer
                         description: Valor total em atraso em centavos
+                        example: 145000
                       count:
                         type: integer
                         description: Quantidade de pagamentos em atraso
+                        example: 5
+                    required:
+                      - totalAmount
+                      - totalAmountCents
+                      - count
                   recentEnrollments:
                     type: array
+                    description: Últimos 5 alunos matriculados (ordenados por data de matrícula, mais recentes primeiro)
                     items:
                       type: object
                       properties:
                         studentId:
                           type: string
                           format: uuid
+                          description: ID do aluno ou dependente
                         studentName:
                           type: string
+                          description: Nome completo do aluno
                         courseName:
                           type: string
+                          description: Nome do curso
                         className:
                           type: string
+                          description: Rótulo da turma
                         enrolledAt:
                           type: string
                           format: date-time
+                          description: Data e hora da matrícula
+                      required:
+                        - studentId
+                        - studentName
+                        - courseName
+                        - className
+                        - enrolledAt
                   revenueHistory:
                     type: array
                     items:
@@ -1738,6 +1783,63 @@ paths:
                         valueCents:
                           type: integer
                           description: Receita total do mês em centavos
+                      required:
+                        - month
+                        - value
+                        - valueCents
+                required:
+                  - summary
+                  - overduePayments
+                  - recentEnrollments
+                  - revenueHistory
+              examples:
+                default:
+                  summary: Exemplo de resposta do dashboard
+                  value:
+                    summary:
+                      totalStudents: 12
+                      totalClasses: 5
+                      totalCourses: 4
+                      currentMonthRevenue: 2450.00
+                      currentMonthRevenueCents: 245000
+                      revenueForecast: 3000.00
+                      revenueForecastCents: 300000
+                      revenueChangePercentage: 8.2
+                      pendingEnrollmentRequests: 2
+                    overduePayments:
+                      totalAmount: 1450.00
+                      totalAmountCents: 145000
+                      count: 5
+                    recentEnrollments:
+                      - studentId: "550e8400-e29b-41d4-a716-446655440000"
+                        studentName: "João Silva"
+                        courseName: "Curso de Inglês"
+                        className: "Turma A - Manhã"
+                        enrolledAt: "2024-12-15T10:30:00.000Z"
+                      - studentId: "660e8400-e29b-41d4-a716-446655440001"
+                        studentName: "Maria Santos"
+                        courseName: "Curso de Programação"
+                        className: "Turma B - Tarde"
+                        enrolledAt: "2024-12-14T14:20:00.000Z"
+                    revenueHistory:
+                      - month: "2024-07"
+                        value: 1800.00
+                        valueCents: 180000
+                      - month: "2024-08"
+                        value: 2200.00
+                        valueCents: 220000
+                      - month: "2024-09"
+                        value: 2500.00
+                        valueCents: 250000
+                      - month: "2024-10"
+                        value: 19000.00
+                        valueCents: 1900000
+                      - month: "2024-11"
+                        value: 2300.00
+                        valueCents: 230000
+                      - month: "2024-12"
+                        value: 2450.00
+                        valueCents: 245000
         '401':
           description: Não autenticado.
         '403':

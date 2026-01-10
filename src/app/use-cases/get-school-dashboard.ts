@@ -12,6 +12,7 @@ export interface GetSchoolDashboardOutput {
     totalStudents: number;
     totalClasses: number;
     totalCourses: number;
+    currentMonthRevenueCents: number;
     revenueForecastCents: number;
     revenueChangePercentage: number;
     recentEnrollments: EnrollmentWithDetails[];
@@ -55,28 +56,32 @@ export class GetSchoolDashboard {
         // 3. Total de Cursos
         const totalCourses = await this.courses.countActiveBySchoolId!(schoolId);
 
-        // 4. Previsão de Receita (Mês Atual)
+        // 4. Receita Recebida do Mês Atual (pagos)
+        const currentMonthRevenueCents = await this.charges.getCurrentMonthRevenue!(schoolId, currentMonth, currentYear);
+
+        // 5. Previsão de Receita (Mês Atual) - cobranças pendentes/abertas
         const revenueForecastCents = await this.charges.getRevenueForecast!(schoolId, currentMonth, currentYear);
 
-        // 5. Histórico de Receita Mensal (Últimos 6 meses)
+        // 6. Histórico de Receita Mensal (Últimos 6 meses)
         const monthlyRevenueHistory = await this.charges.getRevenueHistory!(schoolId, 6);
 
-        // 6. Porcentagem de Mudança de Receita (Relação ao mês passado)
+        // 7. Porcentagem de Mudança de Receita (Relação ao mês passado)
         const revenueChangePercentage = this.calculateRevenueChange(monthlyRevenueHistory);
 
-        // 7. Últimos Alunos Matriculados (5)
+        // 8. Últimos Alunos Matriculados (5)
         const recentEnrollments = await this.enrollments.findRecentBySchoolId!(schoolId, 5);
 
-        // 8. Pagamentos em Atraso
+        // 9. Pagamentos em Atraso
         const overduePayments = await this.charges.getOverdueSummary!(schoolId);
 
-        // 9. Solicitações de Matrícula Pendentes
+        // 10. Solicitações de Matrícula Pendentes
         const pendingEnrollmentRequestsCount = await this.enrollmentRequests.countPendingBySchoolId!(schoolId);
 
         return {
             totalStudents,
             totalClasses,
             totalCourses,
+            currentMonthRevenueCents,
             revenueForecastCents,
             revenueChangePercentage,
             recentEnrollments,

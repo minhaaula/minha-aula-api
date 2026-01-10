@@ -27,6 +27,8 @@ export function buildDashboardRoutes(deps: DashboardRoutesDeps, guards: SchoolRo
                 totalStudents: result.totalStudents,
                 totalClasses: result.totalClasses,
                 totalCourses: result.totalCourses,
+                currentMonthRevenue: result.currentMonthRevenueCents / 100,
+                currentMonthRevenueCents: result.currentMonthRevenueCents,
                 revenueForecast: result.revenueForecastCents / 100,
                 revenueForecastCents: result.revenueForecastCents,
                 revenueChangePercentage: result.revenueChangePercentage,

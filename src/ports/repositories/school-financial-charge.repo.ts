@@ -32,5 +32,6 @@ export interface SchoolFinancialChargeRepository {
     getRevenueHistory?(schoolId: string, monthsLimit: number): Promise<Array<{ month: string; valueCents: number }>>;
     getOverdueSummary?(schoolId: string): Promise<{ totalAmountCents: number; count: number }>;
     getRevenueForecast?(schoolId: string, month: number, year: number): Promise<number>;
+    getCurrentMonthRevenue?(schoolId: string, month: number, year: number): Promise<number>;
 }
 

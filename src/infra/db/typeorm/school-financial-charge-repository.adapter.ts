@@ -208,6 +208,19 @@ export class SchoolFinancialChargeRepositoryAdapter implements SchoolFinancialCh
         return Number(result.total || 0);
     }
 
+    async getCurrentMonthRevenue(schoolId: string, month: number, year: number): Promise<number> {
+        const result = await this.repo.createQueryBuilder('charge')
+            .select('SUM(charge.netAmountCents) AS total')
+            .where('charge.schoolId = :schoolId', { schoolId })
+            .andWhere('charge.status = :status', { status: 'PAID' })
+            .andWhere('charge.paidAt IS NOT NULL')
+            .andWhere('MONTH(charge.paidAt) = :month', { month })
+            .andWhere('YEAR(charge.paidAt) = :year', { year })
+            .getRawOne();
+
+        return Number(result.total || 0);
+    }
+
     private toDomain(row: SchoolFinancialChargeOrm): SchoolFinancialCharge {
         return SchoolFinancialCharge.restore({
             id: row.id,
