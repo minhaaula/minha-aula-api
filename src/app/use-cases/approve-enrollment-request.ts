@@ -102,7 +102,9 @@ export class ApproveEnrollmentRequest {
                     enrollment,
                     course,
                     courseClass,
-                    request.firstMonthlyPaymentDate
+                    request.firstMonthlyPaymentDate,
+                    request.discountCents,
+                    request.discountMonths
                 );
                 if (firstTuitionCharge) {
                     firstTuitionChargeId = firstTuitionCharge.id;
@@ -263,7 +265,9 @@ export class ApproveEnrollmentRequest {
         enrollment: Enrollment,
         course: import('../../domain/entities/course').Course,
         courseClass: import('../../domain/entities/course-class').CourseClass,
-        firstMonthlyPaymentDate: Date
+        firstMonthlyPaymentDate: Date,
+        discountCents: number | null,
+        discountMonths: number | null
     ): Promise<SchoolFinancialCharge | null> {
         const now = new Date();
         const firstPaymentDate = new Date(firstMonthlyPaymentDate);
@@ -306,6 +310,15 @@ export class ApproveEnrollmentRequest {
             return null; // Não criar cobrança se não houver preço definido
         }
 
+        // Aplicar desconto se houver e se este é um dos primeiros meses
+        let chargeDiscountCents: number | null = null;
+        let chargeDiscountReason: string | null = null;
+        if (discountCents && discountCents > 0 && discountMonths && discountMonths >= 1) {
+            // A primeira mensalidade sempre recebe desconto se houver
+            chargeDiscountCents = discountCents;
+            chargeDiscountReason = `Desconto aplicado (${discountMonths} ${discountMonths === 1 ? 'mês' : 'meses'})`;
+        }
+
         const charge = SchoolFinancialCharge.create({
             id: Uuid(),
             schoolId: course.schoolId,
@@ -317,8 +330,8 @@ export class ApproveEnrollmentRequest {
             chargeType: 'TUITION',
             description: `Mensalidade - ${monthName} ${year}`,
             amountCents: monthlyPrice,
-            discountCents: null,
-            discountReason: null,
+            discountCents: chargeDiscountCents,
+            discountReason: chargeDiscountReason,
             dueDate: firstPaymentDate
         });
 

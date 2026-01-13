@@ -48,6 +48,7 @@ export class CreateEnrollmentRequest {
 
         // Normalizar valores monetários
         const discountCents = this.normalizeAmount(input.discount, 'discount');
+        const discountMonths = this.normalizeDiscountMonths(input.discountMonths, discountCents);
         const enrollmentFeeCents = this.normalizeAmount(input.enrollmentFeeAmount, 'enrollment fee');
 
         // Normalizar datas
@@ -69,6 +70,7 @@ export class CreateEnrollmentRequest {
             requestedForDependentId: dependentId,
             notes: input.notes ?? null,
             discountCents,
+            discountMonths,
             enrollmentFeeCents,
             enrollmentFeeDueDate,
             firstMonthlyPaymentDate
@@ -108,6 +110,15 @@ export class CreateEnrollmentRequest {
     private async validateAndLoadUser(userId: string) {
         const user = await this.users.findById(userId);
         if (!user) {
+            // Verificar se o ID é de um dependente para dar uma mensagem mais clara
+            const dependent = await this.dependents.findById(userId);
+            if (dependent) {
+                throw AppError.fromCode(ErrorCode.USER_NOT_FOUND, { 
+                    userId,
+                    message: `O ID informado (${userId}) é de um dependente, não de um usuário. Para matricular um dependente, o campo 'requestedForUserId' deve conter o ID do responsável (pai/mãe), não o ID do dependente. Use o ID do responsável: ${dependent.userId}`
+                });
+            }
+            
             throw AppError.fromCode(ErrorCode.USER_NOT_FOUND, { 
                 userId,
                 message: 'O usuário informado não foi encontrado. Verifique se o ID está correto e se o usuário existe no sistema.'
@@ -228,5 +239,31 @@ export class CreateEnrollmentRequest {
         }
 
         return normalizeDateString(dateValue, 'enrollment fee due date');
+    }
+
+    private normalizeDiscountMonths(
+        value: number | null | undefined,
+        discountCents: number | null
+    ): number | null {
+        // Se não há desconto, discountMonths deve ser null
+        if (discountCents === null || discountCents === 0) {
+            return null;
+        }
+
+        // Se há desconto, discountMonths é obrigatório
+        if (value === undefined || value === null) {
+            throw AppError.fromCode(ErrorCode.VALIDATION_ERROR, {
+                message: 'discountMonths é obrigatório quando há desconto (discount > 0)'
+            });
+        }
+
+        const months = Number(value);
+        if (!Number.isInteger(months) || months < 1) {
+            throw AppError.fromCode(ErrorCode.VALIDATION_ERROR, {
+                message: 'discountMonths deve ser um número inteiro positivo (1, 2, 3, etc.)'
+            });
+        }
+
+        return months;
     }
 }

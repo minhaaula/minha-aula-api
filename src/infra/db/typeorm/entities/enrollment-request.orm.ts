@@ -34,6 +34,8 @@ export class EnrollmentRequestOrm {
 
     @Column('int', { name: 'discount_cents', nullable: true }) discountCents!: number | null;
 
+    @Column('int', { name: 'discount_months', nullable: true }) discountMonths!: number | null;
+
     @Column('int', { name: 'enrollment_fee_cents', nullable: true }) enrollmentFeeCents!: number | null;
 
     @Column('date', { name: 'enrollment_fee_due_date', nullable: true }) enrollmentFeeDueDate!: string | null;

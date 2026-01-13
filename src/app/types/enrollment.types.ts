@@ -9,6 +9,7 @@ export interface CreateEnrollmentRequestInput {
     requestedForDependentId?: string | null;
     notes?: string | null;
     discount?: number | null;
+    discountMonths?: number | null;
     enrollmentFeeAmount?: number | null;
     enrollmentFeeDueDate?: string | null;
     firstMonthlyPaymentDate: string;

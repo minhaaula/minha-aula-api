@@ -12,6 +12,7 @@ export class EnrollmentRequest {
         private _decidedByUserId: string | null,
         private _notes: string | null,
         private _discountCents: number | null,
+        private _discountMonths: number | null,
         private _enrollmentFeeCents: number | null,
         private _enrollmentFeeDueDate: Date | null,
         private _firstMonthlyPaymentDate: Date,
@@ -27,6 +28,7 @@ export class EnrollmentRequest {
         requestedForDependentId?: string | null;
         notes?: string | null;
         discountCents?: number | null;
+        discountMonths?: number | null;
         enrollmentFeeCents?: number | null;
         enrollmentFeeDueDate?: Date | null;
         firstMonthlyPaymentDate: Date;
@@ -45,6 +47,16 @@ export class EnrollmentRequest {
             if (!Number.isInteger(discountCents) || discountCents < 0) {
                 throw new Error('Enrollment request discount must be a non-negative integer');
             }
+        }
+        const discountMonths = params.discountMonths ?? null;
+        if (discountMonths !== null) {
+            if (!Number.isInteger(discountMonths) || discountMonths < 1) {
+                throw new Error('Enrollment request discount months must be a positive integer');
+            }
+        }
+        // Validar que se há desconto, deve ter discountMonths
+        if (discountCents !== null && discountCents > 0 && discountMonths === null) {
+            throw new Error('discountMonths is required when discount is provided');
         }
         const enrollmentFeeCents = params.enrollmentFeeCents ?? null;
         if (enrollmentFeeCents !== null) {
@@ -86,6 +98,7 @@ export class EnrollmentRequest {
             null,
             notes,
             discountCents,
+            discountMonths,
             enrollmentFeeCents,
             enrollmentFeeDueDate,
             normalizedFirstMonthlyPaymentDate,
@@ -112,6 +125,10 @@ export class EnrollmentRequest {
 
     get discountCents() {
         return this._discountCents;
+    }
+
+    get discountMonths() {
+        return this._discountMonths;
     }
 
     get enrollmentFeeCents() {

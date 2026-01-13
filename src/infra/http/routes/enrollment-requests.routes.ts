@@ -203,10 +203,22 @@ export function enrollmentRequestsRouter(deps: {
                 requestedForDependentId: z.string().uuid().optional(),
                 notes: z.string().max(255).optional(),
                 discont: z.coerce.number().min(0).optional(),
+                discountMonths: z.coerce.number().int().min(1).optional(),
                 schoolId: z.string().uuid().optional(),
                 enrollmentFeeAmount: z.coerce.number().min(0).optional(),
                 enrollmentFeeDueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
                 firstMonthlyPaymentDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
+            }).superRefine((data, ctx) => {
+                // Se há desconto, discountMonths é obrigatório
+                if (data.discont !== undefined && data.discont !== null && data.discont > 0) {
+                    if (!data.discountMonths || data.discountMonths < 1) {
+                        ctx.addIssue({
+                            code: z.ZodIssueCode.custom,
+                            path: ['discountMonths'],
+                            message: 'discountMonths é obrigatório quando há desconto (discont > 0)'
+                        });
+                    }
+                }
             });
             const data = bodySchema.parse(req.body);
 
@@ -259,6 +271,7 @@ export function enrollmentRequestsRouter(deps: {
                 requestedForDependentId: data.requestedForDependentId ?? null,
                 notes: data.notes ?? null,
                 discount: data.discont ?? null,
+                discountMonths: data.discountMonths ?? null,
                 enrollmentFeeAmount: data.enrollmentFeeAmount ?? null,
                 enrollmentFeeDueDate: data.enrollmentFeeDueDate ?? null,
                 firstMonthlyPaymentDate: data.firstMonthlyPaymentDate

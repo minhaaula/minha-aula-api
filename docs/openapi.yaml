@@ -2388,6 +2388,15 @@ components:
           minimum: 0
           description: Desconto a ser aplicado (em reais). Opcional, padrão é 0.
           example: 0
+        discountMonths:
+          type: integer
+          format: int32
+          minimum: 1
+          description: |
+            Quantidade de meses que o desconto será aplicado nas mensalidades.
+            **Obrigatório quando há desconto (discont > 0).**
+            O desconto será aplicado nas primeiras X mensalidades, onde X é o valor deste campo.
+          example: 3
         enrollmentFeeAmount:
           type: number
           format: double

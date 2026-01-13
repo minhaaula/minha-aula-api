@@ -167,3 +167,4 @@ O adapter detectará automaticamente se o pacote está instalado e usará o Send
 
 
 
+

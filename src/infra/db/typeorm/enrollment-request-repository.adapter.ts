@@ -121,6 +121,7 @@ export class EnrollmentRequestRepositoryAdapter implements EnrollmentRequestRepo
             requestedForDependentId: row.requestedForDependentId,
             notes: row.notes,
             discountCents: row.discountCents ?? null,
+            discountMonths: row.discountMonths ?? null,
             enrollmentFeeCents: row.enrollmentFeeCents ?? null,
             enrollmentFeeDueDate,
             firstMonthlyPaymentDate,
@@ -131,6 +132,7 @@ export class EnrollmentRequestRepositoryAdapter implements EnrollmentRequestRepo
         (entity as any)._decidedByUserId = row.decidedByUserId;
         (entity as any)._notes = row.notes;
         (entity as any)._discountCents = row.discountCents ?? null;
+        (entity as any)._discountMonths = row.discountMonths ?? null;
         (entity as any)._enrollmentFeeCents = row.enrollmentFeeCents ?? null;
         (entity as any)._enrollmentFeeDueDate = enrollmentFeeDueDate;
         (entity as any)._firstMonthlyPaymentDate = firstMonthlyPaymentDate;
@@ -150,6 +152,7 @@ export class EnrollmentRequestRepositoryAdapter implements EnrollmentRequestRepo
         row.decidedByUserId = request.decidedByUserId;
         row.notes = request.notes ?? null;
         row.discountCents = request.discountCents ?? null;
+        row.discountMonths = request.discountMonths ?? null;
         row.enrollmentFeeCents = request.enrollmentFeeCents ?? null;
         row.enrollmentFeeDueDate = request.enrollmentFeeDueDate
             ? request.enrollmentFeeDueDate.toISOString().slice(0, 10)
