@@ -17,6 +17,7 @@ export class UpdateCourseClass {
         classes?: CourseClassScheduleEntry[];
         capacity?: number | null;
         monthlyPriceCents?: number | null;
+        classType?: 'PRESENCIAL' | 'ONLINE';
     }): Promise<{
         id: string;
         courseId: string;
@@ -24,6 +25,7 @@ export class UpdateCourseClass {
         classes: ReadonlyArray<CourseClassScheduleEntry>;
         capacity: number | null;
         monthlyPriceCents: number | null;
+        classType: 'PRESENCIAL' | 'ONLINE';
         createdAt: Date;
     }> {
         const schoolId = input.schoolId.trim();
@@ -68,6 +70,10 @@ export class UpdateCourseClass {
             ? input.monthlyPriceCents ?? null
             : courseClass.monthlyPriceCents;
 
+        const classType = input.classType !== undefined
+            ? input.classType
+            : courseClass.classType;
+
         const updatedClass = CourseClass.create({
             id: courseClass.id,
             courseId: courseClass.courseId,
@@ -75,6 +81,7 @@ export class UpdateCourseClass {
             schedule,
             capacity,
             monthlyPriceCents,
+            classType,
             isActive: courseClass.isActive,
             createdAt: courseClass.createdAt
         });
@@ -88,6 +95,7 @@ export class UpdateCourseClass {
             classes: updatedClass.schedule.map((entry) => ({ ...entry })),
             capacity: updatedClass.capacity,
             monthlyPriceCents: updatedClass.monthlyPriceCents,
+            classType: updatedClass.classType,
             createdAt: updatedClass.createdAt
         };
     }

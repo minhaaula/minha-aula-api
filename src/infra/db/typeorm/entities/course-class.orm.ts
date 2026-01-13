@@ -22,6 +22,8 @@ export class CourseClassOrm {
 
     @Column('int', { name: 'monthly_price_cents', nullable: true }) monthlyPriceCents!: number | null;
 
+    @Column('enum', { enum: ['PRESENCIAL', 'ONLINE'], name: 'class_type', default: 'PRESENCIAL' }) classType!: 'PRESENCIAL' | 'ONLINE';
+
     @Column('tinyint', { width: 1, name: 'is_active', default: () => '1' }) isActive!: boolean;
 
     @CreateDateColumn({ name: 'created_at', type: 'datetime', default: () => 'CURRENT_TIMESTAMP' }) createdAt!: Date;

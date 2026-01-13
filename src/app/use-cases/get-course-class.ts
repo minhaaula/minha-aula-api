@@ -16,6 +16,7 @@ export class GetCourseClass {
         classes: ReadonlyArray<CourseClassScheduleEntry>;
         capacity: number | null;
         monthlyPriceCents: number | null;
+        classType: 'PRESENCIAL' | 'ONLINE';
         createdAt: Date;
     } | null> {
         const schoolId = input.schoolId.trim();
@@ -43,6 +44,7 @@ export class GetCourseClass {
             classes: courseClass.schedule.map((entry) => ({ ...entry })),
             capacity: courseClass.capacity,
             monthlyPriceCents: courseClass.monthlyPriceCents,
+            classType: courseClass.classType,
             createdAt: courseClass.createdAt
         };
     }

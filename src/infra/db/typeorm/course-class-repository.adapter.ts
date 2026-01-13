@@ -63,6 +63,7 @@ export class CourseClassRepositoryAdapter implements CourseClassRepository {
             schedule: row.schedule ?? [],
             capacity: row.capacity,
             monthlyPriceCents: row.monthlyPriceCents,
+            classType: row.classType,
             isActive: row.isActive,
             createdAt: row.createdAt
         });
@@ -76,6 +77,7 @@ export class CourseClassRepositoryAdapter implements CourseClassRepository {
         row.schedule = courseClass.schedule.map((entry) => ({ ...entry }));
         row.capacity = courseClass.capacity;
         row.monthlyPriceCents = courseClass.monthlyPriceCents;
+        row.classType = courseClass.classType;
         row.isActive = courseClass.isActive;
         row.createdAt = courseClass.createdAt;
         return row;

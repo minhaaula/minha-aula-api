@@ -234,7 +234,8 @@ export function buildCoursesRoutes(deps: CoursesRoutesDeps, guards: SchoolRouteG
                 label: data.label,
                 classes: data.classes,
                 capacity: data.capacity === undefined ? undefined : data.capacity,
-                monthlyPriceCents: data.monthlyPriceCents === undefined ? undefined : data.monthlyPriceCents
+                monthlyPriceCents: data.monthlyPriceCents === undefined ? undefined : data.monthlyPriceCents,
+                classType: data.classType
             });
 
             res.json(updated);
@@ -252,7 +253,8 @@ export function buildCoursesRoutes(deps: CoursesRoutesDeps, guards: SchoolRouteG
             label: data.label,
             classes: data.classes,
             capacity: data.capacity ?? null,
-            monthlyPriceCents: data.monthlyPriceCents ?? null
+            monthlyPriceCents: data.monthlyPriceCents ?? null,
+            classType: data.classType
         });
         res.status(201).json(courseClass);
     }));

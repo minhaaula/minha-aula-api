@@ -17,6 +17,7 @@ export class CreateCourseClass {
         classes: CourseClassScheduleEntry[];
         capacity?: number | null;
         monthlyPriceCents?: number | null;
+        classType?: 'PRESENCIAL' | 'ONLINE';
     }): Promise<{
         id: string;
         courseId: string;
@@ -24,6 +25,7 @@ export class CreateCourseClass {
         classes: ReadonlyArray<CourseClassScheduleEntry>;
         capacity: number | null;
         monthlyPriceCents: number | null;
+        classType: 'PRESENCIAL' | 'ONLINE';
         createdAt: Date;
     }> {
         const courseId = input.courseId.trim();
@@ -44,7 +46,8 @@ export class CreateCourseClass {
             label,
             schedule: input.classes,
             capacity: input.capacity ?? null,
-            monthlyPriceCents: input.monthlyPriceCents ?? null
+            monthlyPriceCents: input.monthlyPriceCents ?? null,
+            classType: input.classType ?? 'PRESENCIAL'
         });
 
         await this.classes.save(courseClass);
@@ -56,6 +59,7 @@ export class CreateCourseClass {
             classes: courseClass.schedule.map((entry) => ({ ...entry })),
             capacity: courseClass.capacity,
             monthlyPriceCents: courseClass.monthlyPriceCents,
+            classType: courseClass.classType,
             createdAt: courseClass.createdAt
         };
     }

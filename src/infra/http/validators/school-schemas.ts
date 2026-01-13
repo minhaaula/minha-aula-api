@@ -85,6 +85,7 @@ export const createCourseClassSchema = z.object({
     label: z.string().min(1),
     capacity: z.number().int().positive().optional(),
     monthlyPriceCents: z.number().int().nonnegative().nullable().optional(),
+    classType: z.enum(['PRESENCIAL', 'ONLINE']).optional(),
     classes: z.array(classScheduleSchema).min(1, 'Informe pelo menos um horário padrão')
 });
 
@@ -92,6 +93,7 @@ export const updateCourseClassSchema = z.object({
     label: z.string().min(1).optional(),
     capacity: z.union([z.number().int().positive(), z.null()]).optional(),
     monthlyPriceCents: z.union([z.number().int().nonnegative(), z.null()]).optional(),
+    classType: z.enum(['PRESENCIAL', 'ONLINE']).optional(),
     classes: z.array(classScheduleSchema).min(1, 'Informe pelo menos um horário padrão').optional()
 });
 

@@ -6,6 +6,8 @@ export type CourseClassScheduleEntry = {
     end: string;
 };
 
+export type CourseClassType = 'PRESENCIAL' | 'ONLINE';
+
 export class CourseClass {
     private constructor(
         public readonly id: string,
@@ -14,6 +16,7 @@ export class CourseClass {
         public readonly schedule: ReadonlyArray<CourseClassScheduleEntry>,
         public readonly capacity: number | null,
         private readonly _monthlyPriceCents: number | null,
+        public readonly classType: CourseClassType,
         private _isActive: boolean,
         public readonly createdAt: Date
     ) {}
@@ -25,6 +28,7 @@ export class CourseClass {
         schedule: CourseClassScheduleEntry[];
         capacity?: number | null;
         monthlyPriceCents?: number | null;
+        classType?: CourseClassType;
         isActive?: boolean;
         createdAt?: Date;
     }) {
@@ -38,6 +42,11 @@ export class CourseClass {
         }
 
         const monthlyPriceCents = CourseClass.normalizeMonthlyPriceCents(params.monthlyPriceCents);
+        
+        const classType = params.classType ?? 'PRESENCIAL';
+        if (classType !== 'PRESENCIAL' && classType !== 'ONLINE') {
+            throw new Error('Class type must be PRESENCIAL or ONLINE');
+        }
 
         const schedule = Array.isArray(params.schedule) ? params.schedule : [];
         if (!schedule.length) throw new Error('Class schedule must contain at least one entry');
@@ -78,6 +87,7 @@ export class CourseClass {
             Object.freeze(normalizedSchedule.slice()),
             capacity,
             monthlyPriceCents,
+            classType,
             params.isActive ?? true,
             params.createdAt ?? new Date()
         );

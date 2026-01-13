@@ -2147,6 +2147,14 @@ components:
           minimum: 0
           description: Valor da mensalidade em centavos (R$). Opcional.
           example: 15000
+        classType:
+          type: string
+          enum:
+            - PRESENCIAL
+            - ONLINE
+          default: PRESENCIAL
+          description: Tipo de aula (Presencial ou Online)
+          example: PRESENCIAL
         classes:
           type: array
           items:
@@ -2171,6 +2179,13 @@ components:
           minimum: 0
           description: Valor da mensalidade em centavos (R$). Opcional.
           example: 15000
+        classType:
+          type: string
+          enum:
+            - PRESENCIAL
+            - ONLINE
+          description: Tipo de aula (Presencial ou Online)
+          example: ONLINE
         classes:
           type: array
           items:
@@ -2201,6 +2216,13 @@ components:
           nullable: true
           description: Valor da mensalidade em centavos (R$)
           example: 15000
+        classType:
+          type: string
+          enum:
+            - PRESENCIAL
+            - ONLINE
+          description: Tipo de aula (Presencial ou Online)
+          example: PRESENCIAL
         createdAt:
           type: string
           format: date-time
@@ -2209,6 +2231,7 @@ components:
         - courseId
         - label
         - classes
+        - classType
         - createdAt
     CourseClassListResponse:
       type: object
