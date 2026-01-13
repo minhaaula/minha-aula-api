@@ -1728,6 +1728,128 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags:
+        - Students
+      summary: Avaliar escola
+      description: |
+        Permite ao aluno autenticado avaliar uma escola. 
+        
+        **Requisitos:**
+        - O aluno ou algum de seus dependentes deve estar matriculado na escola
+        - O aluno não pode ter avaliado a mesma escola anteriormente
+        
+        **Validações:**
+        - A nota (rating) deve ser um número inteiro entre 1 e 5
+        - A descrição é opcional e pode ter no máximo 1000 caracteres
+        
+        Requer persona STUDENT.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: schoolId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID da escola a ser avaliada
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - rating
+              properties:
+                rating:
+                  type: integer
+                  minimum: 1
+                  maximum: 5
+                  description: Nota da avaliação (1 a 5)
+                  example: 5
+                description:
+                  type: string
+                  maxLength: 1000
+                  nullable: true
+                  description: Descrição opcional da avaliação
+                  example: "Excelente escola, professores qualificados e estrutura moderna."
+      responses:
+        '201':
+          description: Avaliação criada com sucesso.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                    description: ID da avaliação criada
+                  schoolId:
+                    type: string
+                    format: uuid
+                    description: ID da escola avaliada
+                  userId:
+                    type: string
+                    format: uuid
+                    description: ID do usuário que fez a avaliação
+                  rating:
+                    type: integer
+                    minimum: 1
+                    maximum: 5
+                    description: Nota da avaliação
+                  description:
+                    type: string
+                    nullable: true
+                    description: Descrição da avaliação
+                  createdAt:
+                    type: string
+                    format: date-time
+                    description: Data de criação da avaliação
+                  updatedAt:
+                    type: string
+                    format: date-time
+                    description: Data da última atualização da avaliação
+                required:
+                  - id
+                  - schoolId
+                  - userId
+                  - rating
+                  - description
+                  - createdAt
+                  - updatedAt
+        '400':
+          description: Erro de validação. Nota inválida, descrição muito longa ou ID da escola inválido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Usuário não autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não tem permissão para avaliar esta escola (não está matriculado).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Escola não encontrada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: O usuário já avaliou esta escola anteriormente.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /students/notifications:
     get:
       tags:

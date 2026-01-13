@@ -30,4 +30,5 @@ export interface EnrollmentRepository {
     findRecentBySchoolId?(schoolId: string, limit: number): Promise<EnrollmentWithDetails[]>;
     countActiveBySchoolId?(schoolId: string): Promise<number>;
     findMyCourses?(userId: string): Promise<MyCourseData[]>;
+    hasActiveEnrollmentInSchool?(schoolId: string, userId: string): Promise<boolean>;
 }

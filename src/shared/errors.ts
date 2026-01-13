@@ -36,6 +36,7 @@ export enum ErrorCode {
     ENROLLMENT_REQUEST_ALREADY_EXISTS = 'ENROLLMENT_REQUEST_ALREADY_EXISTS',
     ALREADY_ENROLLED = 'ALREADY_ENROLLED',
     ENROLLMENT_REQUEST_ALREADY_DECIDED = 'ENROLLMENT_REQUEST_ALREADY_DECIDED',
+    REVIEW_ALREADY_EXISTS = 'REVIEW_ALREADY_EXISTS',
     
     // Autorização (4000-4999)
     UNAUTHORIZED = 'UNAUTHORIZED',
@@ -57,6 +58,7 @@ export enum ErrorCode {
     CHARGE_NOT_ELIGIBLE = 'CHARGE_NOT_ELIGIBLE',
     CLASS_SESSION_OVERLAP = 'CLASS_SESSION_OVERLAP',
     INCOMPLETE_DATA = 'INCOMPLETE_DATA',
+    NOT_ENROLLED_IN_SCHOOL = 'NOT_ENROLLED_IN_SCHOOL',
     
     // Sistema (7000-7999)
     INTERNAL_ERROR = 'INTERNAL_ERROR',
@@ -99,6 +101,7 @@ export const ErrorMessages: Record<ErrorCode, string> = {
     [ErrorCode.ENROLLMENT_REQUEST_ALREADY_EXISTS]: 'Solicitação de matrícula já existe para este alvo',
     [ErrorCode.ALREADY_ENROLLED]: 'Já matriculado nesta turma',
     [ErrorCode.ENROLLMENT_REQUEST_ALREADY_DECIDED]: 'Solicitação de matrícula já foi decidida',
+    [ErrorCode.REVIEW_ALREADY_EXISTS]: 'Você já avaliou esta escola',
     
     // Autorização
     [ErrorCode.UNAUTHORIZED]: 'Não autorizado',
@@ -120,6 +123,7 @@ export const ErrorMessages: Record<ErrorCode, string> = {
     [ErrorCode.CHARGE_NOT_ELIGIBLE]: 'Cobrança não está elegível para esta operação',
     [ErrorCode.CLASS_SESSION_OVERLAP]: 'Sessão de aula sobrepõe com uma existente',
     [ErrorCode.INCOMPLETE_DATA]: 'Dados incompletos',
+    [ErrorCode.NOT_ENROLLED_IN_SCHOOL]: 'Você ou algum dependente precisa estar matriculado na escola para avaliá-la',
     
     // Sistema
     [ErrorCode.INTERNAL_ERROR]: 'Erro interno do servidor',

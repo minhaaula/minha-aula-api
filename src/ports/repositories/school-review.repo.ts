@@ -12,6 +12,7 @@ export interface SchoolReviewRepository {
         limit?: number;
         offset?: number;
     }): Promise<SchoolReviewWithUserInfo[]>;
+    findByUserAndSchool?(userId: string, schoolId: string): Promise<SchoolReview | null>;
     save(review: SchoolReview): Promise<void>;
 }
 

@@ -33,6 +33,7 @@ import { ListMyEnrollmentRequests } from '../../app/use-cases/list-my-enrollment
 import { UpdateStudentProfile } from '../../app/use-cases/update-student-profile';
 import { ListSchoolCourses } from '../../app/use-cases/list-school-courses';
 import { ListSchoolReviews } from '../../app/use-cases/list-school-reviews';
+import { CreateSchoolReview } from '../../app/use-cases/create-school-review';
 import { GetSchoolPublicDetails } from '../../app/use-cases/get-school-public-details';
 import { GenerateTuitionPix } from '../../app/use-cases/generate-tuition-pix';
 import { CategoryRepositoryAdapter } from '../../infra/db/typeorm/category-repository.adapter';
@@ -126,6 +127,9 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
     const listSchoolReviews = deps.schoolReviewsRepo
         ? new ListSchoolReviews(deps.schoolReviewsRepo, deps.storageProvider)
         : undefined;
+    const createSchoolReview = deps.schoolReviewsRepo && deps.enrollmentsRepo
+        ? new CreateSchoolReview(deps.schoolsRepo, deps.enrollmentsRepo, deps.schoolReviewsRepo)
+        : undefined;
     const schoolImagesRepo = new SchoolImageRepositoryAdapter();
     const getSchoolPublicDetails = new GetSchoolPublicDetails(
         deps.schoolsRepo,
@@ -151,6 +155,7 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
         listMyEnrollmentRequests,
         listSchoolCourses,
         listSchoolReviews,
+        createSchoolReview,
         approveEnrollmentRequest,
         rejectEnrollmentRequest,
         getSchoolPublicDetails,

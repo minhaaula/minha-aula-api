@@ -32,6 +32,13 @@ export class SchoolReviewRepositoryAdapter implements SchoolReviewRepository {
         }));
     }
 
+    async findByUserAndSchool(userId: string, schoolId: string): Promise<SchoolReview | null> {
+        const row = await this.repo.findOne({
+            where: { userId, schoolId }
+        });
+        return row ? this.toDomain(row) : null;
+    }
+
     async save(review: SchoolReview): Promise<void> {
         await this.repo.save(this.toOrm(review));
     }

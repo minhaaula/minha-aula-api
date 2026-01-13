@@ -11,6 +11,7 @@ import { ListMyEnrollmentRequests } from '../../../app/use-cases/list-my-enrollm
 import { UpdateStudentProfile } from '../../../app/use-cases/update-student-profile';
 import { ListSchoolCourses } from '../../../app/use-cases/list-school-courses';
 import { ListSchoolReviews } from '../../../app/use-cases/list-school-reviews';
+import { CreateSchoolReview } from '../../../app/use-cases/create-school-review';
 import { ApproveEnrollmentRequest } from '../../../app/use-cases/approve-enrollment-request';
 import { RejectEnrollmentRequest } from '../../../app/use-cases/reject-enrollment-request';
 import { GetSchoolPublicDetails } from '../../../app/use-cases/get-school-public-details';
@@ -35,6 +36,7 @@ export function studentsRouter(deps: {
     updateStudentProfile?: UpdateStudentProfile;
     listSchoolCourses?: ListSchoolCourses;
     listSchoolReviews?: ListSchoolReviews;
+    createSchoolReview?: CreateSchoolReview;
     approveEnrollmentRequest?: ApproveEnrollmentRequest;
     rejectEnrollmentRequest?: RejectEnrollmentRequest;
     getSchoolPublicDetails?: GetSchoolPublicDetails;
@@ -411,6 +413,39 @@ export function studentsRouter(deps: {
                 offset: query.offset
             });
             res.json(result);
+        }));
+    }
+
+    if (deps.createSchoolReview) {
+        r.post('/schools/:schoolId/reviews', requireStudent, asyncHandler(async (req, res) => {
+            const authReq = req as AuthenticatedRequest;
+            if (!authReq.user?.sub) {
+                return res.status(401).json({ 
+                    error: 'Não autorizado',
+                    code: 'UNAUTHORIZED'
+                });
+            }
+
+            const paramsSchema = z.object({
+                schoolId: z.string().uuid()
+            });
+
+            const bodySchema = z.object({
+                rating: z.number().int().min(1).max(5),
+                description: z.string().max(1000).optional().nullable()
+            });
+
+            const { schoolId } = paramsSchema.parse(req.params);
+            const body = bodySchema.parse(req.body ?? {});
+
+            const result = await deps.createSchoolReview!.exec({
+                schoolId,
+                userId: authReq.user.sub,
+                rating: body.rating,
+                description: body.description ?? null
+            });
+
+            res.status(201).json(result);
         }));
     }
 

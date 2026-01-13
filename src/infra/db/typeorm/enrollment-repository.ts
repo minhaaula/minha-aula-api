@@ -163,6 +163,35 @@ export class EnrollmentRepositoryAdapter implements EnrollmentRepository {
         });
     }
 
+    async hasActiveEnrollmentInSchool(schoolId: string, userId: string): Promise<boolean> {
+        // Verificar se existe matrícula do aluno (como usuário) na escola
+        const userEnrollment = await this.repo
+            .createQueryBuilder('enrollment')
+            .innerJoin('enrollment.courseClass', 'class')
+            .innerJoin('class.course', 'course')
+            .where('course.schoolId = :schoolId', { schoolId })
+            .andWhere('enrollment.ownerUserId = :userId', { userId })
+            .andWhere('enrollment.status = :status', { status: 'ACTIVE' })
+            .getCount();
+
+        if (userEnrollment > 0) {
+            return true;
+        }
+
+        // Verificar se existe matrícula de algum dependente do usuário na escola
+        const dependentEnrollment = await this.repo
+            .createQueryBuilder('enrollment')
+            .innerJoin('enrollment.courseClass', 'class')
+            .innerJoin('class.course', 'course')
+            .innerJoin('enrollment.dependent', 'dependent')
+            .where('course.schoolId = :schoolId', { schoolId })
+            .andWhere('dependent.userId = :userId', { userId })
+            .andWhere('enrollment.status = :status', { status: 'ACTIVE' })
+            .getCount();
+
+        return dependentEnrollment > 0;
+    }
+
     private toDomain(row: EnrollmentOrm): Enrollment {
         if (row.studentType === 'USER') {
             return Enrollment.createForUser({
