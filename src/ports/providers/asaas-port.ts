@@ -91,6 +91,12 @@ export type AsaasTransferResponse = {
     transactionReceiptUrl?: string;
 };
 
+export type AsaasAccountBalance = {
+    balance: number;
+    availableBalance: number;
+    blockedBalance?: number;
+};
+
 export interface AsaasProviderPort {
     createBoletoCharge(input: CreateBoletoChargeInput): Promise<AsaasChargeResponse>;
     authorizeCharge(input: { amount: Money; method: PaymentMethod; customerId: string; metadata?: Record<string, string>; }): Promise<{ providerRef: string }>;
@@ -98,4 +104,5 @@ export interface AsaasProviderPort {
     createSubAccount?(input: CreateAsaasSubAccountInput): Promise<AsaasSubAccount>;
     createTransfer?(input: CreateAsaasTransferInput): Promise<AsaasTransferResponse>;
     getAccount?(accountId: string): Promise<AsaasAccountDetails>;
+    getAccountBalance?(accountId: string): Promise<AsaasAccountBalance>;
 }

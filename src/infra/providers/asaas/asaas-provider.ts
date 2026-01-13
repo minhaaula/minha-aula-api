@@ -1,7 +1,7 @@
 import { Money } from '../../../domain/value-objects/money';
 import { PaymentProviderPort, CreateChargeInput, CreatePixChargeInput } from '../../../ports/providers/payment-provider.port';
 import { AsaasClient } from './asaas-client';
-import { AsaasChargeResponse, AsaasSubAccount, CreateAsaasSubAccountInput, CreateAsaasTransferInput, AsaasTransferResponse, AsaasAccountDetails } from '../../../ports/providers/asaas-port';
+import { AsaasChargeResponse, AsaasSubAccount, CreateAsaasSubAccountInput, CreateAsaasTransferInput, AsaasTransferResponse, AsaasAccountDetails, AsaasAccountBalance } from '../../../ports/providers/asaas-port';
 import { CreateBoletoChargeInput } from '../../../ports/providers/payment-provider.port';
 
 
@@ -217,6 +217,14 @@ export class AsaasProvider implements PaymentProviderPort {
             onboardingUrl: response.onboardingUrl,
             kycUrl: response.kycUrl
         };
+    }
+
+    async getAccountBalance(accountId: string): Promise<AsaasAccountBalance> {
+        if (!accountId || !accountId.trim()) {
+            throw new Error('Account ID is required');
+        }
+
+        return await this.client.getAccountBalance(accountId);
     }
 
     private resolveDefaultWebhooks(fallbackEmail: string): CreateAsaasSubAccountInput['webhooks'] | undefined {

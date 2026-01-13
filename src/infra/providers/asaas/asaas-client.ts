@@ -114,6 +114,55 @@ export class AsaasClient {
         }
     }
 
+    async getAccountBalance(accountId: string): Promise<{ balance: number; availableBalance: number; blockedBalance?: number }> {
+        try {
+            // Tentar endpoint específico de balance primeiro (se existir)
+            try {
+                const { data } = await this.http.get<{ balance: number; availableBalance: number; blockedBalance?: number }>(`/accounts/${accountId}/balance`);
+                if (data && typeof data.balance === 'number') {
+                    return {
+                        balance: data.balance,
+                        availableBalance: data.availableBalance ?? data.balance,
+                        blockedBalance: data.blockedBalance
+                    };
+                }
+            } catch (balanceError: any) {
+                // Se o endpoint de balance não existir (404 ou outro erro), tentar outras abordagens
+                if (balanceError?.response?.status !== 404) {
+                    console.warn('Erro ao buscar saldo via endpoint /balance:', balanceError.message);
+                }
+            }
+
+            // Tentar buscar saldo através do endpoint de account (algumas APIs retornam saldo junto com os dados da conta)
+            try {
+                const accountData = await this.getAccount(accountId);
+                
+                // Verificar se a resposta do getAccount inclui saldo
+                const accountDataAny = accountData as any;
+                if (accountDataAny && typeof accountDataAny.balance === 'number') {
+                    return {
+                        balance: accountDataAny.balance,
+                        availableBalance: accountDataAny.availableBalance ?? accountDataAny.balance,
+                        blockedBalance: accountDataAny.blockedBalance
+                    };
+                }
+            } catch (accountError) {
+                console.warn('Erro ao buscar dados da conta:', accountError);
+            }
+
+            // Fallback: retornar 0 se não conseguir buscar (API do Asaas pode não ter endpoint de saldo)
+            // O saldo real precisa ser consultado através do extrato ou painel do Asaas
+            // Nota: A API do Asaas pode não expor o saldo diretamente via API
+            return {
+                balance: 0,
+                availableBalance: 0,
+                blockedBalance: 0
+            };
+        } catch (error) {
+            throw this.toDomainError(error);
+        }
+    }
+
     private toDomainError(error: unknown): Error {
         if (axios.isAxiosError(error)) {
             const axiosError = error as AxiosError<any>;

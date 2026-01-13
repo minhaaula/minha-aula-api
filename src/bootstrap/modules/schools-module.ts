@@ -88,6 +88,7 @@ import { ValidateSchoolCoupon } from '../../app/use-cases/validate-school-coupon
 import { NotificationRepositoryAdapter } from '../../infra/db/typeorm/notification-repository.adapter';
 import { ListSchoolNotifications } from '../../app/use-cases/list-school-notifications';
 import { buildNotificationsRoutes } from '../../infra/http/routes/schools/notifications.routes';
+import { GetSchoolBalance } from '../../app/use-cases/get-school-balance';
 
 export type SchoolsModuleDeps = {
     schoolsRepo: SchoolRepositoryAdapter;
@@ -250,6 +251,9 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         deps.dependentsRepo
     );
     const getSchoolFinancialSummary = new GetSchoolFinancialSummary(deps.financialChargesRepo);
+    const getSchoolBalance = asaasProvider
+        ? new GetSchoolBalance(deps.schoolsRepo, asaasProvider)
+        : undefined;
     const getSchoolDashboard = new GetSchoolDashboard(
         deps.coursesRepo,
         deps.classesRepo,
@@ -349,6 +353,7 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         listEnrollmentRequests,
         createSchoolCharge,
         getSchoolFinancialSummary,
+        getSchoolBalance,
         getSchoolDashboard,
         listSchoolWithdrawals,
         requestSchoolWithdrawal,

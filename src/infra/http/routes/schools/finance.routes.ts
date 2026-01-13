@@ -5,6 +5,7 @@ import type { CreateSchoolCharge } from '../../../../app/use-cases/create-school
 import type { GetSchoolFinancialSummary } from '../../../../app/use-cases/get-school-financial-summary';
 import type { ListSchoolWithdrawals } from '../../../../app/use-cases/list-school-withdrawals';
 import type { RequestSchoolWithdrawal } from '../../../../app/use-cases/request-school-withdrawal';
+import type { GetSchoolBalance } from '../../../../app/use-cases/get-school-balance';
 import type { SchoolRouteGuards } from './guards';
 import type { SchoolContextRequest } from '../../middlewares/resolve-school-context';
 import type { SchoolFinancialCharge } from '../../../../domain/entities/school-financial-charge';
@@ -62,6 +63,7 @@ type FinanceRoutesDeps = {
     getSchoolFinancialSummary?: GetSchoolFinancialSummary;
     listSchoolWithdrawals?: ListSchoolWithdrawals;
     requestSchoolWithdrawal?: RequestSchoolWithdrawal;
+    getSchoolBalance?: GetSchoolBalance;
 };
 
 export function buildFinanceRoutes(deps: FinanceRoutesDeps, guards: SchoolRouteGuards) {
@@ -96,6 +98,25 @@ export function buildFinanceRoutes(deps: FinanceRoutesDeps, guards: SchoolRouteG
         });
 
             res.status(201).json({ charge: serializeCharge(charge) });
+        }));
+    }
+
+    if (deps.getSchoolBalance) {
+        router.get('/balance', ...protectedMiddleware, asyncHandler(async (req, res) => {
+            const schoolId = (req as SchoolContextRequest).schoolId as string;
+
+            const balance = await deps.getSchoolBalance!.exec({ schoolId });
+
+            res.json({
+                balance: toCurrency(balance.balanceCents),
+                balanceCents: balance.balanceCents,
+                availableBalance: toCurrency(balance.availableBalanceCents),
+                availableBalanceCents: balance.availableBalanceCents,
+                blockedBalance: balance.blockedBalanceCents !== null ? toCurrency(balance.blockedBalanceCents) : null,
+                blockedBalanceCents: balance.blockedBalanceCents,
+                accountId: balance.accountId,
+                hasAsaasAccount: balance.hasAsaasAccount
+            });
         }));
     }
 

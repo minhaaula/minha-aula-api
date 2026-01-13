@@ -804,6 +804,109 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /schools/finance/balance:
+    get:
+      tags:
+        - Schools
+      summary: Obter saldo da escola no Asaas
+      description: |
+        Retorna o saldo atual da conta Asaas da escola, incluindo saldo total, saldo disponível e saldo bloqueado.
+        
+        **Requisitos:**
+        - A escola deve ter uma conta Asaas configurada (accountId e accountApiKey)
+        - Se a escola não tiver conta Asaas, retorna valores zerados
+        
+        **Nota:** O saldo é buscado diretamente da API do Asaas. Se a API do Asaas não retornar o saldo, 
+        os valores serão zerados e a escola precisará consultar o saldo manualmente no painel do Asaas.
+        
+        Requer persona SCHOOL.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Saldo da escola retornado com sucesso.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  balance:
+                    type: number
+                    description: Saldo total em reais
+                    example: 1500.50
+                  balanceCents:
+                    type: integer
+                    format: int64
+                    description: Saldo total em centavos
+                    example: 150050
+                  availableBalance:
+                    type: number
+                    description: Saldo disponível para saque em reais
+                    example: 1500.50
+                  availableBalanceCents:
+                    type: integer
+                    format: int64
+                    description: Saldo disponível para saque em centavos
+                    example: 150050
+                  blockedBalance:
+                    type: number
+                    nullable: true
+                    description: Saldo bloqueado em reais (quando aplicável)
+                    example: 0.00
+                  blockedBalanceCents:
+                    type: integer
+                    format: int64
+                    nullable: true
+                    description: Saldo bloqueado em centavos (quando aplicável)
+                    example: 0
+                  accountId:
+                    type: string
+                    nullable: true
+                    description: ID da conta Asaas da escola
+                    example: "acc_123456789"
+                  hasAsaasAccount:
+                    type: boolean
+                    description: Indica se a escola tem conta Asaas configurada
+                    example: true
+                required:
+                  - balance
+                  - balanceCents
+                  - availableBalance
+                  - availableBalanceCents
+                  - blockedBalance
+                  - blockedBalanceCents
+                  - accountId
+                  - hasAsaasAccount
+        '401':
+          description: Não autorizado. Token inválido ou ausente.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado. Requer persona SCHOOL.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Escola não encontrada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Erro ao buscar saldo no Asaas ou configuração do provedor de pagamento.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '501':
+          description: Funcionalidade de consulta de saldo não configurada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /schools/finance/withdrawals:
     get:
       tags:
