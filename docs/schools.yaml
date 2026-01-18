@@ -1610,7 +1610,31 @@ paths:
               schema:
                 $ref: '#/components/schemas/EnrollmentResponse'
         '400':
-          description: Erro de validação ou vínculos inválidos.
+          description: Erro de validação ou dados incompletos.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado ou sem contexto de escola.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Curso, turma, aluno ou dependente não encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Aluno já está matriculado nesta turma.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '501':
+          description: Funcionalidade de matrícula de aluno não configurada.
           content:
             application/json:
               schema:
