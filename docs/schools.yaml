@@ -4,6 +4,10 @@ paths:
       tags:
         - Schools
       summary: Autenticar uma escola
+      description: |
+        Autentica uma escola e retorna um token de acesso. A resposta inclui informações sobre o status do onboarding (KYC):
+        - `onboardingCompleted`: indica se o processo de onboarding foi finalizado (true quando a escola tem accountId e accountApiKey)
+        - `onboardingUrl`: link para completar o onboarding (retornado apenas quando onboardingCompleted é false)
       requestBody:
         required: true
         content:
@@ -12,7 +16,7 @@ paths:
               $ref: '#/components/schemas/SchoolLoginInput'
       responses:
         '200':
-          description: Login realizado com sucesso.
+          description: Login realizado com sucesso. Retorna token de acesso e informações sobre o status do onboarding.
           content:
             application/json:
               schema:

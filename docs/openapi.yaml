@@ -601,6 +601,7 @@ components:
         - ownerName
         - ownerEmail
         - expiresIn
+        - onboardingCompleted
       properties:
         accessToken:
           type: string
@@ -633,6 +634,13 @@ components:
           type: boolean
           nullable: true
           description: Indica se a escola possui faturas atrasadas não pagas
+        onboardingCompleted:
+          type: boolean
+          description: Indica se o processo de onboarding (KYC) foi finalizado. Quando false, o campo onboardingUrl será retornado.
+        onboardingUrl:
+          type: string
+          nullable: true
+          description: Link para completar o processo de onboarding (KYC) no Asaas. Retornado apenas quando onboardingCompleted é false.
     SchoolResponse:
       type: object
       properties:

@@ -24,6 +24,8 @@ export class LoginSchool {
         expiresIn: number;
         status?: string;
         isOverdue?: boolean;
+        onboardingCompleted: boolean;
+        onboardingUrl?: string | null;
     }> {
         const email = this.normalizeEmail(input.email);
         const school = await this.findSchoolByOwnerEmail(email);
@@ -89,6 +91,13 @@ export class LoginSchool {
             }
         }
 
+        // Determinar se o onboarding foi finalizado
+        // O onboarding está finalizado quando o webhook do Asaas confirma a aprovação da conta
+        const onboardingCompleted = school.onboardingCompletedAt !== null;
+        
+        // Se o onboarding não foi finalizado, retornar o link de onboarding
+        const onboardingUrl = onboardingCompleted ? null : school.onboardingUrl;
+
         return {
             accessToken,
             schoolId: school.id,
@@ -96,7 +105,9 @@ export class LoginSchool {
             ownerEmail,
             expiresIn,
             status,
-            isOverdue
+            isOverdue,
+            onboardingCompleted,
+            onboardingUrl
         };
     }
 

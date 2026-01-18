@@ -106,7 +106,8 @@ export class SchoolRepositoryAdapter implements SchoolRepository {
             instagramLink: row.instagramLink ?? null,
             tiktokLink: row.tiktokLink ?? null,
             youtubeLink: row.youtubeLink ?? null,
-            siteLink: row.siteLink ?? null
+            siteLink: row.siteLink ?? null,
+            onboardingCompletedAt: row.onboardingCompletedAt ?? null
         });
     }
 
@@ -140,6 +141,7 @@ export class SchoolRepositoryAdapter implements SchoolRepository {
         row.tiktokLink = school.tiktokLink;
         row.youtubeLink = school.youtubeLink;
         row.siteLink = school.siteLink;
+        row.onboardingCompletedAt = school.onboardingCompletedAt;
         if (existing) {
             await this.repo.manager.createQueryBuilder()
                 .delete()

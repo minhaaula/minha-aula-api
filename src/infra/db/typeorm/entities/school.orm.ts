@@ -69,6 +69,9 @@ export class SchoolOrm {
     @Column('varchar', { length: 500, name: 'site_link', nullable: true })
     siteLink!: string | null;
 
+    @Column('datetime', { name: 'onboarding_completed_at', nullable: true })
+    onboardingCompletedAt!: Date | null;
+
     @OneToMany(() => SchoolAddressOrm, (address) => address.school, {
         cascade: ['insert', 'update'],
         orphanedRowAction: 'delete'

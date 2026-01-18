@@ -106,6 +106,12 @@ export class HandleAsaasAccountWebhook {
                 needsUpdate = true;
             }
             
+            // Marcar onboarding como completo quando receber o webhook de aprovação
+            if (!school.onboardingCompletedAt) {
+                updatedSchool = updatedSchool.withOnboardingCompletedAt(new Date());
+                needsUpdate = true;
+            }
+            
             if (needsUpdate) {
                 await this.schools.save(updatedSchool);
                 return { handled: true, reason: 'Account approved and saved' };

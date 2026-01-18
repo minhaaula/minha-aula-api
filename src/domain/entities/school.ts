@@ -24,7 +24,8 @@ export class School {
         private readonly _instagramLink: string | null,
         private readonly _tiktokLink: string | null,
         private readonly _youtubeLink: string | null,
-        private readonly _siteLink: string | null
+        private readonly _siteLink: string | null,
+        private readonly _onboardingCompletedAt: Date | null
     ) {}
 
     static create(params: {
@@ -50,6 +51,7 @@ export class School {
         tiktokLink?: string | null;
         youtubeLink?: string | null;
         siteLink?: string | null;
+        onboardingCompletedAt?: Date | null;
     }) {
         const name = params.name.trim();
         if (!name) throw new Error('School name is required');
@@ -81,6 +83,7 @@ export class School {
         const tiktokLink = School.normalizeLink(params.tiktokLink);
         const youtubeLink = School.normalizeLink(params.youtubeLink);
         const siteLink = School.normalizeLink(params.siteLink);
+        const onboardingCompletedAt = params.onboardingCompletedAt ?? null;
 
         return new School(
             params.id,
@@ -104,7 +107,8 @@ export class School {
             instagramLink,
             tiktokLink,
             youtubeLink,
-            siteLink
+            siteLink,
+            onboardingCompletedAt
         );
     }
 
@@ -182,6 +186,10 @@ export class School {
 
     get siteLink(): string | null {
         return this._siteLink;
+    }
+
+    get onboardingCompletedAt(): Date | null {
+        return this._onboardingCompletedAt;
     }
 
     private static normalizePhone(value: string) {
@@ -326,7 +334,8 @@ export class School {
             instagramLink: this._instagramLink,
             tiktokLink: this._tiktokLink,
             youtubeLink: this._youtubeLink,
-            siteLink: this._siteLink
+            siteLink: this._siteLink,
+            onboardingCompletedAt: this._onboardingCompletedAt
         });
     }
 
@@ -354,7 +363,8 @@ export class School {
             instagramLink: this._instagramLink,
             tiktokLink: this._tiktokLink,
             youtubeLink: this._youtubeLink,
-            siteLink: this._siteLink
+            siteLink: this._siteLink,
+            onboardingCompletedAt: this._onboardingCompletedAt
         });
     }
 
@@ -382,7 +392,8 @@ export class School {
             instagramLink: this._instagramLink,
             tiktokLink: this._tiktokLink,
             youtubeLink: this._youtubeLink,
-            siteLink: this._siteLink
+            siteLink: this._siteLink,
+            onboardingCompletedAt: this._onboardingCompletedAt
         });
     }
 
@@ -410,7 +421,36 @@ export class School {
             instagramLink: this._instagramLink,
             tiktokLink: this._tiktokLink,
             youtubeLink: this._youtubeLink,
-            siteLink: this._siteLink
+            siteLink: this._siteLink,
+            onboardingCompletedAt: this._onboardingCompletedAt
+        });
+    }
+
+    withOnboardingCompletedAt(completedAt: Date | null): School {
+        return School.create({
+            id: this.id,
+            name: this.name,
+            email: this.email,
+            phone: this.phone,
+            cnpj: this.cnpj,
+            addresses: this.addresses,
+            ownerUserId: this.ownerUserId,
+            ownerName: this.ownerName,
+            ownerCpf: this.ownerCpf,
+            ownerEmail: this.ownerEmail,
+            ownerPasswordHash: this.ownerPasswordHash,
+            createdAt: this.createdAt,
+            accountId: this._accountId,
+            accountApiKey: this._accountApiKey,
+            walletId: this._walletId,
+            onboardingUrl: this._onboardingUrl,
+            incomeValue: this._incomeValue,
+            facebookLink: this._facebookLink,
+            instagramLink: this._instagramLink,
+            tiktokLink: this._tiktokLink,
+            youtubeLink: this._youtubeLink,
+            siteLink: this._siteLink,
+            onboardingCompletedAt: completedAt
         });
     }
 }

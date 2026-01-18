@@ -816,7 +816,7 @@ describe('School creation flow', () => {
         expect(wrongSchool).toBeNull();
     });
 
-    it('logs in a school owner with valid credentials', async () => {
+    it('logs in a school owner with valid credentials and returns onboarding status', async () => {
         const repo = new InMemorySchoolRepository();
         const hasher = new TestPasswordHasher();
         const tokens = new TestTokenProvider();
@@ -841,6 +841,66 @@ describe('School creation flow', () => {
         expect(result.ownerEmail).toBe('ana@colegio.com');
         expect(result.accessToken).toBe(`token-${created.id}`);
         expect(result.expiresIn).toBe(3600);
+        // Quando a escola não tem accountId e accountApiKey, o onboarding não está finalizado
+        expect(result.onboardingCompleted).toBe(false);
+        // onboardingUrl pode ser null se não foi definido ainda
+        expect(result.onboardingUrl).toBeDefined();
+    });
+
+    it('returns onboardingCompleted true when school has onboardingCompletedAt', async () => {
+        const repo = new InMemorySchoolRepository();
+        const hasher = new TestPasswordHasher();
+        const tokens = new TestTokenProvider();
+        
+        // Criar escola com onboardingCompletedAt (onboarding finalizado via webhook)
+        const school = School.create({
+            id: 'school-with-account',
+            name: 'Escola Completa',
+            email: 'contato@completa.com',
+            phone: '11987654321',
+            cnpj: '12.345.678/0001-92',
+            ownerName: 'Carlos Santos',
+            ownerCpf: '123.456.789-03',
+            ownerEmail: 'carlos@completa.com',
+            ownerPasswordHash: await hasher.hash('senha-forte-123'),
+            accountId: 'acc_123456789',
+            accountApiKey: 'api_key_123456789',
+            onboardingCompletedAt: new Date()
+        });
+        await repo.save(school);
+
+        const login = new LoginSchool(repo, hasher, tokens, 3600);
+        const result = await login.exec({ email: 'carlos@completa.com', password: 'senha-forte-123' });
+
+        expect(result.onboardingCompleted).toBe(true);
+        expect(result.onboardingUrl).toBeNull();
+    });
+
+    it('returns onboardingUrl when onboarding is not completed', async () => {
+        const repo = new InMemorySchoolRepository();
+        const hasher = new TestPasswordHasher();
+        const tokens = new TestTokenProvider();
+        
+        // Criar escola sem accountId/accountApiKey mas com onboardingUrl
+        const school = School.create({
+            id: 'school-with-url',
+            name: 'Escola com URL',
+            email: 'contato@url.com',
+            phone: '11987654321',
+            cnpj: '12.345.678/0001-93',
+            ownerName: 'Diana Costa',
+            ownerCpf: '123.456.789-04',
+            ownerEmail: 'diana@url.com',
+            ownerPasswordHash: await hasher.hash('senha-forte-123'),
+            onboardingUrl: 'https://beta.cadastro.io/test-onboarding-url'
+        });
+        await repo.save(school);
+
+        const login = new LoginSchool(repo, hasher, tokens, 3600);
+        const result = await login.exec({ email: 'diana@url.com', password: 'senha-forte-123' });
+
+        expect(result.onboardingCompleted).toBe(false);
+        expect(result.onboardingUrl).toBe('https://beta.cadastro.io/test-onboarding-url');
     });
 
     it('rejects login with invalid credentials', async () => {

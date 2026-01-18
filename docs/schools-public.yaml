@@ -50,7 +50,10 @@ paths:
       tags:
         - Schools
       summary: Autenticar uma escola
-      description: Retorna um token de acesso para a escola.
+      description: |
+        Autentica uma escola e retorna um token de acesso. A resposta inclui informações sobre o status do onboarding (KYC):
+        - `onboardingCompleted`: indica se o processo de onboarding foi finalizado (true quando a escola tem accountId e accountApiKey)
+        - `onboardingUrl`: link para completar o onboarding (retornado apenas quando onboardingCompleted é false)
       requestBody:
         required: true
         content:
