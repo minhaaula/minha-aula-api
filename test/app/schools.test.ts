@@ -22,6 +22,9 @@ import { PasswordHasherPort } from '../../src/ports/providers/password-hasher.po
 import { LoginSchool } from '../../src/app/use-cases/login-school';
 import { TokenProviderPort } from '../../src/ports/providers/token-provider.port';
 import { equalUuid } from '../../src/shared/normalize-uuid';
+import { SchoolPlanFinanceRepository } from '../../src/ports/repositories/school-plan-finance.repo';
+import { SchoolPlanFinance } from '../../src/domain/entities/school-plan-finance';
+import { SubscriptionPlan } from '../../src/domain/entities/subscription-plan';
 
 class InMemorySchoolRepository implements SchoolRepository {
     private readonly items = new Map<string, School>();
@@ -196,6 +199,22 @@ class TestTokenProvider implements TokenProviderPort {
 
     async verify<T = Record<string, unknown>>(_token: string): Promise<T> {
         throw new Error('Not implemented');
+    }
+}
+
+class InMemoryFinanceRepository implements SchoolPlanFinanceRepository {
+    private readonly items = new Map<string, SchoolPlanFinance>();
+
+    async findActiveBySchoolId(schoolId: string): Promise<SchoolPlanFinance | null> {
+        return Array.from(this.items.values()).find((item) => item.schoolId === schoolId) ?? null;
+    }
+
+    async save(finance: SchoolPlanFinance): Promise<void> {
+        this.items.set(finance.id, finance);
+    }
+
+    seed(finance: SchoolPlanFinance) {
+        this.items.set(finance.id, finance);
     }
 }
 
@@ -507,6 +526,63 @@ describe('School creation flow', () => {
 
         const missing = await getProfile.exec({ schoolId: 'unknown' });
         expect(missing).toBeNull();
+    });
+
+    it('fetches school profile with active plan', async () => {
+        const repo = new InMemorySchoolRepository();
+        const finances = new InMemoryFinanceRepository();
+        
+        // Criar escola
+        const school = School.create({
+            id: 'school-with-plan-profile',
+            name: 'Escola com Plano',
+            email: 'contato@planoprofile.com',
+            phone: '11987654321',
+            cnpj: '12.345.678/0001-96',
+            ownerUserId: 'owner-2',
+            ownerName: 'Gabriel Alves',
+            ownerCpf: '123.456.789-07',
+            ownerEmail: 'gabriel@planoprofile.com',
+            createdAt: new Date('2024-02-15')
+        });
+        repo.seed(school);
+
+        // Criar plano
+        const plan = SubscriptionPlan.create({
+            id: 'plan-2',
+            code: 'PREMIUM',
+            name: 'Plano Premium',
+            description: 'Plano premium de assinatura',
+            amountCents: 30000,
+            currency: 'BRL',
+            billingCycle: 'MONTHLY',
+            isActive: true
+        });
+
+        // Criar finance (plano ativo)
+        const finance = SchoolPlanFinance.create({
+            id: 'finance-2',
+            schoolId: school.id,
+            plan,
+            status: 'ACTIVE',
+            isPaid: true,
+            lastPaymentAt: new Date(),
+            nextDueAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+            notes: null,
+            createdAt: new Date(),
+            updatedAt: new Date()
+        });
+        finances.seed(finance);
+
+        const getProfile = new GetSchoolProfile(repo, undefined, undefined, undefined, finances);
+        const profile = await getProfile.exec({ schoolId: school.id });
+
+        expect(profile).not.toBeNull();
+        expect(profile?.plan).toBeDefined();
+        expect(profile?.plan?.schoolId).toBe(school.id);
+        expect(profile?.plan?.plan.id).toBe(plan.id);
+        expect(profile?.plan?.plan.name).toBe('Plano Premium');
+        expect(profile?.plan?.status).toBe('ACTIVE');
     });
 
     it('updates a school profile keeping owner credentials when omitted', async () => {
@@ -901,6 +977,89 @@ describe('School creation flow', () => {
 
         expect(result.onboardingCompleted).toBe(false);
         expect(result.onboardingUrl).toBe('https://beta.cadastro.io/test-onboarding-url');
+    });
+
+    it('returns plan when school has active plan', async () => {
+        const repo = new InMemorySchoolRepository();
+        const hasher = new TestPasswordHasher();
+        const tokens = new TestTokenProvider();
+        const finances = new InMemoryFinanceRepository();
+        
+        // Criar escola
+        const school = School.create({
+            id: 'school-with-plan',
+            name: 'Escola com Plano',
+            email: 'contato@plano.com',
+            phone: '11987654321',
+            cnpj: '12.345.678/0001-94',
+            ownerName: 'Eduardo Lima',
+            ownerCpf: '123.456.789-05',
+            ownerEmail: 'eduardo@plano.com',
+            ownerPasswordHash: await hasher.hash('senha-forte-123')
+        });
+        await repo.save(school);
+
+        // Criar plano
+        const plan = SubscriptionPlan.create({
+            id: 'plan-1',
+            code: 'BASIC',
+            name: 'Plano Básico',
+            description: 'Plano básico de assinatura',
+            amountCents: 15000,
+            currency: 'BRL',
+            billingCycle: 'MONTHLY',
+            isActive: true
+        });
+
+        // Criar finance (plano ativo)
+        const finance = SchoolPlanFinance.create({
+            id: 'finance-1',
+            schoolId: school.id,
+            plan,
+            status: 'ACTIVE',
+            isPaid: true,
+            lastPaymentAt: new Date(),
+            nextDueAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+            notes: null,
+            createdAt: new Date(),
+            updatedAt: new Date()
+        });
+        finances.seed(finance);
+
+        const login = new LoginSchool(repo, hasher, tokens, 3600, finances);
+        const result = await login.exec({ email: 'eduardo@plano.com', password: 'senha-forte-123' });
+
+        expect(result.plan).toBeDefined();
+        expect(result.plan?.schoolId).toBe(school.id);
+        expect(result.plan?.plan.id).toBe(plan.id);
+        expect(result.plan?.plan.name).toBe('Plano Básico');
+        expect(result.plan?.status).toBe('ACTIVE');
+    });
+
+    it('returns null plan when school has no active plan', async () => {
+        const repo = new InMemorySchoolRepository();
+        const hasher = new TestPasswordHasher();
+        const tokens = new TestTokenProvider();
+        const finances = new InMemoryFinanceRepository();
+        
+        // Criar escola sem plano
+        const school = School.create({
+            id: 'school-without-plan',
+            name: 'Escola sem Plano',
+            email: 'contato@semplano.com',
+            phone: '11987654321',
+            cnpj: '12.345.678/0001-95',
+            ownerName: 'Fernanda Souza',
+            ownerCpf: '123.456.789-06',
+            ownerEmail: 'fernanda@semplano.com',
+            ownerPasswordHash: await hasher.hash('senha-forte-123')
+        });
+        await repo.save(school);
+
+        const login = new LoginSchool(repo, hasher, tokens, 3600, finances);
+        const result = await login.exec({ email: 'fernanda@semplano.com', password: 'senha-forte-123' });
+
+        expect(result.plan).toBeNull();
     });
 
     it('rejects login with invalid credentials', async () => {

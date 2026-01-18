@@ -5,6 +5,7 @@ import { PasswordHasherPort } from '../../ports/providers/password-hasher.port';
 import { TokenProviderPort } from '../../ports/providers/token-provider.port';
 import { AuthTokenPayload } from '../contracts/auth-token-payload';
 import { UserPersonaEnum } from '../../domain/value-objects/user-persona';
+import { presentSchoolPlanFinance, SchoolPlanFinanceView } from '../presenters/school-plan-finance.presenter';
 
 export class LoginSchool {
     constructor(
@@ -26,6 +27,7 @@ export class LoginSchool {
         isOverdue?: boolean;
         onboardingCompleted: boolean;
         onboardingUrl?: string | null;
+        plan?: SchoolPlanFinanceView | null;
     }> {
         const email = this.normalizeEmail(input.email);
         const school = await this.findSchoolByOwnerEmail(email);
@@ -98,6 +100,15 @@ export class LoginSchool {
         // Se o onboarding não foi finalizado, retornar o link de onboarding
         const onboardingUrl = onboardingCompleted ? null : school.onboardingUrl;
 
+        // Buscar plano ativo da escola
+        let plan: SchoolPlanFinanceView | null = null;
+        if (this.finances) {
+            const finance = await this.finances.findActiveBySchoolId(school.id);
+            if (finance) {
+                plan = presentSchoolPlanFinance(finance);
+            }
+        }
+
         return {
             accessToken,
             schoolId: school.id,
@@ -107,7 +118,8 @@ export class LoginSchool {
             status,
             isOverdue,
             onboardingCompleted,
-            onboardingUrl
+            onboardingUrl,
+            plan
         };
     }
 

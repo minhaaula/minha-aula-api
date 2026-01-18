@@ -641,6 +641,10 @@ components:
           type: string
           nullable: true
           description: Link para completar o processo de onboarding (KYC) no Asaas. Retornado apenas quando onboardingCompleted é false.
+        plan:
+          $ref: '#/components/schemas/SchoolPlanResponse'
+          nullable: true
+          description: Plano ativo da escola (retornado apenas se a escola tiver um plano ativo)
     SchoolResponse:
       type: object
       properties:
@@ -778,6 +782,10 @@ components:
           format: uri
           description: Link para completar o processo de KYC/onboarding no Asaas (retornado em POST /schools, mesmo que onboardingUrl)
           example: "https://beta.cadastro.io/c33ef9ae605f350c052be72ab094d0b7"
+        plan:
+          $ref: '#/components/schemas/SchoolPlanResponse'
+          nullable: true
+          description: Plano ativo da escola (retornado apenas se a escola tiver um plano ativo)
       required:
         - id
         - name

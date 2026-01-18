@@ -5,6 +5,7 @@ import { SchoolImageRepository } from '../../ports/repositories/school-image.rep
 import { StorageProviderPort } from '../../ports/providers/storage-provider.port';
 import { SchoolPlanFinanceRepository } from '../../ports/repositories/school-plan-finance.repo';
 import { SchoolPlanInvoiceRepository } from '../../ports/repositories/school-plan-invoice.repo';
+import { presentSchoolPlanFinance, SchoolPlanFinanceView } from '../presenters/school-plan-finance.presenter';
 
 type BankAccountView = {
     id: string;
@@ -64,6 +65,7 @@ export class GetSchoolProfile {
         }>;
         isOverdue?: boolean;
         onboardingUrl?: string | null;
+        plan?: SchoolPlanFinanceView | null;
     } | null> {
         const schoolId = input.schoolId.trim();
         if (!schoolId) return null;
@@ -119,10 +121,13 @@ export class GetSchoolProfile {
         }
 
         let isOverdue = false;
+        let plan: SchoolPlanFinanceView | null = null;
 
         if (this.finances && this.invoices) {
             const finance = await this.finances.findActiveBySchoolId(school.id);
             if (finance) {
+                plan = presentSchoolPlanFinance(finance);
+                
                 const allInvoices = await this.invoices.findByFinanceId(finance.id);
                 
                 const today = new Date();
@@ -139,6 +144,11 @@ export class GetSchoolProfile {
                         }
                     }
                 }
+            }
+        } else if (this.finances) {
+            const finance = await this.finances.findActiveBySchoolId(school.id);
+            if (finance) {
+                plan = presentSchoolPlanFinance(finance);
             }
         }
 
@@ -179,7 +189,8 @@ export class GetSchoolProfile {
             },
             images,
             isOverdue,
-            onboardingUrl: school.onboardingUrl
+            onboardingUrl: school.onboardingUrl,
+            plan
         };
     }
 }
