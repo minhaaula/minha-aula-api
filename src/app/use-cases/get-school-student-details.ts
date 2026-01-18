@@ -122,7 +122,7 @@ export class GetSchoolStudentDetails {
                 responsible: {
                     id: responsible.id,
                     fullName: responsible.fullName,
-                    email: responsible.email.toString(),
+                    email: responsible.email.value,
                     phone: responsible.phone,
                     cpf: responsible.cpf
                 },
@@ -140,7 +140,7 @@ export class GetSchoolStudentDetails {
             student: {
                 id: student.id,
                 fullName: student.fullName,
-                email: student.email.toString(),
+                email: student.email.value,
                 phone: student.phone,
                 cpf: student.cpf,
                 birthDate: student.birthDate
