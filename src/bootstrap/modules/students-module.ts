@@ -134,7 +134,9 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
     const getSchoolPublicDetails = new GetSchoolPublicDetails(
         deps.schoolsRepo,
         schoolImagesRepo,
-        deps.storageProvider
+        deps.storageProvider,
+        deps.enrollmentsRepo,
+        deps.schoolReviewsRepo
     );
     const listStudentNotifications = deps.notificationsRepo
         ? new ListStudentNotifications(deps.notificationsRepo)

@@ -364,8 +364,15 @@ export function studentsRouter(deps: {
             });
 
             const { schoolId } = paramsSchema.parse(req.params);
+            
+            // Obter userId se estiver autenticado (opcional)
+            const authReq = req as AuthenticatedRequest;
+            const userId = authReq.user?.sub || undefined;
 
-            const school = await deps.getSchoolPublicDetails!.exec({ schoolId });
+            const school = await deps.getSchoolPublicDetails!.exec({ 
+                schoolId,
+                userId 
+            });
             if (!school) {
                 return res.status(404).json({ 
                     error: 'Escola não encontrada',

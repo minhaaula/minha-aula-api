@@ -2,15 +2,19 @@ import { SchoolRepository } from '../../ports/repositories/school.repo';
 import { type PostalAddressProps } from '../../domain/value-objects/postal-address';
 import { SchoolImageRepository } from '../../ports/repositories/school-image.repo';
 import { StorageProviderPort } from '../../ports/providers/storage-provider.port';
+import { EnrollmentRepository } from '../../ports/repositories/enrollment.repo';
+import { SchoolReviewRepository } from '../../ports/repositories/school-review.repo';
 
 export class GetSchoolPublicDetails {
     constructor(
         private readonly schools: SchoolRepository,
         private readonly schoolImages?: SchoolImageRepository,
-        private readonly storage?: StorageProviderPort
+        private readonly storage?: StorageProviderPort,
+        private readonly enrollments?: EnrollmentRepository,
+        private readonly reviews?: SchoolReviewRepository
     ) {}
 
-    async exec(input: { schoolId: string }): Promise<{
+    async exec(input: { schoolId: string; userId?: string }): Promise<{
         id: string;
         name: string;
         email: string;
@@ -33,6 +37,7 @@ export class GetSchoolPublicDetails {
             createdAt: Date;
         }>;
         createdAt: Date;
+        canReview: boolean;
     } | null> {
         const schoolId = input.schoolId.trim();
         if (!schoolId) return null;
@@ -83,6 +88,26 @@ export class GetSchoolPublicDetails {
             );
         }
 
+        // Verificar se o aluno pode avaliar a escola
+        let canReview = false;
+        if (input.userId && this.enrollments && this.reviews) {
+            const userId = input.userId.trim();
+            
+            // Verificar se está matriculado (ou algum dependente)
+            if (this.enrollments.hasActiveEnrollmentInSchool) {
+                const hasEnrollment = await this.enrollments.hasActiveEnrollmentInSchool(schoolId, userId);
+                
+                if (hasEnrollment) {
+                    // Verificar se já avaliou
+                    if (this.reviews.findByUserAndSchool) {
+                        const existingReview = await this.reviews.findByUserAndSchool(userId, schoolId);
+                        // Só pode avaliar se não tiver avaliado ainda
+                        canReview = !existingReview;
+                    }
+                }
+            }
+        }
+
         return {
             id: school.id,
             name: school.name,
@@ -97,7 +122,8 @@ export class GetSchoolPublicDetails {
                 site: school.siteLink
             },
             images,
-            createdAt: school.createdAt
+            createdAt: school.createdAt,
+            canReview
         };
     }
 }
