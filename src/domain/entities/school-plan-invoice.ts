@@ -17,6 +17,8 @@ export class SchoolPlanInvoice {
         public readonly boletoUrl: string | null,
         public readonly digitableLine: string | null,
         public readonly barcode: string | null,
+        public readonly pixQrCode: string | null,
+        public readonly pixCopiaECola: string | null,
         public readonly externalReference: string | null,
         public readonly metadata: Record<string, string>,
         public readonly paidAt: Date | null,
@@ -42,6 +44,8 @@ export class SchoolPlanInvoice {
         boletoUrl?: string | null;
         digitableLine?: string | null;
         barcode?: string | null;
+        pixQrCode?: string | null;
+        pixCopiaECola?: string | null;
         externalReference?: string | null;
         metadata?: Record<string, string>;
         paidAt?: Date | null;
@@ -88,6 +92,8 @@ export class SchoolPlanInvoice {
         const boletoUrl = params.boletoUrl?.trim() ?? null;
         const digitableLine = params.digitableLine?.trim() ?? null;
         const barcode = params.barcode?.trim() ?? null;
+        const pixQrCode = params.pixQrCode?.trim() ?? null;
+        const pixCopiaECola = params.pixCopiaECola?.trim() ?? null;
         const externalReference = params.externalReference?.trim() ?? null;
         const metadata = params.metadata ? { ...params.metadata } : {};
         const paidAt = params.paidAt ?? null;
@@ -112,6 +118,8 @@ export class SchoolPlanInvoice {
             boletoUrl,
             digitableLine,
             barcode,
+            pixQrCode,
+            pixCopiaECola,
             externalReference,
             metadata,
             paidAt,
@@ -135,6 +143,8 @@ export class SchoolPlanInvoice {
         boletoUrl?: string | null;
         digitableLine?: string | null;
         barcode?: string | null;
+        pixQrCode?: string | null;
+        pixCopiaECola?: string | null;
         externalReference?: string | null;
         metadata?: Record<string, string>;
         description?: string | null;
@@ -160,6 +170,8 @@ export class SchoolPlanInvoice {
             changes.boletoUrl === undefined ? this.boletoUrl : (changes.boletoUrl?.trim() ?? null),
             changes.digitableLine === undefined ? this.digitableLine : (changes.digitableLine?.trim() ?? null),
             changes.barcode === undefined ? this.barcode : (changes.barcode?.trim() ?? null),
+            changes.pixQrCode === undefined ? this.pixQrCode : (changes.pixQrCode?.trim() ?? null),
+            changes.pixCopiaECola === undefined ? this.pixCopiaECola : (changes.pixCopiaECola?.trim() ?? null),
             changes.externalReference === undefined
                 ? this.externalReference
                 : (changes.externalReference?.trim() ?? null),

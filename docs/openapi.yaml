@@ -770,6 +770,9 @@ components:
           type: boolean
           nullable: true
           description: Indica se a escola possui faturas atrasadas não pagas
+        onboardingCompleted:
+          type: boolean
+          description: Indica se o processo de onboarding (KYC) foi finalizado. Quando false, o campo onboardingUrl será retornado.
         onboardingUrl:
           type: string
           nullable: true
@@ -963,6 +966,14 @@ components:
         barcode:
           type: string
           nullable: true
+        pixQrCode:
+          type: string
+          nullable: true
+          description: QR Code do PIX em formato base64 (imagem). Retornado quando o plano é selecionado para pagamento imediato.
+        pixCopiaECola:
+          type: string
+          nullable: true
+          description: Código PIX copia e cola para pagamento. Retornado quando o plano é selecionado para pagamento imediato.
         externalReference:
           type: string
           nullable: true
@@ -1184,6 +1195,56 @@ components:
           minLength: 3
           maxLength: 50
           description: Código do cupom de desconto a ser aplicado na fatura.
+    AssignSchoolPlanResponse:
+      type: object
+      description: Resposta ao selecionar um plano. Inclui os dados do plano e a fatura PIX gerada para pagamento imediato.
+      properties:
+        schoolId:
+          type: string
+          format: uuid
+        plan:
+          $ref: '#/components/schemas/SubscriptionPlanSummary'
+        status:
+          type: string
+          enum:
+            - TRIAL
+            - ACTIVE
+            - PAST_DUE
+            - SUSPENDED
+            - CANCELLED
+          example: ACTIVE
+        isPaid:
+          type: boolean
+        lastPaymentAt:
+          type: string
+          format: date-time
+          nullable: true
+        nextDueAt:
+          type: string
+          format: date-time
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        invoice:
+          $ref: '#/components/schemas/SchoolPlanInvoice'
+          description: Fatura PIX gerada para pagamento imediato do plano. Inclui QR Code, código copia e cola, ID da transação e data de vencimento (mesmo dia).
+        invoiceAlreadyExists:
+          type: boolean
+          description: Indica se uma fatura existente foi reutilizada.
+      required:
+        - schoolId
+        - plan
+        - status
+        - isPaid
+        - createdAt
+        - updatedAt
     Notification:
       type: object
       properties:
@@ -2272,6 +2333,21 @@ components:
           format: uuid
           nullable: true
           description: Identificador do dependente a ser matriculado, quando aplicável.
+        discont:
+          type: number
+          format: double
+          minimum: 0
+          description: Desconto a ser aplicado (em reais). Opcional, padrão é 0.
+          example: 0
+        discountMonths:
+          type: integer
+          format: int32
+          minimum: 1
+          description: |
+            Quantidade de meses que o desconto será aplicado nas mensalidades.
+            **Obrigatório quando há desconto (discont > 0).**
+            O desconto será aplicado nas primeiras X mensalidades, onde X é o valor deste campo.
+          example: 3
     EnrollmentResponse:
       type: object
       properties:

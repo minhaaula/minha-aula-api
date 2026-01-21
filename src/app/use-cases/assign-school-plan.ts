@@ -83,7 +83,8 @@ export class AssignSchoolPlan {
             const issued = await this.invoiceIssuer.exec({
                 schoolId,
                 dueDate: finance.nextDueAt ?? undefined,
-                couponCode: input.couponCode ?? null
+                couponCode: input.couponCode ?? null,
+                generatePix: true // Gerar PIX quando plano é selecionado
             });
             financeForOutput = issued.finance;
             invoiceView = presentSchoolPlanInvoice(issued.invoice);

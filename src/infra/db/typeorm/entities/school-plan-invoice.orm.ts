@@ -63,6 +63,12 @@ export class SchoolPlanInvoiceOrm {
     @Column('varchar', { length: 255, nullable: true })
     barcode!: string | null;
 
+    @Column('text', { name: 'pix_qr_code', nullable: true })
+    pixQrCode!: string | null;
+
+    @Column('text', { name: 'pix_copia_e_cola', nullable: true })
+    pixCopiaECola!: string | null;
+
     @Column('varchar', { length: 255, name: 'external_reference', nullable: true })
     externalReference!: string | null;
 

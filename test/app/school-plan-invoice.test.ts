@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi, afterEach } from 'vitest';
 import { IssueSchoolPlanInvoice } from '../../src/app/use-cases/issue-school-plan-invoice';
 import { SchoolRepository } from '../../src/ports/repositories/school.repo';
 import { School } from '../../src/domain/entities/school';
@@ -8,7 +8,7 @@ import { SchoolPlanFinance } from '../../src/domain/entities/school-plan-finance
 import { SubscriptionPlan } from '../../src/domain/entities/subscription-plan';
 import { SchoolPlanInvoiceRepository } from '../../src/ports/repositories/school-plan-invoice.repo';
 import { SchoolPlanInvoice } from '../../src/domain/entities/school-plan-invoice';
-import { PaymentProviderPort, CreateChargeInput, CreateBoletoChargeInput } from '../../src/ports/providers/payment-provider.port';
+import { PaymentProviderPort, CreateChargeInput, CreateBoletoChargeInput, CreatePixChargeInput } from '../../src/ports/providers/payment-provider.port';
 
 class InMemorySchoolRepository implements SchoolRepository {
     private readonly items = new Map<string, School>();
@@ -69,6 +69,7 @@ class InMemoryInvoiceRepository implements SchoolPlanInvoiceRepository {
 
 class TestPaymentProvider implements PaymentProviderPort {
     public readonly boletoCalls: CreateBoletoChargeInput[] = [];
+    public readonly pixCalls: CreatePixChargeInput[] = [];
 
     async authorize(_input: CreateChargeInput): Promise<{ providerRef: string }> {
         throw new Error('Not implemented');
@@ -81,10 +82,21 @@ class TestPaymentProvider implements PaymentProviderPort {
     async createBoletoCharge(input: CreateBoletoChargeInput) {
         this.boletoCalls.push(input);
         return {
-            providerRef: `asaas-${this.boletoCalls.length}`,
+            providerRef: `asaas-boleto-${this.boletoCalls.length}`,
             boletoUrl: 'https://asaas.test/boletos/123',
             digitableLine: '12345678901234567890123456789012345678901234',
             barcode: '12345678901234567890123456789012345678901234',
+            dueDate: input.dueDate
+        };
+    }
+
+    async createPixCharge(input: CreatePixChargeInput) {
+        this.pixCalls.push(input);
+        return {
+            providerRef: `asaas-pix-${this.pixCalls.length}`,
+            pixQrCode: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+            pixCopiaECola: '00020126580014br.gov.bcb.pix0136123e4567-e12b-12d1-a456-426655440000520400005303986540515.005802BR5913Fulano de Tal6008BRASILIA62070503***63041D3D',
+            invoiceUrl: 'https://asaas.test/pix/123',
             dueDate: input.dueDate
         };
     }
@@ -123,6 +135,9 @@ function createPlan(): SubscriptionPlan {
 }
 
 describe('IssueSchoolPlanInvoice', () => {
+    afterEach(() => {
+        vi.useRealTimers();
+    });
     it('issues a boleto invoice and schedules the next billing date', async () => {
         const schoolsRepo = new InMemorySchoolRepository();
         const financesRepo = new InMemoryFinanceRepository();
@@ -159,7 +174,70 @@ describe('IssueSchoolPlanInvoice', () => {
 
         const stored = await invoicesRepo.findByFinanceIdAndDueDate(finance.id, new Date('2024-01-15T00:00:00Z'));
         expect(stored).not.toBeNull();
-        expect(stored?.providerRef).toMatch(/asaas-/);
+        expect(stored?.providerRef).toMatch(/asaas-boleto-/);
+        expect(stored?.boletoUrl).toBeDefined();
+        expect(stored?.pixQrCode).toBeNull();
+        expect(stored?.pixCopiaECola).toBeNull();
+    });
+
+    it('issues a PIX invoice with same-day due date when generatePix is true', async () => {
+        vi.useFakeTimers();
+        const today = new Date('2024-01-10T10:00:00Z');
+        vi.setSystemTime(today);
+
+        const schoolsRepo = new InMemorySchoolRepository();
+        const financesRepo = new InMemoryFinanceRepository();
+        const invoicesRepo = new InMemoryInvoiceRepository();
+        const provider = new TestPaymentProvider();
+
+        const school = createSchool();
+        const plan = createPlan();
+        const finance = SchoolPlanFinance.create({
+            id: 'finance-1',
+            schoolId: school.id,
+            plan,
+            status: 'ACTIVE',
+            isPaid: false,
+            lastPaymentAt: null,
+            nextDueAt: new Date('2024-01-15T00:00:00Z'),
+            notes: null,
+            createdAt: new Date('2024-01-01T00:00:00Z'),
+            updatedAt: new Date('2024-01-01T00:00:00Z')
+        });
+
+        schoolsRepo.seed(school);
+        financesRepo.seed(finance);
+
+        const useCase = new IssueSchoolPlanInvoice(schoolsRepo, financesRepo, invoicesRepo, provider);
+
+        const result = await useCase.exec({ 
+            schoolId: school.id, 
+            generatePix: true 
+        });
+
+        expect(result.alreadyExists).toBe(false);
+        expect(provider.pixCalls).toHaveLength(1);
+        expect(provider.boletoCalls).toHaveLength(0);
+        expect(result.invoice.financeId).toBe(finance.id);
+        expect(result.invoice.amountCents).toBe(plan.amountCents);
+        
+        // Verifica que a data de vencimento é o mesmo dia (hoje)
+        const todayStr = today.toISOString().slice(0, 10);
+        expect(result.invoice.dueDate.toISOString().slice(0, 10)).toBe(todayStr);
+        expect(provider.pixCalls[0].dueDate.toISOString().slice(0, 10)).toBe(todayStr);
+        
+        // Verifica que os campos PIX foram preenchidos
+        expect(result.invoice.pixQrCode).toBeDefined();
+        expect(result.invoice.pixCopiaECola).toBeDefined();
+        expect(result.invoice.providerRef).toMatch(/asaas-pix-/);
+        expect(result.invoice.boletoUrl).toBeNull();
+        expect(result.invoice.digitableLine).toBeNull();
+
+        const stored = await invoicesRepo.findByFinanceIdAndDueDate(finance.id, today);
+        expect(stored).not.toBeNull();
+        expect(stored?.pixQrCode).toBeDefined();
+        expect(stored?.pixCopiaECola).toBeDefined();
+        expect(stored?.boletoUrl).toBeNull();
     });
 
     it('skips provider call when invoice already exists for due date', async () => {

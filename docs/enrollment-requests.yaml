@@ -178,6 +178,7 @@ paths:
                   requestedForDependentId: null
                   notes: "Aluno interessado em iniciar o curso"
                   discont: 0
+                  discountMonths: null
                   enrollmentFeeAmount: 100.00
                   enrollmentFeeDueDate: "2024-12-15"
                   firstMonthlyPaymentDate: "2024-12-20"
@@ -188,6 +189,7 @@ paths:
                   requestedForDependentId: "660e8400-e29b-41d4-a716-446655440001"
                   notes: "Matrícula para filho do responsável"
                   discont: 0
+                  discountMonths: null
                   enrollmentFeeAmount: 100.00
                   enrollmentFeeDueDate: "2024-12-15"
                   firstMonthlyPaymentDate: "2024-12-20"
@@ -199,6 +201,19 @@ paths:
                   requestedForDependentId: null
                   notes: "Aluno interessado em iniciar o curso"
                   discont: 0
+                  discountMonths: null
+                  enrollmentFeeAmount: 100.00
+                  enrollmentFeeDueDate: "2024-12-15"
+                  firstMonthlyPaymentDate: "2024-12-20"
+              school_admin_with_discount:
+                summary: Matrícula com desconto (SCHOOL/ADMIN)
+                description: Exemplo de matrícula com desconto aplicado por 3 meses
+                value:
+                  requestedForUserId: "550e8400-e29b-41d4-a716-446655440000"
+                  requestedForDependentId: null
+                  notes: "Aluno com desconto promocional"
+                  discont: 50.00
+                  discountMonths: 3
                   enrollmentFeeAmount: 100.00
                   enrollmentFeeDueDate: "2024-12-15"
                   firstMonthlyPaymentDate: "2024-12-20"

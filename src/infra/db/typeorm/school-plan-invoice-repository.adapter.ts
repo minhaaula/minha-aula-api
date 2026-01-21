@@ -63,6 +63,8 @@ export class SchoolPlanInvoiceRepositoryAdapter implements SchoolPlanInvoiceRepo
         row.boletoUrl = invoice.boletoUrl;
         row.digitableLine = invoice.digitableLine;
         row.barcode = invoice.barcode;
+        row.pixQrCode = invoice.pixQrCode;
+        row.pixCopiaECola = invoice.pixCopiaECola;
         row.externalReference = invoice.externalReference;
         row.discountCouponId = invoice.discountCouponId;
         row.discountPercentage = invoice.discountPercentage;
@@ -92,6 +94,8 @@ export class SchoolPlanInvoiceRepositoryAdapter implements SchoolPlanInvoiceRepo
             boletoUrl: row.boletoUrl,
             digitableLine: row.digitableLine,
             barcode: row.barcode,
+            pixQrCode: row.pixQrCode,
+            pixCopiaECola: row.pixCopiaECola,
             externalReference: row.externalReference,
             metadata: row.metadata ? { ...row.metadata } : undefined,
             paidAt: row.paidAt,

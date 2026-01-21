@@ -15,6 +15,8 @@ export type SchoolPlanInvoiceView = {
     boletoUrl: string | null;
     digitableLine: string | null;
     barcode: string | null;
+    pixQrCode: string | null;
+    pixCopiaECola: string | null;
     externalReference: string | null;
     metadata: Record<string, string>;
     paidAt: Date | null;
@@ -61,6 +63,8 @@ export function presentSchoolPlanInvoice(invoice: SchoolPlanInvoice): SchoolPlan
         boletoUrl: invoice.boletoUrl,
         digitableLine: invoice.digitableLine,
         barcode: invoice.barcode,
+        pixQrCode: invoice.pixQrCode,
+        pixCopiaECola: invoice.pixCopiaECola,
         externalReference: invoice.externalReference,
         metadata: { ...invoice.metadata },
         paidAt: invoice.paidAt,

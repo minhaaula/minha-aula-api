@@ -2063,10 +2063,10 @@ paths:
         - Schools
       summary: Selecionar plano para a escola
       description: >-
-        Atualiza o plano de assinatura da escola autenticada. O plano fica em
-        estado pendente até que uma fatura seja paga com sucesso. A primeira
-        fatura vence no próximo dia útil e as demais seguem o ciclo de cobrança
-        do plano.
+        Atualiza o plano de assinatura da escola autenticada e gera uma fatura PIX para pagamento imediato.
+        A resposta inclui os dados do PIX (QR Code, código copia e cola, ID da transação e data de vencimento)
+        para que o usuário possa pagar o plano escolhido na hora. A data de vencimento é o mesmo dia da seleção.
+        O plano fica em estado pendente até que a fatura seja paga com sucesso.
       security:
         - bearerAuth: []
       requestBody:
@@ -2077,11 +2077,11 @@ paths:
               $ref: '#/components/schemas/AssignSchoolPlanInput'
       responses:
         '200':
-          description: Plano atribuído com sucesso.
+          description: Plano atribuído com sucesso. Retorna os dados do plano e a fatura PIX gerada para pagamento imediato.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SchoolPlanResponse'
+                $ref: '#/components/schemas/AssignSchoolPlanResponse'
         '400':
           description: Dados inválidos ou plano indisponível.
           content:

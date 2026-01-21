@@ -64,6 +64,7 @@ export class GetSchoolProfile {
             createdAt: Date;
         }>;
         isOverdue?: boolean;
+        onboardingCompleted: boolean;
         onboardingUrl?: string | null;
         plan?: SchoolPlanFinanceView | null;
     } | null> {
@@ -152,6 +153,10 @@ export class GetSchoolProfile {
             }
         }
 
+        // Determinar se o onboarding foi finalizado
+        // O onboarding está finalizado quando o webhook do Asaas confirma a aprovação da conta
+        const onboardingCompleted = school.onboardingCompletedAt !== null;
+
         return {
             id: school.id,
             name: school.name,
@@ -189,6 +194,7 @@ export class GetSchoolProfile {
             },
             images,
             isOverdue,
+            onboardingCompleted,
             onboardingUrl: school.onboardingUrl,
             plan
         };

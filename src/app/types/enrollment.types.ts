@@ -71,6 +71,8 @@ export interface EnrollStudentInput {
     classId: string;
     studentUserId: string;
     dependentId?: string | null;
+    discount?: number | null;
+    discountMonths?: number | null;
 }
 
 export interface EnrollStudentOutput {

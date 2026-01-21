@@ -134,6 +134,7 @@ export interface GetSchoolProfileOutput {
         createdAt: Date;
     }>;
     isOverdue?: boolean;
+    onboardingCompleted: boolean;
     onboardingUrl?: string | null;
 }
 

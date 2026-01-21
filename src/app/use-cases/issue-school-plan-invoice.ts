@@ -17,6 +17,7 @@ type IssueSchoolPlanInvoiceInput = {
     dueDate?: Date;
     description?: string | null;
     couponCode?: string | null;
+    generatePix?: boolean; // Se true, gera PIX ao invés de boleto
 };
 
 export type IssueSchoolPlanInvoiceResult = {
@@ -53,16 +54,23 @@ export class IssueSchoolPlanInvoice {
         }
 
         const plan = finance.plan;
-        const baseDue = input.dueDate ?? finance.nextDueAt ?? calculateNextBillingDate(plan.billingCycle);
-        let dueDate = new Date(baseDue);
-        
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        dueDate.setHours(0, 0, 0, 0);
         
-        if (dueDate <= today) {
+        // Se generatePix é true (plano sendo selecionado), vencimento é hoje
+        // Caso contrário, usa a lógica normal
+        let dueDate: Date;
+        if (input.generatePix === true) {
             dueDate = new Date(today);
-            dueDate.setDate(dueDate.getDate() + 1);
+        } else {
+            const baseDue = input.dueDate ?? finance.nextDueAt ?? calculateNextBillingDate(plan.billingCycle);
+            dueDate = new Date(baseDue);
+            dueDate.setHours(0, 0, 0, 0);
+            
+            if (dueDate <= today) {
+                dueDate = new Date(today);
+                dueDate.setDate(dueDate.getDate() + 1);
+            }
         }
 
         let coupon = null;
@@ -83,8 +91,16 @@ export class IssueSchoolPlanInvoice {
             };
         }
 
-        if (!this.paymentProvider.createBoletoCharge) {
-            throw new Error('Configured payment provider does not support boleto invoices');
+        const usePix = input.generatePix === true;
+        
+        if (usePix) {
+            if (!this.paymentProvider.createPixCharge) {
+                throw new Error('Configured payment provider does not support PIX invoices');
+            }
+        } else {
+            if (!this.paymentProvider.createBoletoCharge) {
+                throw new Error('Configured payment provider does not support boleto invoices');
+            }
         }
 
         const address = school.addresses[0]?.toPrimitives();
@@ -114,22 +130,59 @@ export class IssueSchoolPlanInvoice {
             discountCouponId = coupon.id;
         }
 
-        const charge = await this.paymentProvider.createBoletoCharge({
-            amount: Money.of(amountCents, plan.currency),
-            customer: {
-                name: customerName,
-                email: customerEmail,
-                cpfCnpj: customerTaxId,
-                postalCode: address.zipCode,
-                addressNumber: address.number,
-                addressComplement: address.complement ?? undefined,
-                phone: school.phone
-            },
-            dueDate,
-            description: input.description ?? `Assinatura ${plan.name}${coupon ? ` - Cupom ${coupon.code}` : ''}`,
-            externalReference: `${finance.id}:${dueDate.toISOString().slice(0, 10)}`,
-            metadata
-        });
+        let charge: { providerRef: string; boletoUrl?: string | null; digitableLine?: string | null; barcode?: string | null; pixQrCode?: string | null; pixCopiaECola?: string | null; invoiceUrl?: string | null; dueDate: Date };
+        
+        if (usePix) {
+            const pixCharge = await this.paymentProvider.createPixCharge!({
+                amount: Money.of(amountCents, plan.currency),
+                customer: {
+                    name: customerName,
+                    email: customerEmail,
+                    cpfCnpj: customerTaxId,
+                    postalCode: address.zipCode,
+                    addressNumber: address.number,
+                    addressComplement: address.complement ?? undefined,
+                    phone: school.phone
+                },
+                dueDate,
+                description: input.description ?? `Assinatura ${plan.name}${coupon ? ` - Cupom ${coupon.code}` : ''}`,
+                externalReference: `${finance.id}:${dueDate.toISOString().slice(0, 10)}`,
+                metadata
+            });
+            
+            charge = {
+                providerRef: pixCharge.providerRef,
+                pixQrCode: pixCharge.pixQrCode ?? null,
+                pixCopiaECola: pixCharge.pixCopiaECola ?? null,
+                invoiceUrl: pixCharge.invoiceUrl ?? null,
+                dueDate: pixCharge.dueDate
+            };
+        } else {
+            const boletoCharge = await this.paymentProvider.createBoletoCharge!({
+                amount: Money.of(amountCents, plan.currency),
+                customer: {
+                    name: customerName,
+                    email: customerEmail,
+                    cpfCnpj: customerTaxId,
+                    postalCode: address.zipCode,
+                    addressNumber: address.number,
+                    addressComplement: address.complement ?? undefined,
+                    phone: school.phone
+                },
+                dueDate,
+                description: input.description ?? `Assinatura ${plan.name}${coupon ? ` - Cupom ${coupon.code}` : ''}`,
+                externalReference: `${finance.id}:${dueDate.toISOString().slice(0, 10)}`,
+                metadata
+            });
+            
+            charge = {
+                providerRef: boletoCharge.providerRef,
+                boletoUrl: boletoCharge.boletoUrl ?? null,
+                digitableLine: boletoCharge.digitableLine ?? null,
+                barcode: boletoCharge.barcode ?? null,
+                dueDate: boletoCharge.dueDate
+            };
+        }
 
         const invoice = SchoolPlanInvoice.create({
             id: Uuid(),
@@ -141,9 +194,11 @@ export class IssueSchoolPlanInvoice {
             dueDate: charge.dueDate,
             description: input.description ?? `Assinatura ${plan.name}${coupon ? ` - Cupom ${coupon.code}` : ''}`,
             providerRef: charge.providerRef,
-            boletoUrl: charge.boletoUrl ?? null,
-            digitableLine: charge.digitableLine ?? null,
-            barcode: charge.barcode ?? null,
+            boletoUrl: 'boletoUrl' in charge ? charge.boletoUrl ?? null : null,
+            digitableLine: 'digitableLine' in charge ? charge.digitableLine ?? null : null,
+            barcode: 'barcode' in charge ? charge.barcode ?? null : null,
+            pixQrCode: 'pixQrCode' in charge ? charge.pixQrCode ?? null : null,
+            pixCopiaECola: 'pixCopiaECola' in charge ? charge.pixCopiaECola ?? null : null,
             externalReference: `${finance.id}:${charge.dueDate.toISOString().slice(0, 10)}`,
             metadata,
             paidAt: null,
@@ -174,6 +229,10 @@ export class IssueSchoolPlanInvoice {
 
                 if (currentDueDate > coupon.validUntil) {
                     break;
+                }
+
+                if (!this.paymentProvider.createBoletoCharge) {
+                    throw new Error('Cannot create additional invoices: boleto provider not available');
                 }
 
                 const additionalCharge = await this.paymentProvider.createBoletoCharge({

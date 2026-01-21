@@ -274,7 +274,20 @@ export function buildCoursesRoutes(deps: CoursesRoutesDeps, guards: SchoolRouteG
             const { courseId, classId } = courseClassParamsSchema.parse(req.params);
             const bodySchema = z.object({
                 studentUserId: z.string().uuid(),
-                dependentId: z.string().uuid().optional()
+                dependentId: z.string().uuid().optional(),
+                discont: z.coerce.number().min(0).optional(),
+                discountMonths: z.coerce.number().int().min(1).optional()
+            }).superRefine((data, ctx) => {
+                // Se há desconto, discountMonths é obrigatório
+                if (data.discont !== undefined && data.discont !== null && data.discont > 0) {
+                    if (!data.discountMonths || data.discountMonths < 1) {
+                        ctx.addIssue({
+                            code: z.ZodIssueCode.custom,
+                            path: ['discountMonths'],
+                            message: 'discountMonths é obrigatório quando há desconto (discont > 0)'
+                        });
+                    }
+                }
             });
             const data = bodySchema.parse(req.body ?? {});
             const schoolId = (req as SchoolContextRequest).schoolId as string;
@@ -284,7 +297,9 @@ export function buildCoursesRoutes(deps: CoursesRoutesDeps, guards: SchoolRouteG
                 courseId,
                 classId,
                 studentUserId: data.studentUserId,
-                dependentId: data.dependentId ?? null
+                dependentId: data.dependentId ?? null,
+                discount: data.discont ?? null,
+                discountMonths: data.discountMonths ?? null
             });
 
             res.status(201).json(enrollment);

@@ -10,7 +10,7 @@ import { SchoolPlanFinance } from '../../src/domain/entities/school-plan-finance
 import { IssueSchoolPlanInvoice } from '../../src/app/use-cases/issue-school-plan-invoice';
 import { SchoolPlanInvoiceRepository } from '../../src/ports/repositories/school-plan-invoice.repo';
 import { SchoolPlanInvoice } from '../../src/domain/entities/school-plan-invoice';
-import { PaymentProviderPort, CreateChargeInput, CreateBoletoChargeInput } from '../../src/ports/providers/payment-provider.port';
+import { PaymentProviderPort, CreateChargeInput, CreateBoletoChargeInput, CreatePixChargeInput } from '../../src/ports/providers/payment-provider.port';
 
 class InMemorySchoolRepository implements SchoolRepository {
     private readonly items = new Map<string, School>();
@@ -87,6 +87,7 @@ class InMemoryInvoiceRepository implements SchoolPlanInvoiceRepository {
 
 class TestPaymentProvider implements PaymentProviderPort {
     public lastBoletoInput: CreateBoletoChargeInput | null = null;
+    public lastPixInput: CreatePixChargeInput | null = null;
 
     async authorize(_input: CreateChargeInput): Promise<{ providerRef: string; }> {
         throw new Error('Not implemented');
@@ -106,14 +107,25 @@ class TestPaymentProvider implements PaymentProviderPort {
             dueDate: input.dueDate
         };
     }
+
+    async createPixCharge(input: CreatePixChargeInput) {
+        this.lastPixInput = input;
+        return {
+            providerRef: 'asaas-pix-1',
+            pixQrCode: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+            pixCopiaECola: '00020126580014br.gov.bcb.pix0136123e4567-e12b-12d1-a456-426655440000520400005303986540515.005802BR5913Fulano de Tal6008BRASILIA62070503***63041D3D',
+            invoiceUrl: 'https://asaas.test/pix/123',
+            dueDate: input.dueDate
+        };
+    }
 }
 
-describe('AssignSchoolPlan - first invoice due next day', () => {
+describe('AssignSchoolPlan', () => {
     afterEach(() => {
         vi.useRealTimers();
     });
 
-    it('issues the first invoice with next-day due date', async () => {
+    it('issues PIX invoice with same-day due date when plan is selected', async () => {
         vi.useFakeTimers();
         const now = new Date('2024-05-05T10:00:00Z');
         vi.setSystemTime(now);
@@ -161,16 +173,27 @@ describe('AssignSchoolPlan - first invoice due next day', () => {
             planId: plan.id
         });
 
-        expect(paymentProvider.lastBoletoInput).not.toBeNull();
-        expect(paymentProvider.lastBoletoInput?.dueDate.toISOString().slice(0, 10)).toBe('2024-05-06');
+        // Verifica que foi gerado PIX, não boleto
+        expect(paymentProvider.lastPixInput).not.toBeNull();
+        expect(paymentProvider.lastBoletoInput).toBeNull();
+        
+        // Verifica que a data de vencimento é o mesmo dia (hoje)
+        expect(paymentProvider.lastPixInput?.dueDate.toISOString().slice(0, 10)).toBe('2024-05-05');
+        
+        // Verifica que a invoice foi retornada com dados do PIX
         expect(result.invoice).toBeDefined();
-        expect(result.invoice?.dueDate.toISOString().slice(0, 10)).toBe('2024-05-06');
+        expect(result.invoice?.dueDate.toISOString().slice(0, 10)).toBe('2024-05-05');
+        expect(result.invoice?.pixQrCode).toBeDefined();
+        expect(result.invoice?.pixCopiaECola).toBeDefined();
+        expect(result.invoice?.providerRef).toBe('asaas-pix-1');
 
-        const storedFinance = financeRepo.get(school.id);
-        expect(storedFinance?.nextDueAt?.toISOString().slice(0, 10)).toBe('2024-06-06');
-
+        // Verifica que a invoice foi salva com dados do PIX
         const storedInvoice = invoiceRepo.all()[0];
-        expect(storedInvoice?.dueDate.toISOString().slice(0, 10)).toBe('2024-05-06');
+        expect(storedInvoice?.dueDate.toISOString().slice(0, 10)).toBe('2024-05-05');
         expect(storedInvoice?.amountCents).toBe(plan.amountCents);
+        expect(storedInvoice?.pixQrCode).toBeDefined();
+        expect(storedInvoice?.pixCopiaECola).toBeDefined();
+        expect(storedInvoice?.boletoUrl).toBeNull();
+        expect(storedInvoice?.digitableLine).toBeNull();
     });
 });
