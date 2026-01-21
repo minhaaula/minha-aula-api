@@ -28,6 +28,7 @@ import { PasswordResetTokenOrm } from './entities/password-reset-token.orm';
 import { SchoolReviewOrm } from './entities/school-review.orm';
 import { SchoolImageOrm } from './entities/school-image.orm';
 import { DiscountCouponOrm } from './entities/discount-coupon.orm';
+import { UserPushTokenOrm } from './entities/user-push-token.orm';
 
 export const AppDataSource = new DataSource({
     type: 'mysql',
@@ -63,7 +64,8 @@ export const AppDataSource = new DataSource({
         PasswordResetTokenOrm,
         SchoolReviewOrm,
         SchoolImageOrm,
-        DiscountCouponOrm
+        DiscountCouponOrm,
+        UserPushTokenOrm
     ],
     synchronize: false,
     migrations: ['dist/infra/db/typeorm/migrations/*.js'],

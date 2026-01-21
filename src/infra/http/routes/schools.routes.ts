@@ -51,6 +51,7 @@ import type { CreateSchoolBankAccount } from '../../../app/use-cases/create-scho
 import type { UpdateSchoolBankAccount } from '../../../app/use-cases/update-school-bank-account';
 import type { DeleteSchoolBankAccount } from '../../../app/use-cases/delete-school-bank-account';
 import type { ListSchoolNotifications } from '../../../app/use-cases/list-school-notifications';
+import type { SendClassPushNotification } from '../../../app/use-cases/send-class-push-notification';
 import type { RequestPasswordReset } from '../../../app/use-cases/request-password-reset';
 import type { ResetPassword } from '../../../app/use-cases/reset-password';
 import type { UpdateSchoolPassword } from '../../../app/use-cases/update-school-password';
@@ -114,6 +115,7 @@ export type SchoolsRouterDeps = {
     listSchoolImages?: import('../../../app/use-cases/list-school-images').ListSchoolImages;
     validateSchoolCoupon?: import('../../../app/use-cases/validate-school-coupon').ValidateSchoolCoupon;
     listSchoolNotifications?: ListSchoolNotifications;
+    sendClassPushNotification?: SendClassPushNotification;
     getSchoolPendingDocuments?: import('../../../app/use-cases/get-school-pending-documents').GetSchoolPendingDocuments;
 };
 
@@ -214,7 +216,8 @@ export function schoolsRouter(deps: SchoolsRouterDeps) {
 
     if (deps.listSchoolNotifications) {
         router.use('/notifications', buildNotificationsRoutes({
-            listSchoolNotifications: deps.listSchoolNotifications
+            listSchoolNotifications: deps.listSchoolNotifications,
+            sendClassPushNotification: deps.sendClassPushNotification
         }, guards));
     }
 

@@ -19,6 +19,7 @@ import { CategoryRepositoryAdapter } from '../infra/db/typeorm/category-reposito
 import { SchoolBankAccountRepositoryAdapter } from '../infra/db/typeorm/school-bank-account-repository.adapter';
 import { SchoolReviewRepositoryAdapter } from '../infra/db/typeorm/school-review-repository.adapter';
 import { NotificationRepositoryAdapter } from '../infra/db/typeorm/notification-repository.adapter';
+import { PushTokenRepositoryAdapter } from '../infra/db/typeorm/push-token-repository.adapter';
 import { OutboxProducer } from '../infra/messaging/bullmq/outbox-producer';
 import { ScryptPasswordHasher } from '../infra/auth/scrypt-password-hasher';
 import { HmacTokenProvider } from '../infra/auth/hmac-token-provider';
@@ -85,6 +86,7 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
     const enrollmentRequestsRepo = new EnrollmentRequestRepositoryAdapter();
     const schoolReviewsRepo = new SchoolReviewRepositoryAdapter();
     const notificationsRepo = new NotificationRepositoryAdapter();
+    const pushTokensRepo = new PushTokenRepositoryAdapter();
     const outbox = new OutboxProducer();
 
     const passwordHasher = new ScryptPasswordHasher();
@@ -292,7 +294,8 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
                     emailProvider,
                     frontendBaseUrl,
                     storageProvider,
-                    notificationsRepo
+                    notificationsRepo,
+                    outbox
                 }, ctx);
                 mergeModuleResult(serverDeps, docFiles, result);
                 break;
@@ -315,6 +318,8 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
                     schoolReviewsRepo,
                     storageProvider,
                     notificationsRepo
+                    ,
+                    pushTokensRepo
                 }, ctx);
                 mergeModuleResult(serverDeps, docFiles, result);
                 break;

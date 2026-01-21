@@ -3,6 +3,8 @@ import { ListMyEnrollmentRequests } from '../../src/app/use-cases/list-my-enroll
 import { EnrollmentRequestRepository } from '../../src/ports/repositories/enrollment-request.repo';
 import { EnrollmentRequest, EnrollmentRequestStatus } from '../../src/domain/entities/enrollment-request';
 import { EnrollmentRequestWithDetails } from '../../src/ports/repositories/enrollment-request.repo';
+import { DependentRepository } from '../../src/ports/repositories/dependent.repo';
+import { Dependent } from '../../src/domain/entities/dependent';
 
 class InMemoryEnrollmentRequestRepository implements EnrollmentRequestRepository {
     private readonly items: EnrollmentRequestWithDetails[] = [];
@@ -75,6 +77,34 @@ class InMemoryEnrollmentRequestRepository implements EnrollmentRequestRepository
     }
 }
 
+class InMemoryDependentsRepository implements DependentRepository {
+    private readonly items: Dependent[] = [];
+
+    async findById(): Promise<Dependent | null> {
+        return null;
+    }
+    async findByUserId(): Promise<Dependent[]> {
+        return [];
+    }
+    async findByUserIds(userIds: string[]): Promise<Dependent[]> {
+        const set = new Set(userIds);
+        return this.items.filter((d) => set.has(d.userId));
+    }
+    async save(): Promise<void> {
+        // no-op
+    }
+    async delete(): Promise<void> {
+        // no-op
+    }
+    async update(): Promise<void> {
+        // no-op
+    }
+    seed(items: Dependent[]) {
+        this.items.length = 0;
+        this.items.push(...items);
+    }
+}
+
 function makeEnrollmentRequest(
     id: string,
     userId: string,
@@ -82,13 +112,12 @@ function makeEnrollmentRequest(
     dependentId: string | null = null,
     createdAt?: Date
 ): EnrollmentRequest {
-    return EnrollmentRequest.create({
+    const req = EnrollmentRequest.create({
         id,
         schoolId: 'school-1',
         courseClassId: 'class-1',
         requestedForUserId: userId,
         requestedForDependentId: dependentId,
-        status,
         firstMonthlyPaymentDate: new Date('2024-02-01'),
         enrollmentFeeCents: null,
         enrollmentFeeDueDate: null,
@@ -99,6 +128,10 @@ function makeEnrollmentRequest(
         decidedByUserId: null,
         createdAt: createdAt || new Date()
     });
+    if (status !== 'PENDING') {
+        (req as any)._status = status;
+    }
+    return req;
 }
 
 function makeRequestWithDetails(
@@ -120,6 +153,7 @@ function makeRequestWithDetails(
 describe('ListMyEnrollmentRequests use case', () => {
     it('returns all enrollment requests for a user', async () => {
         const repo = new InMemoryEnrollmentRequestRepository();
+        const dependents = new InMemoryDependentsRepository();
         const userId = 'user-test-1';
 
         const baseDate = new Date('2024-01-01T00:00:00Z');
@@ -128,7 +162,7 @@ describe('ListMyEnrollmentRequests use case', () => {
             makeRequestWithDetails(makeEnrollmentRequest('req-test-2', userId, 'APPROVED', null, new Date(baseDate.getTime() + 1000)))
         ]);
 
-        const useCase = new ListMyEnrollmentRequests(repo);
+        const useCase = new ListMyEnrollmentRequests(repo, dependents);
         const result = await useCase.exec({ userId });
 
         expect(result.requests).toHaveLength(2);
@@ -142,6 +176,7 @@ describe('ListMyEnrollmentRequests use case', () => {
 
     it('filters by status', async () => {
         const repo = new InMemoryEnrollmentRequestRepository();
+        const dependents = new InMemoryDependentsRepository();
         const userId = 'user-test-filter'; // Usar userId único para evitar vazamento
 
         const baseDate = new Date('2024-01-02T00:00:00Z');
@@ -152,7 +187,7 @@ describe('ListMyEnrollmentRequests use case', () => {
         ];
         repo.seed(requests);
 
-        const useCase = new ListMyEnrollmentRequests(repo);
+        const useCase = new ListMyEnrollmentRequests(repo, dependents);
         const result = await useCase.exec({ userId, status: 'PENDING' });
 
         expect(result.requests).toHaveLength(1);
@@ -162,9 +197,10 @@ describe('ListMyEnrollmentRequests use case', () => {
 
     it('returns empty list when user has no requests', async () => {
         const repo = new InMemoryEnrollmentRequestRepository();
+        const dependents = new InMemoryDependentsRepository();
         const userId = 'user-1';
 
-        const useCase = new ListMyEnrollmentRequests(repo);
+        const useCase = new ListMyEnrollmentRequests(repo, dependents);
         const result = await useCase.exec({ userId });
 
         expect(result.requests).toHaveLength(0);
@@ -172,7 +208,8 @@ describe('ListMyEnrollmentRequests use case', () => {
 
     it('returns empty list when userId is empty', async () => {
         const repo = new InMemoryEnrollmentRequestRepository();
-        const useCase = new ListMyEnrollmentRequests(repo);
+        const dependents = new InMemoryDependentsRepository();
+        const useCase = new ListMyEnrollmentRequests(repo, dependents);
         const result = await useCase.exec({ userId: '' });
 
         expect(result.requests).toHaveLength(0);
@@ -180,13 +217,14 @@ describe('ListMyEnrollmentRequests use case', () => {
 
     it('only returns requests for the specified user', async () => {
         const repo = new InMemoryEnrollmentRequestRepository();
+        const dependents = new InMemoryDependentsRepository();
 
         repo.seed([
             makeRequestWithDetails(makeEnrollmentRequest('req-1', 'user-1')),
             makeRequestWithDetails(makeEnrollmentRequest('req-2', 'user-2'))
         ]);
 
-        const useCase = new ListMyEnrollmentRequests(repo);
+        const useCase = new ListMyEnrollmentRequests(repo, dependents);
         const result = await useCase.exec({ userId: 'user-1' });
 
         expect(result.requests).toHaveLength(1);
@@ -195,6 +233,7 @@ describe('ListMyEnrollmentRequests use case', () => {
 
     it('includes course and class labels', async () => {
         const repo = new InMemoryEnrollmentRequestRepository();
+        const dependents = new InMemoryDependentsRepository();
         const userId = 'user-1';
 
         repo.seed([
@@ -206,7 +245,7 @@ describe('ListMyEnrollmentRequests use case', () => {
             )
         ]);
 
-        const useCase = new ListMyEnrollmentRequests(repo);
+        const useCase = new ListMyEnrollmentRequests(repo, dependents);
         const result = await useCase.exec({ userId });
 
         expect(result.requests).toHaveLength(1);
@@ -217,7 +256,10 @@ describe('ListMyEnrollmentRequests use case', () => {
 
     it('handles requests with dependents', async () => {
         const repo = new InMemoryEnrollmentRequestRepository();
+        const dependents = new InMemoryDependentsRepository();
         const userId = 'user-1';
+
+        dependents.seed([Dependent.create({ id: 'dep-1', userId, fullName: 'Maria Silva', birthDate: null })]);
 
         repo.seed([
             makeRequestWithDetails(
@@ -229,7 +271,7 @@ describe('ListMyEnrollmentRequests use case', () => {
             )
         ]);
 
-        const useCase = new ListMyEnrollmentRequests(repo);
+        const useCase = new ListMyEnrollmentRequests(repo, dependents);
         const result = await useCase.exec({ userId });
 
         expect(result.requests).toHaveLength(1);
@@ -239,6 +281,7 @@ describe('ListMyEnrollmentRequests use case', () => {
 
     it('respects limit and offset', async () => {
         const repo = new InMemoryEnrollmentRequestRepository();
+        const dependents = new InMemoryDependentsRepository();
         const userId = 'user-test-3';
 
         const baseDate = new Date('2024-01-03T00:00:00Z');
@@ -248,7 +291,7 @@ describe('ListMyEnrollmentRequests use case', () => {
             makeRequestWithDetails(makeEnrollmentRequest('req-test-9', userId, 'PENDING', null, new Date(baseDate.getTime() + 1000)))
         ]);
 
-        const useCase = new ListMyEnrollmentRequests(repo);
+        const useCase = new ListMyEnrollmentRequests(repo, dependents);
         const result = await useCase.exec({ userId, limit: 2, offset: 1 });
 
         expect(result.requests).toHaveLength(2);

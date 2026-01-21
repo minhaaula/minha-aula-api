@@ -308,6 +308,7 @@ describe('CreateEnrollmentRequest', () => {
             courseClassId: courseClass.id,
             requestedForUserId: user.id,
             discount: 150.75,
+            discountMonths: 1,
             firstMonthlyPaymentDate: '2024-02-01'
         });
 
@@ -402,9 +403,11 @@ describe('ApproveEnrollmentRequest', () => {
         const enrollments = new InMemoryEnrollments();
         const requests = new InMemoryRequests();
         const classes = new InMemoryClasses();
+        const courses = new InMemoryCourses();
         const charges = new InMemoryCharges();
-        const { courseClass } = setupCourseStructure();
+        const { course, courseClass } = setupCourseStructure();
         classes.seed(courseClass);
+        courses.seed(course);
         const request = EnrollmentRequest.create({
             id: 'req-1',
             schoolId: 'school-1',
@@ -414,7 +417,7 @@ describe('ApproveEnrollmentRequest', () => {
         });
         requests.seed(request);
 
-        const useCase = new ApproveEnrollmentRequest(requests, enrollments, classes, charges);
+        const useCase = new ApproveEnrollmentRequest(requests, enrollments, classes, courses, charges);
         const result = await useCase.exec({ requestId: request.id, approverUserId: 'user-1' });
 
         expect(result.status).toBe('APPROVED');
@@ -428,9 +431,11 @@ describe('ApproveEnrollmentRequest', () => {
         const enrollments = new InMemoryEnrollments();
         const requests = new InMemoryRequests();
         const classes = new InMemoryClasses();
+        const courses = new InMemoryCourses();
         const charges = new InMemoryCharges();
-        const { courseClass } = setupCourseStructure();
+        const { course, courseClass } = setupCourseStructure();
         classes.seed(courseClass);
+        courses.seed(course);
         const request = EnrollmentRequest.create({
             id: 'req-2',
             schoolId: 'school-1',
@@ -441,7 +446,7 @@ describe('ApproveEnrollmentRequest', () => {
         });
         requests.seed(request);
 
-        const useCase = new ApproveEnrollmentRequest(requests, enrollments, classes, charges);
+        const useCase = new ApproveEnrollmentRequest(requests, enrollments, classes, courses, charges);
         await expect(useCase.exec({ requestId: 'missing', approverUserId: 'owner' })).rejects.toThrow('Solicitação de matrícula não encontrada');
         await expect(useCase.exec({ requestId: request.id, approverUserId: 'other' })).rejects.toThrow('Operação não permitida');
 
@@ -462,9 +467,11 @@ describe('ApproveEnrollmentRequest', () => {
         const enrollments = new InMemoryEnrollments();
         const requests = new InMemoryRequests();
         const classes = new InMemoryClasses();
+        const courses = new InMemoryCourses();
         const charges = new InMemoryCharges();
-        const { courseClass } = setupCourseStructure();
+        const { course, courseClass } = setupCourseStructure();
         classes.seed(courseClass);
+        courses.seed(course);
         const request = EnrollmentRequest.create({
             id: 'req-3',
             schoolId: 'school-1',
@@ -476,7 +483,7 @@ describe('ApproveEnrollmentRequest', () => {
         });
         requests.seed(request);
 
-        const useCase = new ApproveEnrollmentRequest(requests, enrollments, classes, charges);
+        const useCase = new ApproveEnrollmentRequest(requests, enrollments, classes, courses, charges);
         const approval = await useCase.exec({ requestId: request.id, approverUserId: 'user-1' });
 
         const savedCharges = charges.all();
@@ -494,9 +501,11 @@ describe('ApproveEnrollmentRequest', () => {
         const enrollments = new InMemoryEnrollments();
         const requests = new InMemoryRequests();
         const classes = new InMemoryClasses();
+        const courses = new InMemoryCourses();
         const charges = new InMemoryCharges();
-        const { courseClass } = setupCourseStructure();
+        const { course, courseClass } = setupCourseStructure();
         classes.seed(courseClass);
+        courses.seed(course);
         const request = EnrollmentRequest.create({
             id: 'req-4',
             schoolId: 'school-1',
@@ -507,7 +516,7 @@ describe('ApproveEnrollmentRequest', () => {
         });
         requests.seed(request);
 
-        const useCase = new ApproveEnrollmentRequest(requests, enrollments, classes, charges);
+        const useCase = new ApproveEnrollmentRequest(requests, enrollments, classes, courses, charges);
         const approval = await useCase.exec({ requestId: request.id, approverUserId: 'user-1' });
 
         const savedCharges = charges.all();
@@ -673,8 +682,10 @@ describe('GetEnrollmentRequest', () => {
 describe('IssueEnrollmentFeeBoleto', () => {
     it('issues boleto for pending enrollment charge', async () => {
         const users = new InMemoryUsers();
+        const schools = new InMemorySchools();
         const charges = new InMemoryCharges();
         const { school, course, courseClass } = setupCourseStructure();
+        schools.seed(school);
         const user = makeUser('user-boleto');
         users.seed(user);
 
@@ -701,7 +712,7 @@ describe('IssueEnrollmentFeeBoleto', () => {
             dueDate: new Date('2024-04-10')
         });
 
-        const issueBoleto = new IssueEnrollmentFeeBoleto(charges, users, provider);
+        const issueBoleto = new IssueEnrollmentFeeBoleto(charges, users, schools, provider);
         const result = await issueBoleto.exec({
             chargeId: charge.id,
             requester: { id: user.id, persona: UserPersonaEnum.STUDENT }
@@ -720,8 +731,10 @@ describe('IssueEnrollmentFeeBoleto', () => {
 
     it('reuses existing boleto data when already issued', async () => {
         const users = new InMemoryUsers();
+        const schools = new InMemorySchools();
         const charges = new InMemoryCharges();
         const { school, course, courseClass } = setupCourseStructure();
+        schools.seed(school);
         const user = makeUser('user-existing');
         users.seed(user);
 
@@ -753,7 +766,7 @@ describe('IssueEnrollmentFeeBoleto', () => {
             dueDate: new Date('2024-05-05')
         });
 
-        const issueBoleto = new IssueEnrollmentFeeBoleto(charges, users, provider);
+        const issueBoleto = new IssueEnrollmentFeeBoleto(charges, users, schools, provider);
         const result = await issueBoleto.exec({
             chargeId: charge.id,
             requester: { id: user.id, persona: UserPersonaEnum.STUDENT }
@@ -766,8 +779,10 @@ describe('IssueEnrollmentFeeBoleto', () => {
 
     it('validates requester permissions', async () => {
         const users = new InMemoryUsers();
+        const schools = new InMemorySchools();
         const charges = new InMemoryCharges();
         const { school, course, courseClass } = setupCourseStructure();
+        schools.seed(school);
         const owner = makeUser('owner-user');
         const other = makeUser('other-user');
         users.seed(owner);
@@ -791,7 +806,7 @@ describe('IssueEnrollmentFeeBoleto', () => {
             providerRef: 'asaas-pay-3',
             dueDate: new Date('2024-06-01')
         });
-        const issueBoleto = new IssueEnrollmentFeeBoleto(charges, users, provider);
+        const issueBoleto = new IssueEnrollmentFeeBoleto(charges, users, schools, provider);
 
         await expect(issueBoleto.exec({
             chargeId: charge.id,
@@ -801,8 +816,10 @@ describe('IssueEnrollmentFeeBoleto', () => {
 
     it('rejects charges with ineligible status', async () => {
         const users = new InMemoryUsers();
+        const schools = new InMemorySchools();
         const charges = new InMemoryCharges();
         const { school, course, courseClass } = setupCourseStructure();
+        schools.seed(school);
         const user = makeUser('user-ineligible');
         users.seed(user);
 
@@ -825,7 +842,7 @@ describe('IssueEnrollmentFeeBoleto', () => {
             providerRef: 'asaas-pay-4',
             dueDate: new Date('2024-07-01')
         });
-        const issueBoleto = new IssueEnrollmentFeeBoleto(charges, users, provider);
+        const issueBoleto = new IssueEnrollmentFeeBoleto(charges, users, schools, provider);
 
         await expect(issueBoleto.exec({
             chargeId: charge.id,

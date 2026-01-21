@@ -41,6 +41,9 @@ import { SchoolReviewRepositoryAdapter } from '../../infra/db/typeorm/school-rev
 import { NotificationRepositoryAdapter } from '../../infra/db/typeorm/notification-repository.adapter';
 import { ListStudentNotifications } from '../../app/use-cases/list-student-notifications';
 import { ReadAllNotifications } from '../../app/use-cases/read-all-notifications';
+import { PushTokenRepositoryAdapter } from '../../infra/db/typeorm/push-token-repository.adapter';
+import { RegisterPushToken } from '../../app/use-cases/register-push-token';
+import { UnregisterPushToken } from '../../app/use-cases/unregister-push-token';
 
 import { StorageProviderPort } from '../../ports/providers/storage-provider.port';
 import { SchoolImageRepositoryAdapter } from '../../infra/db/typeorm/school-image-repository.adapter';
@@ -59,6 +62,7 @@ export type StudentsModuleDeps = {
     schoolReviewsRepo?: SchoolReviewRepositoryAdapter;
     storageProvider?: StorageProviderPort;
     notificationsRepo?: NotificationRepositoryAdapter;
+    pushTokensRepo?: PushTokenRepositoryAdapter;
 };
 
 export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupContext): ModuleBuildResult {
@@ -144,6 +148,12 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
     const readAllNotifications = deps.notificationsRepo
         ? new ReadAllNotifications(deps.notificationsRepo)
         : undefined;
+    const registerPushToken = deps.pushTokensRepo
+        ? new RegisterPushToken(deps.usersRepo, deps.pushTokensRepo)
+        : undefined;
+    const unregisterPushToken = deps.pushTokensRepo
+        ? new UnregisterPushToken(deps.pushTokensRepo)
+        : undefined;
 
     const studentsRouterInstance = studentsRouter({
         listStudents,
@@ -163,7 +173,9 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
         getSchoolPublicDetails,
         generateTuitionPix,
         listStudentNotifications,
-        readAllNotifications
+        readAllNotifications,
+        registerPushToken,
+        unregisterPushToken
     });
 
     const listMyDependents = new ListMyDependents(deps.dependentsRepo);

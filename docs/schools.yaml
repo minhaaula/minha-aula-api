@@ -2400,6 +2400,71 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+
+  /schools/notifications/classes/{classId}/push:
+    post:
+      tags:
+        - Schools
+      summary: Enviar push notification para uma turma
+      description: >-
+        Cria uma notificação do tipo CLASS e enfileira um job de push (FCM) para
+        todos os responsáveis/alunos matriculados ativamente na turma.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: classId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Identificador da turma
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, message]
+              properties:
+                title:
+                  type: string
+                  maxLength: 191
+                message:
+                  type: string
+                  maxLength: 2000
+      responses:
+        '201':
+          description: Notificação enfileirada com sucesso.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [notificationId, recipients]
+                properties:
+                  notificationId:
+                    type: string
+                    format: uuid
+                  recipients:
+                    type: integer
+        '401':
+          description: Usuário não autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado ou sem contexto de escola.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Turma não encontrada para a escola.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /schools/bank-accounts:
     get:
       tags:

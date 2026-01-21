@@ -54,8 +54,11 @@ export class IssueSchoolPlanInvoice {
         }
 
         const plan = finance.plan;
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
+
+        const toUtcDateOnly = (d: Date) =>
+            new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+
+        const today = toUtcDateOnly(new Date());
         
         // Se generatePix é true (plano sendo selecionado), vencimento é hoje
         // Caso contrário, usa a lógica normal
@@ -64,12 +67,12 @@ export class IssueSchoolPlanInvoice {
             dueDate = new Date(today);
         } else {
             const baseDue = input.dueDate ?? finance.nextDueAt ?? calculateNextBillingDate(plan.billingCycle);
-            dueDate = new Date(baseDue);
-            dueDate.setHours(0, 0, 0, 0);
+            dueDate = toUtcDateOnly(new Date(baseDue));
             
             if (dueDate <= today) {
-                dueDate = new Date(today);
-                dueDate.setDate(dueDate.getDate() + 1);
+                const tomorrow = new Date(today);
+                tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+                dueDate = tomorrow;
             }
         }
 

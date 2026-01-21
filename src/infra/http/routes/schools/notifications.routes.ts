@@ -2,11 +2,13 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { asyncHandler } from '../../utils/async-handler';
 import type { ListSchoolNotifications } from '../../../../app/use-cases/list-school-notifications';
+import type { SendClassPushNotification } from '../../../../app/use-cases/send-class-push-notification';
 import type { SchoolRouteGuards } from './guards';
 import type { SchoolContextRequest } from '../../middlewares/resolve-school-context';
 
 type NotificationsRoutesDeps = {
     listSchoolNotifications: ListSchoolNotifications;
+    sendClassPushNotification?: SendClassPushNotification;
 };
 
 export function buildNotificationsRoutes(deps: NotificationsRoutesDeps, guards: SchoolRouteGuards) {
@@ -39,6 +41,30 @@ export function buildNotificationsRoutes(deps: NotificationsRoutesDeps, guards: 
 
         res.json(result);
     }));
+
+    if (deps.sendClassPushNotification) {
+        router.post('/classes/:classId/push', ...protectedMiddleware, asyncHandler(async (req, res) => {
+            const schoolId = (req as SchoolContextRequest).schoolId as string;
+            const paramsSchema = z.object({ classId: z.string().uuid() });
+            const { classId } = paramsSchema.parse(req.params);
+
+            const bodySchema = z.object({
+                title: z.string().min(1).max(191),
+                message: z.string().min(1).max(2000)
+            });
+            const body = bodySchema.parse(req.body ?? {});
+
+            const result = await deps.sendClassPushNotification!.exec({
+                schoolId,
+                classId,
+                title: body.title,
+                message: body.message,
+                metadata: null
+            });
+
+            res.status(201).json(result);
+        }));
+    }
 
     return router;
 }

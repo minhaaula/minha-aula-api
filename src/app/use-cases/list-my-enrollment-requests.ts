@@ -35,11 +35,15 @@ export class ListMyEnrollmentRequests {
 
     async exec(params: {
         userId: string;
+        status?: EnrollmentRequestStatus | null;
+        limit?: number | null;
+        offset?: number | null;
     }): Promise<{ requests: MyEnrollmentRequest[] }> {
         const userId = params.userId?.trim();
         if (!userId) {
             return { requests: [] };
         }
+        const status = params.status ?? null;
 
         // Buscar dependentes do usuário
         const userDependents = await this.dependents.findByUserIds([userId]);
@@ -49,7 +53,7 @@ export class ListMyEnrollmentRequests {
         const userRequests = await this.requests.findMany({
             requestedForUserId: userId,
             requestedForDependentId: null,
-            status: 'PENDING'
+            status: status ?? undefined
         });
 
         // Buscar pedidos de matrícula dos dependentes
@@ -57,7 +61,7 @@ export class ListMyEnrollmentRequests {
             this.requests.findMany({
                 requestedForUserId: userId,
                 requestedForDependentId: dependentId,
-                status: 'PENDING'
+                status: status ?? undefined
             })
         );
 
@@ -77,7 +81,7 @@ export class ListMyEnrollmentRequests {
             return dateB - dateA;
         });
 
-        const requests: MyEnrollmentRequest[] = allRequests.map((req) => ({
+        const mapped: MyEnrollmentRequest[] = allRequests.map((req) => ({
             id: req.request.id,
             status: req.request.status,
             schoolId: req.request.schoolId,
@@ -99,7 +103,13 @@ export class ListMyEnrollmentRequests {
             dependentName: req.dependentName
         }));
 
-        return { requests };
+        const limit = params.limit ?? null;
+        const offset = params.offset ?? null;
+        const safeOffset = typeof offset === 'number' && offset > 0 ? offset : 0;
+        const safeLimit = typeof limit === 'number' && limit > 0 ? Math.min(limit, 100) : null;
+        const paged = safeLimit === null ? mapped.slice(safeOffset) : mapped.slice(safeOffset, safeOffset + safeLimit);
+
+        return { requests: paged };
     }
 }
 

@@ -139,6 +139,8 @@ describe('IssueSchoolPlanInvoice', () => {
         vi.useRealTimers();
     });
     it('issues a boleto invoice and schedules the next billing date', async () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date('2024-01-10T10:00:00Z'));
         const schoolsRepo = new InMemorySchoolRepository();
         const financesRepo = new InMemoryFinanceRepository();
         const invoicesRepo = new InMemoryInvoiceRepository();
@@ -241,6 +243,8 @@ describe('IssueSchoolPlanInvoice', () => {
     });
 
     it('skips provider call when invoice already exists for due date', async () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date('2024-02-15T10:00:00Z'));
         const schoolsRepo = new InMemorySchoolRepository();
         const financesRepo = new InMemoryFinanceRepository();
         const invoicesRepo = new InMemoryInvoiceRepository();

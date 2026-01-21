@@ -1977,3 +1977,96 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+
+  /students/push-tokens:
+    post:
+      tags:
+        - Students
+      summary: Registrar token de Push (FCM)
+      description: >-
+        Registra/atualiza o token FCM do dispositivo do aluno para receber push notifications.
+        Requer persona STUDENT.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - token
+              properties:
+                token:
+                  type: string
+                  description: Token FCM do dispositivo
+                platform:
+                  type: string
+                  enum: [ANDROID, IOS, WEB, UNKNOWN]
+                  description: Plataforma do dispositivo
+      responses:
+        '201':
+          description: Token registrado.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [tokenId]
+                properties:
+                  tokenId:
+                    type: string
+        '401':
+          description: Usuário não autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado. Requer persona STUDENT.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+        - Students
+      summary: Remover token de Push (FCM)
+      description: >-
+        Revoga o token FCM do dispositivo (ex: logout). Requer persona STUDENT.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - token
+              properties:
+                token:
+                  type: string
+                  description: Token FCM do dispositivo
+      responses:
+        '200':
+          description: Token removido/revogado.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [revoked]
+                properties:
+                  revoked:
+                    type: boolean
+        '401':
+          description: Usuário não autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado. Requer persona STUDENT.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'

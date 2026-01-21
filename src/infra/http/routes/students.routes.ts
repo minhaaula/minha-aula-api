@@ -18,6 +18,8 @@ import { GetSchoolPublicDetails } from '../../../app/use-cases/get-school-public
 import { GenerateTuitionPix } from '../../../app/use-cases/generate-tuition-pix';
 import { ListStudentNotifications } from '../../../app/use-cases/list-student-notifications';
 import { ReadAllNotifications } from '../../../app/use-cases/read-all-notifications';
+import type { RegisterPushToken } from '../../../app/use-cases/register-push-token';
+import type { UnregisterPushToken } from '../../../app/use-cases/unregister-push-token';
 import { requirePersona } from '../middlewares/require-persona';
 import { UserPersonaEnum } from '../../../domain/value-objects/user-persona';
 import { AuthenticatedRequest } from '../middlewares/auth';
@@ -43,6 +45,8 @@ export function studentsRouter(deps: {
     generateTuitionPix?: GenerateTuitionPix;
     listStudentNotifications?: ListStudentNotifications;
     readAllNotifications?: ReadAllNotifications;
+    registerPushToken?: RegisterPushToken;
+    unregisterPushToken?: UnregisterPushToken;
 }) {
     const r = Router();
 
@@ -527,6 +531,44 @@ export function studentsRouter(deps: {
                 userId: authReq.user.sub
             });
 
+            res.json(result);
+        }));
+    }
+
+    if (deps.registerPushToken) {
+        r.post('/push-tokens', requireStudent, asyncHandler(async (req, res) => {
+            const authReq = req as AuthenticatedRequest;
+            if (!authReq.user?.sub) {
+                return res.status(401).json({ error: 'Não autorizado', code: 'UNAUTHORIZED' });
+            }
+
+            const bodySchema = z.object({
+                token: z.string().min(10),
+                platform: z.enum(['ANDROID', 'IOS', 'WEB', 'UNKNOWN']).optional()
+            });
+            const data = bodySchema.parse(req.body ?? {});
+            const result = await deps.registerPushToken!.exec({
+                userId: authReq.user.sub,
+                token: data.token,
+                platform: data.platform ?? 'UNKNOWN'
+            });
+            res.status(201).json(result);
+        }));
+    }
+
+    if (deps.unregisterPushToken) {
+        r.delete('/push-tokens', requireStudent, asyncHandler(async (req, res) => {
+            const authReq = req as AuthenticatedRequest;
+            if (!authReq.user?.sub) {
+                return res.status(401).json({ error: 'Não autorizado', code: 'UNAUTHORIZED' });
+            }
+
+            const bodySchema = z.object({ token: z.string().min(10) });
+            const data = bodySchema.parse(req.body ?? {});
+            const result = await deps.unregisterPushToken!.exec({
+                userId: authReq.user.sub,
+                token: data.token
+            });
             res.json(result);
         }));
     }

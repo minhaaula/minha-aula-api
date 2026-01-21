@@ -89,6 +89,8 @@ import { NotificationRepositoryAdapter } from '../../infra/db/typeorm/notificati
 import { ListSchoolNotifications } from '../../app/use-cases/list-school-notifications';
 import { buildNotificationsRoutes } from '../../infra/http/routes/schools/notifications.routes';
 import { GetSchoolBalance } from '../../app/use-cases/get-school-balance';
+import { OutboxRepository } from '../../ports/repositories/outbox.repo';
+import { SendClassPushNotification } from '../../app/use-cases/send-class-push-notification';
 
 export type SchoolsModuleDeps = {
     schoolsRepo: SchoolRepositoryAdapter;
@@ -113,6 +115,7 @@ export type SchoolsModuleDeps = {
     frontendBaseUrl?: string;
     storageProvider?: StorageProviderPort;
     notificationsRepo?: NotificationRepositoryAdapter;
+    outbox?: OutboxRepository;
 };
 
 export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupContext): ModuleBuildResult {
@@ -329,6 +332,9 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
     const listSchoolNotifications = deps.notificationsRepo
         ? new ListSchoolNotifications(deps.notificationsRepo)
         : undefined;
+    const sendClassPushNotification = deps.notificationsRepo && deps.outbox
+        ? new SendClassPushNotification(deps.coursesRepo, deps.classesRepo, deps.enrollmentsRepo, deps.notificationsRepo, deps.outbox)
+        : undefined;
 
     // Montar routers prontos
     const schoolsRouterInstance = schoolsRouter({
@@ -383,6 +389,7 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         listSchoolImages,
         validateSchoolCoupon,
         listSchoolNotifications,
+        sendClassPushNotification,
         getSchoolPendingDocuments
     });
 
