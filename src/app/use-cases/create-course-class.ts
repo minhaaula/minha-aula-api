@@ -3,6 +3,7 @@ import { CourseClassRepository } from '../../ports/repositories/course-class.rep
 import { CourseClass, type CourseClassScheduleEntry } from '../../domain/entities/course-class';
 import { Uuid } from '../../shared/uuid';
 import { equalUuid } from '../../shared/normalize-uuid';
+import { AppError, ErrorCode } from '../../shared/errors';
 
 export class CreateCourseClass {
     constructor(
@@ -34,11 +35,11 @@ export class CreateCourseClass {
 
         const course = await this.courses.findById(courseId);
         if (!course || !course.isActive || !equalUuid(course.schoolId, schoolId)) {
-            throw new Error('Course not found for this school');
+            throw AppError.fromCode(ErrorCode.COURSE_NOT_FOUND, { courseId, schoolId });
         }
 
         const existing = await this.classes.findByCourseAndLabel(course.id, label);
-        if (existing) throw new Error('Class label already in use for this course');
+        if (existing) throw AppError.fromCode(ErrorCode.ALREADY_EXISTS, { message: 'Class label already in use for this course' });
 
         const courseClass = CourseClass.create({
             id: Uuid(),

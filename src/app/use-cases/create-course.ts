@@ -2,6 +2,7 @@ import { CourseRepository } from '../../ports/repositories/course.repo';
 import { SchoolRepository } from '../../ports/repositories/school.repo';
 import { Course } from '../../domain/entities/course';
 import { Uuid } from '../../shared/uuid';
+import { AppError, ErrorCode } from '../../shared/errors';
 
 export class CreateCourse {
     constructor(
@@ -24,10 +25,10 @@ export class CreateCourse {
         createdAt: Date;
     }> {
         const school = await this.schools.findById(input.schoolId);
-        if (!school) throw new Error('School not found');
+        if (!school) throw AppError.fromCode(ErrorCode.SCHOOL_NOT_FOUND, { schoolId: input.schoolId });
 
         const existingCourse = await this.courses.findBySchoolAndName(school.id, input.name);
-        if (existingCourse) throw new Error('Course name already in use for this school');
+        if (existingCourse) throw AppError.fromCode(ErrorCode.ALREADY_EXISTS, { message: 'Course name already in use for this school' });
 
         const course = Course.create({
             id: Uuid(),

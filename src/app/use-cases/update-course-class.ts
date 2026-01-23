@@ -2,6 +2,7 @@ import { CourseClass, CourseClassScheduleEntry } from '../../domain/entities/cou
 import { CourseClassRepository } from '../../ports/repositories/course-class.repo';
 import { CourseRepository } from '../../ports/repositories/course.repo';
 import { equalUuid } from '../../shared/normalize-uuid';
+import { AppError, ErrorCode } from '../../shared/errors';
 
 export class UpdateCourseClass {
     constructor(
@@ -33,28 +34,28 @@ export class UpdateCourseClass {
         const classId = input.classId.trim();
 
         if (!schoolId || !courseId || !classId) {
-            throw new Error('Invalid identifiers');
+            throw AppError.fromCode(ErrorCode.INVALID_IDENTIFIERS, { schoolId, courseId, classId });
         }
 
         const course = await this.courses.findById(courseId);
         if (!course || !equalUuid(course.schoolId, schoolId) || !course.isActive) {
-            throw new Error('Course not found for this school');
+            throw AppError.fromCode(ErrorCode.COURSE_NOT_FOUND, { courseId, schoolId });
         }
 
         const courseClass = await this.classes.findById(classId);
         if (!courseClass || !equalUuid(courseClass.courseId, course.id) || !courseClass.isActive) {
-            throw new Error('Course class not found for this course');
+            throw AppError.fromCode(ErrorCode.COURSE_CLASS_NOT_FOUND, { classId, courseId });
         }
 
         let label = input.label !== undefined ? input.label.trim() : courseClass.label;
         if (!label) {
-            throw new Error('Class label is required');
+            throw AppError.fromCode(ErrorCode.REQUIRED_FIELD, { field: 'label' });
         }
 
         if (label !== courseClass.label) {
             const duplicate = await this.classes.findByCourseAndLabel(course.id, label);
             if (duplicate && duplicate.id !== courseClass.id) {
-                throw new Error('Class label already in use for this course');
+                throw AppError.fromCode(ErrorCode.ALREADY_EXISTS, { message: 'Class label already in use for this course' });
             }
         }
 
