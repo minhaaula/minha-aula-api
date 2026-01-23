@@ -106,14 +106,37 @@ DB_NAME=payments
 
 #### Autenticação
 ```env
-AUTH_TOKEN_SECRET=your-secret-key-here
+# OBRIGATÓRIO - mínimo 32 caracteres para segurança adequada
+AUTH_TOKEN_SECRET=your-super-secret-key-minimum-32-characters-long-for-security
 AUTH_TOKEN_TTL=3600
+```
+
+#### CORS (Segurança)
+```env
+# Configuração de origem permitida (separar múltiplas origens por vírgula)
+# Use '*' para permitir todas as origens (não recomendado em produção)
+CORS_ORIGIN=*
+# Exemplo para múltiplas origens: CORS_ORIGIN=https://app1.com,https://app2.com
 ```
 
 #### Asaas (Pagamentos)
 ```env
 ASAAS_API_KEY=your_asaas_token_here
 ASAAS_BASE_URL=https://www.asaas.com/api/v3
+
+# Webhooks (Opcional mas recomendado em produção)
+# Token para validar requisições de webhook do Asaas
+ASAAS_WEBHOOK_TOKEN=your-webhook-token-here
+
+# Webhooks de Subcontas (Opcional)
+ASAAS_SUBACCOUNT_WEBHOOK_URL=https://your-api.com/integrations/asaas
+ASAAS_SUBACCOUNT_WEBHOOK_EMAIL=webhooks@your-domain.com
+ASAAS_SUBACCOUNT_WEBHOOK_AUTH_TOKEN=subaccount-webhook-token
+ASAAS_SUBACCOUNT_WEBHOOK_SEND_TYPE=SEQUENTIALLY
+ASAAS_SUBACCOUNT_WEBHOOK_API_VERSION=3
+ASAAS_SUBACCOUNT_WEBHOOK_EVENTS=PAYMENT_CREATED,PAYMENT_UPDATED,PAYMENT_CONFIRMED,PAYMENT_RECEIVED
+ASAAS_SUBACCOUNT_ACCOUNT_WEBHOOK_URL=https://your-api.com/integrations/asaas
+ASAAS_SUBACCOUNT_ACCOUNT_WEBHOOK_EVENTS=ACCOUNT_APPROVED,ACCOUNT_PENDING,ACCOUNT_REJECTED
 ```
 
 #### Redis (Filas)
@@ -160,6 +183,13 @@ STORAGE_ENDPOINT=
 ```env
 APP_MODULES=all  # ou: auth,admin,payments,schools,students
 NODE_ENV=development
+```
+
+#### Testes (Opcional)
+```env
+# URLs para scripts de teste
+TEST_WEBHOOK_URL=http://localhost:3000
+API_URL=http://localhost:3000
 ```
 
 ## 🛠️ Desenvolvimento
