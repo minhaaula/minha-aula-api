@@ -189,7 +189,12 @@ export class IssueEnrollmentFeeBoleto {
         }
 
         // Criar provider com a API key da subconta da escola
-        const baseUrl = process.env.ASAAS_BASE_URL || 'https://www.asaas.com/api/v3';
-        return new AsaasProvider({ apiKey: accountApiKey.trim(), baseUrl });
+        const { AsaasProviderFactory } = await import('../../infra/providers/asaas/asaas-provider-factory.js');
+        const subAccountProvider = AsaasProviderFactory.createSubAccountProvider(accountApiKey);
+        if (!subAccountProvider) {
+            console.log(`[IssueEnrollmentFeeBoleto] Usando provider principal (falha ao criar provider da subconta)`);
+            return this.paymentProvider;
+        }
+        return subAccountProvider as PaymentProviderPort;
     }
 }
