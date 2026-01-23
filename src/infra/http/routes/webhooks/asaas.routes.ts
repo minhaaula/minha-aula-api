@@ -101,7 +101,8 @@ export function asaasWebhookRouter(deps: AsaasWebhookDeps) {
         // Validar assinatura do webhook se configurado
         const webhookToken = process.env.ASAAS_WEBHOOK_TOKEN;
         if (webhookToken) {
-            const providedToken = req.headers['x-asaas-access-token'] || req.query.token;
+            // Asaas envia o token no header 'asaas-access-token' (sem o prefixo 'x-')
+            const providedToken = req.headers['asaas-access-token'] || req.headers['x-asaas-access-token'] || req.query.token;
             if (providedToken !== webhookToken) {
                 log.warn('[Asaas Webhook] Token de autenticação inválido ou ausente');
                 return res.status(401).json({ error: 'Unauthorized' });
@@ -152,7 +153,8 @@ export function asaasWebhookRouter(deps: AsaasWebhookDeps) {
         // Validar assinatura do webhook se configurado
         const webhookToken = process.env.ASAAS_WEBHOOK_TOKEN;
         if (webhookToken) {
-            const providedToken = req.headers['x-asaas-access-token'] || req.query.token;
+            // Asaas envia o token no header 'asaas-access-token' (sem o prefixo 'x-')
+            const providedToken = req.headers['asaas-access-token'] || req.headers['x-asaas-access-token'] || req.query.token;
             if (providedToken !== webhookToken) {
                 log.warn('[Asaas Webhook] Token de autenticação inválido ou ausente');
                 return res.status(401).json({ error: 'Unauthorized' });
