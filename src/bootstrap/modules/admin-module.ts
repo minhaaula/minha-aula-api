@@ -134,22 +134,8 @@ async function initializeJobsAndWorker(): Promise<void> {
         startWorker();
         log.info('[Admin Module] ✓ Worker iniciado com sucesso');
 
-        // Configurar handlers de shutdown para parar o worker graciosamente
-        const shutdown = async () => {
-            log.info('[Admin Module] Parando worker...');
-            const { stopWorker } = await import('../../infra/messaging/bullmq/worker-manager.js');
-            await stopWorker();
-        };
-
-        process.on('SIGINT', async () => {
-            await shutdown();
-            process.exit(0);
-        });
-
-        process.on('SIGTERM', async () => {
-            await shutdown();
-            process.exit(0);
-        });
+        // Nota: Os handlers de shutdown (SIGTERM/SIGINT) são configurados no main.ts
+        // para garantir shutdown gracioso coordenado de servidor HTTP e worker
 
         log.info('[Admin Module] ✓ Jobs e worker configurados e rodando');
     } catch (error) {

@@ -220,14 +220,57 @@ export function startWorker(): Worker {
 }
 
 /**
- * Para o worker
+ * Para o worker graciosamente, aguardando jobs ativos terminarem
+ * @param timeoutMs Timeout em milissegundos para aguardar jobs terminarem (padrão: 30 segundos)
  */
-export async function stopWorker(): Promise<void> {
-    if (workerInstance) {
-        log.info('[Worker Manager] Parando worker...');
-        await workerInstance.close();
+export async function stopWorker(timeoutMs: number = 30000): Promise<void> {
+    if (!workerInstance) {
+        return;
+    }
+
+    log.info('[Worker Manager] Iniciando shutdown gracioso do worker...');
+    
+    try {
+        // Verificar se há jobs ativos usando a Queue
+        const { Queue } = await import('bullmq');
+        const queue = new Queue('outbox', { connection });
+        const activeJobs = await queue.getActive();
+        
+        if (activeJobs.length > 0) {
+            log.info(`[Worker Manager] Aguardando ${activeJobs.length} job(s) ativo(s) terminarem...`, {
+                jobs: activeJobs.map((j: any) => ({ name: j.name, id: j.id }))
+            });
+        }
+        await queue.close();
+
+        // Fechar o worker (ele aguardará jobs ativos terminarem)
+        const closePromise = workerInstance.close();
+        
+        // Adicionar timeout para não esperar indefinidamente
+        const timeoutPromise = new Promise<void>((_, reject) => {
+            setTimeout(() => {
+                reject(new Error(`Timeout ao aguardar worker fechar após ${timeoutMs}ms`));
+            }, timeoutMs);
+        });
+
+        await Promise.race([closePromise, timeoutPromise]);
+        
         workerInstance = null;
-        log.info('[Worker Manager] Worker parado');
+        log.info('[Worker Manager] Worker parado graciosamente');
+    } catch (error) {
+        if (error instanceof Error && error.message.includes('Timeout')) {
+            log.warn('[Worker Manager] Timeout ao aguardar jobs terminarem. Forçando fechamento...');
+            // Forçar fechamento mesmo com jobs pendentes
+            if (workerInstance) {
+                await workerInstance.close(true); // force = true
+                workerInstance = null;
+            }
+        } else {
+            log.error('[Worker Manager] Erro ao parar worker', {
+                error: error instanceof Error ? error.message : String(error)
+            });
+            throw error;
+        }
     }
 }
 
