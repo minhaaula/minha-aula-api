@@ -27,8 +27,17 @@ function parseModules(value: string | undefined): ModuleName[] {
         console.log(`API (${label}) on http://localhost:${port}`);
     });
 
+    // Flag para evitar múltiplas chamadas de shutdown
+    let isShuttingDown = false;
+
     // Configurar graceful shutdown
     const gracefulShutdown = async (signal: string) => {
+        if (isShuttingDown) {
+            log.warn(`[Server] Shutdown já em andamento, ignorando ${signal}`);
+            return;
+        }
+
+        isShuttingDown = true;
         log.info(`[Server] Recebido ${signal}, iniciando shutdown gracioso...`);
         
         // Parar de aceitar novas conexões
@@ -47,13 +56,22 @@ function parseModules(value: string | undefined): ModuleName[] {
             const { stopWorker } = await import('./infra/messaging/bullmq/worker-manager.js');
             await stopWorker(30000); // 30 segundos para jobs terminarem
             
+            // Fechar conexão do banco de dados
+            const { AppDataSource } = await import('./infra/db/typeorm/datasource.js');
+            if (AppDataSource.isInitialized) {
+                log.info('[Server] Fechando conexão com banco de dados...');
+                await AppDataSource.destroy();
+                log.info('[Server] Conexão com banco de dados fechada');
+            }
+            
             clearTimeout(httpShutdownTimeout);
             log.info('[Server] Shutdown gracioso concluído');
             process.exit(0);
         } catch (error) {
             clearTimeout(httpShutdownTimeout);
             log.error('[Server] Erro durante shutdown gracioso', {
-                error: error instanceof Error ? error.message : String(error)
+                error: error instanceof Error ? error.message : String(error),
+                stack: error instanceof Error ? error.stack : undefined
             });
             process.exit(1);
         }

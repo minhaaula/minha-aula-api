@@ -219,19 +219,22 @@ export function startWorker(): Worker {
     return workerInstance;
 }
 
+let isShuttingDown = false;
+
 /**
  * Para o worker graciosamente, aguardando jobs ativos terminarem
  * @param timeoutMs Timeout em milissegundos para aguardar jobs terminarem (padrão: 30 segundos)
  */
 export async function stopWorker(timeoutMs: number = 30000): Promise<void> {
-    if (!workerInstance) {
+    if (!workerInstance || isShuttingDown) {
         return;
     }
 
+    isShuttingDown = true;
     log.info('[Worker Manager] Iniciando shutdown gracioso do worker...');
     
     try {
-        // Verificar se há jobs ativos usando a Queue
+        // Verificar se há jobs ativos usando a Queue (apenas para log)
         const { Queue } = await import('bullmq');
         const queue = new Queue('outbox', { connection });
         const activeJobs = await queue.getActive();
@@ -243,7 +246,8 @@ export async function stopWorker(timeoutMs: number = 30000): Promise<void> {
         }
         await queue.close();
 
-        // Fechar o worker (ele aguardará jobs ativos terminarem)
+        // Fechar o worker (ele aguardará jobs ativos terminarem automaticamente)
+        // O BullMQ worker.close() já aguarda jobs ativos terminarem
         const closePromise = workerInstance.close();
         
         // Adicionar timeout para não esperar indefinidamente
@@ -255,9 +259,12 @@ export async function stopWorker(timeoutMs: number = 30000): Promise<void> {
 
         await Promise.race([closePromise, timeoutPromise]);
         
+        const instance = workerInstance;
         workerInstance = null;
+        isShuttingDown = false;
         log.info('[Worker Manager] Worker parado graciosamente');
     } catch (error) {
+        isShuttingDown = false;
         if (error instanceof Error && error.message.includes('Timeout')) {
             log.warn('[Worker Manager] Timeout ao aguardar jobs terminarem. Forçando fechamento...');
             // Forçar fechamento mesmo com jobs pendentes
