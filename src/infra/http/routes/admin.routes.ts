@@ -8,6 +8,7 @@ import { GetAdminDashboard } from '../../../app/use-cases/get-admin-dashboard';
 import { requirePersona } from '../middlewares/require-persona';
 import { UserPersonaEnum } from '../../../domain/value-objects/user-persona';
 import { buildCouponsRoutes } from './admin/coupons.routes';
+import type { ResendSchoolAsaasAccount } from '../../../app/use-cases/resend-school-asaas-account';
 
 type AdminRouterDeps = {
     getAdminStatus: GetAdminStatus;
@@ -17,6 +18,7 @@ type AdminRouterDeps = {
     createDiscountCoupon?: import('../../../app/use-cases/create-discount-coupon').CreateDiscountCoupon;
     listDiscountCoupons?: import('../../../app/use-cases/list-discount-coupons').ListDiscountCoupons;
     validateDiscountCoupon?: import('../../../app/use-cases/validate-discount-coupon').ValidateDiscountCoupon;
+    resendSchoolAsaasAccount?: ResendSchoolAsaasAccount;
     authMiddleware?: RequestHandler;
 };
 
@@ -40,6 +42,7 @@ export function adminRouter({
     createDiscountCoupon,
     listDiscountCoupons,
     validateDiscountCoupon,
+    resendSchoolAsaasAccount,
     authMiddleware 
 }: AdminRouterDeps) {
     const router = Router();
@@ -81,6 +84,24 @@ export function adminRouter({
         listDiscountCoupons,
         validateDiscountCoupon
     }, authMiddleware));
+
+    // Rota para reenviar solicitação de conta Asaas
+    if (resendSchoolAsaasAccount) {
+        router.post('/schools/:schoolId/resend-asaas-account', requireAuth, requireAdminPersona, asyncHandler(async (req, res) => {
+            const paramsSchema = z.object({
+                schoolId: z.string().uuid()
+            });
+            const { schoolId } = paramsSchema.parse(req.params);
+            
+            const result = await resendSchoolAsaasAccount.exec({ schoolId });
+            
+            if (result.success) {
+                res.status(200).json(result);
+            } else {
+                res.status(400).json(result);
+            }
+        }));
+    }
 
     return router;
 }

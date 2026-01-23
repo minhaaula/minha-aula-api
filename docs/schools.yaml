@@ -2272,7 +2272,10 @@ paths:
                         boletoUrl: https://sandbox.asaas.com/boleto/123
                         digitableLine: '12345678901234567890123456789012345678901234'
                         barcode: null
+                        pixQrCode: null
+                        pixCopiaECola: null
                         externalReference: null
+                        receiptUrl: null
                         metadata: {}
                         paidAt: null
                         createdAt: '2024-07-01T12:00:00.000Z'
@@ -2286,14 +2289,17 @@ paths:
                         amountCents: 9900
                         currency: BRL
                         dueDate: '2024-06-15T00:00:00.000Z'
-                        paidAt: '2024-06-14T15:30:00.000Z'
                         description: Plano Premium Junho
                         providerRef: ASAAS-INV-1199
-                        boletoUrl: https://sandbox.asaas.com/boleto/456
-                        digitableLine: '43210987654321098765432109876543210987654321'
+                        boletoUrl: null
+                        digitableLine: null
                         barcode: null
+                        pixQrCode: null
+                        pixCopiaECola: null
                         externalReference: null
+                        receiptUrl: 'https://www.asaas.com/comprovantes/00016578'
                         metadata: {}
+                        paidAt: '2024-06-14T15:30:00.000Z'
                         createdAt: '2024-06-01T12:00:00.000Z'
                         updatedAt: '2024-06-14T15:30:00.000Z'
         '501':

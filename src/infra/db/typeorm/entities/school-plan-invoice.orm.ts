@@ -72,6 +72,9 @@ export class SchoolPlanInvoiceOrm {
     @Column('varchar', { length: 255, name: 'external_reference', nullable: true })
     externalReference!: string | null;
 
+    @Column('varchar', { length: 500, name: 'receipt_url', nullable: true })
+    receiptUrl!: string | null;
+
     @Column('char', { length: 36, name: 'discount_coupon_id', nullable: true })
     discountCouponId!: string | null;
 

@@ -20,6 +20,7 @@ export class SchoolPlanInvoice {
         public readonly pixQrCode: string | null,
         public readonly pixCopiaECola: string | null,
         public readonly externalReference: string | null,
+        public readonly receiptUrl: string | null,
         public readonly metadata: Record<string, string>,
         public readonly paidAt: Date | null,
         public readonly discountCouponId: string | null,
@@ -47,6 +48,7 @@ export class SchoolPlanInvoice {
         pixQrCode?: string | null;
         pixCopiaECola?: string | null;
         externalReference?: string | null;
+        receiptUrl?: string | null;
         metadata?: Record<string, string>;
         paidAt?: Date | null;
         discountCouponId?: string | null;
@@ -95,6 +97,7 @@ export class SchoolPlanInvoice {
         const pixQrCode = params.pixQrCode?.trim() ?? null;
         const pixCopiaECola = params.pixCopiaECola?.trim() ?? null;
         const externalReference = params.externalReference?.trim() ?? null;
+        const receiptUrl = params.receiptUrl?.trim() ?? null;
         const metadata = params.metadata ? { ...params.metadata } : {};
         const paidAt = params.paidAt ?? null;
         const discountCouponId = params.discountCouponId?.trim() ?? null;
@@ -121,6 +124,7 @@ export class SchoolPlanInvoice {
             pixQrCode,
             pixCopiaECola,
             externalReference,
+            receiptUrl,
             metadata,
             paidAt,
             discountCouponId,
@@ -146,6 +150,7 @@ export class SchoolPlanInvoice {
         pixQrCode?: string | null;
         pixCopiaECola?: string | null;
         externalReference?: string | null;
+        receiptUrl?: string | null;
         metadata?: Record<string, string>;
         description?: string | null;
         updatedAt?: Date;
@@ -175,6 +180,7 @@ export class SchoolPlanInvoice {
             changes.externalReference === undefined
                 ? this.externalReference
                 : (changes.externalReference?.trim() ?? null),
+            changes.receiptUrl === undefined ? this.receiptUrl : (changes.receiptUrl?.trim() ?? null),
             metadata,
             changes.paidAt === undefined ? this.paidAt : changes.paidAt,
             this.discountCouponId,

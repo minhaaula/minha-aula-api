@@ -1,7 +1,7 @@
 import { Money } from '../../../domain/value-objects/money';
 import { PaymentProviderPort, CreateChargeInput, CreatePixChargeInput } from '../../../ports/providers/payment-provider.port';
 import { AsaasClient } from './asaas-client';
-import { AsaasChargeResponse, AsaasSubAccount, CreateAsaasSubAccountInput, CreateAsaasTransferInput, AsaasTransferResponse, AsaasAccountDetails, AsaasAccountBalance } from '../../../ports/providers/asaas-port';
+import { AsaasChargeResponse, AsaasSubAccount, CreateAsaasSubAccountInput, CreateAsaasTransferInput, AsaasTransferResponse, AsaasAccountDetails, AsaasAccountBalance, AsaasPaymentDetails, ListAsaasPaymentsParams, ListAsaasPaymentsResponse } from '../../../ports/providers/asaas-port';
 import { CreateBoletoChargeInput } from '../../../ports/providers/payment-provider.port';
 
 
@@ -225,6 +225,18 @@ export class AsaasProvider implements PaymentProviderPort {
         }
 
         return await this.client.getAccountBalance(accountId);
+    }
+
+    async getPayment(paymentId: string): Promise<AsaasPaymentDetails> {
+        if (!paymentId || !paymentId.trim()) {
+            throw new Error('Payment ID is required');
+        }
+
+        return await this.client.getPayment(paymentId);
+    }
+
+    async listPayments(params?: ListAsaasPaymentsParams): Promise<ListAsaasPaymentsResponse> {
+        return await this.client.listPayments(params);
     }
 
     private resolveDefaultWebhooks(fallbackEmail: string): CreateAsaasSubAccountInput['webhooks'] | undefined {

@@ -82,6 +82,67 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /admin/schools/{schoolId}/resend-asaas-account:
+    post:
+      tags:
+        - Admin
+      summary: Reenviar solicitação de conta Asaas para escola
+      description: |
+        Reenvia a solicitação de criação de conta no Asaas para uma escola específica.
+        Útil quando há falhas de comunicação durante a criação inicial da escola.
+        
+        Esta rota:
+        - Cria/atualiza a subconta no Asaas com os dados da escola
+        - Atualiza a escola com accountId, accountApiKey e walletId
+        - Busca o link de onboarding (KYC) após 15 segundos
+        - Retorna os dados atualizados da conta
+        
+        **Requisitos:**
+        - Escola deve ter pelo menos um endereço completo (rua, número e CEP com 8 dígitos)
+        - Asaas provider deve estar configurado
+        
+        Requer autenticação com persona ADMIN.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: schoolId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Identificador da escola
+      responses:
+        '200':
+          description: Conta Asaas criada/atualizada com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResendAsaasAccountResponse'
+        '400':
+          description: Erro ao criar conta (escola sem endereço, endereço incompleto, ou erro do Asaas).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResendAsaasAccountResponse'
+        '401':
+          description: Usuário não autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado (requer persona ADMIN).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Escola não encontrada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /admin/dashboard:
     get:
       tags:
@@ -362,4 +423,41 @@ components:
         - courseName
         - className
         - schoolName
+    ResendAsaasAccountResponse:
+      type: object
+      properties:
+        schoolId:
+          type: string
+          format: uuid
+          description: ID da escola
+        accountId:
+          type: string
+          nullable: true
+          description: ID da conta no Asaas (retornado quando sucesso)
+        accountApiKey:
+          type: string
+          nullable: true
+          description: API Key da conta no Asaas (retornado quando sucesso)
+        walletId:
+          type: string
+          nullable: true
+          description: ID da carteira no Asaas (retornado quando sucesso)
+        onboardingUrl:
+          type: string
+          nullable: true
+          description: Link de onboarding/KYC para completar a verificação (retornado quando sucesso)
+        success:
+          type: boolean
+          description: Indica se a operação foi bem-sucedida
+        message:
+          type: string
+          description: Mensagem descritiva do resultado da operação
+      required:
+        - schoolId
+        - accountId
+        - accountApiKey
+        - walletId
+        - onboardingUrl
+        - success
+        - message
 

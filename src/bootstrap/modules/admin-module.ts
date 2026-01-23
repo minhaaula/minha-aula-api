@@ -17,6 +17,8 @@ import type { EnrollmentRepository } from '../../ports/repositories/enrollment.r
 import type { SchoolFinancialChargeRepository } from '../../ports/repositories/school-financial-charge.repo';
 import type { PasswordHasherPort } from '../../ports/providers/password-hasher.port';
 import type { TokenProviderPort } from '../../ports/providers/token-provider.port';
+import type { AsaasProviderPort } from '../../ports/providers/asaas-port';
+import { ResendSchoolAsaasAccount } from '../../app/use-cases/resend-school-asaas-account';
 
 type AdminModuleDeps = {
     getActiveModules: () => readonly ModuleName[];
@@ -34,6 +36,7 @@ type AdminModuleDeps = {
     passwordHasher: PasswordHasherPort;
     tokenProvider: TokenProviderPort;
     tokenTtl: number;
+    asaasProvider?: AsaasProviderPort;
 };
 
 export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext): ModuleBuildResult {
@@ -68,6 +71,11 @@ export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext)
     const listDiscountCoupons = new ListDiscountCoupons(couponsRepo);
     const validateDiscountCoupon = new ValidateDiscountCoupon(couponsRepo);
 
+    // Use case para reenviar solicitação de conta Asaas
+    const resendSchoolAsaasAccount = deps.asaasProvider
+        ? new ResendSchoolAsaasAccount(deps.schoolsRepo, deps.asaasProvider)
+        : undefined;
+
     // Montar router pronto
     const router = adminRouter({
         getAdminStatus,
@@ -77,6 +85,7 @@ export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext)
         createDiscountCoupon,
         listDiscountCoupons,
         validateDiscountCoupon,
+        resendSchoolAsaasAccount,
         authMiddleware: ctx.authMiddleware
     });
 

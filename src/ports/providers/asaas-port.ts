@@ -97,6 +97,39 @@ export type AsaasAccountBalance = {
     blockedBalance?: number;
 };
 
+export type AsaasPaymentDetails = {
+    id: string;
+    status?: string;
+    transactionReceiptUrl?: string | null;
+    paymentDate?: string | null;
+    confirmedDate?: string | null;
+    receivedDate?: string | null;
+};
+
+export type AsaasPaymentListItem = {
+    id: string;
+    status?: string;
+    externalReference?: string | null;
+    paymentDate?: string | null;
+    confirmedDate?: string | null;
+    receivedDate?: string | null;
+    dueDate?: string | null;
+    value?: number | null;
+    transactionReceiptUrl?: string | null;
+};
+
+export type ListAsaasPaymentsParams = {
+    status?: string;
+    externalReference?: string;
+    limit?: number;
+    offset?: number;
+};
+
+export type ListAsaasPaymentsResponse = {
+    data: AsaasPaymentListItem[];
+    totalCount?: number;
+};
+
 export interface AsaasProviderPort {
     createBoletoCharge(input: CreateBoletoChargeInput): Promise<AsaasChargeResponse>;
     authorizeCharge(input: { amount: Money; method: PaymentMethod; customerId: string; metadata?: Record<string, string>; }): Promise<{ providerRef: string }>;
@@ -105,4 +138,6 @@ export interface AsaasProviderPort {
     createTransfer?(input: CreateAsaasTransferInput): Promise<AsaasTransferResponse>;
     getAccount?(accountId: string): Promise<AsaasAccountDetails>;
     getAccountBalance?(accountId: string): Promise<AsaasAccountBalance>;
+    getPayment?(paymentId: string): Promise<AsaasPaymentDetails>;
+    listPayments?(params?: ListAsaasPaymentsParams): Promise<ListAsaasPaymentsResponse>;
 }

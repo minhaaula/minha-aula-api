@@ -2,6 +2,7 @@ import { AppDataSource } from './datasource';
 import { SchoolPlanInvoiceRepository } from '../../../ports/repositories/school-plan-invoice.repo';
 import { SchoolPlanInvoiceOrm } from './entities/school-plan-invoice.orm';
 import { SchoolPlanInvoice } from '../../../domain/entities/school-plan-invoice';
+import { IsNull } from 'typeorm';
 
 export class SchoolPlanInvoiceRepositoryAdapter implements SchoolPlanInvoiceRepository {
     private readonly repo = AppDataSource.getRepository(SchoolPlanInvoiceOrm);
@@ -46,6 +47,36 @@ export class SchoolPlanInvoiceRepositoryAdapter implements SchoolPlanInvoiceRepo
         return rows.map((row) => this.toDomain(row));
     }
 
+    async findPaidWithoutReceiptUrl(limit: number): Promise<SchoolPlanInvoice[]> {
+        const rows = await this.repo.find({
+            where: {
+                status: 'PAID',
+                receiptUrl: IsNull()
+            },
+            take: limit,
+            order: { paidAt: 'DESC' }
+        });
+        return rows.map((row) => this.toDomain(row));
+    }
+
+    async findIssuedWithProviderRef(limit: number, daysAgo: number = 7): Promise<SchoolPlanInvoice[]> {
+        const cutoffDate = new Date();
+        cutoffDate.setDate(cutoffDate.getDate() - daysAgo);
+        cutoffDate.setHours(0, 0, 0, 0);
+
+        const rows = await this.repo
+            .createQueryBuilder('invoice')
+            .where('invoice.status = :status', { status: 'ISSUED' })
+            .andWhere('invoice.providerRef IS NOT NULL')
+            .andWhere('invoice.providerRef != :empty', { empty: '' })
+            .andWhere('invoice.createdAt >= :cutoffDate', { cutoffDate: cutoffDate.toISOString() })
+            .orderBy('invoice.createdAt', 'DESC')
+            .limit(limit)
+            .getMany();
+
+        return rows.map((row) => this.toDomain(row));
+    }
+
     async save(invoice: SchoolPlanInvoice): Promise<void> {
         const existing = await this.repo.findOne({ where: { id: invoice.id } });
         const row = existing ?? new SchoolPlanInvoiceOrm();
@@ -66,6 +97,7 @@ export class SchoolPlanInvoiceRepositoryAdapter implements SchoolPlanInvoiceRepo
         row.pixQrCode = invoice.pixQrCode;
         row.pixCopiaECola = invoice.pixCopiaECola;
         row.externalReference = invoice.externalReference;
+        row.receiptUrl = invoice.receiptUrl;
         row.discountCouponId = invoice.discountCouponId;
         row.discountPercentage = invoice.discountPercentage;
         row.discountAmountCents = invoice.discountAmountCents;
@@ -97,6 +129,7 @@ export class SchoolPlanInvoiceRepositoryAdapter implements SchoolPlanInvoiceRepo
             pixQrCode: row.pixQrCode,
             pixCopiaECola: row.pixCopiaECola,
             externalReference: row.externalReference,
+            receiptUrl: row.receiptUrl,
             metadata: row.metadata ? { ...row.metadata } : undefined,
             paidAt: row.paidAt,
             discountCouponId: row.discountCouponId,

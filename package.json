@@ -42,6 +42,10 @@
     "hash:password": "tsx scripts/generate-password-hash.ts",
     "cron:monthly-charges": "tsx src/infra/cron/generate-monthly-charges.ts",
     "cron:boleto-notifications": "tsx src/infra/cron/send-boleto-notifications.ts",
+    "schedule:receipts": "tsx src/infra/messaging/bullmq/schedule-receipts-job.ts",
+    "schedule:payment-sync": "tsx src/infra/messaging/bullmq/schedule-payment-sync-job.ts",
+    "test:sync-payment-status": "tsx scripts/test-sync-payment-status.ts",
+    "test:fetch-receipts": "tsx scripts/test-fetch-payment-receipts.ts",
     "deploy:railway": "npm install && npm run test && npm run build && npm run migrate:run:prod && npm run start"
   },
   "keywords": [],

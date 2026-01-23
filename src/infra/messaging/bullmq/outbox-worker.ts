@@ -70,6 +70,75 @@ new Worker(
             return;
         }
 
+        if (job.name === 'fetch_payment_receipts') {
+            await ensureDb();
+            
+            const { SchoolPlanInvoiceRepositoryAdapter } = await import('../../db/typeorm/school-plan-invoice-repository.adapter.js');
+            const { SchoolPlanFinanceRepositoryAdapter } = await import('../../db/typeorm/school-plan-finance-repository.adapter.js');
+            const { SchoolRepositoryAdapter } = await import('../../db/typeorm/school-repository.js');
+            const { AsaasProvider } = await import('../../providers/asaas/asaas-provider.js');
+            const { FetchPaymentReceipts } = await import('../../../app/use-cases/fetch-payment-receipts.js');
+
+            const invoicesRepo = new SchoolPlanInvoiceRepositoryAdapter();
+            const financesRepo = new SchoolPlanFinanceRepositoryAdapter();
+            const schoolsRepo = new SchoolRepositoryAdapter();
+
+            const asaasApiKey = process.env.ASAAS_API_KEY;
+            const asaasBaseUrl = process.env.ASAAS_BASE_URL;
+            const asaasProviderInstance = asaasApiKey ? new AsaasProvider({ apiKey: asaasApiKey, baseUrl: asaasBaseUrl }) : undefined;
+            const asaasProvider = asaasProviderInstance && typeof asaasProviderInstance.getPayment === 'function'
+                ? asaasProviderInstance as any
+                : undefined;
+
+            const fetchReceipts = new FetchPaymentReceipts(
+                invoicesRepo,
+                financesRepo,
+                schoolsRepo,
+                asaasProvider
+            );
+
+            const limit = typeof event.payload?.limit === 'number' ? event.payload.limit : 50;
+            const result = await fetchReceipts.exec({ limit });
+
+            console.log('[OUTBOX] fetch_payment_receipts completed', result);
+            return;
+        }
+
+        if (job.name === 'sync_payment_status') {
+            await ensureDb();
+            
+            const { SchoolPlanInvoiceRepositoryAdapter } = await import('../../db/typeorm/school-plan-invoice-repository.adapter.js');
+            const { SchoolPlanFinanceRepositoryAdapter } = await import('../../db/typeorm/school-plan-finance-repository.adapter.js');
+            const { SchoolRepositoryAdapter } = await import('../../db/typeorm/school-repository.js');
+            const { AsaasProvider } = await import('../../providers/asaas/asaas-provider.js');
+            const { SyncPaymentStatus } = await import('../../../app/use-cases/sync-payment-status.js');
+
+            const invoicesRepo = new SchoolPlanInvoiceRepositoryAdapter();
+            const financesRepo = new SchoolPlanFinanceRepositoryAdapter();
+            const schoolsRepo = new SchoolRepositoryAdapter();
+
+            const asaasApiKey = process.env.ASAAS_API_KEY;
+            const asaasBaseUrl = process.env.ASAAS_BASE_URL;
+            const asaasProviderInstance = asaasApiKey ? new AsaasProvider({ apiKey: asaasApiKey, baseUrl: asaasBaseUrl }) : undefined;
+            const asaasProvider = asaasProviderInstance && typeof asaasProviderInstance.getPayment === 'function'
+                ? asaasProviderInstance as any
+                : undefined;
+
+            const syncStatus = new SyncPaymentStatus(
+                invoicesRepo,
+                financesRepo,
+                schoolsRepo,
+                asaasProvider
+            );
+
+            const limit = typeof event.payload?.limit === 'number' ? event.payload.limit : 50;
+            const daysAgo = typeof event.payload?.daysAgo === 'number' ? event.payload.daysAgo : 7;
+            const result = await syncStatus.exec({ limit, daysAgo });
+
+            console.log('[OUTBOX] sync_payment_status completed', result);
+            return;
+        }
+
         // default: manter comportamento atual (log)
         console.log('[OUTBOX] unhandled event', job.name, event.payload);
     },

@@ -18,6 +18,7 @@ export type SchoolPlanInvoiceView = {
     pixQrCode: string | null;
     pixCopiaECola: string | null;
     externalReference: string | null;
+    receiptUrl: string | null;
     metadata: Record<string, string>;
     paidAt: Date | null;
     createdAt: Date;
@@ -66,6 +67,7 @@ export function presentSchoolPlanInvoice(invoice: SchoolPlanInvoice): SchoolPlan
         pixQrCode: invoice.pixQrCode,
         pixCopiaECola: invoice.pixCopiaECola,
         externalReference: invoice.externalReference,
+        receiptUrl: invoice.receiptUrl,
         metadata: { ...invoice.metadata },
         paidAt: invoice.paidAt,
         createdAt: invoice.createdAt,

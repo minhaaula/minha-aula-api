@@ -977,6 +977,11 @@ components:
         externalReference:
           type: string
           nullable: true
+        receiptUrl:
+          type: string
+          nullable: true
+          description: URL do recibo da transação no Asaas. Preenchido automaticamente quando o pagamento é confirmado.
+          example: 'https://www.asaas.com/comprovantes/00016578'
         metadata:
           type: object
           additionalProperties:

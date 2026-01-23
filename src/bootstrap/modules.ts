@@ -89,6 +89,39 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
     const pushTokensRepo = new PushTokenRepositoryAdapter();
     const outbox = new OutboxProducer();
 
+    // Status de integrações (filas e push) — apenas logs informativos
+    {
+        const redisHost = process.env.REDIS_HOST;
+        const redisPort = process.env.REDIS_PORT ?? '6379';
+        const queuesConfigured = Boolean(redisHost);
+        const usesOutbox = selected.includes('payments') || selected.includes('schools') || selected.includes('students');
+
+        if (usesOutbox) {
+            if (queuesConfigured) {
+                console.log(`[Queue] BullMQ/outbox configurado (REDIS_HOST=${redisHost}, REDIS_PORT=${redisPort}). Para processar jobs, rode também: npm run worker`);
+            } else {
+                console.warn('[Queue] BullMQ/outbox NÃO configurado (REDIS_HOST ausente). Jobs assíncronos (ex: push) não serão processados.');
+            }
+        }
+
+        const fcmRaw = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
+        if (!fcmRaw) {
+            console.warn('[Push] FCM NÃO configurado (FIREBASE_SERVICE_ACCOUNT_JSON ausente). Push notifications não serão enviadas.');
+        } else {
+            try {
+                const parsed = JSON.parse(fcmRaw);
+                const ok = parsed && typeof parsed === 'object' && typeof parsed.project_id === 'string';
+                if (ok) {
+                    console.log(`[Push] FCM configurado (project_id=${parsed.project_id}).`);
+                } else {
+                    console.warn('[Push] FCM configurado, mas FIREBASE_SERVICE_ACCOUNT_JSON não parece um service account válido (project_id ausente).');
+                }
+            } catch {
+                console.warn('[Push] FCM configurado, mas FIREBASE_SERVICE_ACCOUNT_JSON não é um JSON válido.');
+            }
+        }
+    }
+
     const passwordHasher = new ScryptPasswordHasher();
     const tokenProvider = new HmacTokenProvider(process.env.AUTH_TOKEN_SECRET ?? '');
     const parsedTtl = Number(process.env.AUTH_TOKEN_TTL ?? 3600);
@@ -236,6 +269,9 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
                 break;
             }
             case 'admin': {
+                const asaasProviderForAdmin = typeof paymentProvider?.createSubAccount === 'function'
+                    ? paymentProvider as AsaasProviderPort
+                    : undefined;
                 const result = buildAdminModule({
                     getActiveModules: () => selected,
                     getOpenApiFiles: () => Array.from(docFiles),
@@ -251,7 +287,8 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
                     financialChargesRepo,
                     passwordHasher,
                     tokenProvider,
-                    tokenTtl
+                    tokenTtl,
+                    asaasProvider: asaasProviderForAdmin
                 }, ctx);
                 mergeModuleResult(serverDeps, docFiles, result);
                 break;

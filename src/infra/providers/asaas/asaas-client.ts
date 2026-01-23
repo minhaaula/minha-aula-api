@@ -114,6 +114,99 @@ export class AsaasClient {
         }
     }
 
+    async getPayment(paymentId: string): Promise<{ 
+        id: string; 
+        status?: string; 
+        transactionReceiptUrl?: string | null;
+        paymentDate?: string | null;
+        confirmedDate?: string | null;
+        receivedDate?: string | null;
+    }> {
+        try {
+            const { data } = await this.http.get<{ 
+                id: string; 
+                status?: string; 
+                transactionReceiptUrl?: string | null;
+                paymentDate?: string | null;
+                confirmedDate?: string | null;
+                receivedDate?: string | null;
+            }>(`/payments/${paymentId}`);
+            
+            if (!data || typeof data !== 'object') {
+                throw new Error('Asaas API returned invalid response: response is not an object');
+            }
+            if (!data.id || typeof data.id !== 'string' || !data.id.trim()) {
+                throw new Error('Asaas API returned invalid response: missing or invalid payment ID');
+            }
+
+            return data;
+        } catch (error) {
+            throw this.toDomainError(error);
+        }
+    }
+
+    async listPayments(params?: {
+        status?: string;
+        externalReference?: string;
+        limit?: number;
+        offset?: number;
+    }): Promise<{
+        data: Array<{
+            id: string;
+            status?: string;
+            externalReference?: string | null;
+            paymentDate?: string | null;
+            confirmedDate?: string | null;
+            receivedDate?: string | null;
+            dueDate?: string | null;
+            value?: number | null;
+            transactionReceiptUrl?: string | null;
+        }>;
+        totalCount?: number;
+    }> {
+        try {
+            const queryParams = new URLSearchParams();
+            if (params?.status) queryParams.append('status', params.status);
+            if (params?.externalReference) queryParams.append('externalReference', params.externalReference);
+            if (params?.limit) queryParams.append('limit', String(params.limit));
+            if (params?.offset) queryParams.append('offset', String(params.offset));
+
+            const queryString = queryParams.toString();
+            const url = `/payments${queryString ? `?${queryString}` : ''}`;
+            
+            const { data } = await this.http.get<{
+                data?: Array<{
+                    id: string;
+                    status?: string;
+                    externalReference?: string | null;
+                    paymentDate?: string | null;
+                    confirmedDate?: string | null;
+                    receivedDate?: string | null;
+                    dueDate?: string | null;
+                    value?: number | null;
+                    transactionReceiptUrl?: string | null;
+                }>;
+                totalCount?: number;
+            }>(url);
+
+            // A API pode retornar diretamente um array ou um objeto com data
+            if (Array.isArray(data)) {
+                return { data, totalCount: data.length };
+            }
+
+            if (data && typeof data === 'object' && 'data' in data) {
+                return {
+                    data: Array.isArray(data.data) ? data.data : [],
+                    totalCount: data.totalCount
+                };
+            }
+
+            return { data: [], totalCount: 0 };
+        } catch (error) {
+            throw this.toDomainError(error);
+        }
+    }
+
     async getAccountBalance(accountId: string): Promise<{ balance: number; availableBalance: number; blockedBalance?: number }> {
         try {
             // Tentar endpoint específico de balance primeiro (se existir)
