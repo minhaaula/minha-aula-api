@@ -305,9 +305,23 @@ docker-compose down
 
 O projeto utiliza **BullMQ** com **Redis** para processamento assíncrono de jobs.
 
-### Configuração do Worker
+### Inicialização Automática
 
-Para processar jobs da fila, é necessário executar o worker separadamente:
+**Quando o módulo ADMIN está ativo**, os jobs e o worker são iniciados automaticamente:
+
+- ✅ **Jobs agendados automaticamente**:
+  - `fetch_payment_receipts` - A cada 30 minutos
+  - `sync_payment_status` - A cada 15 minutos
+- ✅ **Worker iniciado automaticamente** para processar jobs da fila
+
+**Requisitos**:
+- Módulo `admin` deve estar ativo (`APP_MODULES=admin` ou `APP_MODULES=all`)
+- `REDIS_HOST` configurado
+- `ASAAS_API_KEY` configurado (para jobs de pagamento)
+
+### Configuração Manual (Opcional)
+
+Se preferir executar o worker separadamente (útil para escalar workers no Railway):
 
 ```bash
 # Modo desenvolvimento (watch)
@@ -326,21 +340,23 @@ node dist/infra/messaging/bullmq/outbox-worker.js
 
 #### 2. Busca de Recibos (`fetch_payment_receipts`)
 - **Descrição**: Busca recibos de transações pagas no Asaas
-- **Frequência**: A cada 30 minutos (agendado)
-- **Agendamento**: `npm run schedule:receipts`
+- **Frequência**: A cada 30 minutos (agendado automaticamente)
+- **Agendamento Manual**: `npm run schedule:receipts` (se não usar módulo ADMIN)
 - **Funcionalidades**:
   - Busca recibos para invoices pagas sem `receiptUrl`
   - Cria conta Asaas automaticamente se for primeira parcela
 
 #### 3. Sincronização de Status (`sync_payment_status`)
 - **Descrição**: Sincroniza status de pagamentos do Asaas (prevenção de falhas de webhook)
-- **Frequência**: A cada 15 minutos (agendado)
-- **Agendamento**: `npm run schedule:payment-sync`
+- **Frequência**: A cada 15 minutos (agendado automaticamente)
+- **Agendamento Manual**: `npm run schedule:payment-sync` (se não usar módulo ADMIN)
 - **Funcionalidades**:
   - Verifica invoices emitidas que podem ter sido pagas
   - Atualiza status e `paid_at` automaticamente
 
-### Agendar Jobs
+### Agendar Jobs Manualmente (Opcional)
+
+Se não estiver usando o módulo ADMIN, você pode agendar os jobs manualmente:
 
 ```bash
 # Agendar job de busca de recibos
@@ -350,7 +366,7 @@ npm run schedule:receipts
 npm run schedule:payment-sync
 ```
 
-**Nota**: Os jobs precisam ser agendados apenas uma vez. O agendamento persiste no Redis.
+**Nota**: Os jobs precisam ser agendados apenas uma vez. O agendamento persiste no Redis. Se o módulo ADMIN estiver ativo, isso é feito automaticamente.
 
 ### Verificar Status das Filas
 
