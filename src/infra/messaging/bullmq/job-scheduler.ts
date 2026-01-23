@@ -40,7 +40,7 @@ export async function scheduleReceiptsJob(): Promise<void> {
         }
 
         // Agendar job para executar a cada 30 minutos
-        await queue.add(
+        const addedJob = await queue.add(
             'fetch_payment_receipts',
             { type: 'fetch_payment_receipts', payload: { limit: 50 }, aggregateId: 'receipts-scheduler' },
             {
@@ -57,7 +57,11 @@ export async function scheduleReceiptsJob(): Promise<void> {
             }
         );
 
-        log.info('[Job Scheduler] Job fetch_payment_receipts agendado para executar a cada 30 minutos');
+        log.info('[Job Scheduler] Job fetch_payment_receipts agendado para executar a cada 30 minutos', {
+            jobId: addedJob.id,
+            repeatKey: addedJob.opts?.repeat?.key,
+            pattern: addedJob.opts?.repeat?.pattern
+        });
         await queue.close();
     } catch (error) {
         log.error('[Job Scheduler] Erro ao agendar job fetch_payment_receipts', {

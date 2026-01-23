@@ -52,9 +52,20 @@ export function startWorker(): Worker {
         'outbox',
         async (job) => {
             const event = job.data as OutboxEvent;
-            log.info('[OUTBOX] Processando job', { name: job.name, aggregateId: event.aggregateId });
+            // Log detalhado para diagnóstico
+            log.info('[OUTBOX] Processando job', { 
+                name: job.name, 
+                id: job.id,
+                aggregateId: event?.aggregateId,
+                type: event?.type,
+                payload: event?.payload,
+                opts: job.opts
+            });
 
-            if (job.name === 'push_notification') {
+            // Verificar também pelo tipo do evento (fallback)
+            const jobType = event?.type || job.name;
+
+            if (job.name === 'push_notification' || jobType === 'push_notification') {
                 await ensureDb();
                 const tokensRepo = new PushTokenRepositoryAdapter();
 
@@ -93,7 +104,8 @@ export function startWorker(): Worker {
                 return;
             }
 
-            if (job.name === 'fetch_payment_receipts') {
+            if (job.name === 'fetch_payment_receipts' || jobType === 'fetch_payment_receipts') {
+                log.info('[OUTBOX] Iniciando processamento de fetch_payment_receipts');
                 await ensureDb();
                 
                 const { SchoolPlanInvoiceRepositoryAdapter } = await import('../../db/typeorm/school-plan-invoice-repository.adapter.js');
@@ -127,7 +139,8 @@ export function startWorker(): Worker {
                 return;
             }
 
-            if (job.name === 'sync_payment_status') {
+            if (job.name === 'sync_payment_status' || jobType === 'sync_payment_status') {
+                log.info('[OUTBOX] Iniciando processamento de sync_payment_status');
                 await ensureDb();
                 
                 const { SchoolPlanInvoiceRepositoryAdapter } = await import('../../db/typeorm/school-plan-invoice-repository.adapter.js');
@@ -176,20 +189,30 @@ export function startWorker(): Worker {
     );
 
     workerInstance.on('completed', (job) => {
-        log.info('[Worker] Job completado', { name: job.name, id: job.id });
+        log.info('[Worker] Job completado', { name: job.name, id: job.id, data: job.data });
     });
 
     workerInstance.on('failed', (job, err) => {
         log.error('[Worker] Job falhou', { 
             name: job?.name, 
-            id: job?.id, 
+            id: job?.id,
+            data: job?.data,
             error: err.message,
+            stack: err.stack,
             attemptsMade: job?.attemptsMade
         });
     });
 
     workerInstance.on('error', (err) => {
-        log.error('[Worker] Erro no worker', { error: err.message });
+        log.error('[Worker] Erro no worker', { error: err.message, stack: err.stack });
+    });
+
+    workerInstance.on('active', (job) => {
+        log.info('[Worker] Job ativo', { name: job.name, id: job.id });
+    });
+
+    workerInstance.on('stalled', (jobId) => {
+        log.warn('[Worker] Job travado', { jobId });
     });
 
     log.info('[Worker Manager] Worker BullMQ iniciado com sucesso');
