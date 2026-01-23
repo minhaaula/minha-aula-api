@@ -222,7 +222,7 @@ export function startWorker(): Worker {
 let isShuttingDown = false;
 
 /**
- * Para o worker graciosamente, aguardando jobs ativos terminarem
+ * Para o worker, aguardando jobs ativos terminarem
  * @param timeoutMs Timeout em milissegundos para aguardar jobs terminarem (padrão: 30 segundos)
  */
 export async function stopWorker(timeoutMs: number = 30000): Promise<void> {
@@ -262,7 +262,7 @@ export async function stopWorker(timeoutMs: number = 30000): Promise<void> {
         const instance = workerInstance;
         workerInstance = null;
         isShuttingDown = false;
-        log.info('[Worker Manager] Worker parado graciosamente');
+        log.info('[Worker Manager] Worker parado');
     } catch (error) {
         isShuttingDown = false;
         if (error instanceof Error && error.message.includes('Timeout')) {
