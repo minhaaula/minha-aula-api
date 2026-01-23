@@ -10,6 +10,7 @@ import { ResetUserPassword } from '../../../app/use-cases/reset-user-password';
 import { ValidatePasswordResetToken } from '../../../app/use-cases/validate-password-reset-token';
 import { AuthenticatedRequest } from '../middlewares/auth';
 import { cpfNumberSchema, phoneNumberSchema, zipCodeNumberSchema } from '../validators/numeric-fields';
+import { authRateLimiter, registrationRateLimiter } from '../middlewares/rate-limiter';
 
 const cpfSchema = cpfNumberSchema();
 
@@ -68,7 +69,7 @@ export function authRouter({
         newPassword: z.string().min(8)
     });
 
-    r.post('/register', async (req, res, next) => {
+    r.post('/register', registrationRateLimiter, async (req, res, next) => {
         try {
             const dto = registerSchema.parse(req.body);
             const result = await registerUser.exec(dto);
@@ -78,7 +79,7 @@ export function authRouter({
         }
     });
 
-    r.post('/login', async (req, res, next) => {
+    r.post('/login', authRateLimiter, async (req, res, next) => {
         try {
             const dto = loginSchema.parse(req.body);
             const result = await loginUser.exec(dto);
@@ -129,7 +130,7 @@ export function authRouter({
             email: z.string().email('Email inválido')
         });
 
-        r.post('/password/request', async (req, res, next) => {
+        r.post('/password/request', registrationRateLimiter, async (req, res, next) => {
             try {
                 const dto = requestResetSchema.parse(req.body);
                 const result = await requestUserPasswordReset.exec(dto);
@@ -146,7 +147,7 @@ export function authRouter({
             newPassword: z.string().min(6, 'A senha deve ter pelo menos 6 caracteres')
         });
 
-        r.post('/password/reset', async (req, res, next) => {
+        r.post('/password/reset', authRateLimiter, async (req, res, next) => {
             try {
                 const dto = resetPasswordSchema.parse(req.body);
                 const result = await resetUserPassword.exec(dto);

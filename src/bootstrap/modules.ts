@@ -122,8 +122,14 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
         }
     }
 
+    // Validar AUTH_TOKEN_SECRET obrigatório
+    const authTokenSecret = process.env.AUTH_TOKEN_SECRET;
+    if (!authTokenSecret || authTokenSecret.trim().length < 32) {
+        throw new Error('AUTH_TOKEN_SECRET é obrigatório e deve ter pelo menos 32 caracteres para segurança adequada');
+    }
+
     const passwordHasher = new ScryptPasswordHasher();
-    const tokenProvider = new HmacTokenProvider(process.env.AUTH_TOKEN_SECRET ?? '');
+    const tokenProvider = new HmacTokenProvider(authTokenSecret);
     const parsedTtl = Number(process.env.AUTH_TOKEN_TTL ?? 3600);
     const tokenTtl = Number.isFinite(parsedTtl) && parsedTtl > 0 ? parsedTtl : 3600;
     const authMiddleware = makeAuthMiddleware(tokenProvider);

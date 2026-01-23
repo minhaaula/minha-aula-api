@@ -2,6 +2,8 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { asyncHandler } from '../../utils/async-handler';
 import { log } from '../../../../shared/logger';
+import { sanitizeForLogging } from '../../../../shared/log-sanitizer';
+import { webhookRateLimiter } from '../../middlewares/rate-limiter';
 import type { HandleAsaasPaymentWebhook } from '../../../../app/use-cases/handle-asaas-payment-webhook';
 import type { HandleAsaasAccountWebhook } from '../../../../app/use-cases/handle-asaas-account-webhook';
 
@@ -95,17 +97,29 @@ const accountPayloadSchema = z.object({
 export function asaasWebhookRouter(deps: AsaasWebhookDeps) {
     const router = Router();
 
-    router.post('/payments', asyncHandler(async (req, res) => {
-        // Log do evento recebido antes da validação
-        log.info('[Asaas Webhook] Evento de pagamento recebido:', {
+    router.post('/payments', webhookRateLimiter, asyncHandler(async (req, res) => {
+        // Validar assinatura do webhook se configurado
+        const webhookToken = process.env.ASAAS_WEBHOOK_TOKEN;
+        if (webhookToken) {
+            const providedToken = req.headers['x-asaas-access-token'] || req.query.token;
+            if (providedToken !== webhookToken) {
+                log.warn('[Asaas Webhook] Token de autenticação inválido ou ausente');
+                return res.status(401).json({ error: 'Unauthorized' });
+            }
+        }
+
+        // Log sanitizado do evento recebido
+        log.info('[Asaas Webhook] Evento de pagamento recebido:', sanitizeForLogging({
             path: '/payments',
-            body: req.body,
+            event: req.body?.event,
+            paymentId: req.body?.payment?.id,
+            status: req.body?.payment?.status,
             headers: {
                 'content-type': req.headers['content-type'],
                 'user-agent': req.headers['user-agent'],
                 'x-forwarded-for': req.headers['x-forwarded-for']
             }
-        });
+        }));
 
         const payload = paymentPayloadSchema.parse(req.body ?? {});
 
@@ -134,17 +148,29 @@ export function asaasWebhookRouter(deps: AsaasWebhookDeps) {
         res.status(200).json({ ok: true, handled: result.handled, reason: result.reason ?? null });
     }));
 
-    router.post('/accounts', asyncHandler(async (req, res) => {
-        // Log do evento recebido antes da validação
-        log.info('[Asaas Webhook] Evento de conta recebido:', {
+    router.post('/accounts', webhookRateLimiter, asyncHandler(async (req, res) => {
+        // Validar assinatura do webhook se configurado
+        const webhookToken = process.env.ASAAS_WEBHOOK_TOKEN;
+        if (webhookToken) {
+            const providedToken = req.headers['x-asaas-access-token'] || req.query.token;
+            if (providedToken !== webhookToken) {
+                log.warn('[Asaas Webhook] Token de autenticação inválido ou ausente');
+                return res.status(401).json({ error: 'Unauthorized' });
+            }
+        }
+
+        // Log sanitizado do evento recebido
+        log.info('[Asaas Webhook] Evento de conta recebido:', sanitizeForLogging({
             path: '/accounts',
-            body: req.body,
+            event: req.body?.event,
+            accountId: req.body?.account?.id,
+            status: req.body?.account?.status,
             headers: {
                 'content-type': req.headers['content-type'],
                 'user-agent': req.headers['user-agent'],
                 'x-forwarded-for': req.headers['x-forwarded-for']
             }
-        });
+        }));
 
         const payload = accountPayloadSchema.parse(req.body ?? {});
 
