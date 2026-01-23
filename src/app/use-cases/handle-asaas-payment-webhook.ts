@@ -82,6 +82,14 @@ export class HandleAsaasPaymentWebhook {
             return { handled: true, reason: 'Event already processed (idempotency by event ID)' };
         }
 
+        // Idempotência adicional: verificar se já processamos este provider_ref com este status
+        // Isso previne processamento duplicado mesmo sem eventId
+        const lastProcessedProviderRef = currentMetadata.lastProcessedProviderRef;
+        const lastProcessedStatus = currentMetadata.lastProcessedStatus;
+        if (lastProcessedProviderRef === providerRef && lastProcessedStatus === status && invoice.status === outcome.status) {
+            return { handled: true, reason: 'Event already processed (idempotency by provider_ref + status)' };
+        }
+
         // Idempotência: verificar se já está no estado desejado e o último evento foi o mesmo
         if (invoice.status === outcome.status) {
             const lastEvent = currentMetadata.lastWebhookEvent;
@@ -97,6 +105,10 @@ export class HandleAsaasPaymentWebhook {
         const metadata: Record<string, string> = { ...invoice.metadata };
         if (eventName) metadata.lastWebhookEvent = eventName;
         if (status) metadata.lastWebhookStatus = status;
+        
+        // Armazenar provider_ref e status para idempotência adicional
+        metadata.lastProcessedProviderRef = providerRef;
+        metadata.lastProcessedStatus = status;
         
         // Armazenar ID do evento processado para idempotência
         if (input.eventId && !processedEventIds.includes(input.eventId)) {
