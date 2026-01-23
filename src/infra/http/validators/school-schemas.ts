@@ -2,19 +2,12 @@ import { z } from 'zod';
 import {
     cnpjNumberSchema,
     cpfNumberSchema,
-    phoneNumberSchema,
-    zipCodeNumberSchema
+    phoneNumberSchema
 } from './numeric-fields';
+import { addressSchema } from './common-schemas';
 
-export const addressSchema = z.object({
-    street: z.string().trim().min(1),
-    number: z.string().trim().min(1),
-    complement: z.string().trim().optional().nullable(),
-    district: z.string().trim().min(1).optional().nullable(),
-    city: z.string().trim().min(1),
-    state: z.string().trim().min(1),
-    zipCode: zipCodeNumberSchema()
-});
+// Re-export para compatibilidade
+export { addressSchema };
 
 export const createSchoolSchema = z.object({
     name: z.string().trim().min(3),

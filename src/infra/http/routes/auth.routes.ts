@@ -9,7 +9,8 @@ import { RequestUserPasswordReset } from '../../../app/use-cases/request-user-pa
 import { ResetUserPassword } from '../../../app/use-cases/reset-user-password';
 import { ValidatePasswordResetToken } from '../../../app/use-cases/validate-password-reset-token';
 import { AuthenticatedRequest } from '../middlewares/auth';
-import { cpfNumberSchema, phoneNumberSchema, zipCodeNumberSchema } from '../validators/numeric-fields';
+import { cpfNumberSchema, phoneNumberSchema } from '../validators/numeric-fields';
+import { addressSchema } from '../validators/common-schemas';
 import { authRateLimiter, registrationRateLimiter } from '../middlewares/rate-limiter';
 
 const cpfSchema = cpfNumberSchema();
@@ -36,16 +37,6 @@ export function authRouter({
     const r = Router();
     const requireAuth: RequestHandler = authMiddleware ?? ((_req, res) => {
         res.status(401).json({ error: 'Unauthorized' });
-    });
-
-    const addressSchema = z.object({
-        street: z.string().min(3),
-        number: z.string().min(1),
-        complement: z.string().min(1).optional(),
-        district: z.string().min(2).optional(),
-        city: z.string().min(2),
-        state: z.string().min(2),
-        zipCode: zipCodeNumberSchema()
     });
 
     const registerSchema = z.object({
