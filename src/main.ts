@@ -1,6 +1,8 @@
 import 'dotenv/config';
 import { createServerForModules, type ModuleName } from './bootstrap/modules';
 import { log } from './shared/logger';
+import { stopWorker } from './infra/messaging/bullmq/worker-manager';
+import { AppDataSource } from './infra/db/typeorm/datasource';
 
 function parseModules(value: string | undefined): ModuleName[] {
     if (!value) return [];
@@ -53,11 +55,9 @@ function parseModules(value: string | undefined): ModuleName[] {
 
         try {
             // Parar worker BullMQ (aguarda jobs terminarem)
-            const { stopWorker } = await import('./infra/messaging/bullmq/worker-manager.js');
             await stopWorker(30000); // 30 segundos para jobs terminarem
             
             // Fechar conexão do banco de dados
-            const { AppDataSource } = await import('./infra/db/typeorm/datasource.js');
             if (AppDataSource.isInitialized) {
                 log.info('[Server] Fechando conexão com banco de dados...');
                 await AppDataSource.destroy();
@@ -69,11 +69,30 @@ function parseModules(value: string | undefined): ModuleName[] {
             process.exit(0);
         } catch (error) {
             clearTimeout(httpShutdownTimeout);
-            log.error('[Server] Erro durante shutdown gracioso', {
-                error: error instanceof Error ? error.message : String(error),
-                stack: error instanceof Error ? error.stack : undefined
-            });
-            process.exit(1);
+            
+            // Ignorar erros do tsx watch durante shutdown (esbuild já foi encerrado)
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            if (errorMessage.includes('The service is no longer running') || 
+                errorMessage.includes('esbuild')) {
+                log.warn('[Server] Erro do tsx watch durante shutdown (pode ser ignorado)', {
+                    error: errorMessage
+                });
+                // Ainda tentar fechar conexões se possível
+                try {
+                    if (AppDataSource.isInitialized) {
+                        await AppDataSource.destroy();
+                    }
+                } catch (dbError) {
+                    // Ignorar erros ao fechar DB também
+                }
+                process.exit(0);
+            } else {
+                log.error('[Server] Erro durante shutdown gracioso', {
+                    error: errorMessage,
+                    stack: error instanceof Error ? error.stack : undefined
+                });
+                process.exit(1);
+            }
         }
     };
 
