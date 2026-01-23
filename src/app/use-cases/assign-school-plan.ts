@@ -3,6 +3,7 @@ import { SubscriptionPlanRepository } from '../../ports/repositories/subscriptio
 import { SchoolRepository } from '../../ports/repositories/school.repo';
 import { SchoolPlanFinance } from '../../domain/entities/school-plan-finance';
 import { Uuid } from '../../shared/uuid';
+import { toUtcDateOnly, getTodayUtc } from '../../shared/date-utils';
 import { calculateNextBillingDate } from '../utils/billing-cycle';
 import { presentSchoolPlanFinance, SchoolPlanFinanceView } from '../presenters/school-plan-finance.presenter';
 import { IssueSchoolPlanInvoice } from './issue-school-plan-invoice';
@@ -43,16 +44,15 @@ export class AssignSchoolPlan {
         const current = await this.finances.findActiveBySchoolId(schoolId);
         const createdAt = current?.createdAt ?? new Date();
         
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
+        const today = getTodayUtc();
         
         let baseNextDueAt: Date;
         if (current?.nextDueAt) {
-            const nextDue = new Date(current.nextDueAt);
-            nextDue.setHours(0, 0, 0, 0);
-            baseNextDueAt = nextDue <= today ? addDays(new Date(), 1) : nextDue;
+            const nextDue = toUtcDateOnly(new Date(current.nextDueAt));
+            const tomorrow = toUtcDateOnly(addDays(new Date(), 1));
+            baseNextDueAt = nextDue <= today ? tomorrow : nextDue;
         } else {
-            baseNextDueAt = addDays(new Date(), 1);
+            baseNextDueAt = toUtcDateOnly(addDays(new Date(), 1));
         }
         
         const nextDueAt = this.invoiceIssuer

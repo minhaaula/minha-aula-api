@@ -2,6 +2,7 @@ import { EnrollmentRepository } from '../../ports/repositories/enrollment.repo';
 import { SchoolFinancialChargeRepository } from '../../ports/repositories/school-financial-charge.repo';
 import { CourseRepository } from '../../ports/repositories/course.repo';
 import { CourseClassRepository } from '../../ports/repositories/course-class.repo';
+import { EnrollmentRequestRepository } from '../../ports/repositories/enrollment-request.repo';
 import { SchoolFinancialCharge } from '../../domain/entities/school-financial-charge';
 import { Uuid } from '../../shared/uuid';
 import { log } from '../../shared/logger';
@@ -32,7 +33,8 @@ export class GenerateMonthlyTuitionCharges {
         private readonly enrollments: EnrollmentRepository,
         private readonly charges: SchoolFinancialChargeRepository,
         private readonly courses: CourseRepository,
-        private readonly classes: CourseClassRepository
+        private readonly classes: CourseClassRepository,
+        private readonly enrollmentRequests?: EnrollmentRequestRepository
     ) {}
 
     async exec(input: GenerateMonthlyTuitionChargesInput = {}): Promise<GenerateMonthlyTuitionChargesOutput> {
@@ -267,6 +269,43 @@ export class GenerateMonthlyTuitionCharges {
             };
         }
 
+        // Buscar enrollment request original para obter informações de desconto
+        let discountCents: number | null = null;
+        let discountMonths: number | null = null;
+        if (this.enrollmentRequests) {
+            const request = await this.enrollmentRequests.findByCourseClassAndTarget({
+                courseClassId: enrollment.courseClassId,
+                userId: enrollment.ownerUserId,
+                dependentId: enrollment.dependentId
+            });
+            if (request && request.status === 'APPROVED') {
+                discountCents = request.discountCents;
+                discountMonths = request.discountMonths;
+            }
+        }
+
+        // Aplicar desconto se houver e se ainda não atingiu o limite de meses
+        let chargeDiscountCents: number | null = null;
+        let chargeDiscountReason: string | null = null;
+        if (discountCents && discountCents > 0 && discountMonths && discountMonths >= 1) {
+            // Contar quantas cobranças com desconto já foram criadas para este enrollment
+            const existingDiscountCount = this.charges.countChargesWithDiscount
+                ? await this.charges.countChargesWithDiscount(
+                    enrollment.courseClassId,
+                    enrollment.ownerUserId,
+                    enrollment.studentUserId,
+                    enrollment.dependentId
+                )
+                : 0;
+
+            // Aplicar desconto apenas se ainda não atingiu o limite
+            if (existingDiscountCount < discountMonths) {
+                chargeDiscountCents = discountCents;
+                const remainingMonths = discountMonths - existingDiscountCount;
+                chargeDiscountReason = `Desconto aplicado (${remainingMonths} de ${discountMonths} ${discountMonths === 1 ? 'mês' : 'meses'})`;
+            }
+        }
+
         // Criar cobrança
         const monthNames = [
             'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -285,8 +324,8 @@ export class GenerateMonthlyTuitionCharges {
             chargeType: 'TUITION',
             description: `Mensalidade - ${monthName} ${dueYear}`,
             amountCents: monthlyPrice,
-            discountCents: null,
-            discountReason: null,
+            discountCents: chargeDiscountCents,
+            discountReason: chargeDiscountReason,
             dueDate
         });
 
