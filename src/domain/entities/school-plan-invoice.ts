@@ -155,8 +155,17 @@ export class SchoolPlanInvoice {
         description?: string | null;
         updatedAt?: Date;
     }): SchoolPlanInvoice {
-        if (changes.status && !VALID_STATUSES.includes(changes.status)) {
-            throw new Error('School plan invoice status is invalid');
+        if (changes.status) {
+            if (!VALID_STATUSES.includes(changes.status)) {
+                throw new Error('School plan invoice status is invalid');
+            }
+            // Validar transição de estado
+            if (changes.status !== this._status) {
+                const { validateInvoiceStatusTransition, getInvoiceTransitionError } = require('./state-transitions');
+                if (!validateInvoiceStatusTransition(this._status, changes.status)) {
+                    throw new Error(getInvoiceTransitionError(this._status, changes.status));
+                }
+            }
         }
 
         const metadata = changes.metadata ? { ...changes.metadata } : { ...this.metadata };

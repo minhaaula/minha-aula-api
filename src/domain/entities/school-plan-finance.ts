@@ -102,8 +102,17 @@ export class SchoolPlanFinance {
         notes?: string | null;
         updatedAt?: Date;
     }): SchoolPlanFinance {
-        if (changes.status && !VALID_STATUSES.includes(changes.status)) {
-            throw new Error('School plan finance status is invalid');
+        if (changes.status) {
+            if (!VALID_STATUSES.includes(changes.status)) {
+                throw new Error('School plan finance status is invalid');
+            }
+            // Validar transição de estado
+            if (changes.status !== this._status) {
+                const { validateFinanceStatusTransition, getFinanceTransitionError } = require('./state-transitions');
+                if (!validateFinanceStatusTransition(this._status, changes.status)) {
+                    throw new Error(getFinanceTransitionError(this._status, changes.status));
+                }
+            }
         }
 
         return SchoolPlanFinance.create({
