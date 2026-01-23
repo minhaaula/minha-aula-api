@@ -1,5 +1,6 @@
 import { SchoolRepository } from '../../ports/repositories/school.repo';
 import { AsaasProviderPort } from '../../ports/providers/asaas-port';
+import { AppError, ErrorCode } from '../../shared/errors';
 
 export interface ResendSchoolAsaasAccountInput {
     schoolId: string;
@@ -24,12 +25,12 @@ export class ResendSchoolAsaasAccount {
     async exec(input: ResendSchoolAsaasAccountInput): Promise<ResendSchoolAsaasAccountOutput> {
         const schoolId = input.schoolId.trim();
         if (!schoolId) {
-            throw new Error('School ID is required');
+            throw AppError.fromCode(ErrorCode.REQUIRED_FIELD, { field: 'schoolId' });
         }
 
         const school = await this.schools.findById(schoolId);
         if (!school) {
-            throw new Error('School not found');
+            throw AppError.fromCode(ErrorCode.SCHOOL_NOT_FOUND, { schoolId });
         }
 
         if (!this.asaasProvider?.createSubAccount) {

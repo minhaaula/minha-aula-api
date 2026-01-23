@@ -3,6 +3,7 @@ import { SubscriptionPlanRepository } from '../../ports/repositories/subscriptio
 import { SchoolRepository } from '../../ports/repositories/school.repo';
 import { SchoolPlanFinance } from '../../domain/entities/school-plan-finance';
 import { Uuid } from '../../shared/uuid';
+import { AppError, ErrorCode } from '../../shared/errors';
 import { toUtcDateOnly, getTodayUtc } from '../../shared/date-utils';
 import { calculateNextBillingDate } from '../utils/billing-cycle';
 import { presentSchoolPlanFinance, SchoolPlanFinanceView } from '../presenters/school-plan-finance.presenter';
@@ -32,14 +33,14 @@ export class AssignSchoolPlan {
     async exec(input: AssignSchoolPlanInput): Promise<AssignSchoolPlanOutput> {
         const schoolId = input.schoolId.trim();
         const planId = input.planId.trim();
-        if (!schoolId) throw new Error('School id is required');
-        if (!planId) throw new Error('Plan id is required');
+        if (!schoolId) throw AppError.fromCode(ErrorCode.REQUIRED_FIELD, { field: 'schoolId' });
+        if (!planId) throw AppError.fromCode(ErrorCode.REQUIRED_FIELD, { field: 'planId' });
 
         const school = await this.schools.findById(schoolId);
-        if (!school) throw new Error('School not found');
+        if (!school) throw AppError.fromCode(ErrorCode.SCHOOL_NOT_FOUND, { schoolId });
 
         const plan = await this.plans.findById(planId);
-        if (!plan || !plan.isActive) throw new Error('Subscription plan not available');
+        if (!plan || !plan.isActive) throw AppError.fromCode(ErrorCode.BUSINESS_RULE_VIOLATION, { message: 'Subscription plan not available' });
 
         const current = await this.finances.findActiveBySchoolId(schoolId);
         const createdAt = current?.createdAt ?? new Date();
