@@ -383,6 +383,12 @@ http://localhost:3000/docs
 ## 🧪 Scripts de Teste
 
 ```bash
+# Testar webhooks do Asaas (pagamentos e contas)
+npm run test:webhooks
+
+# Testar webhooks com URL customizada
+TEST_WEBHOOK_URL=http://localhost:3000 npm run test:webhooks
+
 # Testar sincronização de pagamentos
 npm run test:sync-payment-status
 

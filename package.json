@@ -46,6 +46,7 @@
     "schedule:payment-sync": "tsx src/infra/messaging/bullmq/schedule-payment-sync-job.ts",
     "test:sync-payment-status": "tsx scripts/test-sync-payment-status.ts",
     "test:fetch-receipts": "tsx scripts/test-fetch-payment-receipts.ts",
+    "test:webhooks": "tsx scripts/test-asaas-webhooks.ts",
     "deploy:railway": "npm install && npm run test && npm run build && npm run migrate:run:prod && npm run start"
   },
   "keywords": [],
