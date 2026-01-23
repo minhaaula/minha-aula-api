@@ -27,8 +27,9 @@ export class CreateSchool {
         const ownerFieldsProvided = [input.ownerName, input.ownerCpf, input.ownerEmail, input.ownerPassword]
             .some((value) => value !== undefined && value !== null);
         if (ownerFieldsProvided) {
+            const { AppError, ErrorCode } = await import('../../shared/errors.js');
             if (!input.ownerName || !input.ownerCpf || !input.ownerEmail || !input.ownerPassword) {
-                throw new Error('School owner information is incomplete');
+                throw AppError.fromCode(ErrorCode.INCOMPLETE_DATA, { message: 'School owner information is incomplete' });
             }
         }
 

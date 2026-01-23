@@ -81,6 +81,21 @@ interface AppDependencies {
 
 export function makeServer(deps: AppDependencies & Record<string, any>) {
     const app = express();
+    
+    // Helmet para headers de segurança HTTP
+    const helmet = require('helmet');
+    app.use(helmet({
+        contentSecurityPolicy: {
+            directives: {
+                defaultSrc: ["'self'"],
+                styleSrc: ["'self'", "'unsafe-inline'"], // Necessário para Swagger UI
+                scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"], // Necessário para Swagger UI
+                imgSrc: ["'self'", "data:", "https:"],
+            },
+        },
+        crossOriginEmbedderPolicy: false, // Desabilitado para compatibilidade com Swagger
+    }));
+    
     app.use(express.json());
     
     // CORS configurável via variável de ambiente
