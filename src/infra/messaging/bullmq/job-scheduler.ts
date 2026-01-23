@@ -1,0 +1,136 @@
+/**
+ * Agendador de jobs para BullMQ
+ * Centraliza a lógica de agendamento de jobs repetitivos
+ */
+
+import { Queue } from 'bullmq';
+import { log } from '../../../shared/logger';
+
+const connection = {
+    host: process.env.REDIS_HOST,
+    port: +(process.env.REDIS_PORT ?? 6379),
+    ...(process.env.REDIS_USER ? { username: process.env.REDIS_USER } : {}),
+    ...(process.env.REDIS_PASSWORD ? { password: process.env.REDIS_PASSWORD } : {}),
+};
+
+/**
+ * Agenda o job de busca de recibos de pagamento
+ */
+export async function scheduleReceiptsJob(): Promise<void> {
+    if (!process.env.REDIS_HOST) {
+        log.warn('[Job Scheduler] REDIS_HOST não configurado. Job fetch_payment_receipts não será agendado.');
+        return;
+    }
+
+    try {
+        const queue = new Queue('outbox', { connection });
+
+        // Verificar se já existe um job agendado
+        const repeatableJobs = await queue.getRepeatableJobs();
+        const existingJob = repeatableJobs.find(job => job.name === 'fetch_payment_receipts');
+        
+        if (existingJob) {
+            log.info('[Job Scheduler] Job fetch_payment_receipts já está agendado', {
+                id: existingJob.id,
+                pattern: existingJob.pattern,
+                nextRun: existingJob.next
+            });
+            await queue.close();
+            return;
+        }
+
+        // Agendar job para executar a cada 30 minutos
+        await queue.add(
+            'fetch_payment_receipts',
+            { type: 'fetch_payment_receipts', payload: { limit: 50 }, aggregateId: 'receipts-scheduler' },
+            {
+                repeat: {
+                    pattern: '*/30 * * * *', // A cada 30 minutos
+                    tz: 'America/Sao_Paulo'
+                },
+                removeOnComplete: true,
+                attempts: 3,
+                backoff: {
+                    type: 'exponential',
+                    delay: 5000
+                }
+            }
+        );
+
+        log.info('[Job Scheduler] Job fetch_payment_receipts agendado para executar a cada 30 minutos');
+        await queue.close();
+    } catch (error) {
+        log.error('[Job Scheduler] Erro ao agendar job fetch_payment_receipts', {
+            error: error instanceof Error ? error.message : String(error)
+        });
+        throw error;
+    }
+}
+
+/**
+ * Agenda o job de sincronização de status de pagamento
+ */
+export async function schedulePaymentSyncJob(): Promise<void> {
+    if (!process.env.REDIS_HOST) {
+        log.warn('[Job Scheduler] REDIS_HOST não configurado. Job sync_payment_status não será agendado.');
+        return;
+    }
+
+    try {
+        const queue = new Queue('outbox', { connection });
+
+        // Verificar se já existe um job agendado
+        const repeatableJobs = await queue.getRepeatableJobs();
+        const existingJob = repeatableJobs.find(job => job.name === 'sync_payment_status');
+        
+        if (existingJob) {
+            log.info('[Job Scheduler] Job sync_payment_status já está agendado', {
+                id: existingJob.id,
+                pattern: existingJob.pattern,
+                nextRun: existingJob.next
+            });
+            await queue.close();
+            return;
+        }
+
+        // Agendar job para executar a cada 15 minutos
+        await queue.add(
+            'sync_payment_status',
+            { type: 'sync_payment_status', payload: { limit: 50, daysAgo: 7 }, aggregateId: 'payment-sync-scheduler' },
+            {
+                repeat: {
+                    pattern: '*/15 * * * *', // A cada 15 minutos
+                    tz: 'America/Sao_Paulo'
+                },
+                removeOnComplete: true,
+                attempts: 3,
+                backoff: {
+                    type: 'exponential',
+                    delay: 5000
+                }
+            }
+        );
+
+        log.info('[Job Scheduler] Job sync_payment_status agendado para executar a cada 15 minutos');
+        await queue.close();
+    } catch (error) {
+        log.error('[Job Scheduler] Erro ao agendar job sync_payment_status', {
+            error: error instanceof Error ? error.message : String(error)
+        });
+        throw error;
+    }
+}
+
+/**
+ * Agenda todos os jobs repetitivos
+ */
+export async function scheduleAllJobs(): Promise<void> {
+    log.info('[Job Scheduler] Iniciando agendamento de jobs...');
+    
+    await Promise.all([
+        scheduleReceiptsJob(),
+        schedulePaymentSyncJob()
+    ]);
+    
+    log.info('[Job Scheduler] Todos os jobs foram agendados com sucesso');
+}
