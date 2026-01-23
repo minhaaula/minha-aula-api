@@ -2,6 +2,7 @@ import { SchoolRepository } from '../../ports/repositories/school.repo';
 import { PostalAddress, type PostalAddressProps } from '../../domain/value-objects/postal-address';
 import { School } from '../../domain/entities/school';
 import { PasswordHasherPort } from '../../ports/providers/password-hasher.port';
+import { AppError, ErrorCode } from '../../shared/errors';
 import type { UpdateSchoolInput, UpdateSchoolOutput } from '../types/school.types';
 
 export class UpdateSchool {
@@ -13,12 +14,12 @@ export class UpdateSchool {
     async exec(input: UpdateSchoolInput): Promise<UpdateSchoolOutput> {
         const schoolId = input.schoolId.trim();
         if (!schoolId) {
-            throw new Error('School id is required');
+            throw AppError.fromCode(ErrorCode.REQUIRED_FIELD, { field: 'schoolId' });
         }
 
         const school = await this.schools.findById(schoolId);
         if (!school) {
-            throw new Error('School not found');
+            throw AppError.fromCode(ErrorCode.SCHOOL_NOT_FOUND, { schoolId });
         }
 
         const name = typeof input.name === 'string' ? input.name : school.name;
@@ -64,10 +65,10 @@ export class UpdateSchool {
         const ownerInfoProvided = ownerFields.some((value) => value !== null);
         if (ownerInfoProvided) {
             if (ownerFields.some((value) => value === null)) {
-                throw new Error('School owner information is incomplete');
+                throw AppError.fromCode(ErrorCode.INCOMPLETE_DATA, { message: 'School owner information is incomplete' });
             }
             if (!ownerPasswordHash) {
-                throw new Error('School owner password is required');
+                throw AppError.fromCode(ErrorCode.REQUIRED_FIELD, { field: 'ownerPassword' });
             }
         } else {
             ownerPasswordHash = null;

@@ -4,6 +4,7 @@ import { EnrollmentRepository } from '../../ports/repositories/enrollment.repo';
 import { EnrollmentRequestRepository } from '../../ports/repositories/enrollment-request.repo';
 import { EnrollmentRequestStatus } from '../../domain/entities/enrollment-request';
 import { equalUuid } from '../../shared/normalize-uuid';
+import { AppError, ErrorCode } from '../../shared/errors';
 
 export class DeleteCourseClass {
     constructor(
@@ -19,17 +20,17 @@ export class DeleteCourseClass {
         const classId = input.classId.trim();
 
         if (!schoolId || !courseId || !classId) {
-            throw new Error('Invalid identifiers');
+            throw AppError.fromCode(ErrorCode.INVALID_IDENTIFIERS, { schoolId, courseId, classId });
         }
 
         const course = await this.courses.findById(courseId);
         if (!course || !equalUuid(course.schoolId, schoolId) || !course.isActive) {
-            throw new Error('Course not found for this school');
+            throw AppError.fromCode(ErrorCode.COURSE_NOT_FOUND, { courseId, schoolId });
         }
 
         const courseClass = await this.classes.findById(classId);
         if (!courseClass || !equalUuid(courseClass.courseId, course.id) || !courseClass.isActive) {
-            throw new Error('Course class not found for this course');
+            throw AppError.fromCode(ErrorCode.COURSE_CLASS_NOT_FOUND, { classId, courseId });
         }
 
         const pendingStatus: EnrollmentRequestStatus = 'PENDING';
@@ -44,11 +45,11 @@ export class DeleteCourseClass {
         ]);
 
         if (activeEnrollments.length > 0) {
-            throw new Error('Cannot delete class with active enrollments');
+            throw AppError.fromCode(ErrorCode.BUSINESS_RULE_VIOLATION, { message: 'Cannot delete class with active enrollments' });
         }
 
         if (pendingRequests.length > 0) {
-            throw new Error('Cannot delete class with pending enrollment requests');
+            throw AppError.fromCode(ErrorCode.BUSINESS_RULE_VIOLATION, { message: 'Cannot delete class with pending enrollment requests' });
         }
 
         courseClass.deactivate();
