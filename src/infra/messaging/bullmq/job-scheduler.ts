@@ -39,7 +39,22 @@ export async function scheduleReceiptsJob(): Promise<void> {
             return;
         }
 
-        // Agendar job para executar a cada 30 minutos
+        // Executar imediatamente na primeira vez
+        log.info('[Job Scheduler] Executando fetch_payment_receipts imediatamente...');
+        await queue.add(
+            'fetch_payment_receipts',
+            { type: 'fetch_payment_receipts', payload: { limit: 50 }, aggregateId: 'receipts-scheduler-immediate' },
+            {
+                removeOnComplete: true,
+                attempts: 3,
+                backoff: {
+                    type: 'exponential',
+                    delay: 5000
+                }
+            }
+        );
+
+        // Agendar para repetir a cada 30 minutos
         const addedJob = await queue.add(
             'fetch_payment_receipts',
             { type: 'fetch_payment_receipts', payload: { limit: 50 }, aggregateId: 'receipts-scheduler' },
@@ -97,7 +112,22 @@ export async function schedulePaymentSyncJob(): Promise<void> {
             return;
         }
 
-        // Agendar job para executar a cada 15 minutos
+        // Executar imediatamente na primeira vez
+        log.info('[Job Scheduler] Executando sync_payment_status imediatamente...');
+        await queue.add(
+            'sync_payment_status',
+            { type: 'sync_payment_status', payload: { limit: 50, daysAgo: 7 }, aggregateId: 'payment-sync-scheduler-immediate' },
+            {
+                removeOnComplete: true,
+                attempts: 3,
+                backoff: {
+                    type: 'exponential',
+                    delay: 5000
+                }
+            }
+        );
+
+        // Agendar para repetir a cada 15 minutos
         await queue.add(
             'sync_payment_status',
             { type: 'sync_payment_status', payload: { limit: 50, daysAgo: 7 }, aggregateId: 'payment-sync-scheduler' },
