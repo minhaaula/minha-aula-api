@@ -1,0 +1,168 @@
+paths:
+  /integrations/asaas/payments:
+    post:
+      tags:
+        - Webhooks
+      summary: Webhook de pagamentos Asaas
+      description: |
+        Recebe notificações de pagamentos do Asaas (conta principal ou subcontas).
+        Disponível apenas quando o módulo **schools** está ativo.
+        Em produção, o token de autenticação (ASAAS_WEBHOOK_TOKEN) é obrigatório.
+        O token pode ser enviado no header `asaas-access-token`, `x-asaas-access-token` ou na query `token`.
+      operationId: asaasWebhookPayments
+      security:
+        - asaasWebhookToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - event
+              properties:
+                event:
+                  type: string
+                  description: Tipo do evento (ex. PAYMENT_CONFIRMED, PAYMENT_RECEIVED)
+                id:
+                  type: string
+                  description: ID do evento no Asaas (idempotência)
+                payment:
+                  type: object
+                  description: Dados do pagamento
+                  properties:
+                    id:
+                      type: string
+                    status:
+                      type: string
+                    externalReference:
+                      type: string
+                      nullable: true
+                    value:
+                      type: number
+                    netValue:
+                      type: number
+                    dueDate:
+                      type: string
+                    paymentDate:
+                      type: string
+                    confirmedDate:
+                      type: string
+                    customer:
+                      oneOf:
+                        - type: string
+                        - type: object
+                          properties:
+                            id:
+                              type: string
+              additionalProperties: true
+      responses:
+        '200':
+          description: Webhook processado com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - ok
+                  - handled
+                properties:
+                  ok:
+                    type: boolean
+                  handled:
+                    type: boolean
+                    description: Indica se o evento foi tratado pela aplicação
+                  reason:
+                    type: string
+                    nullable: true
+                    description: Motivo quando não tratado
+        '401':
+          description: Token de autenticação ausente ou inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Erro de configuração ou interno
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /integrations/asaas/accounts:
+    post:
+      tags:
+        - Webhooks
+      summary: Webhook de contas Asaas
+      description: |
+        Recebe notificações de criação e aprovação de contas/subcontas no Asaas.
+        Disponível apenas quando o módulo **schools** está ativo.
+        Em produção, o token de autenticação (ASAAS_WEBHOOK_TOKEN) é obrigatório.
+        O token pode ser enviado no header `asaas-access-token`, `x-asaas-access-token` ou na query `token`.
+      operationId: asaasWebhookAccounts
+      security:
+        - asaasWebhookToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - event
+              properties:
+                event:
+                  type: string
+                  description: Tipo do evento (ex. ACCOUNT_STATUS_GENERAL_APPROVAL_APPROVED)
+                id:
+                  type: string
+                  description: ID do evento no Asaas (idempotência)
+                account:
+                  type: object
+                  description: Dados da conta
+                  properties:
+                    id:
+                      type: string
+                    status:
+                      type: string
+                    externalReference:
+                      type: string
+                      nullable: true
+                    name:
+                      type: string
+                    email:
+                      type: string
+                    cpfCnpj:
+                      type: string
+              additionalProperties: true
+      responses:
+        '200':
+          description: Webhook processado com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - ok
+                  - handled
+                properties:
+                  ok:
+                    type: boolean
+                  handled:
+                    type: boolean
+                    description: Indica se o evento foi tratado pela aplicação
+                  reason:
+                    type: string
+                    nullable: true
+                    description: Motivo quando não tratado
+        '401':
+          description: Token de autenticação ausente ou inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Erro de configuração ou interno
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'

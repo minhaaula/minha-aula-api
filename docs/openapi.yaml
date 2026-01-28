@@ -27,12 +27,22 @@ tags:
     description: Consulta de alunos e seus dependentes.
   - name: Landing
     description: Rotas públicas para landpages e páginas de marketing.
+  - name: Webhooks
+    description: Endpoints de webhook (Asaas). Autenticação via token (ASAAS_WEBHOOK_TOKEN). Disponível quando o módulo schools está ativo.
 components:
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
+    asaasWebhookToken:
+      type: apiKey
+      in: header
+      name: asaas-access-token
+      description: |
+        Token de autenticação dos webhooks Asaas (variável ASAAS_WEBHOOK_TOKEN).
+        Obrigatório em produção quando o módulo schools está ativo.
+        Alternativas aceitas pelo servidor: header x-asaas-access-token ou query token.
   schemas:
     ErrorResponse:
       type: object

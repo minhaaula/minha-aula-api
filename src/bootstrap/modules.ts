@@ -123,9 +123,24 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
     }
 
     // Validar AUTH_TOKEN_SECRET obrigatório
-    const authTokenSecret = process.env.AUTH_TOKEN_SECRET;
-    if (!authTokenSecret || authTokenSecret.trim().length < 32) {
+    const authTokenSecret = process.env.AUTH_TOKEN_SECRET?.trim();
+    if (!authTokenSecret || authTokenSecret.length < 32) {
         throw new Error('AUTH_TOKEN_SECRET é obrigatório e deve ter pelo menos 32 caracteres para segurança adequada');
+    }
+
+    // Validar ASAAS_WEBHOOK_TOKEN apenas quando o módulo schools está ativo (é quem expõe os webhooks)
+    const isProduction = process.env.NODE_ENV === 'production';
+    const asaasWebhookToken = process.env.ASAAS_WEBHOOK_TOKEN?.trim();
+    const schoolsModuleActive = selected.includes('schools');
+
+    if (schoolsModuleActive) {
+        if (isProduction && !asaasWebhookToken) {
+            throw new Error('ASAAS_WEBHOOK_TOKEN é obrigatório em produção quando o módulo schools está ativo (webhooks Asaas)');
+        }
+        // CRÍTICO: Garantir que os tokens sejam diferentes
+        if (asaasWebhookToken && asaasWebhookToken === authTokenSecret) {
+            throw new Error('CRITICAL SECURITY ERROR: ASAAS_WEBHOOK_TOKEN não pode ser igual a AUTH_TOKEN_SECRET. Use tokens diferentes para webhooks e autenticação de usuários.');
+        }
     }
 
     const passwordHasher = new ScryptPasswordHasher();

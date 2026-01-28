@@ -114,29 +114,53 @@ export class AsaasClient {
         }
     }
 
-    async getPayment(paymentId: string): Promise<{ 
-        id: string; 
-        status?: string; 
+    async getPayment(paymentId: string): Promise<{
+        id: string;
+        status?: string;
         transactionReceiptUrl?: string | null;
         paymentDate?: string | null;
         confirmedDate?: string | null;
         receivedDate?: string | null;
     }> {
         try {
-            const { data } = await this.http.get<{ 
-                id: string; 
-                status?: string; 
+            const { data } = await this.http.get<{
+                id: string;
+                status?: string;
                 transactionReceiptUrl?: string | null;
                 paymentDate?: string | null;
                 confirmedDate?: string | null;
                 receivedDate?: string | null;
             }>(`/payments/${paymentId}`);
-            
+
             if (!data || typeof data !== 'object') {
-                throw new Error('Asaas API returned invalid response: response is not an object');
+                console.error('[AsaasClient.getPayment] Invalid response type from Asaas', {
+                    paymentId,
+                    responseType: typeof data
+                });
+
+                return {
+                    id: paymentId,
+                    status: undefined,
+                    transactionReceiptUrl: null,
+                    paymentDate: null,
+                    confirmedDate: null,
+                    receivedDate: null
+                };
             }
-            if (!data.id || typeof data.id !== 'string' || !data.id.trim()) {
-                throw new Error('Asaas API returned invalid response: missing or invalid payment ID');
+
+            if (!('id' in data) || typeof (data as any).id !== 'string' || !(data as any).id.trim()) {
+                console.error('[AsaasClient.getPayment] Missing or invalid payment ID in Asaas response', {
+                    paymentId,
+                    responseKeys: Object.keys(data as any)
+                });
+                return {
+                    id: paymentId,
+                    status: (data as any).status,
+                    transactionReceiptUrl: (data as any).transactionReceiptUrl ?? null,
+                    paymentDate: (data as any).paymentDate ?? null,
+                    confirmedDate: (data as any).confirmedDate ?? null,
+                    receivedDate: (data as any).receivedDate ?? null
+                };
             }
 
             return data;

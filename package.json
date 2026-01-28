@@ -16,6 +16,7 @@
     "dev:schools": "APP_MODULES=schools tsx watch src/main.ts",
     "dev:students": "APP_MODULES=students tsx watch src/main.ts",
     "dev:payments": "APP_MODULES=payments tsx watch src/main.ts",
+    "dev:admin": "APP_MODULES=admin tsx watch src/main.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "migrate:run": "ts-node ./node_modules/typeorm/cli.js migration:run -d src/infra/db/typeorm/datasource.ts",

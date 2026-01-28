@@ -19,6 +19,9 @@ import type { PasswordHasherPort } from '../../ports/providers/password-hasher.p
 import type { TokenProviderPort } from '../../ports/providers/token-provider.port';
 import type { AsaasProviderPort } from '../../ports/providers/asaas-port';
 import { ResendSchoolAsaasAccount } from '../../app/use-cases/resend-school-asaas-account';
+import { GetAdminSchoolDetails } from '../../app/use-cases/get-admin-school-details';
+import { GetAdminSchoolPlans } from '../../app/use-cases/get-admin-school-plans';
+import { UpdateSchool } from '../../app/use-cases/update-school';
 import { scheduleAllJobs } from '../../infra/messaging/bullmq/job-scheduler';
 import { startWorker } from '../../infra/messaging/bullmq/worker-manager';
 import { log } from '../../shared/logger';
@@ -54,6 +57,20 @@ export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext)
         deps.planFinancesRepo
     );
 
+    const getAdminSchoolDetails = new GetAdminSchoolDetails(
+        deps.schoolsRepo,
+        deps.planFinancesRepo
+    );
+
+    const getAdminSchoolPlans = new GetAdminSchoolPlans(
+        deps.planFinancesRepo
+    );
+
+    const updateSchool = new UpdateSchool(
+        deps.schoolsRepo,
+        deps.passwordHasher
+    );
+
     const loginAdmin = new LoginAdmin(
         deps.usersRepo,
         deps.passwordHasher,
@@ -85,6 +102,9 @@ export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext)
         listSchoolsWithPlans,
         loginAdmin,
         getAdminDashboard,
+        getAdminSchoolDetails,
+        getAdminSchoolPlans,
+        updateSchool,
         createDiscountCoupon,
         listDiscountCoupons,
         validateDiscountCoupon,

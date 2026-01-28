@@ -9,12 +9,18 @@ import { requirePersona } from '../middlewares/require-persona';
 import { UserPersonaEnum } from '../../../domain/value-objects/user-persona';
 import { buildCouponsRoutes } from './admin/coupons.routes';
 import type { ResendSchoolAsaasAccount } from '../../../app/use-cases/resend-school-asaas-account';
+import { GetAdminSchoolDetails } from '../../../app/use-cases/get-admin-school-details';
+import { GetAdminSchoolPlans } from '../../../app/use-cases/get-admin-school-plans';
+import { UpdateSchool } from '../../../app/use-cases/update-school';
 
 type AdminRouterDeps = {
     getAdminStatus: GetAdminStatus;
     listSchoolsWithPlans: ListSchoolsWithPlans;
     loginAdmin: LoginAdmin;
     getAdminDashboard?: GetAdminDashboard;
+    getAdminSchoolDetails: GetAdminSchoolDetails;
+    getAdminSchoolPlans: GetAdminSchoolPlans;
+    updateSchool: UpdateSchool;
     createDiscountCoupon?: import('../../../app/use-cases/create-discount-coupon').CreateDiscountCoupon;
     listDiscountCoupons?: import('../../../app/use-cases/list-discount-coupons').ListDiscountCoupons;
     validateDiscountCoupon?: import('../../../app/use-cases/validate-discount-coupon').ValidateDiscountCoupon;
@@ -39,6 +45,9 @@ export function adminRouter({
     listSchoolsWithPlans, 
     loginAdmin, 
     getAdminDashboard,
+    getAdminSchoolDetails,
+    getAdminSchoolPlans,
+    updateSchool,
     createDiscountCoupon,
     listDiscountCoupons,
     validateDiscountCoupon,
@@ -66,9 +75,64 @@ export function adminRouter({
         res.json(payload);
     }));
 
+    router.get('/schools/:schoolId', requireAuth, requireAdminPersona, asyncHandler(async (req, res) => {
+        const paramsSchema = z.object({
+            schoolId: z.string().uuid()
+        });
+        const { schoolId } = paramsSchema.parse(req.params);
+        const payload = await getAdminSchoolDetails.exec({ schoolId });
+        res.json(payload);
+    }));
+
+    router.patch('/schools/:schoolId', requireAuth, requireAdminPersona, asyncHandler(async (req, res) => {
+        const paramsSchema = z.object({
+            schoolId: z.string().uuid()
+        });
+        const bodySchema = z.object({
+            name: z.string().min(1).optional(),
+            email: z.string().email().optional(),
+            phone: z.string().min(10).max(15).optional(),
+            cnpj: z.string().min(14).max(18).optional(),
+            incomeValue: z.number().int().positive().optional(),
+            ownerName: z.string().min(1).nullable().optional(),
+            ownerCpf: z.string().min(11).max(14).nullable().optional(),
+            ownerEmail: z.string().email().nullable().optional(),
+            ownerUserId: z.string().uuid().nullable().optional(),
+            ownerPassword: z.string().min(8).nullable().optional(),
+            links: z.object({
+                facebook: z.string().url().nullable().optional(),
+                instagram: z.string().url().nullable().optional(),
+                tiktok: z.string().url().nullable().optional(),
+                youtube: z.string().url().nullable().optional(),
+                site: z.string().url().nullable().optional()
+            }).partial().optional()
+        }).strict();
+
+        const { schoolId } = paramsSchema.parse(req.params);
+        const body = bodySchema.parse(req.body);
+
+        await updateSchool.exec({
+            schoolId,
+            ...body
+        });
+
+        // Retornar sempre a visão administrativa completa atualizada
+        const payload = await getAdminSchoolDetails.exec({ schoolId });
+        res.json(payload);
+    }));
+
     router.get('/schools', requireAuth, requireAdminPersona, asyncHandler(async (_req, res) => {
         const schools = await listSchoolsWithPlans.exec();
         res.json({ schools });
+    }));
+
+    router.get('/schools/:schoolId/plans', requireAuth, requireAdminPersona, asyncHandler(async (req, res) => {
+        const paramsSchema = z.object({
+            schoolId: z.string().uuid()
+        });
+        const { schoolId } = paramsSchema.parse(req.params);
+        const payload = await getAdminSchoolPlans.exec({ schoolId });
+        res.json(payload);
     }));
 
     if (getAdminDashboard) {

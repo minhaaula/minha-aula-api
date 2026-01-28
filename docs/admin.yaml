@@ -76,6 +76,136 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /admin/schools/{schoolId}:
+    get:
+      tags:
+        - Admin
+      summary: Obter detalhes completos de uma escola
+      description: |
+        Retorna os detalhes completos de uma escola para uso administrativo, incluindo:
+        - Dados cadastrais completos
+        - Informações do responsável
+        - Receita estimada (`incomeValue`)
+        - Informações do plano de assinatura atual (se houver)
+        - Dados da conta no provedor de pagamentos (Asaas)
+        - Status de onboarding/KYC
+
+        Requer autenticação com persona ADMIN.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: schoolId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Identificador da escola
+      responses:
+        '200':
+          description: Detalhes da escola retornados com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminSchoolDetailsResponse'
+        '401':
+          description: Usuário não autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    patch:
+      tags:
+        - Admin
+      summary: Atualizar dados de uma escola
+      description: |
+        Atualiza dados cadastrais e de configuração de uma escola.
+
+        - Permite alterar nome, email, telefone e CNPJ
+        - Permite atualizar informações do responsável
+        - Permite ajustar `incomeValue` e links públicos da escola
+        - Retorna sempre a visão administrativa completa da escola após a atualização
+
+        Requer autenticação com persona ADMIN.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: schoolId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Identificador da escola
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminUpdateSchoolInput'
+      responses:
+        '200':
+          description: Escola atualizada com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminSchoolDetailsResponse'
+        '400':
+          description: Erro de validação ou regra de negócio.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Usuário não autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado (requer persona ADMIN).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Escola não encontrada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/schools/{schoolId}/plans:
+    get:
+      tags:
+        - Admin
+      summary: Obter histórico de planos de uma escola
+      description: |
+        Retorna o plano de assinatura atual e o histórico de planos de uma escola.
+
+        Requer autenticação com persona ADMIN.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: schoolId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Identificador da escola
+      responses:
+        '200':
+          description: Histórico de planos retornado com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminSchoolPlansResponse'
+        '401':
+          description: Usuário não autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '403':
           description: Usuário não autorizado (requer persona ADMIN).
           content:
@@ -139,6 +269,329 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Escola não encontrada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/schools/{schoolId}/students:
+    get:
+      tags:
+        - Admin
+      summary: Listar alunos de uma escola
+      description: |
+        Retorna a lista de alunos (usuário + dependentes) matriculados em uma escola,
+        incluindo informações de curso, turma e responsável.
+
+        Esta rota é apenas de visualização para o painel administrativo.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: schoolId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID da escola
+        - in: query
+          name: name
+          required: false
+          schema:
+            type: string
+          description: Filtrar por nome do aluno ou dependente (contém, case-insensitive).
+        - in: query
+          name: courseId
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Filtrar por curso.
+        - in: query
+          name: classId
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Filtrar por turma.
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+          description: Quantidade máxima de registros a retornar.
+        - in: query
+          name: offset
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+          description: Quantidade de registros a pular (para paginação).
+      responses:
+        '200':
+          description: Lista de alunos retornada com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminSchoolStudentsListResponse'
+        '401':
+          description: Usuário não autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado (requer persona ADMIN).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/schools/{schoolId}/students/{studentId}:
+    get:
+      tags:
+        - Admin
+      summary: Obter detalhes de um aluno na escola
+      description: |
+        Retorna os detalhes de um aluno dentro do contexto de uma escola,
+        incluindo dados do aluno, responsável (quando dependente), matrículas
+        ativas e histórico de cobranças pagas.
+
+        Esta rota é apenas de visualização para o painel administrativo.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: schoolId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID da escola
+        - in: path
+          name: studentId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID do aluno (usuário ou dependente)
+      responses:
+        '200':
+          description: Detalhes do aluno retornados com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminSchoolStudentDetailsResponse'
+        '401':
+          description: Usuário não autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado (requer persona ADMIN).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Aluno não encontrado ou não vinculado à escola.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/schools/{schoolId}/students/{studentId}/payments:
+    get:
+      tags:
+        - Admin
+      summary: Listar pagamentos de um aluno na escola
+      description: |
+        Retorna o histórico de cobranças pagas de um aluno (usuário ou dependente)
+        dentro de uma escola específica.
+
+        Esta rota é apenas de visualização para o painel administrativo.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: schoolId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID da escola
+        - in: path
+          name: studentId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID do aluno (usuário ou dependente)
+      responses:
+        '200':
+          description: Lista de pagamentos do aluno retornada com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminSchoolStudentPaymentsResponse'
+        '401':
+          description: Usuário não autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado (requer persona ADMIN).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Aluno não encontrado ou não vinculado à escola.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/schools/{schoolId}/payments:
+    get:
+      tags:
+        - Admin
+      summary: Listar cobranças financeiras da escola (visão mensal)
+      description: |
+        Retorna as cobranças financeiras de uma escola em um determinado mês/ano,
+        incluindo informações do aluno, curso, turma, valores e status.
+
+        Esta rota é apenas de visualização para o painel administrativo.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: schoolId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID da escola
+        - in: query
+          name: month
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 12
+          description: Mês de referência (1-12).
+        - in: query
+          name: year
+          required: true
+          schema:
+            type: integer
+            minimum: 2000
+            maximum: 3000
+          description: Ano de referência.
+        - in: query
+          name: classId
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Filtrar por turma.
+        - in: query
+          name: studentName
+          required: false
+          schema:
+            type: string
+          description: Filtrar por nome do aluno (responsável ou dependente).
+        - in: query
+          name: status
+          required: false
+          schema:
+            type: string
+          description: Filtrar por status da cobrança (OPEN, PAID, OVERDUE).
+      responses:
+        '200':
+          description: Lista de cobranças retornada com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminSchoolPaymentsListResponse'
+        '400':
+          description: Erro de validação nos parâmetros (mês/ano/status).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Usuário não autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado (requer persona ADMIN).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/schools/{schoolId}/payments/paid:
+    get:
+      tags:
+        - Admin
+      summary: Listar pagamentos já recebidos da escola
+      description: |
+        Retorna o histórico de cobranças já pagas de uma escola, com paginação
+        e filtro por nome do aluno.
+
+        Esta rota é apenas de visualização para o painel administrativo.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: schoolId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID da escola
+        - in: query
+          name: studentName
+          required: false
+          schema:
+            type: string
+          description: Filtrar por nome do aluno (responsável ou dependente).
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+          description: Quantidade máxima de registros a retornar.
+        - in: query
+          name: offset
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+          description: Quantidade de registros a pular (para paginação).
+      responses:
+        '200':
+          description: Lista de pagamentos pagos retornada com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminPaidSchoolPaymentsResponse'
+        '401':
+          description: Usuário não autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado (requer persona ADMIN).
           content:
             application/json:
               schema:
@@ -356,6 +809,543 @@ components:
         - ownerEmail
         - incomeValue
         - plan
+    AdminSchoolDetailsResponse:
+      allOf:
+        - $ref: '#/components/schemas/SchoolWithPlanItem'
+        - type: object
+          properties:
+            ownerUserId:
+              type: string
+              format: uuid
+              nullable: true
+              description: ID do usuário responsável pela escola (quando vinculado)
+            accountId:
+              type: string
+              nullable: true
+              description: ID da conta no Asaas associada à escola
+            accountApiKey:
+              type: string
+              nullable: true
+              description: API Key da conta no Asaas associada à escola
+            walletId:
+              type: string
+              nullable: true
+              description: ID da carteira no Asaas associada à escola
+            onboardingUrl:
+              type: string
+              nullable: true
+              description: Link de onboarding/KYC para completar a verificação
+            onboardingCompleted:
+              type: boolean
+              description: Indica se o onboarding/KYC já foi concluído
+            onboardingCompletedAt:
+              type: string
+              format: date-time
+              nullable: true
+              description: Data/hora de conclusão do onboarding/KYC
+    AdminSchoolPlansResponse:
+      type: object
+      properties:
+        currentPlan:
+          $ref: '#/components/schemas/SchoolWithPlanItem/properties/plan'
+        history:
+          type: array
+          items:
+            $ref: '#/components/schemas/SchoolWithPlanItem/properties/plan'
+      required:
+        - currentPlan
+        - history
+    AdminSchoolStudentsListResponse:
+      type: object
+      properties:
+        students:
+          type: array
+          description: Lista de alunos matriculados na escola (usuário + dependentes)
+          items:
+            type: object
+            properties:
+              enrollmentId:
+                type: string
+                format: uuid
+                description: ID da matrícula
+              status:
+                type: string
+                description: Status da matrícula
+              studentType:
+                type: string
+                enum: ['USER', 'DEPENDENT']
+                description: Tipo de aluno (usuário ou dependente)
+              enrolledAt:
+                type: string
+                format: date-time
+                description: Data de início da matrícula
+              updatedAt:
+                type: string
+                format: date-time
+                description: Data da última atualização da matrícula
+              student:
+                type: object
+                description: Resumo do responsável/aluno principal
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  fullName:
+                    type: string
+                  email:
+                    type: string
+                    format: email
+                  cpf:
+                    type: string
+                  phone:
+                    type: string
+                  birthDate:
+                    type: string
+                    format: date
+                    nullable: true
+                  createdAt:
+                    type: string
+                    format: date-time
+                required:
+                  - id
+                  - fullName
+                  - email
+                  - cpf
+                  - phone
+                  - createdAt
+              dependent:
+                type: object
+                nullable: true
+                description: Dados do dependente (quando a matrícula é de um dependente)
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  userId:
+                    type: string
+                    format: uuid
+                  fullName:
+                    type: string
+                  cpf:
+                    type: string
+                    nullable: true
+                  birthDate:
+                    type: string
+                    format: date
+                    nullable: true
+                  relationship:
+                    type: string
+                    nullable: true
+                  createdAt:
+                    type: string
+                    format: date-time
+              course:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  name:
+                    type: string
+                required:
+                  - id
+                  - name
+              class:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  label:
+                    type: string
+                required:
+                  - id
+                  - label
+            required:
+              - enrollmentId
+              - status
+              - studentType
+              - enrolledAt
+              - updatedAt
+              - student
+              - course
+              - class
+        total:
+          type: integer
+          description: Total de alunos encontrados
+        limit:
+          type: integer
+          description: Limite aplicado na consulta
+        offset:
+          type: integer
+          description: Offset aplicado na consulta
+      required:
+        - students
+        - total
+        - limit
+        - offset
+    AdminSchoolStudentDetailsResponse:
+      type: object
+      properties:
+        student:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            fullName:
+              type: string
+            email:
+              type: string
+            phone:
+              type: string
+            cpf:
+              type: string
+            birthDate:
+              type: string
+              format: date
+              nullable: true
+          required:
+            - id
+            - fullName
+            - email
+            - phone
+            - cpf
+        responsible:
+          type: object
+          nullable: true
+          description: Responsável pelo aluno quando se trata de um dependente
+          properties:
+            id:
+              type: string
+              format: uuid
+            fullName:
+              type: string
+            email:
+              type: string
+              format: email
+            phone:
+              type: string
+            cpf:
+              type: string
+        enrollments:
+          type: array
+          description: Matrículas do aluno na escola
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+              course:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  name:
+                    type: string
+                required:
+                  - id
+                  - name
+              class:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  label:
+                    type: string
+                required:
+                  - id
+                  - label
+              enrolledAt:
+                type: string
+                format: date-time
+              status:
+                type: string
+            required:
+              - id
+              - course
+              - class
+              - enrolledAt
+              - status
+        paidCharges:
+          type: array
+          description: Cobranças já pagas pelo aluno na escola
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+              amount:
+                type: number
+              amountCents:
+                type: integer
+              discount:
+                type: number
+                nullable: true
+              discountCents:
+                type: integer
+                nullable: true
+              netAmount:
+                type: number
+              netAmountCents:
+                type: integer
+              description:
+                type: string
+                nullable: true
+              dueDate:
+                type: string
+                format: date-time
+              paidAt:
+                type: string
+                format: date-time
+              course:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  name:
+                    type: string
+                required:
+                  - id
+                  - name
+              class:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  label:
+                    type: string
+                required:
+                  - id
+                  - label
+            required:
+              - id
+              - amount
+              - amountCents
+              - netAmount
+              - netAmountCents
+              - dueDate
+              - paidAt
+              - course
+              - class
+      required:
+        - student
+        - enrollments
+        - paidCharges
+    AdminSchoolStudentPaymentsResponse:
+      type: object
+      properties:
+        paidCharges:
+          type: array
+          description: Cobranças já pagas pelo aluno na escola
+          items:
+            $ref: '#/components/schemas/AdminSchoolStudentDetailsResponse/properties/paidCharges/items'
+      required:
+        - paidCharges
+    AdminSchoolPaymentsListResponse:
+      type: object
+      properties:
+        payments:
+          type: array
+          description: Lista de cobranças da escola no período selecionado
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+              amountCents:
+                type: integer
+              discountCents:
+                type: integer
+                nullable: true
+              discountReason:
+                type: string
+                nullable: true
+              netAmountCents:
+                type: integer
+              status:
+                type: string
+              chargeType:
+                type: string
+              description:
+                type: string
+                nullable: true
+              dueDate:
+                type: string
+                format: date-time
+              asaasPaymentId:
+                type: string
+                nullable: true
+              asaasInvoiceUrl:
+                type: string
+                nullable: true
+              paidAt:
+                type: string
+                format: date-time
+                nullable: true
+              type:
+                type: string
+                nullable: true
+                enum: ['PIX', 'BOLETO', 'MANUAL', null]
+              createdAt:
+                type: string
+                format: date-time
+              updatedAt:
+                type: string
+                format: date-time
+              student:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  fullName:
+                    type: string
+                  type:
+                    type: string
+                    enum: ['USER', 'DEPENDENT']
+                required:
+                  - id
+                  - fullName
+                  - type
+              dependent:
+                type: object
+                nullable: true
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  fullName:
+                    type: string
+              course:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  name:
+                    type: string
+                required:
+                  - id
+                  - name
+              class:
+                type: object
+                nullable: true
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  label:
+                    type: string
+            required:
+              - id
+              - amountCents
+              - netAmountCents
+              - status
+              - chargeType
+              - dueDate
+              - createdAt
+              - updatedAt
+              - student
+              - course
+      required:
+        - payments
+    AdminPaidSchoolPaymentsResponse:
+      type: object
+      properties:
+        payments:
+          type: array
+          description: Lista de cobranças pagas
+          items:
+            $ref: '#/components/schemas/AdminSchoolPaymentsListResponse/properties/payments/items'
+        total:
+          type: integer
+          description: Total de registros encontrados
+        limit:
+          type: integer
+          description: Limite aplicado
+        offset:
+          type: integer
+          description: Offset aplicado
+      required:
+        - payments
+        - total
+        - limit
+        - offset
+    AdminUpdateSchoolInput:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Nome da escola
+        email:
+          type: string
+          format: email
+          description: Email de contato da escola
+        phone:
+          type: string
+          description: Telefone de contato (apenas dígitos)
+        cnpj:
+          type: string
+          description: CNPJ da escola (apenas dígitos)
+        incomeValue:
+          type: number
+          description: Receita mensal estimada da escola
+          example: 50000
+        ownerName:
+          type: string
+          nullable: true
+          description: Nome do responsável pela escola
+        ownerCpf:
+          type: string
+          nullable: true
+          description: CPF do responsável (apenas dígitos)
+        ownerEmail:
+          type: string
+          nullable: true
+          format: email
+          description: Email do responsável
+        ownerUserId:
+          type: string
+          format: uuid
+          nullable: true
+          description: ID do usuário responsável vinculado à escola
+        ownerPassword:
+          type: string
+          nullable: true
+          format: password
+          description: Senha do responsável (obrigatória se dados do responsável forem preenchidos)
+        links:
+          type: object
+          description: Links públicos da escola
+          properties:
+            facebook:
+              type: string
+              nullable: true
+              description: URL da página do Facebook
+            instagram:
+              type: string
+              nullable: true
+              description: URL do perfil do Instagram
+            tiktok:
+              type: string
+              nullable: true
+              description: URL do perfil do TikTok
+            youtube:
+              type: string
+              nullable: true
+              description: URL do canal do YouTube
+            site:
+              type: string
+              nullable: true
+              description: URL do site institucional
     PostalAddressOutput:
       $ref: '#/components/schemas/PostalAddressOutput'
     AdminDashboardResponse:

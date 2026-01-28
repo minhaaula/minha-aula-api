@@ -98,15 +98,37 @@ export function asaasWebhookRouter(deps: AsaasWebhookDeps) {
     const router = Router();
 
     router.post('/payments', webhookRateLimiter, asyncHandler(async (req, res) => {
-        // Validar assinatura do webhook se configurado
-        const webhookToken = process.env.ASAAS_WEBHOOK_TOKEN;
+        // Validar token do webhook (obrigatório em produção)
+        const webhookToken = process.env.ASAAS_WEBHOOK_TOKEN?.trim();
+        const authTokenSecret = process.env.AUTH_TOKEN_SECRET?.trim();
+        const isProduction = process.env.NODE_ENV === 'production';
+
+        // Segurança: garantir que nunca use AUTH_TOKEN_SECRET para webhooks
+        if (webhookToken && authTokenSecret && webhookToken === authTokenSecret) {
+            log.error('[Asaas Webhook] CRITICAL SECURITY ERROR: ASAAS_WEBHOOK_TOKEN não pode ser igual a AUTH_TOKEN_SECRET');
+            return res.status(500).json({ error: 'Configuration error' });
+        }
+
+        // Em produção, token é obrigatório
+        if (isProduction && !webhookToken) {
+            log.error('[Asaas Webhook] ASAAS_WEBHOOK_TOKEN é obrigatório em produção');
+            return res.status(500).json({ error: 'Webhook authentication not configured' });
+        }
+
+        // Validar token se configurado
         if (webhookToken) {
-            // Asaas envia o token no header 'asaas-access-token' (sem o prefixo 'x-')
             const providedToken = req.headers['asaas-access-token'] || req.headers['x-asaas-access-token'] || req.query.token;
-            if (providedToken !== webhookToken) {
-                log.warn('[Asaas Webhook] Token de autenticação inválido ou ausente');
+            if (!providedToken || providedToken !== webhookToken) {
+                log.warn('[Asaas Webhook] Token de autenticação inválido ou ausente', {
+                    hasToken: !!providedToken,
+                    tokenLength: providedToken?.length
+                });
                 return res.status(401).json({ error: 'Unauthorized' });
             }
+        } else if (isProduction) {
+            // Fallback de segurança: mesmo que não tenha token configurado, rejeitar em produção
+            log.error('[Asaas Webhook] Webhook recebido sem token em produção');
+            return res.status(401).json({ error: 'Unauthorized' });
         }
 
         // Log sanitizado do evento recebido
@@ -150,15 +172,37 @@ export function asaasWebhookRouter(deps: AsaasWebhookDeps) {
     }));
 
     router.post('/accounts', webhookRateLimiter, asyncHandler(async (req, res) => {
-        // Validar assinatura do webhook se configurado
-        const webhookToken = process.env.ASAAS_WEBHOOK_TOKEN;
+        // Validar token do webhook (obrigatório em produção)
+        const webhookToken = process.env.ASAAS_WEBHOOK_TOKEN?.trim();
+        const authTokenSecret = process.env.AUTH_TOKEN_SECRET?.trim();
+        const isProduction = process.env.NODE_ENV === 'production';
+
+        // Segurança: garantir que nunca use AUTH_TOKEN_SECRET para webhooks
+        if (webhookToken && authTokenSecret && webhookToken === authTokenSecret) {
+            log.error('[Asaas Webhook] CRITICAL SECURITY ERROR: ASAAS_WEBHOOK_TOKEN não pode ser igual a AUTH_TOKEN_SECRET');
+            return res.status(500).json({ error: 'Configuration error' });
+        }
+
+        // Em produção, token é obrigatório
+        if (isProduction && !webhookToken) {
+            log.error('[Asaas Webhook] ASAAS_WEBHOOK_TOKEN é obrigatório em produção');
+            return res.status(500).json({ error: 'Webhook authentication not configured' });
+        }
+
+        // Validar token se configurado
         if (webhookToken) {
-            // Asaas envia o token no header 'asaas-access-token' (sem o prefixo 'x-')
             const providedToken = req.headers['asaas-access-token'] || req.headers['x-asaas-access-token'] || req.query.token;
-            if (providedToken !== webhookToken) {
-                log.warn('[Asaas Webhook] Token de autenticação inválido ou ausente');
+            if (!providedToken || providedToken !== webhookToken) {
+                log.warn('[Asaas Webhook] Token de autenticação inválido ou ausente', {
+                    hasToken: !!providedToken,
+                    tokenLength: providedToken?.length
+                });
                 return res.status(401).json({ error: 'Unauthorized' });
             }
+        } else if (isProduction) {
+            // Fallback de segurança: mesmo que não tenha token configurado, rejeitar em produção
+            log.error('[Asaas Webhook] Webhook recebido sem token em produção');
+            return res.status(401).json({ error: 'Unauthorized' });
         }
 
         // Log sanitizado do evento recebido
