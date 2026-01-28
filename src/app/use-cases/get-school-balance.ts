@@ -65,13 +65,16 @@ export class GetSchoolBalance {
 
         try {
             // Criar provider com a API key da subconta da escola
-            const baseUrl = process.env.ASAAS_BASE_URL || 'https://www.asaas.com/api/v3';
-            const schoolAsaasProvider = new AsaasProvider({
-                apiKey: school.accountApiKey.trim(),
-                baseUrl
-            });
+            const { AsaasProviderFactory } = await import('../../infra/providers/asaas/asaas-provider-factory.js');
+            const schoolAsaasProvider = AsaasProviderFactory.createSubAccountProvider(school.accountApiKey);
+            if (!schoolAsaasProvider) {
+                throw new Error('Failed to create Asaas provider for school subaccount');
+            }
 
             // Buscar saldo da conta Asaas
+            if (!schoolAsaasProvider.getAccountBalance) {
+                throw new Error('Asaas provider does not support getAccountBalance');
+            }
             const balance = await schoolAsaasProvider.getAccountBalance(school.accountId);
 
             // Converter valores de reais para centavos

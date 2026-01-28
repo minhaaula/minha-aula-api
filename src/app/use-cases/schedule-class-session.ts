@@ -3,6 +3,7 @@ import { ClassSessionRepository } from '../../ports/repositories/class-session.r
 import { CourseClassRepository } from '../../ports/repositories/course-class.repo';
 import { CourseRepository } from '../../ports/repositories/course.repo';
 import { Uuid } from '../../shared/uuid';
+import { AppError, ErrorCode } from '../../shared/errors';
 
 export class ScheduleClassSession {
     constructor(
@@ -31,22 +32,22 @@ export class ScheduleClassSession {
         updatedAt: Date;
     }> {
         const schoolId = input.schoolId.trim();
-        if (!schoolId) throw new Error('School id is required');
+        if (!schoolId) throw AppError.fromCode(ErrorCode.REQUIRED_FIELD, { field: 'schoolId' });
         const courseClassId = input.courseClassId.trim();
-        if (!courseClassId) throw new Error('Course class id is required');
+        if (!courseClassId) throw AppError.fromCode(ErrorCode.REQUIRED_FIELD, { field: 'courseClassId' });
 
         const startsAt = new Date(input.startsAt);
         const endsAt = new Date(input.endsAt);
         if (Number.isNaN(startsAt.getTime()) || Number.isNaN(endsAt.getTime()) || endsAt <= startsAt) {
-            throw new Error('Invalid session time range');
+            throw AppError.fromCode(ErrorCode.INVALID_DATE_RANGE, { message: 'Invalid session time range' });
         }
 
         const courseClass = await this.classes.findById(courseClassId);
-        if (!courseClass || !courseClass.isActive) throw new Error('Course class not found');
+        if (!courseClass || !courseClass.isActive) throw AppError.fromCode(ErrorCode.COURSE_CLASS_NOT_FOUND, { courseClassId });
 
         const course = await this.courses.findById(courseClass.courseId);
         if (!course || !course.isActive || course.schoolId !== schoolId) {
-            throw new Error('Course class not found for this school');
+            throw AppError.fromCode(ErrorCode.COURSE_CLASS_NOT_FOUND, { courseClassId, schoolId });
         }
 
         const conflictingSessions = await this.sessions.findByClassAndInterval({
@@ -55,7 +56,7 @@ export class ScheduleClassSession {
             to: endsAt
         });
         if (conflictingSessions.some((item) => item.status !== 'CANCELLED')) {
-            throw new Error('Class session overlaps with an existing one');
+            throw AppError.fromCode(ErrorCode.CLASS_SESSION_OVERLAP, { courseClassId, startsAt, endsAt });
         }
 
         const session = ClassSession.create({

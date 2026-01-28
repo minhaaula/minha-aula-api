@@ -9,7 +9,9 @@ import { RequestUserPasswordReset } from '../../../app/use-cases/request-user-pa
 import { ResetUserPassword } from '../../../app/use-cases/reset-user-password';
 import { ValidatePasswordResetToken } from '../../../app/use-cases/validate-password-reset-token';
 import { AuthenticatedRequest } from '../middlewares/auth';
-import { cpfNumberSchema, phoneNumberSchema, zipCodeNumberSchema } from '../validators/numeric-fields';
+import { cpfNumberSchema, phoneNumberSchema } from '../validators/numeric-fields';
+import { addressSchema } from '../validators/common-schemas';
+import { authRateLimiter, registrationRateLimiter } from '../middlewares/rate-limiter';
 
 const cpfSchema = cpfNumberSchema();
 
@@ -37,16 +39,6 @@ export function authRouter({
         res.status(401).json({ error: 'Unauthorized' });
     });
 
-    const addressSchema = z.object({
-        street: z.string().min(3),
-        number: z.string().min(1),
-        complement: z.string().min(1).optional(),
-        district: z.string().min(2).optional(),
-        city: z.string().min(2),
-        state: z.string().min(2),
-        zipCode: zipCodeNumberSchema()
-    });
-
     const registerSchema = z.object({
         fullName: z.string().min(3),
         birthDate: z.string().refine((value) => !Number.isNaN(new Date(value).getTime()), { message: 'Invalid birth date' }),
@@ -68,7 +60,7 @@ export function authRouter({
         newPassword: z.string().min(8)
     });
 
-    r.post('/register', async (req, res, next) => {
+    r.post('/register', registrationRateLimiter, async (req, res, next) => {
         try {
             const dto = registerSchema.parse(req.body);
             const result = await registerUser.exec(dto);
@@ -78,7 +70,7 @@ export function authRouter({
         }
     });
 
-    r.post('/login', async (req, res, next) => {
+    r.post('/login', authRateLimiter, async (req, res, next) => {
         try {
             const dto = loginSchema.parse(req.body);
             const result = await loginUser.exec(dto);
@@ -129,7 +121,7 @@ export function authRouter({
             email: z.string().email('Email inválido')
         });
 
-        r.post('/password/request', async (req, res, next) => {
+        r.post('/password/request', registrationRateLimiter, async (req, res, next) => {
             try {
                 const dto = requestResetSchema.parse(req.body);
                 const result = await requestUserPasswordReset.exec(dto);
@@ -146,7 +138,7 @@ export function authRouter({
             newPassword: z.string().min(6, 'A senha deve ter pelo menos 6 caracteres')
         });
 
-        r.post('/password/reset', async (req, res, next) => {
+        r.post('/password/reset', authRateLimiter, async (req, res, next) => {
             try {
                 const dto = resetPasswordSchema.parse(req.body);
                 const result = await resetUserPassword.exec(dto);

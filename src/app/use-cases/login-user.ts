@@ -4,6 +4,7 @@ import { TokenProviderPort } from '../../ports/providers/token-provider.port';
 import { AuthTokenPayload } from '../contracts/auth-token-payload';
 import { UserPersonaEnum } from '../../domain/value-objects/user-persona';
 import { SchoolRepository } from '../../ports/repositories/school.repo';
+import { AppError, ErrorCode } from '../../shared/errors';
 
 export class LoginUser {
     private readonly allowedPersonas?: Set<string>;
@@ -23,13 +24,13 @@ export class LoginUser {
         const cpf = this.normalizeCpf(input.cpf);
         const user = await this.users.findByCpf(cpf);
 
-        if (!user) throw new Error('Invalid credentials');
+        if (!user) throw AppError.fromCode(ErrorCode.INVALID_CREDENTIALS);
 
         const valid = await this.hasher.compare(input.password, user.passwordHash);
-        if (!valid) throw new Error('Invalid credentials');
+        if (!valid) throw AppError.fromCode(ErrorCode.INVALID_CREDENTIALS);
 
         if (this.allowedPersonas && !this.allowedPersonas.has(user.persona)) {
-            throw new Error('Invalid credentials');
+            throw AppError.fromCode(ErrorCode.INVALID_CREDENTIALS);
         }
 
         const expiresIn = this.defaultTtl;
@@ -73,7 +74,7 @@ export class LoginUser {
 
     private normalizeCpf(value: string) {
         const digits = value.replace(/\D/g, '');
-        if (digits.length !== 11) throw new Error('Invalid credentials');
+        if (digits.length !== 11) throw AppError.fromCode(ErrorCode.INVALID_CPF);
         return digits;
     }
 

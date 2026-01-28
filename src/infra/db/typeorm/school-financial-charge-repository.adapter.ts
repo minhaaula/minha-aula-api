@@ -221,6 +221,35 @@ export class SchoolFinancialChargeRepositoryAdapter implements SchoolFinancialCh
         return Number(result.total || 0);
     }
 
+    async countChargesWithDiscount(
+        courseClassId: string,
+        ownerUserId: string,
+        studentUserId: string | null,
+        dependentId: string | null
+    ): Promise<number> {
+        const queryBuilder = this.repo.createQueryBuilder('charge')
+            .where('charge.courseClassId = :courseClassId', { courseClassId })
+            .andWhere('charge.ownerUserId = :ownerUserId', { ownerUserId })
+            .andWhere('charge.chargeType = :chargeType', { chargeType: 'TUITION' })
+            .andWhere('charge.discountCents IS NOT NULL')
+            .andWhere('charge.discountCents > 0');
+
+        if (studentUserId) {
+            queryBuilder.andWhere('charge.studentUserId = :studentUserId', { studentUserId });
+        } else {
+            queryBuilder.andWhere('charge.studentUserId IS NULL');
+        }
+
+        if (dependentId) {
+            queryBuilder.andWhere('charge.dependentId = :dependentId', { dependentId });
+        } else {
+            queryBuilder.andWhere('charge.dependentId IS NULL');
+        }
+
+        const count = await queryBuilder.getCount();
+        return count;
+    }
+
     private toDomain(row: SchoolFinancialChargeOrm): SchoolFinancialCharge {
         return SchoolFinancialCharge.restore({
             id: row.id,

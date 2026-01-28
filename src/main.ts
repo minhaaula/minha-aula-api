@@ -1,5 +1,8 @@
 import 'dotenv/config';
 import { createServerForModules, type ModuleName } from './bootstrap/modules';
+import { log } from './shared/logger';
+import { stopWorker } from './infra/messaging/bullmq/worker-manager';
+import { AppDataSource } from './infra/db/typeorm/datasource';
 
 function parseModules(value: string | undefined): ModuleName[] {
     if (!value) return [];
@@ -20,8 +23,91 @@ function parseModules(value: string | undefined): ModuleName[] {
     const modules = parseModules(process.env.APP_MODULES);
     const { app, modules: activeModules } = await createServerForModules(modules);
     const port = Number(process.env.PORT ?? 3000);
-    app.listen(port, () => {
+    
+    const server = app.listen(port, () => {
         const label = activeModules.length > 0 ? activeModules.join(', ') : 'auth, payments, schools, students';
         console.log(`API (${label}) on http://localhost:${port}`);
+    });
+
+    // Flag para evitar múltiplas chamadas de shutdown
+    let isShuttingDown = false;
+
+    // Configurar graceful shutdown
+    const gracefulShutdown = async (signal: string) => {
+        if (isShuttingDown) {
+            log.warn(`[Server] Shutdown já em andamento, ignorando ${signal}`);
+            return;
+        }
+
+        isShuttingDown = true;
+        log.info(`[Server] Recebido ${signal}, iniciando shutdown gracioso...`);
+        
+        // Parar de aceitar novas conexões
+        server.close(() => {
+            log.info('[Server] Servidor HTTP fechado');
+        });
+
+        // Aguardar requisições em andamento terminarem (timeout de 10 segundos)
+        const httpShutdownTimeout = setTimeout(() => {
+            log.warn('[Server] Timeout ao aguardar requisições HTTP terminarem. Forçando fechamento...');
+            process.exit(1);
+        }, 10000);
+
+        try {
+            // Parar worker BullMQ (aguarda jobs terminarem)
+            await stopWorker(30000); // 30 segundos para jobs terminarem
+            
+            // Fechar conexão do banco de dados
+            if (AppDataSource.isInitialized) {
+                log.info('[Server] Fechando conexão com banco de dados...');
+                await AppDataSource.destroy();
+                log.info('[Server] Conexão com banco de dados fechada');
+            }
+            
+            clearTimeout(httpShutdownTimeout);
+            log.info('[Server] Shutdown gracioso concluído');
+            process.exit(0);
+        } catch (error) {
+            clearTimeout(httpShutdownTimeout);
+            
+            // Ignorar erros do tsx watch durante shutdown (esbuild já foi encerrado)
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            if (errorMessage.includes('The service is no longer running') || 
+                errorMessage.includes('esbuild')) {
+                log.warn('[Server] Erro do tsx watch durante shutdown (pode ser ignorado)', {
+                    error: errorMessage
+                });
+                // Ainda tentar fechar conexões se possível
+                try {
+                    if (AppDataSource.isInitialized) {
+                        await AppDataSource.destroy();
+                    }
+                } catch (dbError) {
+                    // Ignorar erros ao fechar DB também
+                }
+                process.exit(0);
+            } else {
+                log.error('[Server] Erro durante shutdown gracioso', {
+                    error: errorMessage,
+                    stack: error instanceof Error ? error.stack : undefined
+                });
+                process.exit(1);
+            }
+        }
+    };
+
+    // Registrar handlers de shutdown
+    process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+    process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+    // Tratar erros não capturados
+    process.on('uncaughtException', (error) => {
+        log.error('[Server] Erro não capturado', { error: error.message, stack: error.stack });
+        gracefulShutdown('uncaughtException').catch(() => process.exit(1));
+    });
+
+    process.on('unhandledRejection', (reason) => {
+        log.error('[Server] Promise rejeitada não tratada', { reason });
+        gracefulShutdown('unhandledRejection').catch(() => process.exit(1));
     });
 })();

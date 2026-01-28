@@ -73,7 +73,8 @@ export class RequestUserPasswordReset {
                     `,
                     text: `Você solicitou a redefinição de senha. Use este token: ${token}. Este token expira em 1 hora.`
                 });
-                console.log(`Email de reset de senha enviado para: ${email}`);
+                // Não logar email ou token por segurança
+                console.log('Email de reset de senha enviado com sucesso');
             } catch (error) {
                 console.error(`Erro ao enviar email de reset de senha para ${email}:`, error);
                 // Não lançar erro para não expor que o email existe

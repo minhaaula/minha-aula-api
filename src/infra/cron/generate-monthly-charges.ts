@@ -4,6 +4,7 @@ import { EnrollmentRepositoryAdapter } from '../db/typeorm/enrollment-repository
 import { SchoolFinancialChargeRepositoryAdapter } from '../db/typeorm/school-financial-charge-repository.adapter';
 import { CourseRepositoryAdapter } from '../db/typeorm/course-repository';
 import { CourseClassRepositoryAdapter } from '../db/typeorm/course-class-repository.adapter';
+import { EnrollmentRequestRepositoryAdapter } from '../db/typeorm/enrollment-request-repository.adapter';
 import { GenerateMonthlyTuitionCharges } from '../../app/use-cases/generate-monthly-tuition-charges';
 import { log } from '../../shared/logger';
 
@@ -22,13 +23,15 @@ async function main() {
         const charges = new SchoolFinancialChargeRepositoryAdapter();
         const courses = new CourseRepositoryAdapter();
         const classes = new CourseClassRepositoryAdapter();
+        const enrollmentRequests = new EnrollmentRequestRepositoryAdapter();
 
         // Criar use case
         const generateCharges = new GenerateMonthlyTuitionCharges(
             enrollments,
             charges,
             courses,
-            classes
+            classes,
+            enrollmentRequests
         );
 
         // Executar geração de cobranças

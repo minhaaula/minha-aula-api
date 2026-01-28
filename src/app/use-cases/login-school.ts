@@ -5,6 +5,7 @@ import { PasswordHasherPort } from '../../ports/providers/password-hasher.port';
 import { TokenProviderPort } from '../../ports/providers/token-provider.port';
 import { AuthTokenPayload } from '../contracts/auth-token-payload';
 import { UserPersonaEnum } from '../../domain/value-objects/user-persona';
+import { AppError, ErrorCode } from '../../shared/errors';
 import { presentSchoolPlanFinance, SchoolPlanFinanceView } from '../presenters/school-plan-finance.presenter';
 
 export class LoginSchool {
@@ -33,17 +34,17 @@ export class LoginSchool {
         const school = await this.findSchoolByOwnerEmail(email);
 
         if (!school?.ownerPasswordHash) {
-            throw new Error('Invalid credentials');
+            throw AppError.fromCode(ErrorCode.INVALID_CREDENTIALS);
         }
 
         const passwordMatches = await this.hasher.compare(input.password, school.ownerPasswordHash);
         if (!passwordMatches) {
-            throw new Error('Invalid credentials');
+            throw AppError.fromCode(ErrorCode.INVALID_CREDENTIALS);
         }
 
         const ownerCpf = school.ownerCpf;
         if (!ownerCpf) {
-            throw new Error('Invalid credentials');
+            throw AppError.fromCode(ErrorCode.INVALID_CREDENTIALS);
         }
 
         const ownerName = school.ownerName ?? school.name;

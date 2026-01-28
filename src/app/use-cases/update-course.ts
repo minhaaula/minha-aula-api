@@ -1,6 +1,7 @@
 import { CourseRepository } from '../../ports/repositories/course.repo';
 import { SchoolRepository } from '../../ports/repositories/school.repo';
 import { Course } from '../../domain/entities/course';
+import { AppError, ErrorCode } from '../../shared/errors';
 
 export class UpdateCourse {
     constructor(
@@ -25,27 +26,27 @@ export class UpdateCourse {
         const schoolId = input.schoolId.trim();
         const courseId = input.courseId.trim();
 
-        if (!schoolId) throw new Error('School id is required');
-        if (!courseId) throw new Error('Course id is required');
+        if (!schoolId) throw AppError.fromCode(ErrorCode.REQUIRED_FIELD, { field: 'schoolId' });
+        if (!courseId) throw AppError.fromCode(ErrorCode.REQUIRED_FIELD, { field: 'courseId' });
 
         const school = await this.schools.findById(schoolId);
-        if (!school) throw new Error('School not found');
+        if (!school) throw AppError.fromCode(ErrorCode.SCHOOL_NOT_FOUND, { schoolId });
 
         const existingCourse = await this.courses.findById(courseId);
         if (!existingCourse || existingCourse.schoolId !== school.id) {
-            throw new Error('Course not found for this school');
+            throw AppError.fromCode(ErrorCode.COURSE_NOT_FOUND, { courseId, schoolId });
         }
 
         let name = input.name ?? existingCourse.name;
         name = name.trim();
         if (!name) {
-            throw new Error('Course name is required');
+            throw AppError.fromCode(ErrorCode.REQUIRED_FIELD, { field: 'name' });
         }
 
         if (name !== existingCourse.name) {
             const duplicate = await this.courses.findBySchoolAndName(school.id, name);
             if (duplicate && duplicate.id !== existingCourse.id) {
-                throw new Error('Course name already in use for this school');
+                throw AppError.fromCode(ErrorCode.ALREADY_EXISTS, { message: 'Course name already in use for this school' });
             }
         }
 

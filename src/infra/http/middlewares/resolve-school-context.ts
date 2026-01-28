@@ -1,6 +1,7 @@
 import type { RequestHandler } from 'express';
 import type { SchoolRepository } from '../../../ports/repositories/school.repo';
 import type { AuthenticatedRequest } from './auth';
+import { sanitizeForLogging } from '../../../shared/log-sanitizer';
 
 export interface SchoolContextRequest extends AuthenticatedRequest {
     schoolId?: string;
@@ -39,13 +40,12 @@ export function makeResolveSchoolContextMiddleware(repo?: SchoolRepository): Req
             }
         }
 
-        console.warn('School context not resolved for user', {
+        console.warn('School context not resolved for user', sanitizeForLogging({
             userId: payload?.sub ?? null,
-            email: payload?.email ?? null,
             hasTokenSchoolId: Boolean(payload?.schoolId),
             resolvedFromToken: Boolean(schoolIdFromToken),
             repoAvailable: Boolean(repo)
-        });
+        }));
         res.status(403).json({ error: 'School context not found for user' });
         return;
     };

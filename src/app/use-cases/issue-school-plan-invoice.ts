@@ -42,15 +42,16 @@ export class IssueSchoolPlanInvoice {
     ) {}
 
     async exec(input: IssueSchoolPlanInvoiceInput): Promise<IssueSchoolPlanInvoiceResult> {
+        const { AppError, ErrorCode } = await import('../../shared/errors.js');
         const schoolId = input.schoolId.trim();
-        if (!schoolId) throw new Error('School id is required');
+        if (!schoolId) throw AppError.fromCode(ErrorCode.REQUIRED_FIELD, { field: 'schoolId' });
 
         const school = await this.schools.findById(schoolId);
-        if (!school) throw new Error('School not found');
+        if (!school) throw AppError.fromCode(ErrorCode.SCHOOL_NOT_FOUND, { schoolId });
 
         const finance = await this.finances.findActiveBySchoolId(schoolId);
         if (!finance) {
-            throw new Error('School does not have an active subscription plan');
+            throw AppError.fromCode(ErrorCode.BUSINESS_RULE_VIOLATION, { message: 'School does not have an active subscription plan' });
         }
 
         const plan = finance.plan;

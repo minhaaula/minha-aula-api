@@ -9,6 +9,7 @@ import { EnrollmentRequest } from '../../domain/entities/enrollment-request';
 import { SchoolFinancialCharge } from '../../domain/entities/school-financial-charge';
 import { UserPersonaEnum } from '../../domain/value-objects/user-persona';
 import { Uuid } from '../../shared/uuid';
+import { getUtcDay, toUtcDateOnly, getTodayUtc, isSameMonthYear } from '../../shared/date-utils';
 import type { ApproveEnrollmentRequestInput, ApproveEnrollmentRequestOutput } from '../types/enrollment.types';
 import type { IssueEnrollmentFeeBoleto } from './issue-enrollment-fee-boleto';
 import type { GenerateTuitionPix } from './generate-tuition-pix';
@@ -200,7 +201,7 @@ export class ApproveEnrollmentRequest {
         const enrollmentId = Uuid();
         
         // Extrair o dia de vencimento do firstMonthlyPaymentDate
-        const paymentDueDay = request.firstMonthlyPaymentDate.getDate();
+        const paymentDueDay = getUtcDay(new Date(request.firstMonthlyPaymentDate));
 
         if (request.requestedForDependentId) {
             return Enrollment.createForDependent({
@@ -269,12 +270,11 @@ export class ApproveEnrollmentRequest {
         discountCents: number | null,
         discountMonths: number | null
     ): Promise<SchoolFinancialCharge | null> {
-        const now = new Date();
-        const firstPaymentDate = new Date(firstMonthlyPaymentDate);
+        const now = getTodayUtc();
+        const firstPaymentDate = toUtcDateOnly(new Date(firstMonthlyPaymentDate));
         
         // Só criar se a data de vencimento já passou ou está no mesmo mês
-        const isSameMonth = firstPaymentDate.getMonth() === now.getMonth() && 
-                           firstPaymentDate.getFullYear() === now.getFullYear();
+        const isSameMonth = isSameMonthYear(firstPaymentDate, now);
         const isPast = firstPaymentDate < now;
         
         if (!isSameMonth && !isPast) {
@@ -310,13 +310,26 @@ export class ApproveEnrollmentRequest {
             return null; // Não criar cobrança se não houver preço definido
         }
 
-        // Aplicar desconto se houver e se este é um dos primeiros meses
+        // Aplicar desconto se houver e se ainda não atingiu o limite de meses
         let chargeDiscountCents: number | null = null;
         let chargeDiscountReason: string | null = null;
         if (discountCents && discountCents > 0 && discountMonths && discountMonths >= 1) {
-            // A primeira mensalidade sempre recebe desconto se houver
-            chargeDiscountCents = discountCents;
-            chargeDiscountReason = `Desconto aplicado (${discountMonths} ${discountMonths === 1 ? 'mês' : 'meses'})`;
+            // Contar quantas cobranças com desconto já foram criadas para este enrollment
+            const existingDiscountCount = this.financialCharges.countChargesWithDiscount
+                ? await this.financialCharges.countChargesWithDiscount(
+                    enrollment.courseClassId,
+                    enrollment.ownerUserId,
+                    enrollment.studentUserId,
+                    enrollment.dependentId
+                )
+                : 0;
+
+            // Aplicar desconto apenas se ainda não atingiu o limite
+            if (existingDiscountCount < discountMonths) {
+                chargeDiscountCents = discountCents;
+                const remainingMonths = discountMonths - existingDiscountCount;
+                chargeDiscountReason = `Desconto aplicado (${remainingMonths} de ${discountMonths} ${discountMonths === 1 ? 'mês' : 'meses'})`;
+            }
         }
 
         const charge = SchoolFinancialCharge.create({

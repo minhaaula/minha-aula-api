@@ -110,13 +110,16 @@ export class RequestSchoolWithdrawal {
         await this.withdrawals.save(withdrawal);
 
         // Criar provider com a API key da subconta da escola
-        const baseUrl = process.env.ASAAS_BASE_URL || 'https://www.asaas.com/api/v3';
-        const schoolAsaasProvider = new AsaasProvider({ 
-            apiKey: school.accountApiKey.trim(), 
-            baseUrl 
-        });
+        const { AsaasProviderFactory } = await import('../../infra/providers/asaas/asaas-provider-factory.js');
+        const schoolAsaasProvider = AsaasProviderFactory.createSubAccountProvider(school.accountApiKey);
+        if (!schoolAsaasProvider) {
+            throw new Error('Failed to create Asaas provider for school subaccount');
+        }
 
         // Tentar criar transferência no ASSAAS usando a API key da escola
+        if (!schoolAsaasProvider.createTransfer) {
+            throw new Error('Asaas provider does not support createTransfer');
+        }
         try {
             const transferResult = await schoolAsaasProvider.createTransfer({
                 accountId: school.accountId,

@@ -1,6 +1,7 @@
 import { CourseRepository } from '../../ports/repositories/course.repo';
 import { CourseClassRepository } from '../../ports/repositories/course-class.repo';
 import { equalUuid } from '../../shared/normalize-uuid';
+import { AppError, ErrorCode } from '../../shared/errors';
 
 export class DeleteCourse {
     constructor(
@@ -11,10 +12,8 @@ export class DeleteCourse {
     async exec(input: { schoolId: string; courseId: string }): Promise<void> {
         const schoolId = input.schoolId.trim();
         const courseId = input.courseId.trim();
-        console.log(schoolId)
-        console.log(courseId)
         if (!schoolId || !courseId) {
-            throw new Error('Invalid identifiers');
+            throw AppError.fromCode(ErrorCode.INVALID_IDENTIFIERS, { schoolId, courseId });
         }
 
         let course = await this.courses.findById(courseId);
@@ -32,7 +31,7 @@ export class DeleteCourse {
 
         const activeClasses = await this.classes.findByCourseId(course.id);
         if (activeClasses.some((courseClass) => courseClass.isActive !== false)) {
-            throw new Error('Cannot delete course with active classes');
+            throw AppError.fromCode(ErrorCode.CANNOT_DELETE_COURSE_WITH_ACTIVE_CLASSES, { courseId });
         }
 
         course.markAsDeleted();

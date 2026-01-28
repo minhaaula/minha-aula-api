@@ -106,14 +106,37 @@ DB_NAME=payments
 
 #### Autenticação
 ```env
-AUTH_TOKEN_SECRET=your-secret-key-here
+# OBRIGATÓRIO - mínimo 32 caracteres para segurança adequada
+AUTH_TOKEN_SECRET=your-super-secret-key-minimum-32-characters-long-for-security
 AUTH_TOKEN_TTL=3600
+```
+
+#### CORS (Segurança)
+```env
+# Configuração de origem permitida (separar múltiplas origens por vírgula)
+# Use '*' para permitir todas as origens (não recomendado em produção)
+CORS_ORIGIN=*
+# Exemplo para múltiplas origens: CORS_ORIGIN=https://app1.com,https://app2.com
 ```
 
 #### Asaas (Pagamentos)
 ```env
 ASAAS_API_KEY=your_asaas_token_here
 ASAAS_BASE_URL=https://www.asaas.com/api/v3
+
+# Webhooks (Opcional mas recomendado em produção)
+# Token para validar requisições de webhook do Asaas
+ASAAS_WEBHOOK_TOKEN=your-webhook-token-here
+
+# Webhooks de Subcontas (Opcional)
+ASAAS_SUBACCOUNT_WEBHOOK_URL=https://your-api.com/integrations/asaas
+ASAAS_SUBACCOUNT_WEBHOOK_EMAIL=webhooks@your-domain.com
+ASAAS_SUBACCOUNT_WEBHOOK_AUTH_TOKEN=subaccount-webhook-token
+ASAAS_SUBACCOUNT_WEBHOOK_SEND_TYPE=SEQUENTIALLY
+ASAAS_SUBACCOUNT_WEBHOOK_API_VERSION=3
+ASAAS_SUBACCOUNT_WEBHOOK_EVENTS=PAYMENT_CREATED,PAYMENT_UPDATED,PAYMENT_CONFIRMED,PAYMENT_RECEIVED
+ASAAS_SUBACCOUNT_ACCOUNT_WEBHOOK_URL=https://your-api.com/integrations/asaas
+ASAAS_SUBACCOUNT_ACCOUNT_WEBHOOK_EVENTS=ACCOUNT_APPROVED,ACCOUNT_PENDING,ACCOUNT_REJECTED
 ```
 
 #### Redis (Filas)
@@ -160,6 +183,13 @@ STORAGE_ENDPOINT=
 ```env
 APP_MODULES=all  # ou: auth,admin,payments,schools,students
 NODE_ENV=development
+```
+
+#### Testes (Opcional)
+```env
+# URLs para scripts de teste
+TEST_WEBHOOK_URL=http://localhost:3000
+API_URL=http://localhost:3000
 ```
 
 ## 🛠️ Desenvolvimento
@@ -275,9 +305,23 @@ docker-compose down
 
 O projeto utiliza **BullMQ** com **Redis** para processamento assíncrono de jobs.
 
-### Configuração do Worker
+### Inicialização Automática
 
-Para processar jobs da fila, é necessário executar o worker separadamente:
+**Quando o módulo ADMIN está ativo**, os jobs e o worker são iniciados automaticamente:
+
+- ✅ **Jobs agendados automaticamente**:
+  - `fetch_payment_receipts` - A cada 30 minutos
+  - `sync_payment_status` - A cada 15 minutos
+- ✅ **Worker iniciado automaticamente** para processar jobs da fila
+
+**Requisitos**:
+- Módulo `admin` deve estar ativo (`APP_MODULES=admin` ou `APP_MODULES=all`)
+- `REDIS_HOST` configurado
+- `ASAAS_API_KEY` configurado (para jobs de pagamento)
+
+### Configuração Manual (Opcional)
+
+Se preferir executar o worker separadamente (útil para escalar workers no Railway):
 
 ```bash
 # Modo desenvolvimento (watch)
@@ -296,21 +340,23 @@ node dist/infra/messaging/bullmq/outbox-worker.js
 
 #### 2. Busca de Recibos (`fetch_payment_receipts`)
 - **Descrição**: Busca recibos de transações pagas no Asaas
-- **Frequência**: A cada 30 minutos (agendado)
-- **Agendamento**: `npm run schedule:receipts`
+- **Frequência**: A cada 30 minutos (agendado automaticamente)
+- **Agendamento Manual**: `npm run schedule:receipts` (se não usar módulo ADMIN)
 - **Funcionalidades**:
   - Busca recibos para invoices pagas sem `receiptUrl`
   - Cria conta Asaas automaticamente se for primeira parcela
 
 #### 3. Sincronização de Status (`sync_payment_status`)
 - **Descrição**: Sincroniza status de pagamentos do Asaas (prevenção de falhas de webhook)
-- **Frequência**: A cada 15 minutos (agendado)
-- **Agendamento**: `npm run schedule:payment-sync`
+- **Frequência**: A cada 15 minutos (agendado automaticamente)
+- **Agendamento Manual**: `npm run schedule:payment-sync` (se não usar módulo ADMIN)
 - **Funcionalidades**:
   - Verifica invoices emitidas que podem ter sido pagas
   - Atualiza status e `paid_at` automaticamente
 
-### Agendar Jobs
+### Agendar Jobs Manualmente (Opcional)
+
+Se não estiver usando o módulo ADMIN, você pode agendar os jobs manualmente:
 
 ```bash
 # Agendar job de busca de recibos
@@ -320,7 +366,7 @@ npm run schedule:receipts
 npm run schedule:payment-sync
 ```
 
-**Nota**: Os jobs precisam ser agendados apenas uma vez. O agendamento persiste no Redis.
+**Nota**: Os jobs precisam ser agendados apenas uma vez. O agendamento persiste no Redis. Se o módulo ADMIN estiver ativo, isso é feito automaticamente.
 
 ### Verificar Status das Filas
 
@@ -368,7 +414,7 @@ payments-api/
 A documentação Swagger está disponível em:
 
 ```
-http://localhost:3000/api-docs
+http://localhost:3000/docs
 ```
 
 ### Arquivos de Documentação
@@ -383,6 +429,12 @@ http://localhost:3000/api-docs
 ## 🧪 Scripts de Teste
 
 ```bash
+# Testar webhooks do Asaas (pagamentos e contas)
+npm run test:webhooks
+
+# Testar webhooks com URL customizada
+TEST_WEBHOOK_URL=http://localhost:3000 npm run test:webhooks
+
 # Testar sincronização de pagamentos
 npm run test:sync-payment-status
 
