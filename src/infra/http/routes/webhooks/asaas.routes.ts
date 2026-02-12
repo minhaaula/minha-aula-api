@@ -97,7 +97,10 @@ const accountPayloadSchema = z.object({
 export function asaasWebhookRouter(deps: AsaasWebhookDeps) {
     const router = Router();
 
-    router.post('/payments', webhookRateLimiter, asyncHandler(async (req, res) => {
+    // Rate limit para todas as rotas de webhook (anti-abuso; limite próprio, global não se aplica aqui)
+    router.use(webhookRateLimiter);
+
+    router.post('/payments', asyncHandler(async (req, res) => {
         // Validar token do webhook (obrigatório em produção)
         const webhookToken = process.env.ASAAS_WEBHOOK_TOKEN?.trim();
         const authTokenSecret = process.env.AUTH_TOKEN_SECRET?.trim();
@@ -171,7 +174,7 @@ export function asaasWebhookRouter(deps: AsaasWebhookDeps) {
         res.status(200).json({ ok: true, handled: result.handled, reason: result.reason ?? null });
     }));
 
-    router.post('/accounts', webhookRateLimiter, asyncHandler(async (req, res) => {
+    router.post('/accounts', asyncHandler(async (req, res) => {
         // Validar token do webhook (obrigatório em produção)
         const webhookToken = process.env.ASAAS_WEBHOOK_TOKEN?.trim();
         const authTokenSecret = process.env.AUTH_TOKEN_SECRET?.trim();

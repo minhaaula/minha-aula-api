@@ -1,15 +1,34 @@
 import rateLimit from 'express-rate-limit';
 import { Request, Response } from 'express';
 
+const env = (key: string, defaultNum: number): number => {
+    const v = process.env[key];
+    if (v === undefined || v === '') return defaultNum;
+    const n = parseInt(v, 10);
+    return Number.isNaN(n) ? defaultNum : Math.max(1, n);
+};
+
+const DEFAULT_WINDOW_MS = 15 * 60 * 1000; // 15 min
+const DEFAULT_MAX = 100;
+const AUTH_WINDOW_MS = 15 * 60 * 1000;
+const AUTH_MAX = 5;
+const REGISTRATION_WINDOW_MS = 60 * 60 * 1000; // 1 hora
+const REGISTRATION_MAX = 3;
+const WEBHOOK_WINDOW_MS = 1 * 60 * 1000; // 1 min
+const WEBHOOK_MAX = 100;
+
 /**
- * Rate limiter padrão para endpoints gerais
+ * Rate limiter padrão para endpoints gerais (anti-abuso e DDoS leve).
+ * Não se aplica a /integrations/asaas (webhooks têm limite próprio).
+ * Configurável: RATE_LIMIT_WINDOW_MS, RATE_LIMIT_MAX
  */
 export const defaultRateLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutos
-    max: 100, // máximo 100 requisições por IP por janela
+    windowMs: env('RATE_LIMIT_WINDOW_MS', DEFAULT_WINDOW_MS),
+    max: env('RATE_LIMIT_MAX', DEFAULT_MAX),
     message: 'Muitas requisições deste IP, tente novamente mais tarde.',
     standardHeaders: true,
     legacyHeaders: false,
+    skip: (req) => (req.path?.startsWith('/integrations/asaas') ?? false) || (req.originalUrl?.startsWith('/integrations/asaas') ?? false),
     handler: (req: Request, res: Response) => {
         res.status(429).json({
             error: 'Muitas requisições',
@@ -20,15 +39,17 @@ export const defaultRateLimiter = rateLimit({
 });
 
 /**
- * Rate limiter agressivo para endpoints de autenticação
+ * Rate limiter para login e rotas sensíveis (anti brute-force).
+ * skipSuccessfulRequests: só conta tentativas falhas.
+ * Configurável: RATE_LIMIT_AUTH_WINDOW_MS, RATE_LIMIT_AUTH_MAX
  */
 export const authRateLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutos
-    max: 5, // máximo 5 tentativas de login por IP por janela
+    windowMs: env('RATE_LIMIT_AUTH_WINDOW_MS', AUTH_WINDOW_MS),
+    max: env('RATE_LIMIT_AUTH_MAX', AUTH_MAX),
     message: 'Muitas tentativas de login, tente novamente em 15 minutos.',
     standardHeaders: true,
     legacyHeaders: false,
-    skipSuccessfulRequests: true, // Não contar requisições bem-sucedidas
+    skipSuccessfulRequests: true,
     handler: (req: Request, res: Response) => {
         res.status(429).json({
             error: 'Muitas tentativas de login',
@@ -39,11 +60,12 @@ export const authRateLimiter = rateLimit({
 });
 
 /**
- * Rate limiter para webhooks (mais permissivo, mas ainda limitado)
+ * Rate limiter para webhooks (mais permissivo, mas ainda limitado).
+ * Configurável: RATE_LIMIT_WEBHOOK_WINDOW_MS, RATE_LIMIT_WEBHOOK_MAX
  */
 export const webhookRateLimiter = rateLimit({
-    windowMs: 1 * 60 * 1000, // 1 minuto
-    max: 100, // máximo 100 webhooks por minuto por IP
+    windowMs: env('RATE_LIMIT_WEBHOOK_WINDOW_MS', WEBHOOK_WINDOW_MS),
+    max: env('RATE_LIMIT_WEBHOOK_MAX', WEBHOOK_MAX),
     message: 'Muitas requisições de webhook, tente novamente mais tarde.',
     standardHeaders: true,
     legacyHeaders: false,
@@ -57,11 +79,12 @@ export const webhookRateLimiter = rateLimit({
 });
 
 /**
- * Rate limiter para endpoints de registro/reset de senha
+ * Rate limiter para registro e solicitação/reset de senha.
+ * Configurável: RATE_LIMIT_REGISTRATION_WINDOW_MS, RATE_LIMIT_REGISTRATION_MAX
  */
 export const registrationRateLimiter = rateLimit({
-    windowMs: 60 * 60 * 1000, // 1 hora
-    max: 3, // máximo 3 registros/resets por IP por hora
+    windowMs: env('RATE_LIMIT_REGISTRATION_WINDOW_MS', REGISTRATION_WINDOW_MS),
+    max: env('RATE_LIMIT_REGISTRATION_MAX', REGISTRATION_MAX),
     message: 'Muitas tentativas de registro, tente novamente em 1 hora.',
     standardHeaders: true,
     legacyHeaders: false,

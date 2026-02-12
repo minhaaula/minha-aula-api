@@ -1,6 +1,7 @@
 import express, { type RequestHandler, type Router } from 'express';
 import swaggerUi from 'swagger-ui-express';
 import { requestLogger } from './middlewares/request-logger';
+import { defaultRateLimiter } from './middlewares/rate-limiter';
 import { loadOpenApiDocument } from './swagger/load-openapi';
 import type { ModuleName } from '../../bootstrap/module-config';
 import { AppError, ErrorCode } from '../../shared/errors';
@@ -97,6 +98,9 @@ export function makeServer(deps: AppDependencies & Record<string, any>) {
     }));
     
     app.use(express.json());
+
+    // Rate limit global (proteção contra abuso e DDoS leve)
+    app.use(defaultRateLimiter);
     
     // CORS configurável via variável de ambiente
     const corsOrigin = process.env.CORS_ORIGIN || '*';
@@ -199,8 +203,11 @@ export function makeServer(deps: AppDependencies & Record<string, any>) {
         // Se for AppError, usar o formato padronizado
         if (err instanceof AppError) {
             const statusCode = getStatusCodeFromErrorCode(err.code);
+            const errorMessage = typeof err.details?.message === 'string'
+                ? err.details.message
+                : err.message;
             return res.status(statusCode).json({
-                error: err.message,
+                error: errorMessage,
                 code: err.code,
                 ...(err.details && { details: err.details })
             });

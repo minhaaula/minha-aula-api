@@ -54,6 +54,33 @@ export function resolveModules(modules: ModuleName[]): ModuleName[] {
     return MODULES_ORDER.filter((module) => set.has(module));
 }
 
+export function validateAsaasWebhookTokenConfig(params: {
+    selected: ModuleName[];
+    nodeEnv?: string;
+    asaasWebhookToken?: string;
+    authTokenSecret: string;
+}) {
+    const isProduction = params.nodeEnv === 'production';
+    const schoolsModuleActive = params.selected.includes('schools');
+    const asaasWebhookToken = params.asaasWebhookToken?.trim();
+    const authTokenSecret = params.authTokenSecret.trim();
+
+    if (!schoolsModuleActive) {
+        return;
+    }
+
+    if (isProduction && !asaasWebhookToken) {
+        throw new Error('ASAAS_WEBHOOK_TOKEN é obrigatório em produção quando o módulo schools está ativo (webhooks Asaas)');
+    }
+
+    // CRÍTICO: Garantir que os tokens sejam diferentes
+    if (asaasWebhookToken && asaasWebhookToken === authTokenSecret) {
+        throw new Error(
+            'CRITICAL SECURITY ERROR: ASAAS_WEBHOOK_TOKEN não pode ser igual a AUTH_TOKEN_SECRET. Use tokens diferentes para webhooks e autenticação de usuários.'
+        );
+    }
+}
+
 function mergeModuleResult(target: Record<string, unknown>, docs: Set<string>, result: ModuleBuildResult | undefined) {
     if (!result) return;
     Object.assign(target, result.deps);
@@ -129,19 +156,12 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
     }
 
     // Validar ASAAS_WEBHOOK_TOKEN apenas quando o módulo schools está ativo (é quem expõe os webhooks)
-    const isProduction = process.env.NODE_ENV === 'production';
-    const asaasWebhookToken = process.env.ASAAS_WEBHOOK_TOKEN?.trim();
-    const schoolsModuleActive = selected.includes('schools');
-
-    if (schoolsModuleActive) {
-        if (isProduction && !asaasWebhookToken) {
-            throw new Error('ASAAS_WEBHOOK_TOKEN é obrigatório em produção quando o módulo schools está ativo (webhooks Asaas)');
-        }
-        // CRÍTICO: Garantir que os tokens sejam diferentes
-        if (asaasWebhookToken && asaasWebhookToken === authTokenSecret) {
-            throw new Error('CRITICAL SECURITY ERROR: ASAAS_WEBHOOK_TOKEN não pode ser igual a AUTH_TOKEN_SECRET. Use tokens diferentes para webhooks e autenticação de usuários.');
-        }
-    }
+    validateAsaasWebhookTokenConfig({
+        selected,
+        nodeEnv: process.env.NODE_ENV,
+        asaasWebhookToken: process.env.ASAAS_WEBHOOK_TOKEN,
+        authTokenSecret
+    });
 
     const passwordHasher = new ScryptPasswordHasher();
     const tokenProvider = new HmacTokenProvider(authTokenSecret);
