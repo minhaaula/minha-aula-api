@@ -13,6 +13,9 @@ import type { ResendSchoolAsaasAccount } from '../../../app/use-cases/resend-sch
 import { GetAdminSchoolDetails } from '../../../app/use-cases/get-admin-school-details';
 import { GetAdminSchoolPlans } from '../../../app/use-cases/get-admin-school-plans';
 import { UpdateSchool } from '../../../app/use-cases/update-school';
+import type { ListAdminSubscriptionPlans } from '../../../app/use-cases/list-admin-subscription-plans';
+import type { CreateSubscriptionPlan } from '../../../app/use-cases/create-subscription-plan';
+import type { UpdateSubscriptionPlan } from '../../../app/use-cases/update-subscription-plan';
 
 type AdminRouterDeps = {
     getAdminStatus: GetAdminStatus;
@@ -22,6 +25,9 @@ type AdminRouterDeps = {
     getAdminSchoolDetails: GetAdminSchoolDetails;
     getAdminSchoolPlans: GetAdminSchoolPlans;
     updateSchool: UpdateSchool;
+    listAdminSubscriptionPlans?: ListAdminSubscriptionPlans;
+    createSubscriptionPlan?: CreateSubscriptionPlan;
+    updateSubscriptionPlan?: UpdateSubscriptionPlan;
     createDiscountCoupon?: import('../../../app/use-cases/create-discount-coupon').CreateDiscountCoupon;
     listDiscountCoupons?: import('../../../app/use-cases/list-discount-coupons').ListDiscountCoupons;
     validateDiscountCoupon?: import('../../../app/use-cases/validate-discount-coupon').ValidateDiscountCoupon;
@@ -49,6 +55,9 @@ export function adminRouter({
     getAdminSchoolDetails,
     getAdminSchoolPlans,
     updateSchool,
+    listAdminSubscriptionPlans,
+    createSubscriptionPlan,
+    updateSubscriptionPlan,
     createDiscountCoupon,
     listDiscountCoupons,
     validateDiscountCoupon,
@@ -135,6 +144,64 @@ export function adminRouter({
         const payload = await getAdminSchoolPlans.exec({ schoolId });
         res.json(payload);
     }));
+
+    // CRUD de Planos de assinatura
+    if (listAdminSubscriptionPlans) {
+        router.get('/plans', requireAuth, requireAdminPersona, asyncHandler(async (_req, res) => {
+            const payload = await listAdminSubscriptionPlans.exec();
+            res.json(payload);
+        }));
+    }
+
+    if (createSubscriptionPlan) {
+        const createPlanSchema = z.object({
+            code: z.string().trim().min(1).max(32),
+            name: z.string().trim().min(1).max(191),
+            description: z.string().trim().max(255).nullable().optional(),
+            items: z.array(z.string()).nullable().optional(),
+            amountCents: z.number().int().positive(),
+            currency: z.string().length(3),
+            billingCycle: z.enum(['MONTHLY', 'ANNUAL']).optional(),
+            isActive: z.boolean().optional()
+        });
+        router.post('/plans', requireAuth, requireAdminPersona, asyncHandler(async (req, res) => {
+            const body = createPlanSchema.parse(req.body);
+            const payload = await createSubscriptionPlan.exec({
+                code: body.code,
+                name: body.name,
+                description: body.description ?? null,
+                items: body.items ?? null,
+                amountCents: body.amountCents,
+                currency: body.currency,
+                billingCycle: body.billingCycle,
+                isActive: body.isActive
+            });
+            res.status(201).json(payload);
+        }));
+    }
+
+    if (updateSubscriptionPlan) {
+        const updatePlanSchema = z.object({
+            code: z.string().trim().min(1).max(32).optional(),
+            name: z.string().trim().min(1).max(191).optional(),
+            description: z.string().trim().max(255).nullable().optional(),
+            items: z.array(z.string()).nullable().optional(),
+            amountCents: z.number().int().positive().optional(),
+            currency: z.string().length(3).optional(),
+            billingCycle: z.enum(['MONTHLY', 'ANNUAL']).optional(),
+            isActive: z.boolean().optional()
+        }).strict();
+        router.patch('/plans/:planId', requireAuth, requireAdminPersona, asyncHandler(async (req, res) => {
+            const paramsSchema = z.object({ planId: z.string().uuid() });
+            const { planId } = paramsSchema.parse(req.params);
+            const body = updatePlanSchema.parse(req.body);
+            const payload = await updateSubscriptionPlan.exec({
+                planId,
+                ...body
+            });
+            res.json(payload);
+        }));
+    }
 
     if (getAdminDashboard) {
         router.get('/dashboard', requireAuth, requireAdminPersona, asyncHandler(async (_req, res) => {

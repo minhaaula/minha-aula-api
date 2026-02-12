@@ -14,11 +14,29 @@ export class SubscriptionPlanRepositoryAdapter implements SubscriptionPlanReposi
         return rows.map((row) => this.toDomain(row));
     }
 
+    async findAll(): Promise<SubscriptionPlan[]> {
+        const rows = await this.repo.find({
+            order: { amountCents: 'ASC' }
+        });
+        return rows.map((row) => this.toDomain(row));
+    }
+
     async findById(id: string): Promise<SubscriptionPlan | null> {
         const normalized = id.trim();
         if (!normalized) return null;
         const row = await this.repo.findOne({ where: { id: normalized } });
         return row ? this.toDomain(row) : null;
+    }
+
+    async findByCode(code: string): Promise<SubscriptionPlan | null> {
+        const normalized = code.trim().toUpperCase();
+        if (!normalized) return null;
+        const row = await this.repo.findOne({ where: { code: normalized } });
+        return row ? this.toDomain(row) : null;
+    }
+
+    async save(plan: SubscriptionPlan): Promise<void> {
+        await this.repo.save(this.toOrm(plan));
     }
 
     private toDomain(row: SubscriptionPlanOrm): SubscriptionPlan {
@@ -35,6 +53,22 @@ export class SubscriptionPlanRepositoryAdapter implements SubscriptionPlanReposi
             createdAt: row.createdAt,
             updatedAt: row.updatedAt
         });
+    }
+
+    private toOrm(plan: SubscriptionPlan): SubscriptionPlanOrm {
+        const row = new SubscriptionPlanOrm();
+        row.id = plan.id;
+        row.code = plan.code;
+        row.name = plan.name;
+        row.description = plan.description;
+        row.items = plan.items;
+        row.amountCents = plan.amountCents;
+        row.currency = plan.currency;
+        row.billingCycle = plan.billingCycle;
+        row.isActive = plan.isActive ? 1 : 0;
+        row.createdAt = plan.createdAt;
+        row.updatedAt = plan.updatedAt;
+        return row;
     }
 }
 
