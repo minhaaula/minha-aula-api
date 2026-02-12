@@ -43,7 +43,9 @@ export interface AdminSchoolDetails extends SchoolWithPlanItem {
      */
     onboardingCompleted: boolean;
     onboardingCompletedAt: Date | null;
-}export interface AdminSchoolPlansResponse {
+}
+
+export interface AdminSchoolPlansResponse {
     currentPlan: SchoolPlanFinanceView | null;
     history: SchoolPlanFinanceView[];
 }
