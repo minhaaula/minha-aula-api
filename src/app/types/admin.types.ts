@@ -49,4 +49,3 @@ export interface AdminSchoolPlansResponse {
     currentPlan: SchoolPlanFinanceView | null;
     history: SchoolPlanFinanceView[];
 }
-

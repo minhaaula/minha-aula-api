@@ -5,6 +5,7 @@ import type { LoginSchool } from '../../../../app/use-cases/login-school';
 import type { ListCategories } from '../../../../app/use-cases/list-categories';
 import type { ListSubscriptionPlans } from '../../../../app/use-cases/list-subscription-plans';
 import type { AuthenticatedRequest } from '../../middlewares/auth';
+import { authRateLimiter } from '../../middlewares/rate-limiter';
 import { UserPersonaEnum } from '../../../../domain/value-objects/user-persona';
 import { createSchoolSchema } from '../../validators/school-schemas';
 import { z } from 'zod';
@@ -21,7 +22,7 @@ export function buildPublicSchoolRoutes(deps: PublicSchoolRoutesDeps, optionalAu
     const router = Router();
 
     if (deps.loginSchool) {
-        router.post('/login', asyncHandler(async (req, res) => {
+        router.post('/login', authRateLimiter, asyncHandler(async (req, res) => {
             const data = loginSchema.parse(req.body);
             const result = await deps.loginSchool!.exec({
                 email: data.email,

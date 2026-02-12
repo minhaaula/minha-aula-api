@@ -1,6 +1,7 @@
 import express, { type RequestHandler, type Router } from 'express';
 import swaggerUi from 'swagger-ui-express';
 import { requestLogger } from './middlewares/request-logger';
+import { defaultRateLimiter } from './middlewares/rate-limiter';
 import { loadOpenApiDocument } from './swagger/load-openapi';
 import type { ModuleName } from '../../bootstrap/module-config';
 import { AppError, ErrorCode } from '../../shared/errors';
@@ -97,11 +98,12 @@ export function makeServer(deps: AppDependencies & Record<string, any>) {
     }));
     
     app.use(express.json());
-    
-    // CORS configurável via variável de ambiente
+
+    // CORS antes do rate limiter: respostas 429 (e qualquer outra) devem incluir
+    // Access-Control-Allow-Origin para que o cliente cross-origin receba o status e a mensagem.
     const corsOrigin = process.env.CORS_ORIGIN || '*';
     const allowedOrigins = corsOrigin === '*' ? ['*'] : corsOrigin.split(',').map(o => o.trim());
-    
+
     app.use((req, res, next) => {
         const origin = req.headers.origin;
         if (allowedOrigins.includes('*') || (origin && allowedOrigins.includes(origin))) {
@@ -115,6 +117,10 @@ export function makeServer(deps: AppDependencies & Record<string, any>) {
         }
         next();
     });
+
+    // Rate limit global (proteção contra abuso e DDoS leve)
+    app.use(defaultRateLimiter);
+
     app.use(requestLogger);
 
     const mount = (path: string, router: Router, options?: MountOptions) => {
@@ -199,8 +205,11 @@ export function makeServer(deps: AppDependencies & Record<string, any>) {
         // Se for AppError, usar o formato padronizado
         if (err instanceof AppError) {
             const statusCode = getStatusCodeFromErrorCode(err.code);
+            const errorMessage = typeof err.details?.message === 'string'
+                ? err.details.message
+                : err.message;
             return res.status(statusCode).json({
-                error: err.message,
+                error: errorMessage,
                 code: err.code,
                 ...(err.details && { details: err.details })
             });

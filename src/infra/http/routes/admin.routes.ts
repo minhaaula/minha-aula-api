@@ -6,6 +6,7 @@ import { ListSchoolsWithPlans } from '../../../app/use-cases/list-schools-with-p
 import { LoginAdmin } from '../../../app/use-cases/login-admin';
 import { GetAdminDashboard } from '../../../app/use-cases/get-admin-dashboard';
 import { requirePersona } from '../middlewares/require-persona';
+import { authRateLimiter } from '../middlewares/rate-limiter';
 import { UserPersonaEnum } from '../../../domain/value-objects/user-persona';
 import { buildCouponsRoutes } from './admin/coupons.routes';
 import type { ResendSchoolAsaasAccount } from '../../../app/use-cases/resend-school-asaas-account';
@@ -58,8 +59,8 @@ export function adminRouter({
     const { requireAuth } = buildAuthGuards(authMiddleware);
     const requireAdminPersona = requirePersona(UserPersonaEnum.ADMIN);
 
-    // Rota pública de login
-    router.post('/login', asyncHandler(async (req, res, next) => {
+    // Rota pública de login (com rate limit anti brute-force)
+    router.post('/login', authRateLimiter, asyncHandler(async (req, res, next) => {
         try {
             const dto = loginSchema.parse(req.body);
             const result = await loginAdmin.exec(dto);
