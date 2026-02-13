@@ -128,16 +128,32 @@ class InMemoryCourseRepository implements CourseRepository {
 class InMemoryCategoryRepository implements CategoryRepository {
     private readonly items = new Map<string, { name: string; subcategories: Array<{ id: string; name: string }> }>();
 
-    async findAllWithSubcategories(): Promise<Array<{
-        id: string;
-        name: string;
-        subcategories: Array<{ id: string; name: string }>;
-    }>> {
+    async findAllWithSubcategories() {
         return Array.from(this.items.entries()).map(([id, category]) => ({
             id,
             name: category.name,
             subcategories: category.subcategories.map((sub) => ({ ...sub }))
         }));
+    }
+
+    async findById(id: string) {
+        const category = this.items.get(id);
+        if (!category) return null;
+        return { id, name: category.name, subcategories: category.subcategories.map((s) => ({ ...s })) };
+    }
+
+    async findByName(name: string) {
+        const entry = Array.from(this.items.entries()).find(([, c]) => c.name === name);
+        if (!entry) return null;
+        const [id, category] = entry;
+        return { id, name: category.name, subcategories: category.subcategories.map((s) => ({ ...s })) };
+    }
+
+    async save(input: { id: string; name: string; subcategories: Array<{ id: string; name: string }> }) {
+        this.items.set(input.id, {
+            name: input.name,
+            subcategories: input.subcategories.map((s) => ({ ...s }))
+        });
     }
 
     seed(category: { id: string; name: string; subcategories?: Array<{ id: string; name: string }> }) {

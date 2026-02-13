@@ -12,6 +12,7 @@ import type { ModuleName } from '../module-config';
 import type { SchoolRepository } from '../../ports/repositories/school.repo';
 import type { SchoolPlanFinanceRepository } from '../../ports/repositories/school-plan-finance.repo';
 import type { SubscriptionPlanRepository } from '../../ports/repositories/subscription-plan.repo';
+import type { CategoryRepository } from '../../ports/repositories/category.repo';
 import type { UserRepository } from '../../ports/repositories/user.repo';
 import type { CourseClassRepository } from '../../ports/repositories/course-class.repo';
 import type { EnrollmentRepository } from '../../ports/repositories/enrollment.repo';
@@ -26,6 +27,9 @@ import { UpdateSchool } from '../../app/use-cases/update-school';
 import { ListAdminSubscriptionPlans } from '../../app/use-cases/list-admin-subscription-plans';
 import { CreateSubscriptionPlan } from '../../app/use-cases/create-subscription-plan';
 import { UpdateSubscriptionPlan } from '../../app/use-cases/update-subscription-plan';
+import { ListAdminCategories } from '../../app/use-cases/list-admin-categories';
+import { CreateCategory } from '../../app/use-cases/create-category';
+import { UpdateCategory } from '../../app/use-cases/update-category';
 import { scheduleAllJobs } from '../../infra/messaging/bullmq/job-scheduler';
 import { startWorker } from '../../infra/messaging/bullmq/worker-manager';
 import { log } from '../../shared/logger';
@@ -40,6 +44,7 @@ type AdminModuleDeps = {
     schoolsRepo: SchoolRepository;
     planFinancesRepo: SchoolPlanFinanceRepository;
     subscriptionPlansRepo: SubscriptionPlanRepository;
+    categoriesRepo: CategoryRepository;
     usersRepo: UserRepository;
     classesRepo: CourseClassRepository;
     enrollmentsRepo: EnrollmentRepository;
@@ -74,6 +79,10 @@ export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext)
     const listAdminSubscriptionPlans = new ListAdminSubscriptionPlans(deps.subscriptionPlansRepo);
     const createSubscriptionPlan = new CreateSubscriptionPlan(deps.subscriptionPlansRepo);
     const updateSubscriptionPlan = new UpdateSubscriptionPlan(deps.subscriptionPlansRepo);
+
+    const listAdminCategories = new ListAdminCategories(deps.categoriesRepo);
+    const createCategory = new CreateCategory(deps.categoriesRepo);
+    const updateCategory = new UpdateCategory(deps.categoriesRepo);
 
     const updateSchool = new UpdateSchool(
         deps.schoolsRepo,
@@ -117,6 +126,9 @@ export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext)
         listAdminSubscriptionPlans,
         createSubscriptionPlan,
         updateSubscriptionPlan,
+        listAdminCategories,
+        createCategory,
+        updateCategory,
         createDiscountCoupon,
         listDiscountCoupons,
         validateDiscountCoupon,

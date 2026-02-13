@@ -16,6 +16,9 @@ import { UpdateSchool } from '../../../app/use-cases/update-school';
 import type { ListAdminSubscriptionPlans } from '../../../app/use-cases/list-admin-subscription-plans';
 import type { CreateSubscriptionPlan } from '../../../app/use-cases/create-subscription-plan';
 import type { UpdateSubscriptionPlan } from '../../../app/use-cases/update-subscription-plan';
+import type { ListAdminCategories } from '../../../app/use-cases/list-admin-categories';
+import type { CreateCategory } from '../../../app/use-cases/create-category';
+import type { UpdateCategory } from '../../../app/use-cases/update-category';
 
 type AdminRouterDeps = {
     getAdminStatus: GetAdminStatus;
@@ -28,6 +31,9 @@ type AdminRouterDeps = {
     listAdminSubscriptionPlans?: ListAdminSubscriptionPlans;
     createSubscriptionPlan?: CreateSubscriptionPlan;
     updateSubscriptionPlan?: UpdateSubscriptionPlan;
+    listAdminCategories?: ListAdminCategories;
+    createCategory?: CreateCategory;
+    updateCategory?: UpdateCategory;
     createDiscountCoupon?: import('../../../app/use-cases/create-discount-coupon').CreateDiscountCoupon;
     listDiscountCoupons?: import('../../../app/use-cases/list-discount-coupons').ListDiscountCoupons;
     validateDiscountCoupon?: import('../../../app/use-cases/validate-discount-coupon').ValidateDiscountCoupon;
@@ -47,10 +53,10 @@ function buildAuthGuards(authMiddleware?: RequestHandler) {
     return { requireAuth };
 }
 
-export function adminRouter({ 
-    getAdminStatus, 
-    listSchoolsWithPlans, 
-    loginAdmin, 
+export function adminRouter({
+    getAdminStatus,
+    listSchoolsWithPlans,
+    loginAdmin,
     getAdminDashboard,
     getAdminSchoolDetails,
     getAdminSchoolPlans,
@@ -58,11 +64,14 @@ export function adminRouter({
     listAdminSubscriptionPlans,
     createSubscriptionPlan,
     updateSubscriptionPlan,
+    listAdminCategories,
+    createCategory,
+    updateCategory,
     createDiscountCoupon,
     listDiscountCoupons,
     validateDiscountCoupon,
     resendSchoolAsaasAccount,
-    authMiddleware 
+    authMiddleware
 }: AdminRouterDeps) {
     const router = Router();
     const { requireAuth } = buildAuthGuards(authMiddleware);
@@ -197,6 +206,52 @@ export function adminRouter({
             const body = updatePlanSchema.parse(req.body);
             const payload = await updateSubscriptionPlan.exec({
                 planId,
+                ...body
+            });
+            res.json(payload);
+        }));
+    }
+
+    // CRUD de Categorias
+    if (listAdminCategories) {
+        router.get('/categories', requireAuth, requireAdminPersona, asyncHandler(async (_req, res) => {
+            const payload = await listAdminCategories.exec();
+            res.json(payload);
+        }));
+    }
+    if (createCategory) {
+        const createCategorySchema = z.object({
+            name: z.string().trim().min(1).max(191),
+            icon: z.string().trim().max(191).nullable().optional(),
+            description: z.string().trim().max(5000).nullable().optional(),
+            subcategories: z.array(z.object({ name: z.string().trim().min(1).max(191) })).optional()
+        });
+        router.post('/categories', requireAuth, requireAdminPersona, asyncHandler(async (req, res) => {
+            const body = createCategorySchema.parse(req.body);
+            const payload = await createCategory.exec({
+                name: body.name,
+                icon: body.icon ?? null,
+                description: body.description ?? null,
+                subcategories: body.subcategories
+            });
+            res.status(201).json(payload);
+        }));
+    }
+    if (updateCategory) {
+        const updateCategorySchema = z.object({
+            name: z.string().trim().min(1).max(191).optional(),
+            icon: z.string().trim().max(191).nullable().optional(),
+            description: z.string().trim().max(5000).nullable().optional(),
+            subcategories: z
+                .array(z.object({ id: z.string().uuid().optional(), name: z.string().trim().min(1).max(191) }))
+                .optional()
+        }).strict();
+        router.patch('/categories/:categoryId', requireAuth, requireAdminPersona, asyncHandler(async (req, res) => {
+            const paramsSchema = z.object({ categoryId: z.string().uuid() });
+            const { categoryId } = paramsSchema.parse(req.params);
+            const body = updateCategorySchema.parse(req.body);
+            const payload = await updateCategory.exec({
+                categoryId,
                 ...body
             });
             res.json(payload);

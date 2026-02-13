@@ -107,6 +107,13 @@ class InMemoryCategoryRepository implements CategoryRepository {
     async findAllWithSubcategories() {
         return [];
     }
+    async findById() {
+        return null;
+    }
+    async findByName() {
+        return null;
+    }
+    async save() {}
 }
 
 describe('ListAllCourses use case', () => {
