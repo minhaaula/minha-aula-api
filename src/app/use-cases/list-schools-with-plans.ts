@@ -15,21 +15,43 @@ function derivePaymentStatus(planView: SchoolPlanFinanceView | null): PaymentSta
     return null;
 }
 
+export type ListSchoolsWithPlansInput = {
+    name?: string | null;
+    status?: SchoolStatus | null;
+    paymentStatus?: 'EM_DIA' | 'ATRASADO' | null;
+    limit?: number;
+    offset?: number;
+};
+
+export type ListSchoolsWithPlansOutput = {
+    schools: SchoolWithPlanItem[];
+    pagination: {
+        total: number;
+        limit: number;
+        offset: number;
+        totalPage: number;
+        currentPage: number;
+        hasMore: boolean;
+    };
+};
+
 export class ListSchoolsWithPlans {
     constructor(
         private readonly schools: SchoolRepository,
         private readonly planFinances: SchoolPlanFinanceRepository
     ) {}
 
-    async exec(): Promise<SchoolWithPlanItem[]> {
-        // Buscar todas as escolas
-        const schools = await this.schools.findAll();
+    async exec(input?: ListSchoolsWithPlansInput): Promise<ListSchoolsWithPlansOutput> {
+        const nameFilter = input?.name?.trim().toLowerCase() || null;
+        const statusFilter = input?.status ?? null;
+        const paymentStatusFilter = input?.paymentStatus ?? null;
+        const limit = Math.min(Math.max(input?.limit ?? 50, 1), 100);
+        const offset = Math.max(0, input?.offset ?? 0);
 
-        // Buscar todos os planos financeiros de uma vez
-        const planFinancesMap = await this.loadPlanFinancesMap(schools.map((s) => s.id));
+        const allSchools = await this.schools.findAll();
+        const planFinancesMap = await this.loadPlanFinancesMap(allSchools.map((s) => s.id));
 
-        // Combinar escolas com seus planos
-        return schools.map((school) => {
+        let items: SchoolWithPlanItem[] = allSchools.map((school) => {
             const plan = planFinancesMap.get(school.id) ?? null;
             return {
                 id: school.id,
@@ -47,6 +69,32 @@ export class ListSchoolsWithPlans {
                 plan
             };
         });
+
+        if (nameFilter) {
+            items = items.filter((s) => s.name.toLowerCase().includes(nameFilter));
+        }
+        if (statusFilter) {
+            items = items.filter((s) => s.schoolStatus === statusFilter);
+        }
+        if (paymentStatusFilter) {
+            items = items.filter((s) => s.paymentStatus === paymentStatusFilter);
+        }
+
+        const total = items.length;
+        const sorted = items.sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+        const schools = sorted.slice(offset, offset + limit);
+
+        return {
+            schools,
+            pagination: {
+                total,
+                limit,
+                offset,
+                totalPage: Math.ceil(total / limit) || 1,
+                currentPage: Math.floor(offset / limit) + 1,
+                hasMore: offset + limit < total
+            }
+        };
     }
 
     private async loadPlanFinancesMap(schoolIds: string[]): Promise<Map<string, SchoolPlanFinanceView>> {

@@ -53,25 +53,64 @@ paths:
         - Admin
       summary: Listar escolas com planos e status
       description: |
-        Retorna todas as escolas cadastradas com informações do plano de assinatura atual e seu status.
+        Retorna as escolas cadastradas com informações do plano de assinatura atual e seu status.
+        Suporta filtros por nome, status (ativo/inativo) e mensalidade (em dia/atrasado), e paginação.
         Requer autenticação com persona ADMIN.
-        
-        Para cada escola, inclui:
-        - Dados básicos da escola
-        - Informações do plano de assinatura (se houver)
-        - Status do plano (TRIAL, ACTIVE, PAST_DUE, SUSPENDED, CANCELLED)
-        - Informações de pagamento (último pagamento, próxima vencimento)
       security:
         - bearerAuth: []
+      parameters:
+        - in: query
+          name: name
+          required: false
+          schema:
+            type: string
+          description: Filtrar por nome da escola (contém, case-insensitive).
+        - in: query
+          name: status
+          required: false
+          schema:
+            type: string
+            enum: ['ACTIVE', 'INACTIVE']
+          description: Filtrar por status da escola (ativo/inativo).
+        - in: query
+          name: paymentStatus
+          required: false
+          schema:
+            type: string
+            enum: ['EM_DIA', 'ATRASADO']
+          description: Filtrar por status da mensalidade (em dia ou atrasado).
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+          description: Quantidade máxima de registros por página.
+        - in: query
+          name: offset
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+          description: Quantidade de registros a pular (paginação).
       responses:
         '200':
-          description: Lista de escolas com planos retornada com sucesso.
+          description: Lista de escolas com planos retornada com sucesso (paginada).
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/SchoolsWithPlansResponse'
         '401':
           description: Usuário não autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado (requer persona ADMIN).
           content:
             application/json:
               schema:
@@ -1298,8 +1337,37 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/SchoolWithPlanItem'
+        pagination:
+          type: object
+          properties:
+            total:
+              type: integer
+              description: Total de registros (após filtros)
+            limit:
+              type: integer
+              description: Limite por página
+            offset:
+              type: integer
+              description: Offset da página
+            totalPage:
+              type: integer
+              description: Total de páginas
+            currentPage:
+              type: integer
+              description: Página atual
+            hasMore:
+              type: boolean
+              description: Indica se há mais páginas
+          required:
+            - total
+            - limit
+            - offset
+            - totalPage
+            - currentPage
+            - hasMore
       required:
         - schools
+        - pagination
     SchoolWithPlanItem:
       type: object
       properties:

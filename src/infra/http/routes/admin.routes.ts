@@ -181,9 +181,29 @@ export function adminRouter({
         }));
     }
 
-    router.get('/schools', requireAuth, requireAdminPersona, asyncHandler(async (_req, res) => {
-        const schools = await listSchoolsWithPlans.exec();
-        res.json({ schools });
+    const schoolsListQuerySchema = z.object({
+        name: z.string().trim().min(1).optional(),
+        status: z.enum(['ACTIVE', 'INACTIVE']).optional(),
+        paymentStatus: z.enum(['EM_DIA', 'ATRASADO']).optional(),
+        limit: z.coerce.number().int().positive().max(100).optional(),
+        offset: z.coerce.number().int().min(0).optional()
+    });
+    router.get('/schools', requireAuth, requireAdminPersona, asyncHandler(async (req, res) => {
+        const query = schoolsListQuerySchema.parse({
+            name: typeof req.query.name === 'string' ? req.query.name : undefined,
+            status: typeof req.query.status === 'string' ? req.query.status : undefined,
+            paymentStatus: typeof req.query.paymentStatus === 'string' ? req.query.paymentStatus : undefined,
+            limit: req.query.limit,
+            offset: req.query.offset
+        });
+        const result = await listSchoolsWithPlans.exec({
+            name: query.name,
+            status: query.status,
+            paymentStatus: query.paymentStatus,
+            limit: query.limit,
+            offset: query.offset
+        });
+        res.json(result);
     }));
 
     router.get('/schools/:schoolId/plans', requireAuth, requireAdminPersona, asyncHandler(async (req, res) => {
