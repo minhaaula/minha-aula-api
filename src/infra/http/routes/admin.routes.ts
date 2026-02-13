@@ -20,6 +20,7 @@ import type { ListAdminCategories } from '../../../app/use-cases/list-admin-cate
 import type { CreateCategory } from '../../../app/use-cases/create-category';
 import type { UpdateCategory } from '../../../app/use-cases/update-category';
 import type { ListSchoolStudents } from '../../../app/use-cases/list-school-students';
+import type { ListAllStudents } from '../../../app/use-cases/list-all-students';
 
 type AdminRouterDeps = {
     getAdminStatus: GetAdminStatus;
@@ -40,6 +41,7 @@ type AdminRouterDeps = {
     validateDiscountCoupon?: import('../../../app/use-cases/validate-discount-coupon').ValidateDiscountCoupon;
     resendSchoolAsaasAccount?: ResendSchoolAsaasAccount;
     listSchoolStudents?: ListSchoolStudents;
+    listAllStudents?: ListAllStudents;
     authMiddleware?: RequestHandler;
 };
 
@@ -74,6 +76,7 @@ export function adminRouter({
     validateDiscountCoupon,
     resendSchoolAsaasAccount,
     listSchoolStudents,
+    listAllStudents,
     authMiddleware
 }: AdminRouterDeps) {
     const router = Router();
@@ -192,6 +195,44 @@ export function adminRouter({
                     totalPage: Math.ceil(result.total / result.limit),
                     currentPage: Math.floor(result.offset / result.limit) + 1,
                     hasMore: result.offset + result.limit < result.total
+                }
+            });
+        }));
+    }
+
+    // Listar todos os estudantes do sistema (paginado, filtros: nome, escola, cpf)
+    if (listAllStudents) {
+        const allStudentsQuerySchema = z.object({
+            name: z.string().trim().min(1).optional(),
+            schoolId: z.string().uuid().optional(),
+            cpf: z.string().trim().min(1).optional(),
+            limit: z.coerce.number().int().positive().max(100).optional(),
+            offset: z.coerce.number().int().min(0).optional()
+        });
+        router.get('/students', requireAuth, requireAdminPersona, asyncHandler(async (req, res) => {
+            const query = allStudentsQuerySchema.parse({
+                name: typeof req.query.name === 'string' ? req.query.name : undefined,
+                schoolId: typeof req.query.schoolId === 'string' ? req.query.schoolId : undefined,
+                cpf: typeof req.query.cpf === 'string' ? req.query.cpf : undefined,
+                limit: req.query.limit,
+                offset: req.query.offset
+            });
+            const result = await listAllStudents.exec({
+                name: query.name,
+                schoolId: query.schoolId,
+                cpf: query.cpf,
+                limit: query.limit,
+                offset: query.offset
+            });
+            res.json({
+                students: result.items,
+                pagination: {
+                    total: result.total,
+                    limit: result.limit,
+                    offset: result.offset,
+                    totalPage: Math.ceil(result.total / result.limit) || 1,
+                    currentPage: Math.floor(result.offset / result.limit) + 1,
+                    hasMore: result.offset + result.items.length < result.total
                 }
             });
         }));

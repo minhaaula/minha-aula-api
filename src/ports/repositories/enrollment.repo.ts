@@ -19,6 +19,32 @@ export type MyCourseData = {
     schedule: Array<{ day: string; start: string; end: string }>;
 };
 
+export type AdminStudentListFilters = {
+    schoolId?: string | null;
+    name?: string | null;
+    cpf?: string | null;
+};
+
+export type AdminStudentListItem = {
+    enrollmentId: string;
+    schoolId: string;
+    schoolName: string;
+    studentName: string;
+    cpf: string | null;
+    courseName: string;
+    className: string;
+    enrolledAt: Date;
+    studentType: 'USER' | 'DEPENDENT';
+    studentId: string;
+};
+
+export type AdminStudentListResult = {
+    items: AdminStudentListItem[];
+    total: number;
+    limit: number;
+    offset: number;
+};
+
 export interface EnrollmentRepository {
     findById(id: string): Promise<Enrollment | null>;
     findByClassAndUser(classId: string, userId: string): Promise<Enrollment | null>;
@@ -31,4 +57,9 @@ export interface EnrollmentRepository {
     countActiveBySchoolId?(schoolId: string): Promise<number>;
     findMyCourses?(userId: string): Promise<MyCourseData[]>;
     hasActiveEnrollmentInSchool?(schoolId: string, userId: string): Promise<boolean>;
+    findAllPaginatedForAdmin?(
+        filters: AdminStudentListFilters,
+        limit: number,
+        offset: number
+    ): Promise<AdminStudentListResult>;
 }

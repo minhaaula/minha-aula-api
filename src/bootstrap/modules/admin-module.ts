@@ -33,6 +33,7 @@ import { ListAdminCategories } from '../../app/use-cases/list-admin-categories';
 import { CreateCategory } from '../../app/use-cases/create-category';
 import { UpdateCategory } from '../../app/use-cases/update-category';
 import { ListSchoolStudents } from '../../app/use-cases/list-school-students';
+import { ListAllStudents } from '../../app/use-cases/list-all-students';
 import { scheduleAllJobs } from '../../infra/messaging/bullmq/job-scheduler';
 import { startWorker } from '../../infra/messaging/bullmq/worker-manager';
 import { log } from '../../shared/logger';
@@ -116,6 +117,8 @@ export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext)
         deps.dependentsRepo
     );
 
+    const listAllStudents = new ListAllStudents(deps.enrollmentsRepo);
+
     // Use cases de cupons
     const couponsRepo = new DiscountCouponRepositoryAdapter();
     const createDiscountCoupon = new CreateDiscountCoupon(couponsRepo);
@@ -147,6 +150,7 @@ export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext)
         validateDiscountCoupon,
         resendSchoolAsaasAccount,
         listSchoolStudents,
+        listAllStudents,
         authMiddleware: ctx.authMiddleware
     });
 

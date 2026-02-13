@@ -1,5 +1,10 @@
 import { AppDataSource } from './datasource';
-import { EnrollmentRepository, EnrollmentWithDetails } from '../../../ports/repositories/enrollment.repo';
+import {
+    EnrollmentRepository,
+    EnrollmentWithDetails,
+    AdminStudentListFilters,
+    AdminStudentListResult
+} from '../../../ports/repositories/enrollment.repo';
 import { Enrollment } from '../../../domain/entities/enrollment';
 import { EnrollmentOrm } from './entities/enrollment.orm';
 
@@ -190,6 +195,110 @@ export class EnrollmentRepositoryAdapter implements EnrollmentRepository {
             .getCount();
 
         return dependentEnrollment > 0;
+    }
+
+    async findAllPaginatedForAdmin(
+        filters: AdminStudentListFilters,
+        limit: number,
+        offset: number
+    ): Promise<AdminStudentListResult> {
+        const schoolId = filters.schoolId?.trim() || null;
+        const name = filters.name?.trim() || null;
+        const cpfRaw = filters.cpf?.trim() || null;
+        const cpfDigits = cpfRaw ? cpfRaw.replace(/\D/g, '') : null;
+        const safeLimit = Math.min(Math.max(limit, 1), 100);
+        const safeOffset = Math.max(0, offset);
+
+        const qb = this.repo
+            .createQueryBuilder('enrollment')
+            .innerJoin('enrollment.courseClass', 'class')
+            .innerJoin('class.course', 'course')
+            .innerJoin('course.school', 'school')
+            .leftJoin('enrollment.studentUser', 'studentUser')
+            .leftJoin('enrollment.dependent', 'dependent')
+            .where('enrollment.status = :status', { status: 'ACTIVE' })
+            .andWhere('course.isActive = :courseActive', { courseActive: true })
+            .andWhere('class.isActive = :classActive', { classActive: true });
+
+        if (schoolId) {
+            qb.andWhere('school.id = :schoolId', { schoolId });
+        }
+        if (name) {
+            qb.andWhere(
+                '(LOWER(COALESCE(studentUser.fullName, dependent.fullName)) LIKE LOWER(:namePattern))',
+                { namePattern: `%${name}%` }
+            );
+        }
+        if (cpfDigits && cpfDigits.length === 11) {
+            qb.andWhere(
+                'REPLACE(REPLACE(REPLACE(COALESCE(studentUser.cpf, dependent.cpf), \'.\', \'\'), \'-\', \'\'), \'/\', \'\') = :cpfDigits',
+                { cpfDigits }
+            );
+        }
+
+        const rawRows = await qb
+            .select([
+                'enrollment.id AS enrollmentId',
+                'school.id AS schoolId',
+                'school.name AS schoolName',
+                'COALESCE(studentUser.fullName, dependent.fullName) AS studentName',
+                'COALESCE(studentUser.cpf, dependent.cpf) AS cpf',
+                'course.name AS courseName',
+                'class.label AS className',
+                'enrollment.enrolledAt AS enrolledAt',
+                'enrollment.studentType AS studentType',
+                'COALESCE(studentUser.id, dependent.id) AS studentId'
+            ])
+            .orderBy('enrollment.enrolledAt', 'DESC')
+            .skip(safeOffset)
+            .take(safeLimit)
+            .getRawMany();
+
+        const countQb = this.repo
+            .createQueryBuilder('enrollment')
+            .innerJoin('enrollment.courseClass', 'class')
+            .innerJoin('class.course', 'course')
+            .innerJoin('course.school', 'school')
+            .leftJoin('enrollment.studentUser', 'studentUser')
+            .leftJoin('enrollment.dependent', 'dependent')
+            .where('enrollment.status = :status', { status: 'ACTIVE' })
+            .andWhere('course.isActive = :courseActive', { courseActive: true })
+            .andWhere('class.isActive = :classActive', { classActive: true });
+
+        if (schoolId) countQb.andWhere('school.id = :schoolId', { schoolId });
+        if (name) {
+            countQb.andWhere(
+                '(LOWER(COALESCE(studentUser.fullName, dependent.fullName)) LIKE LOWER(:namePattern))',
+                { namePattern: `%${name}%` }
+            );
+        }
+        if (cpfDigits && cpfDigits.length === 11) {
+            countQb.andWhere(
+                'REPLACE(REPLACE(REPLACE(COALESCE(studentUser.cpf, dependent.cpf), \'.\', \'\'), \'-\', \'\'), \'/\', \'\') = :cpfDigits',
+                { cpfDigits }
+            );
+        }
+        const totalCount = await countQb.getCount();
+
+        const items = (rawRows as any[]).map((row) => ({
+            enrollmentId: row.enrollmentId,
+            schoolId: row.schoolId,
+            schoolName: row.schoolName,
+            studentName: row.studentName ?? '',
+            cpf: row.cpf ?? null,
+            courseName: row.courseName ?? '',
+            className: row.className ?? '',
+            enrolledAt: new Date(row.enrolledAt),
+            studentType: row.studentType as 'USER' | 'DEPENDENT',
+            studentId: row.studentId
+        }));
+
+        return {
+            items,
+            total: totalCount,
+            limit: safeLimit,
+            offset: safeOffset
+        };
     }
 
     private toDomain(row: EnrollmentOrm): Enrollment {
