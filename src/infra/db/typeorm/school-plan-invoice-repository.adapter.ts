@@ -1,6 +1,11 @@
 import { AppDataSource } from './datasource';
-import { SchoolPlanInvoiceRepository } from '../../../ports/repositories/school-plan-invoice.repo';
+import {
+    SchoolPlanInvoiceRepository,
+    PaymentHistoryFilters,
+    PaymentHistoryResult
+} from '../../../ports/repositories/school-plan-invoice.repo';
 import { SchoolPlanInvoiceOrm } from './entities/school-plan-invoice.orm';
+import { SchoolOrm } from './entities/school.orm';
 import { SchoolPlanInvoice } from '../../../domain/entities/school-plan-invoice';
 import { IsNull } from 'typeorm';
 
@@ -85,6 +90,96 @@ export class SchoolPlanInvoiceRepositoryAdapter implements SchoolPlanInvoiceRepo
             .getMany();
 
         return rows.map((row) => this.toDomain(row));
+    }
+
+    async findPaymentHistoryPaginated(
+        filters: PaymentHistoryFilters,
+        limit: number,
+        offset: number
+    ): Promise<PaymentHistoryResult> {
+        const schoolName = filters.schoolName?.trim() || null;
+        const status = filters.status?.trim() || null;
+        const month = filters.month != null && filters.month >= 1 && filters.month <= 12 ? filters.month : null;
+        const year = filters.year != null && filters.year >= 2000 && filters.year <= 3000 ? filters.year : null;
+        const safeLimit = Math.min(Math.max(limit, 1), 100);
+        const safeOffset = Math.max(0, offset);
+
+        const qb = this.repo
+            .createQueryBuilder('invoice')
+            .innerJoin(SchoolOrm, 'school', 'school.id = invoice.schoolId')
+            .select([
+                'invoice.id AS id',
+                'invoice.schoolId AS schoolId',
+                'school.name AS schoolName',
+                'invoice.planId AS planId',
+                'invoice.financeId AS financeId',
+                'invoice.status AS status',
+                'invoice.amountCents AS amountCents',
+                'invoice.currency AS currency',
+                'invoice.dueDate AS dueDate',
+                'invoice.paidAt AS paidAt',
+                'invoice.description AS description',
+                'invoice.createdAt AS createdAt'
+            ])
+            .orderBy('invoice.dueDate', 'DESC')
+            .addOrderBy('invoice.createdAt', 'DESC')
+            .skip(safeOffset)
+            .take(safeLimit);
+
+        if (schoolName) {
+            qb.andWhere('LOWER(school.name) LIKE LOWER(:schoolName)', { schoolName: `%${schoolName}%` });
+        }
+        if (status) {
+            qb.andWhere('invoice.status = :status', { status });
+        }
+        if (month != null) {
+            qb.andWhere('MONTH(invoice.dueDate) = :month', { month });
+        }
+        if (year != null) {
+            qb.andWhere('YEAR(invoice.dueDate) = :year', { year });
+        }
+
+        const countQb = this.repo
+            .createQueryBuilder('invoice')
+            .innerJoin(SchoolOrm, 'school', 'school.id = invoice.schoolId')
+            .where('1 = 1');
+
+        if (schoolName) {
+            countQb.andWhere('LOWER(school.name) LIKE LOWER(:schoolName)', { schoolName: `%${schoolName}%` });
+        }
+        if (status) {
+            countQb.andWhere('invoice.status = :status', { status });
+        }
+        if (month != null) {
+            countQb.andWhere('MONTH(invoice.dueDate) = :month', { month });
+        }
+        if (year != null) {
+            countQb.andWhere('YEAR(invoice.dueDate) = :year', { year });
+        }
+
+        const [rawRows, total] = await Promise.all([qb.getRawMany(), countQb.getCount()]);
+
+        const items = (rawRows as any[]).map((row) => ({
+            id: row.id,
+            schoolId: row.schoolId,
+            schoolName: row.schoolName ?? '',
+            planId: row.planId,
+            financeId: row.financeId,
+            status: row.status,
+            amountCents: Number(row.amountCents) || 0,
+            currency: row.currency ?? 'BRL',
+            dueDate: new Date(row.dueDate),
+            paidAt: row.paidAt ? new Date(row.paidAt) : null,
+            description: row.description ?? null,
+            createdAt: new Date(row.createdAt)
+        }));
+
+        return {
+            items,
+            total,
+            limit: safeLimit,
+            offset: safeOffset
+        };
     }
 
     async save(invoice: SchoolPlanInvoice): Promise<void> {

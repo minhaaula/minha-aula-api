@@ -750,6 +750,82 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /admin/payment-history:
+    get:
+      tags:
+        - Admin
+      summary: Listar histórico de pagamentos
+      description: |
+        Retorna o histórico de pagamentos das escolas com a Minha Aula (faturas de plano de assinatura).
+        Paginado e com filtros por nome da escola, status, mês e ano.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: schoolName
+          required: false
+          schema:
+            type: string
+          description: Filtrar por nome da escola (contém, case-insensitive).
+        - in: query
+          name: status
+          required: false
+          schema:
+            type: string
+            enum: ['ISSUED', 'PAID', 'FAILED', 'CANCELLED']
+          description: Filtrar por status da fatura.
+        - in: query
+          name: month
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 12
+          description: Filtrar por mês do vencimento (1-12).
+        - in: query
+          name: year
+          required: false
+          schema:
+            type: integer
+            minimum: 2000
+            maximum: 3000
+          description: Filtrar por ano do vencimento.
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+          description: Quantidade máxima de registros por página.
+        - in: query
+          name: offset
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+          description: Quantidade de registros a pular (paginação).
+      responses:
+        '200':
+          description: Histórico de pagamentos retornado com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminPaymentHistoryResponse'
+        '401':
+          description: Usuário não autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado (requer persona ADMIN).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /admin/schools/{schoolId}/students:
     get:
       tags:
@@ -1762,6 +1838,87 @@ components:
       required:
         - schoolId
         - invoices
+    AdminPaymentHistoryItem:
+      type: object
+      description: Item do histórico de pagamento (fatura escola x Minha Aula)
+      properties:
+        id:
+          type: string
+          format: uuid
+        schoolId:
+          type: string
+          format: uuid
+        schoolName:
+          type: string
+        planId:
+          type: string
+          format: uuid
+        financeId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: ['ISSUED', 'PAID', 'FAILED', 'CANCELLED']
+        amountCents:
+          type: integer
+        currency:
+          type: string
+        dueDate:
+          type: string
+          format: date-time
+        paidAt:
+          type: string
+          format: date-time
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - schoolId
+        - schoolName
+        - planId
+        - financeId
+        - status
+        - amountCents
+        - currency
+        - dueDate
+        - createdAt
+    AdminPaymentHistoryResponse:
+      type: object
+      properties:
+        payments:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminPaymentHistoryItem'
+        pagination:
+          type: object
+          properties:
+            total:
+              type: integer
+            limit:
+              type: integer
+            offset:
+              type: integer
+            totalPage:
+              type: integer
+            currentPage:
+              type: integer
+            hasMore:
+              type: boolean
+          required:
+            - total
+            - limit
+            - offset
+            - totalPage
+            - currentPage
+            - hasMore
+      required:
+        - payments
+        - pagination
     AdminSchoolBillingResponse:
       type: object
       properties:

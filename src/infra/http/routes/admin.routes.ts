@@ -24,6 +24,7 @@ import type { ListAllStudents } from '../../../app/use-cases/list-all-students';
 import type { GetAdminSchoolFinancial } from '../../../app/use-cases/get-admin-school-financial';
 import type { GetAdminSchoolBilling } from '../../../app/use-cases/get-admin-school-billing';
 import type { ListAdminSchoolInvoices } from '../../../app/use-cases/list-admin-school-invoices';
+import type { ListAdminPaymentHistory } from '../../../app/use-cases/list-admin-payment-history';
 
 type AdminRouterDeps = {
     getAdminStatus: GetAdminStatus;
@@ -48,6 +49,7 @@ type AdminRouterDeps = {
     getAdminSchoolFinancial?: GetAdminSchoolFinancial;
     getAdminSchoolBilling?: GetAdminSchoolBilling;
     listAdminSchoolInvoices?: ListAdminSchoolInvoices;
+    listAdminPaymentHistory?: ListAdminPaymentHistory;
     authMiddleware?: RequestHandler;
 };
 
@@ -86,6 +88,7 @@ export function adminRouter({
     getAdminSchoolFinancial,
     getAdminSchoolBilling,
     listAdminSchoolInvoices,
+    listAdminPaymentHistory,
     authMiddleware
 }: AdminRouterDeps) {
     const router = Router();
@@ -302,6 +305,47 @@ export function adminRouter({
                     totalPage: Math.ceil(result.total / result.limit) || 1,
                     currentPage: Math.floor(result.offset / result.limit) + 1,
                     hasMore: result.offset + result.items.length < result.total
+                }
+            });
+        }));
+    }
+
+    // Histórico de pagamentos (escolas com Minha Aula) - paginado e com filtros
+    if (listAdminPaymentHistory) {
+        const paymentHistoryQuerySchema = z.object({
+            schoolName: z.string().trim().min(1).optional(),
+            status: z.enum(['ISSUED', 'PAID', 'FAILED', 'CANCELLED']).optional(),
+            month: z.coerce.number().int().min(1).max(12).optional(),
+            year: z.coerce.number().int().min(2000).max(3000).optional(),
+            limit: z.coerce.number().int().positive().max(100).optional(),
+            offset: z.coerce.number().int().min(0).optional()
+        });
+        router.get('/payment-history', requireAuth, requireAdminPersona, asyncHandler(async (req, res) => {
+            const query = paymentHistoryQuerySchema.parse({
+                schoolName: typeof req.query.schoolName === 'string' ? req.query.schoolName : undefined,
+                status: typeof req.query.status === 'string' ? req.query.status : undefined,
+                month: req.query.month,
+                year: req.query.year,
+                limit: req.query.limit,
+                offset: req.query.offset
+            });
+            const result = await listAdminPaymentHistory.exec({
+                schoolName: query.schoolName,
+                status: query.status,
+                month: query.month,
+                year: query.year,
+                limit: query.limit,
+                offset: query.offset
+            });
+            res.json({
+                payments: result.items,
+                pagination: {
+                    total: result.total,
+                    limit: result.limit,
+                    offset: result.offset,
+                    totalPage: Math.ceil(result.total / result.limit) || 1,
+                    currentPage: Math.floor(result.offset / result.limit) + 1,
+                    hasMore: result.offset + result.limit < result.total
                 }
             });
         }));
