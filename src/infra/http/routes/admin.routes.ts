@@ -296,6 +296,9 @@ export function adminRouter({
                 limit: query.limit,
                 offset: query.offset
             });
+            res.set('Cache-Control', 'no-store');
+            // Evita 304 Not Modified para o cliente sempre receber a lista atualizada
+            res.set('ETag', `"admin-students-${Date.now()}"`);
             res.json({
                 students: result.items,
                 pagination: {
