@@ -217,6 +217,58 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /admin/schools/{schoolId}/billing:
+    get:
+      tags:
+        - Admin
+      summary: Listar faturamento da escola
+      description: |
+        Retorna o faturamento da escola por ID: resumo (Total Ganho, Pendente, Atrasado, Saldo Atual)
+        e consolidado por mês/ano (ganho, pendente, atrasado e total por período).
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: schoolId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID da escola
+        - in: query
+          name: monthsLimit
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 60
+            default: 12
+          description: Quantidade de meses no consolidado (1 a 60).
+      responses:
+        '200':
+          description: Faturamento da escola retornado com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminSchoolBillingResponse'
+        '401':
+          description: Usuário não autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado (requer persona ADMIN).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Escola não encontrada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /admin/schools/{schoolId}/plans:
     get:
       tags:
@@ -1341,11 +1393,11 @@ components:
                 isPrimary:
                   type: boolean
                   description: Indica se o plano é o principal/favorito
-              status:
-              type: string
-              enum: ['TRIAL', 'ACTIVE', 'PAST_DUE', 'SUSPENDED', 'CANCELLED']
-              description: Status atual do plano
-              example: 'ACTIVE'
+                status:
+                  type: string
+                  enum: ['TRIAL', 'ACTIVE', 'PAST_DUE', 'SUSPENDED', 'CANCELLED']
+                  description: Status atual do plano
+                  example: 'ACTIVE'
             isPaid:
               type: boolean
               description: Indica se o plano está pago
@@ -1584,6 +1636,73 @@ components:
         - schoolId
         - balance
         - withdrawals
+    AdminSchoolBillingResponse:
+      type: object
+      properties:
+        schoolId:
+          type: string
+          format: uuid
+          description: ID da escola
+        summary:
+          type: object
+          description: Resumo financeiro (cards)
+          properties:
+            totalGanhoCents:
+              type: integer
+              description: Total ganho (recebido) em centavos
+            pendenteCents:
+              type: integer
+              description: Total pendente (cobranças abertas) em centavos
+            atrasadoCents:
+              type: integer
+              description: Total atrasado em centavos
+            saldoAtualCents:
+              type: integer
+              description: Saldo atual (total ganho) em centavos
+          required:
+            - totalGanhoCents
+            - pendenteCents
+            - atrasadoCents
+            - saldoAtualCents
+        consolidatedByMonth:
+          type: array
+          description: Consolidado por mês e ano (ordenado do mais recente ao mais antigo)
+          items:
+            type: object
+            properties:
+              year:
+                type: integer
+              month:
+                type: integer
+                minimum: 1
+                maximum: 12
+              monthLabel:
+                type: string
+                description: Ex. "Dez/2026"
+              ganhoCents:
+                type: integer
+                description: Ganho (pago) no mês em centavos
+              pendenteCents:
+                type: integer
+                description: Pendente (vencimento no mês) em centavos
+              atrasadoCents:
+                type: integer
+                description: Atrasado (vencimento no mês) em centavos
+              totalCents:
+                type: integer
+                description: Total do mês (ganho + pendente + atrasado) em centavos
+            required:
+              - year
+              - month
+              - monthLabel
+              - ganhoCents
+              - pendenteCents
+              - atrasadoCents
+              - totalCents
+      required:
+        - schoolId
+        - summary
+        - consolidatedByMonth
     AdminSchoolStudentsListResponse:
       type: object
       properties:

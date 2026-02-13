@@ -22,6 +22,7 @@ import type { UpdateCategory } from '../../../app/use-cases/update-category';
 import type { ListSchoolStudents } from '../../../app/use-cases/list-school-students';
 import type { ListAllStudents } from '../../../app/use-cases/list-all-students';
 import type { GetAdminSchoolFinancial } from '../../../app/use-cases/get-admin-school-financial';
+import type { GetAdminSchoolBilling } from '../../../app/use-cases/get-admin-school-billing';
 
 type AdminRouterDeps = {
     getAdminStatus: GetAdminStatus;
@@ -44,6 +45,7 @@ type AdminRouterDeps = {
     listSchoolStudents?: ListSchoolStudents;
     listAllStudents?: ListAllStudents;
     getAdminSchoolFinancial?: GetAdminSchoolFinancial;
+    getAdminSchoolBilling?: GetAdminSchoolBilling;
     authMiddleware?: RequestHandler;
 };
 
@@ -80,6 +82,7 @@ export function adminRouter({
     listSchoolStudents,
     listAllStudents,
     getAdminSchoolFinancial,
+    getAdminSchoolBilling,
     authMiddleware
 }: AdminRouterDeps) {
     const router = Router();
@@ -156,6 +159,24 @@ export function adminRouter({
             });
             const { schoolId } = paramsSchema.parse(req.params);
             const payload = await getAdminSchoolFinancial.exec({ schoolId });
+            res.json(payload);
+        }));
+    }
+
+    if (getAdminSchoolBilling) {
+        const billingQuerySchema = z.object({
+            monthsLimit: z.coerce.number().int().min(1).max(60).optional()
+        });
+        router.get('/schools/:schoolId/billing', requireAuth, requireAdminPersona, asyncHandler(async (req, res) => {
+            const paramsSchema = z.object({
+                schoolId: z.string().uuid()
+            });
+            const { schoolId } = paramsSchema.parse(req.params);
+            const query = billingQuerySchema.parse(req.query);
+            const payload = await getAdminSchoolBilling.exec({
+                schoolId,
+                monthsLimit: query.monthsLimit
+            });
             res.json(payload);
         }));
     }

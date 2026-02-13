@@ -35,6 +35,7 @@ import { UpdateCategory } from '../../app/use-cases/update-category';
 import { ListSchoolStudents } from '../../app/use-cases/list-school-students';
 import { ListAllStudents } from '../../app/use-cases/list-all-students';
 import { GetAdminSchoolFinancial } from '../../app/use-cases/get-admin-school-financial';
+import { GetAdminSchoolBilling } from '../../app/use-cases/get-admin-school-billing';
 import { SchoolWithdrawalRepositoryAdapter } from '../../infra/db/typeorm/school-withdrawal-repository.adapter';
 import { scheduleAllJobs } from '../../infra/messaging/bullmq/job-scheduler';
 import { startWorker } from '../../infra/messaging/bullmq/worker-manager';
@@ -128,6 +129,11 @@ export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext)
         withdrawalsRepo
     );
 
+    const getAdminSchoolBilling = new GetAdminSchoolBilling(
+        deps.schoolsRepo,
+        deps.financialChargesRepo
+    );
+
     // Use cases de cupons
     const couponsRepo = new DiscountCouponRepositoryAdapter();
     const createDiscountCoupon = new CreateDiscountCoupon(couponsRepo);
@@ -161,6 +167,7 @@ export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext)
         listSchoolStudents,
         listAllStudents,
         getAdminSchoolFinancial,
+        getAdminSchoolBilling,
         authMiddleware: ctx.authMiddleware
     });
 

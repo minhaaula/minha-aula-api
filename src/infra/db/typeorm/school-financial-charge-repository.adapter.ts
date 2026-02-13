@@ -237,6 +237,105 @@ export class SchoolFinancialChargeRepositoryAdapter implements SchoolFinancialCh
         return Number(result.total || 0);
     }
 
+    async getBillingConsolidatedByMonth(
+        schoolId: string,
+        monthsLimit: number
+    ): Promise<Array<{ year: number; month: number; ganhoCents: number; pendenteCents: number; atrasadoCents: number; totalCents: number }>> {
+        const limit = Math.min(Math.max(monthsLimit, 1), 60);
+
+        const [ganhoRows, pendenteRows, atrasadoRows] = await Promise.all([
+            this.repo.createQueryBuilder('charge')
+                .select('YEAR(charge.paidAt) AS year', 'MONTH(charge.paidAt) AS month')
+                .addSelect('SUM(charge.netAmountCents)', 'valueCents')
+                .where('charge.schoolId = :schoolId', { schoolId })
+                .andWhere('charge.status = :status', { status: 'PAID' })
+                .andWhere('charge.paidAt IS NOT NULL')
+                .groupBy('YEAR(charge.paidAt)')
+                .addGroupBy('MONTH(charge.paidAt)')
+                .getRawMany(),
+            this.repo.createQueryBuilder('charge')
+                .select('YEAR(charge.dueDate) AS year', 'MONTH(charge.dueDate) AS month')
+                .addSelect('SUM(charge.netAmountCents)', 'valueCents')
+                .where('charge.schoolId = :schoolId', { schoolId })
+                .andWhere('charge.status IN (:...statuses)', { statuses: ['PENDING_SYNC', 'OPEN', 'FAILED'] })
+                .groupBy('YEAR(charge.dueDate)')
+                .addGroupBy('MONTH(charge.dueDate)')
+                .getRawMany(),
+            this.repo.createQueryBuilder('charge')
+                .select('YEAR(charge.dueDate) AS year', 'MONTH(charge.dueDate) AS month')
+                .addSelect('SUM(charge.netAmountCents)', 'valueCents')
+                .where('charge.schoolId = :schoolId', { schoolId })
+                .andWhere('charge.status = :status', { status: 'OVERDUE' })
+                .groupBy('YEAR(charge.dueDate)')
+                .addGroupBy('MONTH(charge.dueDate)')
+                .getRawMany()
+        ]);
+
+        const key = (y: number, m: number) => `${y}-${String(m).padStart(2, '0')}`;
+        const map = new Map<string, { year: number; month: number; ganhoCents: number; pendenteCents: number; atrasadoCents: number }>();
+
+        for (const row of ganhoRows as { year: number; month: number; valueCents: string }[]) {
+            const y = Number(row.year);
+            const m = Number(row.month);
+            const k = key(y, m);
+            map.set(k, {
+                year: y,
+                month: m,
+                ganhoCents: Number(row.valueCents) || 0,
+                pendenteCents: 0,
+                atrasadoCents: 0
+            });
+        }
+        for (const row of pendenteRows as { year: number; month: number; valueCents: string }[]) {
+            const y = Number(row.year);
+            const m = Number(row.month);
+            const k = key(y, m);
+            const existing = map.get(k);
+            if (existing) {
+                existing.pendenteCents = Number(row.valueCents) || 0;
+            } else {
+                map.set(k, {
+                    year: y,
+                    month: m,
+                    ganhoCents: 0,
+                    pendenteCents: Number(row.valueCents) || 0,
+                    atrasadoCents: 0
+                });
+            }
+        }
+        for (const row of atrasadoRows as { year: number; month: number; valueCents: string }[]) {
+            const y = Number(row.year);
+            const m = Number(row.month);
+            const k = key(y, m);
+            const existing = map.get(k);
+            if (existing) {
+                existing.atrasadoCents = Number(row.valueCents) || 0;
+            } else {
+                map.set(k, {
+                    year: y,
+                    month: m,
+                    ganhoCents: 0,
+                    pendenteCents: 0,
+                    atrasadoCents: Number(row.valueCents) || 0
+                });
+            }
+        }
+
+        const sorted = Array.from(map.values()).sort((a, b) => {
+            if (a.year !== b.year) return b.year - a.year;
+            return b.month - a.month;
+        });
+
+        return sorted.slice(0, limit).map((item) => ({
+            year: item.year,
+            month: item.month,
+            ganhoCents: item.ganhoCents,
+            pendenteCents: item.pendenteCents,
+            atrasadoCents: item.atrasadoCents,
+            totalCents: item.ganhoCents + item.pendenteCents + item.atrasadoCents
+        }));
+    }
+
     async countChargesWithDiscount(
         courseClassId: string,
         ownerUserId: string,
