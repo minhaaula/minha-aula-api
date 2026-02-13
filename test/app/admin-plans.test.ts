@@ -48,8 +48,6 @@ describe('Admin Plans CRUD (integração)', () => {
             name: 'Plano Básico',
             description: 'Para escolas pequenas',
             amountCents: 9900,
-            currency: 'BRL',
-            billingCycle: 'MONTHLY',
             isActive: true
         });
 
@@ -78,8 +76,7 @@ describe('Admin Plans CRUD (integração)', () => {
         const created = await createPlan.exec({
             code: 'PRO',
             name: 'Plano Pro',
-            amountCents: 19900,
-            currency: 'BRL'
+            amountCents: 19900
         });
 
         const updated = await updatePlan.exec({

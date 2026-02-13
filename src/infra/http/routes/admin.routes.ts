@@ -169,8 +169,6 @@ export function adminRouter({
             description: z.string().trim().max(255).nullable().optional(),
             items: z.array(z.string()).nullable().optional(),
             amountCents: z.number().int().positive(),
-            currency: z.string().length(3),
-            billingCycle: z.enum(['MONTHLY', 'ANNUAL']).optional(),
             isActive: z.boolean().optional()
         });
         router.post('/plans', requireAuth, requireAdminPersona, asyncHandler(async (req, res) => {
@@ -181,8 +179,8 @@ export function adminRouter({
                 description: body.description ?? null,
                 items: body.items ?? null,
                 amountCents: body.amountCents,
-                currency: body.currency,
-                billingCycle: body.billingCycle,
+                currency: 'BRL',
+                billingCycle: 'MONTHLY',
                 isActive: body.isActive
             });
             res.status(201).json(payload);

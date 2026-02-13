@@ -947,20 +947,12 @@ components:
         amountCents:
           type: integer
           minimum: 1
-        currency:
-          type: string
-          minLength: 3
-          maxLength: 3
-        billingCycle:
-          type: string
-          enum: [MONTHLY, ANNUAL]
         isActive:
           type: boolean
       required:
         - code
         - name
         - amountCents
-        - currency
     AdminUpdatePlanInput:
       type: object
       properties:

@@ -9,7 +9,7 @@ export interface CreateSubscriptionPlanInput {
     description?: string | null;
     items?: string[] | null;
     amountCents: number;
-    currency: string;
+    currency?: string;
     billingCycle?: 'MONTHLY' | 'ANNUAL';
     isActive?: boolean;
 }
@@ -45,7 +45,7 @@ export class CreateSubscriptionPlan {
             description: input.description?.trim() ?? null,
             items: input.items ?? null,
             amountCents: input.amountCents,
-            currency: input.currency.trim().toUpperCase(),
+            currency: (input.currency ?? 'BRL').trim().toUpperCase(),
             billingCycle: input.billingCycle ?? 'MONTHLY',
             isActive: input.isActive ?? true
         });
