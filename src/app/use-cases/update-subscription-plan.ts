@@ -12,6 +12,7 @@ export interface UpdateSubscriptionPlanInput {
     currency?: string;
     billingCycle?: 'MONTHLY' | 'ANNUAL';
     isActive?: boolean;
+    isPrimary?: boolean;
 }
 
 export interface UpdateSubscriptionPlanOutput {
@@ -24,6 +25,7 @@ export interface UpdateSubscriptionPlanOutput {
     currency: string;
     billingCycle: 'MONTHLY' | 'ANNUAL';
     isActive: boolean;
+    isPrimary: boolean;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -55,11 +57,16 @@ export class UpdateSubscriptionPlan {
             currency: input.currency !== undefined ? input.currency.trim().toUpperCase() : existing.currency,
             billingCycle: input.billingCycle ?? existing.billingCycle,
             isActive: input.isActive !== undefined ? input.isActive : existing.isActive,
+            isPrimary: input.isPrimary !== undefined ? input.isPrimary : existing.isPrimary,
             createdAt: existing.createdAt,
             updatedAt: new Date()
         });
 
         await this.plans.save(plan);
+
+        if (plan.isPrimary) {
+            await this.clearOtherPrimary(plan.id);
+        }
 
         return {
             id: plan.id,
@@ -71,8 +78,31 @@ export class UpdateSubscriptionPlan {
             currency: plan.currency,
             billingCycle: plan.billingCycle,
             isActive: plan.isActive,
+            isPrimary: plan.isPrimary,
             createdAt: plan.createdAt,
             updatedAt: plan.updatedAt
         };
+    }
+
+    private async clearOtherPrimary(keepPlanId: string): Promise<void> {
+        const all = await this.plans.findAll();
+        for (const p of all) {
+            if (p.id !== keepPlanId && p.isPrimary) {
+                await this.plans.save(SubscriptionPlan.create({
+                    id: p.id,
+                    code: p.code,
+                    name: p.name,
+                    description: p.description,
+                    items: p.items,
+                    amountCents: p.amountCents,
+                    currency: p.currency,
+                    billingCycle: p.billingCycle,
+                    isActive: p.isActive,
+                    isPrimary: false,
+                    createdAt: p.createdAt,
+                    updatedAt: new Date()
+                }));
+            }
+        }
     }
 }

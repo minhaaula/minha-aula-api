@@ -10,6 +10,7 @@ type SubscriptionPlanItem = {
     currency: string;
     billingCycle: 'MONTHLY' | 'ANNUAL';
     isActive: boolean;
+    isPrimary: boolean;
 };
 
 export class ListSubscriptionPlans {
@@ -27,7 +28,8 @@ export class ListSubscriptionPlans {
                 amountCents: plan.amountCents,
                 currency: plan.currency,
                 billingCycle: plan.billingCycle,
-                isActive: plan.isActive
+                isActive: plan.isActive,
+                isPrimary: plan.isPrimary
             }))
         };
     }

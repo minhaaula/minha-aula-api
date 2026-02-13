@@ -50,6 +50,7 @@ export class SubscriptionPlanRepositoryAdapter implements SubscriptionPlanReposi
             currency: row.currency,
             billingCycle: row.billingCycle,
             isActive: row.isActive === 1,
+            isPrimary: row.isPrimary === 1,
             createdAt: row.createdAt,
             updatedAt: row.updatedAt
         });
@@ -66,6 +67,7 @@ export class SubscriptionPlanRepositoryAdapter implements SubscriptionPlanReposi
         row.currency = plan.currency;
         row.billingCycle = plan.billingCycle;
         row.isActive = plan.isActive ? 1 : 0;
+        row.isPrimary = plan.isPrimary ? 1 : 0;
         row.createdAt = plan.createdAt;
         row.updatedAt = plan.updatedAt;
         return row;

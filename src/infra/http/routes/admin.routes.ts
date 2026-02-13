@@ -212,7 +212,8 @@ export function adminRouter({
             description: z.string().trim().max(255).nullable().optional(),
             items: z.array(z.string()).nullable().optional(),
             amountCents: z.number().int().positive(),
-            isActive: z.boolean().optional()
+            isActive: z.boolean().optional(),
+            isPrimary: z.boolean().optional()
         });
         router.post('/plans', requireAuth, requireAdminPersona, asyncHandler(async (req, res) => {
             const body = createPlanSchema.parse(req.body);
@@ -224,7 +225,8 @@ export function adminRouter({
                 amountCents: body.amountCents,
                 currency: 'BRL',
                 billingCycle: 'MONTHLY',
-                isActive: body.isActive
+                isActive: body.isActive,
+                isPrimary: body.isPrimary
             });
             res.status(201).json(payload);
         }));
@@ -239,7 +241,8 @@ export function adminRouter({
             amountCents: z.number().int().positive().optional(),
             currency: z.string().length(3).optional(),
             billingCycle: z.enum(['MONTHLY', 'ANNUAL']).optional(),
-            isActive: z.boolean().optional()
+            isActive: z.boolean().optional(),
+            isPrimary: z.boolean().optional()
         }).strict();
         router.patch('/plans/:planId', requireAuth, requireAdminPersona, asyncHandler(async (req, res) => {
             const paramsSchema = z.object({ planId: z.string().uuid() });

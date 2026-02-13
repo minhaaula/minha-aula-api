@@ -11,6 +11,7 @@ export type SchoolPlanFinanceView = {
         currency: string;
         billingCycle: 'MONTHLY' | 'ANNUAL';
         isActive: boolean;
+        isPrimary: boolean;
     };
     status: 'TRIAL' | 'ACTIVE' | 'PAST_DUE' | 'SUSPENDED' | 'CANCELLED';
     isPaid: boolean;
@@ -33,7 +34,8 @@ export function presentSchoolPlanFinance(finance: SchoolPlanFinance): SchoolPlan
             amountCents: plan.amountCents,
             currency: plan.currency,
             billingCycle: plan.billingCycle,
-            isActive: plan.isActive
+            isActive: plan.isActive,
+            isPrimary: plan.isPrimary
         },
         status: finance.status,
         isPaid: finance.isPaid,

@@ -10,6 +10,7 @@ export interface AdminSubscriptionPlanItem {
     currency: string;
     billingCycle: 'MONTHLY' | 'ANNUAL';
     isActive: boolean;
+    isPrimary: boolean;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -30,6 +31,7 @@ export class ListAdminSubscriptionPlans {
                 currency: plan.currency,
                 billingCycle: plan.billingCycle,
                 isActive: plan.isActive,
+                isPrimary: plan.isPrimary,
                 createdAt: plan.createdAt,
                 updatedAt: plan.updatedAt
             }))

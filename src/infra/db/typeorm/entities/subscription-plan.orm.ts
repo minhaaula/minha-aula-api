@@ -22,6 +22,8 @@ export class SubscriptionPlanOrm {
 
     @Column('tinyint', { name: 'is_active', width: 1, default: 1 }) isActive!: number;
 
+    @Column('tinyint', { name: 'is_primary', width: 1, default: 0 }) isPrimary!: number;
+
     @CreateDateColumn({ name: 'created_at', type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
     createdAt!: Date;
 

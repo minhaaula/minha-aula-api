@@ -89,10 +89,12 @@ export class SchoolPlanFinanceRepositoryAdapter implements SchoolPlanFinanceRepo
             code: row.code,
             name: row.name,
             description: row.description,
+            items: row.items,
             amountCents: row.amountCents,
             currency: row.currency,
             billingCycle: row.billingCycle,
             isActive: row.isActive === 1,
+            isPrimary: row.isPrimary === 1,
             createdAt: row.createdAt,
             updatedAt: row.updatedAt
         });

@@ -11,6 +11,7 @@ export class SubscriptionPlan {
         public readonly items: string[] | null,
         public readonly billingCycle: SubscriptionBillingCycle,
         public readonly isActive: boolean,
+        public readonly isPrimary: boolean,
         public readonly createdAt: Date,
         public readonly updatedAt: Date
     ) {}
@@ -25,6 +26,7 @@ export class SubscriptionPlan {
         items?: string[] | null;
         billingCycle?: SubscriptionBillingCycle;
         isActive?: boolean;
+        isPrimary?: boolean;
         createdAt?: Date;
         updatedAt?: Date;
     }): SubscriptionPlan {
@@ -55,6 +57,7 @@ export class SubscriptionPlan {
         }
 
         const isActive = params.isActive ?? true;
+        const isPrimary = params.isPrimary ?? false;
         const createdAt = params.createdAt ?? new Date();
         const updatedAt = params.updatedAt ?? createdAt;
 
@@ -68,6 +71,7 @@ export class SubscriptionPlan {
             items,
             billingCycle,
             isActive,
+            isPrimary,
             createdAt,
             updatedAt
         );

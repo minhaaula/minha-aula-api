@@ -922,6 +922,7 @@ components:
         - currency
         - billingCycle
         - isActive
+        - isPrimary
         - createdAt
         - updatedAt
     AdminCreatePlanInput:
@@ -949,6 +950,9 @@ components:
           minimum: 1
         isActive:
           type: boolean
+        isPrimary:
+          type: boolean
+          description: Marca o plano como principal/favorito (apenas um pode ser principal)
       required:
         - code
         - name
@@ -985,6 +989,9 @@ components:
           enum: [MONTHLY, ANNUAL]
         isActive:
           type: boolean
+        isPrimary:
+          type: boolean
+          description: Marca o plano como principal/favorito
     AdminCategoriesListResponse:
       type: object
       properties:
@@ -1222,7 +1229,10 @@ components:
                 isActive:
                   type: boolean
                   description: Indica se o plano está ativo
-            status:
+                isPrimary:
+                  type: boolean
+                  description: Indica se o plano é o principal/favorito
+              status:
               type: string
               enum: ['TRIAL', 'ACTIVE', 'PAST_DUE', 'SUSPENDED', 'CANCELLED']
               description: Status atual do plano
