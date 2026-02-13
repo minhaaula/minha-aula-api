@@ -3,8 +3,18 @@
  */
 
 import { EmailProviderPort, SendEmailInput } from '../../ports/providers/email-provider.port';
-import { getPasswordResetTemplate, getWelcomeTemplate } from './templates';
-import type { PasswordResetTemplateData, WelcomeTemplateData } from './templates';
+import {
+    getPasswordResetTemplate,
+    getWelcomeTemplate,
+    getEmailConfirmationTemplate,
+    getPaymentNotificationTemplate
+} from './templates';
+import type {
+    PasswordResetTemplateData,
+    WelcomeTemplateData,
+    EmailConfirmationTemplateData,
+    PaymentNotificationTemplateData
+} from './templates';
 
 export class EmailService {
     constructor(private readonly emailProvider: EmailProviderPort) {}
@@ -27,6 +37,32 @@ export class EmailService {
      */
     async sendWelcomeEmail(data: WelcomeTemplateData & { to: string }): Promise<void> {
         const template = getWelcomeTemplate(data);
+        await this.emailProvider.sendEmail({
+            to: data.to,
+            subject: template.subject,
+            html: template.html,
+            text: template.text
+        });
+    }
+
+    /**
+     * Envia email de confirmação de endereço de email
+     */
+    async sendEmailConfirmationEmail(data: EmailConfirmationTemplateData & { to: string }): Promise<void> {
+        const template = getEmailConfirmationTemplate(data);
+        await this.emailProvider.sendEmail({
+            to: data.to,
+            subject: template.subject,
+            html: template.html,
+            text: template.text
+        });
+    }
+
+    /**
+     * Envia email de notificação de pagamento confirmado
+     */
+    async sendPaymentNotificationEmail(data: PaymentNotificationTemplateData & { to: string }): Promise<void> {
+        const template = getPaymentNotificationTemplate(data);
         await this.emailProvider.sendEmail({
             to: data.to,
             subject: template.subject,

@@ -1,170 +1,101 @@
-# Sistema de Email
+# 📧 Templates de Email - Minha Aula Admin
 
-Este diretório contém a estrutura de templates e serviços de email do projeto.
+Este diretório contém templates HTML e o serviço de envio de emails transacionais.
 
-## Estrutura
+## 📁 Estrutura
 
 ```
 email/
 ├── templates/
-│   ├── base-template.ts      # Template base HTML para todos os emails
-│   ├── password-reset.template.ts  # Template de redefinição de senha
-│   ├── welcome.template.ts    # Template de boas-vindas
-│   └── index.ts              # Exportações dos templates
-├── template-engine.ts        # Engine de renderização de templates
-├── email-service.ts          # Serviço facilitador para envio de emails
-└── README.md                 # Esta documentação
+│   ├── base-template.ts           # Template base (para emails que usam layout comum)
+│   ├── password-reset.template.ts   # Redefinição de senha
+│   ├── welcome.template.ts         # Boas-vindas / novo cadastro
+│   ├── email-confirmation.template.ts   # Confirmação de email
+│   ├── payment-notification.template.ts # Notificação de pagamento confirmado
+│   ├── boleto-notification.template.ts  # Notificação de boleto gerado
+│   └── index.ts
+├── template-engine.ts
+├── email-service.ts
+└── README.md
 ```
 
-## Providers Suportados
+## 🎨 Templates disponíveis
 
-### Twilio SendGrid (Recomendado)
+### 1. Reset de Senha
+- **Variáveis:** `resetUrl`
+- **Uso:** `getPasswordResetTemplate({ resetUrl })` ou `emailService.sendPasswordResetEmail({ to, resetUrl })`
 
-Configure as seguintes variáveis de ambiente:
+### 2. Novo Cadastro / Bem-vindo
+- **Variáveis:** `userName`, `userEmail` (opcional), `planName` (opcional), `loginUrl` (opcional)
+- **Uso:** `getWelcomeTemplate(data)` ou `emailService.sendWelcomeEmail({ to, ...data })`
 
-```bash
-SENDGRID_API_KEY=your_api_key_here
-SENDGRID_FROM_EMAIL=noreply@example.com
-SENDGRID_FROM_NAME="Payments API"  # Opcional
-```
+### 3. Confirmação de Email
+- **Variáveis:** `userName`, `confirmationUrl`
+- **Uso:** `getEmailConfirmationTemplate(data)` ou `emailService.sendEmailConfirmationEmail({ to, ...data })`
 
-### Nodemailer (Fallback)
+### 4. Notificação de Pagamento
+- **Variáveis:** `userName`, `amount`, `paymentDate`, `paymentMethod`, `transactionId`, `invoiceUrl`
+- **Uso:** `getPaymentNotificationTemplate(data)` ou `emailService.sendPaymentNotificationEmail({ to, ...data })`
 
-Configure as seguintes variáveis de ambiente:
+### 5. Notificação de Boleto
+- **Variáveis:** `studentName`, `boletoUrl`, `digitableLine`, `amount`, `dueDate`, `description`, `type`, etc.
+- **Uso:** `getBoletoNotificationTemplate(data)` (sem método dedicado no EmailService; usar `sendCustomEmail` com o template).
 
-```bash
-EMAIL_HOST=smtp.example.com
-EMAIL_PORT=587
-EMAIL_USER=user@example.com
-EMAIL_PASS=password
-EMAIL_FROM=noreply@example.com
-```
-
-## Uso dos Templates
-
-### Exemplo 1: Email de Redefinição de Senha
+## 🚀 Uso com EmailService
 
 ```typescript
 import { EmailService } from '../infra/email/email-service';
-import { getPasswordResetTemplate } from '../infra/email/templates';
 
-// Opção 1: Usando EmailService (recomendado)
 const emailService = new EmailService(emailProvider);
+
+// Reset de senha
 await emailService.sendPasswordResetEmail({
     to: 'user@example.com',
-    resetUrl: 'https://app.example.com/reset-password?token=abc123',
-    expiresIn: '1 hora',
-    userName: 'João Silva' // Opcional
+    resetUrl: 'https://app.minhaaula.com/reset-password?token=abc123'
 });
 
-// Opção 2: Usando template diretamente
-const template = getPasswordResetTemplate({
-    resetUrl: 'https://app.example.com/reset-password?token=abc123',
-    expiresIn: '1 hora'
-});
-
-await emailProvider.sendEmail({
-    to: 'user@example.com',
-    subject: template.subject,
-    html: template.html,
-    text: template.text
-});
-```
-
-### Exemplo 2: Email de Boas-vindas
-
-```typescript
-import { EmailService } from '../infra/email/email-service';
-
-const emailService = new EmailService(emailProvider);
+// Boas-vindas
 await emailService.sendWelcomeEmail({
     to: 'user@example.com',
     userName: 'João Silva',
-    loginUrl: 'https://app.example.com/login' // Opcional
+    userEmail: 'joao@example.com',
+    planName: 'Plano Premium',
+    loginUrl: 'https://app.minhaaula.com/login'
+});
+
+// Confirmação de email
+await emailService.sendEmailConfirmationEmail({
+    to: 'user@example.com',
+    userName: 'João Silva',
+    confirmationUrl: 'https://app.minhaaula.com/confirm-email?token=xyz789'
+});
+
+// Notificação de pagamento
+await emailService.sendPaymentNotificationEmail({
+    to: 'user@example.com',
+    userName: 'João Silva',
+    amount: 'R$ 199,90',
+    paymentDate: '15/01/2025',
+    paymentMethod: 'Cartão de Crédito',
+    transactionId: 'TXN-123456',
+    invoiceUrl: 'https://app.minhaaula.com/invoices/123'
 });
 ```
 
-## Criando Novos Templates
+## Providers suportados
 
-1. Crie um novo arquivo em `templates/`:
+- **Twilio SendGrid:** `SENDGRID_API_KEY`, `SENDGRID_FROM_EMAIL`, `SENDGRID_FROM_NAME` (ex.: "Minha Aula Admin")
+- **Nodemailer:** `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_USER`, `EMAIL_PASS`, `EMAIL_FROM`
 
-```typescript
-// templates/my-template.template.ts
-import { EmailTemplate } from '../template-engine';
-import { buildBaseEmailHtml } from './base-template';
+## Características dos templates
 
-export interface MyTemplateData {
-    userName: string;
-    customField: string;
-}
+- Responsivos e compatíveis com clientes de email
+- CSS inline para máxima compatibilidade
+- Layout em tabelas HTML (padrão para email)
+- Branding Minha Aula Admin (footer © 2025)
 
-export function getMyTemplate(data: MyTemplateData): EmailTemplate {
-    const content = `
-        <p>Olá <strong>${data.userName}</strong>,</p>
-        <p>${data.customField}</p>
-    `;
+## Notas
 
-    return {
-        subject: 'Meu Assunto',
-        html: buildBaseEmailHtml({
-            title: 'Meu Título',
-            content,
-            footerText: 'Footer customizado',
-            companyName: 'Payments API'
-        }),
-        text: `Olá ${data.userName},\n\n${data.customField}`
-    };
-}
-```
-
-2. Exporte no `templates/index.ts`:
-
-```typescript
-export * from './my-template.template';
-```
-
-3. Adicione método no `EmailService` se necessário:
-
-```typescript
-async sendMyEmail(data: MyTemplateData & { to: string }): Promise<void> {
-    const template = getMyTemplate(data);
-    await this.emailProvider.sendEmail({
-        to: data.to,
-        subject: template.subject,
-        html: template.html,
-        text: template.text
-    });
-}
-```
-
-## Template Base
-
-O template base (`base-template.ts`) fornece uma estrutura HTML responsiva e profissional para todos os emails. Ele inclui:
-
-- Layout responsivo
-- Estilos CSS inline
-- Header com título
-- Área de conteúdo
-- Footer com informações da empresa
-
-Você pode customizar o template base conforme necessário.
-
-## Instalação do Twilio SendGrid
-
-Para usar o Twilio SendGrid, instale o pacote:
-
-```bash
-npm install @sendgrid/mail
-```
-
-O adapter detectará automaticamente se o pacote está instalado e usará o SendGrid quando as variáveis de ambiente estiverem configuradas.
-
-
-
-
-
-
-
-
-
-
+1. Os use cases `RequestPasswordReset` e `RequestUserPasswordReset` atualmente montam o email manualmente; para usar estes templates neles, refatore para injetar e usar `EmailService.sendPasswordResetEmail`.
+2. Substitua sempre as variáveis `{{nome}}` antes de enviar (as funções `get*Template` já fazem isso).
+3. Teste em vários clientes de email antes de usar em produção.

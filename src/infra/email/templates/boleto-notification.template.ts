@@ -50,7 +50,7 @@ export function getBoletoNotificationTemplate(data: BoletoNotificationTemplateDa
             title: 'Boleto Gerado',
             content,
             footerText: 'Este é um email automático, por favor não responda.',
-            companyName: 'Payments API'
+            companyName: 'Minha Aula Admin'
         }),
         text: textContent
     };
