@@ -1,4 +1,5 @@
 import { User } from '../../domain/entities/user';
+import type { AdminStudentListFilters, AdminStudentListResult } from './enrollment.repo';
 
 export interface UserRepository {
     findByEmail(email: string): Promise<User | null>;
@@ -9,4 +10,10 @@ export interface UserRepository {
     save(user: User): Promise<void>;
     updatePassword?(userId: string, hashedPassword: string): Promise<void>;
     countByPersona?(persona: string): Promise<number>;
+    /** Lista todos os usuários com persona STUDENT (inclui os sem matrícula). */
+    findStudentsPaginatedForAdmin?(
+        filters: AdminStudentListFilters,
+        limit: number,
+        offset: number
+    ): Promise<AdminStudentListResult>;
 }

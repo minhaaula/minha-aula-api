@@ -281,9 +281,9 @@ export class EnrollmentRepositoryAdapter implements EnrollmentRepository {
         const totalCount = await countQb.getCount();
 
         const items = (rawRows as any[]).map((row) => ({
-            enrollmentId: row.enrollmentId,
-            schoolId: row.schoolId,
-            schoolName: row.schoolName,
+            enrollmentId: row.enrollmentId as string,
+            schoolId: row.schoolId as string,
+            schoolName: row.schoolName as string,
             studentName: row.studentName ?? '',
             cpf: row.cpf ?? null,
             courseName: row.courseName ?? '',

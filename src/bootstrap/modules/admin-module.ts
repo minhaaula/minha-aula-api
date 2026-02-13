@@ -124,7 +124,7 @@ export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext)
         deps.dependentsRepo
     );
 
-    const listAllStudents = new ListAllStudents(deps.enrollmentsRepo);
+    const listAllStudents = new ListAllStudents(deps.enrollmentsRepo, deps.usersRepo);
 
     const withdrawalsRepo = new SchoolWithdrawalRepositoryAdapter();
     const getAdminSchoolFinancial = new GetAdminSchoolFinancial(

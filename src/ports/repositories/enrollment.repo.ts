@@ -26,14 +26,14 @@ export type AdminStudentListFilters = {
 };
 
 export type AdminStudentListItem = {
-    enrollmentId: string;
-    schoolId: string;
-    schoolName: string;
+    enrollmentId: string | null;
+    schoolId: string | null;
+    schoolName: string | null;
     studentName: string;
     cpf: string | null;
-    courseName: string;
-    className: string;
-    enrolledAt: Date;
+    courseName: string | null;
+    className: string | null;
+    enrolledAt: Date | null;
     studentType: 'USER' | 'DEPENDENT';
     studentId: string;
 };
