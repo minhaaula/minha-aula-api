@@ -5,6 +5,12 @@
 import type { SchoolPlanFinanceView } from '../presenters/school-plan-finance.presenter';
 import type { PostalAddressOutput } from './common.types';
 
+/** Status da escola no sistema: ativo (com plano em uso) ou inativo */
+export type SchoolStatus = 'ACTIVE' | 'INACTIVE';
+
+/** Status de pagamento do plano: em dia, atrasado ou sem plano */
+export type PaymentStatus = 'EM_DIA' | 'ATRASADO' | null;
+
 export interface SchoolWithPlanItem {
     id: string;
     name: string;
@@ -16,7 +22,8 @@ export interface SchoolWithPlanItem {
     ownerName: string | null;
     ownerCpf: string | null;
     ownerEmail: string | null;
-    incomeValue: number;
+    schoolStatus: SchoolStatus;
+    paymentStatus: PaymentStatus;
     plan: SchoolPlanFinanceView | null;
 }
 
@@ -26,6 +33,7 @@ export interface SchoolWithPlanItem {
  * com campos adicionais relevantes para suporte e operação.
  */
 export interface AdminSchoolDetails extends SchoolWithPlanItem {
+    incomeValue: number;
     ownerUserId: string | null;
     /**
      * Identificadores da conta no provedor de pagamentos (Asaas).

@@ -1175,10 +1175,15 @@ components:
           nullable: true
           format: email
           description: Email do responsável
-        incomeValue:
-          type: number
-          description: Valor de receita mensal da escola
-          example: 50000
+        schoolStatus:
+          type: string
+          enum: [ACTIVE, INACTIVE]
+          description: Status da escola (ativo quando possui plano ACTIVE ou TRIAL, inativo caso contrário)
+        paymentStatus:
+          type: string
+          nullable: true
+          enum: [EM_DIA, ATRASADO]
+          description: Status de pagamento do plano (em dia, atrasado ou null quando não há plano)
         plan:
           type: object
           nullable: true
@@ -1256,13 +1261,17 @@ components:
         - ownerName
         - ownerCpf
         - ownerEmail
-        - incomeValue
+        - schoolStatus
+        - paymentStatus
         - plan
     AdminSchoolDetailsResponse:
       allOf:
         - $ref: '#/components/schemas/SchoolWithPlanItem'
         - type: object
           properties:
+            incomeValue:
+              type: number
+              description: Valor de receita mensal da escola (apenas no detalhe)
             ownerUserId:
               type: string
               format: uuid
@@ -1292,6 +1301,8 @@ components:
               format: date-time
               nullable: true
               description: Data/hora de conclusão do onboarding/KYC
+          required:
+            - incomeValue
     AdminSchoolPlansResponse:
       type: object
       properties:

@@ -26,6 +26,9 @@ export class GetAdminSchoolDetails {
 
         const onboardingCompleted = school.onboardingCompletedAt !== null;
 
+        const schoolStatus = !plan ? 'INACTIVE' as const : (plan.status === 'ACTIVE' || plan.status === 'TRIAL' ? 'ACTIVE' : 'INACTIVE');
+        const paymentStatus = !plan ? null : (plan.status === 'ACTIVE' || plan.status === 'TRIAL' ? 'EM_DIA' : 'ATRASADO');
+
         return {
             id: school.id,
             name: school.name,
@@ -37,8 +40,10 @@ export class GetAdminSchoolDetails {
             ownerName: school.ownerName,
             ownerCpf: school.ownerCpf,
             ownerEmail: school.ownerEmail,
-            incomeValue: school.incomeValue,
+            schoolStatus,
+            paymentStatus,
             plan,
+            incomeValue: school.incomeValue,
             ownerUserId: school.ownerUserId,
             accountId: school.accountId,
             accountApiKey: school.accountApiKey,
