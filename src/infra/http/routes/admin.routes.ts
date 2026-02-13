@@ -19,6 +19,7 @@ import type { UpdateSubscriptionPlan } from '../../../app/use-cases/update-subsc
 import type { ListAdminCategories } from '../../../app/use-cases/list-admin-categories';
 import type { CreateCategory } from '../../../app/use-cases/create-category';
 import type { UpdateCategory } from '../../../app/use-cases/update-category';
+import type { ListSchoolStudents } from '../../../app/use-cases/list-school-students';
 
 type AdminRouterDeps = {
     getAdminStatus: GetAdminStatus;
@@ -38,6 +39,7 @@ type AdminRouterDeps = {
     listDiscountCoupons?: import('../../../app/use-cases/list-discount-coupons').ListDiscountCoupons;
     validateDiscountCoupon?: import('../../../app/use-cases/validate-discount-coupon').ValidateDiscountCoupon;
     resendSchoolAsaasAccount?: ResendSchoolAsaasAccount;
+    listSchoolStudents?: ListSchoolStudents;
     authMiddleware?: RequestHandler;
 };
 
@@ -71,6 +73,7 @@ export function adminRouter({
     listDiscountCoupons,
     validateDiscountCoupon,
     resendSchoolAsaasAccount,
+    listSchoolStudents,
     authMiddleware
 }: AdminRouterDeps) {
     const router = Router();
@@ -153,6 +156,46 @@ export function adminRouter({
         const payload = await getAdminSchoolPlans.exec({ schoolId });
         res.json(payload);
     }));
+
+    if (listSchoolStudents) {
+        const studentsQuerySchema = z.object({
+            name: z.string().trim().min(1).optional(),
+            courseId: z.string().uuid().optional(),
+            classId: z.string().uuid().optional(),
+            limit: z.coerce.number().int().positive().max(100).optional(),
+            offset: z.coerce.number().int().min(0).optional()
+        });
+        router.get('/schools/:schoolId/students', requireAuth, requireAdminPersona, asyncHandler(async (req, res) => {
+            const paramsSchema = z.object({ schoolId: z.string().uuid() });
+            const { schoolId } = paramsSchema.parse(req.params);
+            const query = studentsQuerySchema.parse({
+                name: typeof req.query.name === 'string' ? req.query.name : undefined,
+                courseId: typeof req.query.courseId === 'string' ? req.query.courseId : undefined,
+                classId: typeof req.query.classId === 'string' ? req.query.classId : undefined,
+                limit: req.query.limit,
+                offset: req.query.offset
+            });
+            const result = await listSchoolStudents.exec({
+                schoolId,
+                name: query.name,
+                courseId: query.courseId,
+                classId: query.classId,
+                limit: query.limit,
+                offset: query.offset
+            });
+            res.json({
+                students: result.students,
+                pagination: {
+                    total: result.total,
+                    limit: result.limit,
+                    offset: result.offset,
+                    totalPage: Math.ceil(result.total / result.limit),
+                    currentPage: Math.floor(result.offset / result.limit) + 1,
+                    hasMore: result.offset + result.limit < result.total
+                }
+            });
+        }));
+    }
 
     // CRUD de Planos de assinatura
     if (listAdminSubscriptionPlans) {

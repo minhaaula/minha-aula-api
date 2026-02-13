@@ -1419,20 +1419,38 @@ components:
               - student
               - course
               - class
-        total:
-          type: integer
-          description: Total de alunos encontrados
-        limit:
-          type: integer
-          description: Limite aplicado na consulta
-        offset:
-          type: integer
-          description: Offset aplicado na consulta
+        pagination:
+          type: object
+          description: Metadados de paginação
+          properties:
+            total:
+              type: integer
+              description: Total de alunos encontrados
+            limit:
+              type: integer
+              description: Limite aplicado na consulta
+            offset:
+              type: integer
+              description: Offset aplicado na consulta
+            totalPage:
+              type: integer
+              description: Total de páginas
+            currentPage:
+              type: integer
+              description: Página atual (1-based)
+            hasMore:
+              type: boolean
+              description: Indica se há mais registros após a página atual
+          required:
+            - total
+            - limit
+            - offset
+            - totalPage
+            - currentPage
+            - hasMore
       required:
         - students
-        - total
-        - limit
-        - offset
+        - pagination
     AdminSchoolStudentDetailsResponse:
       type: object
       properties:

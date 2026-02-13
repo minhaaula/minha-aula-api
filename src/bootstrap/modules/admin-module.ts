@@ -14,8 +14,10 @@ import type { SchoolPlanFinanceRepository } from '../../ports/repositories/schoo
 import type { SubscriptionPlanRepository } from '../../ports/repositories/subscription-plan.repo';
 import type { CategoryRepository } from '../../ports/repositories/category.repo';
 import type { UserRepository } from '../../ports/repositories/user.repo';
+import type { CourseRepository } from '../../ports/repositories/course.repo';
 import type { CourseClassRepository } from '../../ports/repositories/course-class.repo';
 import type { EnrollmentRepository } from '../../ports/repositories/enrollment.repo';
+import type { DependentRepository } from '../../ports/repositories/dependent.repo';
 import type { SchoolFinancialChargeRepository } from '../../ports/repositories/school-financial-charge.repo';
 import type { PasswordHasherPort } from '../../ports/providers/password-hasher.port';
 import type { TokenProviderPort } from '../../ports/providers/token-provider.port';
@@ -30,6 +32,7 @@ import { UpdateSubscriptionPlan } from '../../app/use-cases/update-subscription-
 import { ListAdminCategories } from '../../app/use-cases/list-admin-categories';
 import { CreateCategory } from '../../app/use-cases/create-category';
 import { UpdateCategory } from '../../app/use-cases/update-category';
+import { ListSchoolStudents } from '../../app/use-cases/list-school-students';
 import { scheduleAllJobs } from '../../infra/messaging/bullmq/job-scheduler';
 import { startWorker } from '../../infra/messaging/bullmq/worker-manager';
 import { log } from '../../shared/logger';
@@ -46,8 +49,10 @@ type AdminModuleDeps = {
     subscriptionPlansRepo: SubscriptionPlanRepository;
     categoriesRepo: CategoryRepository;
     usersRepo: UserRepository;
+    coursesRepo: CourseRepository;
     classesRepo: CourseClassRepository;
     enrollmentsRepo: EnrollmentRepository;
+    dependentsRepo: DependentRepository;
     financialChargesRepo: SchoolFinancialChargeRepository;
     passwordHasher: PasswordHasherPort;
     tokenProvider: TokenProviderPort;
@@ -103,6 +108,14 @@ export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext)
         deps.financialChargesRepo
     );
 
+    const listSchoolStudents = new ListSchoolStudents(
+        deps.coursesRepo,
+        deps.classesRepo,
+        deps.enrollmentsRepo,
+        deps.usersRepo,
+        deps.dependentsRepo
+    );
+
     // Use cases de cupons
     const couponsRepo = new DiscountCouponRepositoryAdapter();
     const createDiscountCoupon = new CreateDiscountCoupon(couponsRepo);
@@ -133,6 +146,7 @@ export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext)
         listDiscountCoupons,
         validateDiscountCoupon,
         resendSchoolAsaasAccount,
+        listSchoolStudents,
         authMiddleware: ctx.authMiddleware
     });
 
