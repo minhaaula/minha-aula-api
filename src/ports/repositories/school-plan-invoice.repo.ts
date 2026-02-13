@@ -5,6 +5,7 @@ export interface SchoolPlanInvoiceRepository {
     findByProviderRef(providerRef: string): Promise<SchoolPlanInvoice | null>;
     findByExternalReference(externalReference: string): Promise<SchoolPlanInvoice | null>;
     findByFinanceId(financeId: string): Promise<SchoolPlanInvoice[]>;
+    findBySchoolId?(schoolId: string): Promise<SchoolPlanInvoice[]>;
     findPaidWithoutReceiptUrl(limit: number): Promise<SchoolPlanInvoice[]>;
     findIssuedWithProviderRef(limit: number, daysAgo?: number): Promise<SchoolPlanInvoice[]>;
     save(invoice: SchoolPlanInvoice): Promise<void>;

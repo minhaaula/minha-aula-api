@@ -308,6 +308,49 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /admin/schools/{schoolId}/invoices:
+    get:
+      tags:
+        - Admin
+      summary: Listar invoices (faturas) da escola
+      description: |
+        Retorna todas as faturas de plano de assinatura da escola (por ID),
+        incluindo planos ativos e históricos. Ordenadas por data de vencimento (mais recente primeiro).
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: schoolId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID da escola
+      responses:
+        '200':
+          description: Lista de invoices retornada com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminSchoolInvoicesResponse'
+        '401':
+          description: Usuário não autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado (requer persona ADMIN).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Escola não encontrada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /admin/schools/{schoolId}/plans:
     get:
       tags:
@@ -1704,6 +1747,21 @@ components:
         - schoolId
         - balance
         - withdrawals
+    AdminSchoolInvoicesResponse:
+      type: object
+      properties:
+        schoolId:
+          type: string
+          format: uuid
+          description: ID da escola
+        invoices:
+          type: array
+          description: Lista de faturas (planos de assinatura) da escola, ordenadas por vencimento (mais recente primeiro)
+          items:
+            $ref: '#/components/schemas/SchoolPlanInvoice'
+      required:
+        - schoolId
+        - invoices
     AdminSchoolBillingResponse:
       type: object
       properties:

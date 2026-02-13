@@ -245,8 +245,7 @@ export class SchoolFinancialChargeRepositoryAdapter implements SchoolFinancialCh
 
         const [ganhoRows, pendenteRows, atrasadoRows] = await Promise.all([
             this.repo.createQueryBuilder('charge')
-                .select('YEAR(charge.paidAt) AS year', 'MONTH(charge.paidAt) AS month')
-                .addSelect('SUM(charge.netAmountCents)', 'valueCents')
+                .select('YEAR(charge.paidAt) AS year, MONTH(charge.paidAt) AS month, SUM(charge.netAmountCents) AS valueCents')
                 .where('charge.schoolId = :schoolId', { schoolId })
                 .andWhere('charge.status = :status', { status: 'PAID' })
                 .andWhere('charge.paidAt IS NOT NULL')
@@ -254,16 +253,14 @@ export class SchoolFinancialChargeRepositoryAdapter implements SchoolFinancialCh
                 .addGroupBy('MONTH(charge.paidAt)')
                 .getRawMany(),
             this.repo.createQueryBuilder('charge')
-                .select('YEAR(charge.dueDate) AS year', 'MONTH(charge.dueDate) AS month')
-                .addSelect('SUM(charge.netAmountCents)', 'valueCents')
+                .select('YEAR(charge.dueDate) AS year, MONTH(charge.dueDate) AS month, SUM(charge.netAmountCents) AS valueCents')
                 .where('charge.schoolId = :schoolId', { schoolId })
                 .andWhere('charge.status IN (:...statuses)', { statuses: ['PENDING_SYNC', 'OPEN', 'FAILED'] })
                 .groupBy('YEAR(charge.dueDate)')
                 .addGroupBy('MONTH(charge.dueDate)')
                 .getRawMany(),
             this.repo.createQueryBuilder('charge')
-                .select('YEAR(charge.dueDate) AS year', 'MONTH(charge.dueDate) AS month')
-                .addSelect('SUM(charge.netAmountCents)', 'valueCents')
+                .select('YEAR(charge.dueDate) AS year, MONTH(charge.dueDate) AS month, SUM(charge.netAmountCents) AS valueCents')
                 .where('charge.schoolId = :schoolId', { schoolId })
                 .andWhere('charge.status = :status', { status: 'OVERDUE' })
                 .groupBy('YEAR(charge.dueDate)')

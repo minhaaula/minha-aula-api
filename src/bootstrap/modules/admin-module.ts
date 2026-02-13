@@ -19,6 +19,7 @@ import type { CourseClassRepository } from '../../ports/repositories/course-clas
 import type { EnrollmentRepository } from '../../ports/repositories/enrollment.repo';
 import type { DependentRepository } from '../../ports/repositories/dependent.repo';
 import type { SchoolFinancialChargeRepository } from '../../ports/repositories/school-financial-charge.repo';
+import type { SchoolPlanInvoiceRepository } from '../../ports/repositories/school-plan-invoice.repo';
 import type { PasswordHasherPort } from '../../ports/providers/password-hasher.port';
 import type { TokenProviderPort } from '../../ports/providers/token-provider.port';
 import type { AsaasProviderPort } from '../../ports/providers/asaas-port';
@@ -36,6 +37,7 @@ import { ListSchoolStudents } from '../../app/use-cases/list-school-students';
 import { ListAllStudents } from '../../app/use-cases/list-all-students';
 import { GetAdminSchoolFinancial } from '../../app/use-cases/get-admin-school-financial';
 import { GetAdminSchoolBilling } from '../../app/use-cases/get-admin-school-billing';
+import { ListAdminSchoolInvoices } from '../../app/use-cases/list-admin-school-invoices';
 import { SchoolWithdrawalRepositoryAdapter } from '../../infra/db/typeorm/school-withdrawal-repository.adapter';
 import { scheduleAllJobs } from '../../infra/messaging/bullmq/job-scheduler';
 import { startWorker } from '../../infra/messaging/bullmq/worker-manager';
@@ -58,6 +60,7 @@ type AdminModuleDeps = {
     enrollmentsRepo: EnrollmentRepository;
     dependentsRepo: DependentRepository;
     financialChargesRepo: SchoolFinancialChargeRepository;
+    planInvoicesRepo?: SchoolPlanInvoiceRepository;
     passwordHasher: PasswordHasherPort;
     tokenProvider: TokenProviderPort;
     tokenTtl: number;
@@ -134,6 +137,10 @@ export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext)
         deps.financialChargesRepo
     );
 
+    const listAdminSchoolInvoices = deps.planInvoicesRepo
+        ? new ListAdminSchoolInvoices(deps.schoolsRepo, deps.planInvoicesRepo)
+        : undefined;
+
     // Use cases de cupons
     const couponsRepo = new DiscountCouponRepositoryAdapter();
     const createDiscountCoupon = new CreateDiscountCoupon(couponsRepo);
@@ -168,6 +175,7 @@ export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext)
         listAllStudents,
         getAdminSchoolFinancial,
         getAdminSchoolBilling,
+        listAdminSchoolInvoices,
         authMiddleware: ctx.authMiddleware
     });
 

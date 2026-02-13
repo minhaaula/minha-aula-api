@@ -47,6 +47,16 @@ export class SchoolPlanInvoiceRepositoryAdapter implements SchoolPlanInvoiceRepo
         return rows.map((row) => this.toDomain(row));
     }
 
+    async findBySchoolId(schoolId: string): Promise<SchoolPlanInvoice[]> {
+        const normalized = schoolId.trim();
+        if (!normalized) return [];
+        const rows = await this.repo.find({
+            where: { schoolId: normalized },
+            order: { dueDate: 'DESC' }
+        });
+        return rows.map((row) => this.toDomain(row));
+    }
+
     async findPaidWithoutReceiptUrl(limit: number): Promise<SchoolPlanInvoice[]> {
         const rows = await this.repo.find({
             where: {

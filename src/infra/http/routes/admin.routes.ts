@@ -23,6 +23,7 @@ import type { ListSchoolStudents } from '../../../app/use-cases/list-school-stud
 import type { ListAllStudents } from '../../../app/use-cases/list-all-students';
 import type { GetAdminSchoolFinancial } from '../../../app/use-cases/get-admin-school-financial';
 import type { GetAdminSchoolBilling } from '../../../app/use-cases/get-admin-school-billing';
+import type { ListAdminSchoolInvoices } from '../../../app/use-cases/list-admin-school-invoices';
 
 type AdminRouterDeps = {
     getAdminStatus: GetAdminStatus;
@@ -46,6 +47,7 @@ type AdminRouterDeps = {
     listAllStudents?: ListAllStudents;
     getAdminSchoolFinancial?: GetAdminSchoolFinancial;
     getAdminSchoolBilling?: GetAdminSchoolBilling;
+    listAdminSchoolInvoices?: ListAdminSchoolInvoices;
     authMiddleware?: RequestHandler;
 };
 
@@ -83,6 +85,7 @@ export function adminRouter({
     listAllStudents,
     getAdminSchoolFinancial,
     getAdminSchoolBilling,
+    listAdminSchoolInvoices,
     authMiddleware
 }: AdminRouterDeps) {
     const router = Router();
@@ -177,6 +180,17 @@ export function adminRouter({
                 schoolId,
                 monthsLimit: query.monthsLimit
             });
+            res.json(payload);
+        }));
+    }
+
+    if (listAdminSchoolInvoices) {
+        router.get('/schools/:schoolId/invoices', requireAuth, requireAdminPersona, asyncHandler(async (req, res) => {
+            const paramsSchema = z.object({
+                schoolId: z.string().uuid()
+            });
+            const { schoolId } = paramsSchema.parse(req.params);
+            const payload = await listAdminSchoolInvoices.exec({ schoolId });
             res.json(payload);
         }));
     }
