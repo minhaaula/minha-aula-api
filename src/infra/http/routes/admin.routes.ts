@@ -202,7 +202,7 @@ export function adminRouter({
         name: z.string().trim().min(1).optional(),
         status: z.enum(['ACTIVE', 'INACTIVE']).optional(),
         paymentStatus: z.enum(['EM_DIA', 'ATRASADO']).optional(),
-        limit: z.coerce.number().int().positive().max(100).optional(),
+        limit: z.coerce.number().int().positive().max(500).optional(),
         offset: z.coerce.number().int().min(0).optional()
     });
     router.get('/schools', requireAuth, requireAdminPersona, asyncHandler(async (req, res) => {

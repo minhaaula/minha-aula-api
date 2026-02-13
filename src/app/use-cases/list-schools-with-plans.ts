@@ -45,7 +45,7 @@ export class ListSchoolsWithPlans {
         const nameFilter = input?.name?.trim().toLowerCase() || null;
         const statusFilter = input?.status ?? null;
         const paymentStatusFilter = input?.paymentStatus ?? null;
-        const limit = Math.min(Math.max(input?.limit ?? 50, 1), 100);
+        const limit = Math.min(Math.max(input?.limit ?? 50, 1), 500);
         const offset = Math.max(0, input?.offset ?? 0);
 
         const allSchools = await this.schools.findAll();
