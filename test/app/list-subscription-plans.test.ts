@@ -7,11 +7,24 @@ class InMemoryPlanRepository implements SubscriptionPlanRepository {
     private readonly items = new Map<string, SubscriptionPlan>();
 
     async findActive(): Promise<SubscriptionPlan[]> {
-        return Array.from(this.items.values()).filter((plan) => plan.isActive);
+        return Array.from(this.items.values()).filter((plan) => plan.isActive).sort((a, b) => a.amountCents - b.amountCents);
+    }
+
+    async findAll(): Promise<SubscriptionPlan[]> {
+        return Array.from(this.items.values()).sort((a, b) => a.amountCents - b.amountCents);
     }
 
     async findById(id: string): Promise<SubscriptionPlan | null> {
         return this.items.get(id) ?? null;
+    }
+
+    async findByCode(code: string): Promise<SubscriptionPlan | null> {
+        const normalized = code.trim().toUpperCase();
+        return Array.from(this.items.values()).find((p) => p.code === normalized) ?? null;
+    }
+
+    async save(plan: SubscriptionPlan): Promise<void> {
+        this.items.set(plan.id, plan);
     }
 
     seed(plan: SubscriptionPlan) {
