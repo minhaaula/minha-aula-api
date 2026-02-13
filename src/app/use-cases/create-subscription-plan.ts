@@ -35,10 +35,7 @@ export class CreateSubscriptionPlan {
         const code = input.code.trim().toUpperCase();
         const existing = await this.plans.findByCode(code);
         if (existing) {
-            throw AppError.fromCode(ErrorCode.ALREADY_EXISTS, {
-                message: 'Já existe um plano com este código',
-                code
-            });
+            throw new AppError(ErrorCode.ALREADY_EXISTS, 'Já existe um plano com este código', { code });
         }
 
         const plan = SubscriptionPlan.create({

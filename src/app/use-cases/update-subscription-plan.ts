@@ -34,20 +34,14 @@ export class UpdateSubscriptionPlan {
     async exec(input: UpdateSubscriptionPlanInput): Promise<UpdateSubscriptionPlanOutput> {
         const existing = await this.plans.findById(input.planId);
         if (!existing) {
-            throw AppError.fromCode(ErrorCode.NOT_FOUND, {
-                message: 'Plano não encontrado',
-                planId: input.planId
-            });
+            throw AppError.notFound('Plano', { planId: input.planId });
         }
 
         if (input.code !== undefined) {
             const code = input.code.trim().toUpperCase();
             const byCode = await this.plans.findByCode(code);
             if (byCode && byCode.id !== existing.id) {
-                throw AppError.fromCode(ErrorCode.ALREADY_EXISTS, {
-                    message: 'Já existe um plano com este código',
-                    code
-                });
+                throw new AppError(ErrorCode.ALREADY_EXISTS, 'Já existe um plano com este código', { code });
             }
         }
 
