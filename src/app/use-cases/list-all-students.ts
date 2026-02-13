@@ -13,20 +13,19 @@ export class ListAllStudents {
     constructor(private readonly enrollments: EnrollmentRepository) {}
 
     async exec(input: ListAllStudentsInput): Promise<AdminStudentListResult> {
-        const findAll = this.enrollments.findAllPaginatedForAdmin;
-        if (!findAll) {
-            return {
-                items: [],
-                total: 0,
-                limit: Math.min(Math.max(input.limit ?? 50, 1), 100),
-                offset: Math.max(0, input.offset ?? 0)
-            };
-        }
-
         const limit = Math.min(Math.max(input.limit ?? 50, 1), 100);
         const offset = Math.max(0, input.offset ?? 0);
 
-        return findAll(
+        if (!this.enrollments.findAllPaginatedForAdmin) {
+            return {
+                items: [],
+                total: 0,
+                limit,
+                offset
+            };
+        }
+
+        return this.enrollments.findAllPaginatedForAdmin(
             {
                 name: input.name ?? null,
                 schoolId: input.schoolId ?? null,
