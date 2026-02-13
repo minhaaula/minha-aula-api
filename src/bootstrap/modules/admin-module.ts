@@ -34,6 +34,8 @@ import { CreateCategory } from '../../app/use-cases/create-category';
 import { UpdateCategory } from '../../app/use-cases/update-category';
 import { ListSchoolStudents } from '../../app/use-cases/list-school-students';
 import { ListAllStudents } from '../../app/use-cases/list-all-students';
+import { GetAdminSchoolFinancial } from '../../app/use-cases/get-admin-school-financial';
+import { SchoolWithdrawalRepositoryAdapter } from '../../infra/db/typeorm/school-withdrawal-repository.adapter';
 import { scheduleAllJobs } from '../../infra/messaging/bullmq/job-scheduler';
 import { startWorker } from '../../infra/messaging/bullmq/worker-manager';
 import { log } from '../../shared/logger';
@@ -119,6 +121,13 @@ export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext)
 
     const listAllStudents = new ListAllStudents(deps.enrollmentsRepo);
 
+    const withdrawalsRepo = new SchoolWithdrawalRepositoryAdapter();
+    const getAdminSchoolFinancial = new GetAdminSchoolFinancial(
+        deps.schoolsRepo,
+        deps.financialChargesRepo,
+        withdrawalsRepo
+    );
+
     // Use cases de cupons
     const couponsRepo = new DiscountCouponRepositoryAdapter();
     const createDiscountCoupon = new CreateDiscountCoupon(couponsRepo);
@@ -151,6 +160,7 @@ export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext)
         resendSchoolAsaasAccount,
         listSchoolStudents,
         listAllStudents,
+        getAdminSchoolFinancial,
         authMiddleware: ctx.authMiddleware
     });
 

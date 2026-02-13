@@ -174,6 +174,49 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /admin/schools/{schoolId}/financial:
+    get:
+      tags:
+        - Admin
+      summary: Listar financeiro da escola
+      description: |
+        Retorna o resumo financeiro da escola por ID: saldo disponível, total ganho,
+        valores pendentes, atrasados e a lista de solicitações de saque.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: schoolId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID da escola
+      responses:
+        '200':
+          description: Financeiro da escola retornado com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminSchoolFinancialResponse'
+        '401':
+          description: Usuário não autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado (requer persona ADMIN).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Escola não encontrada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /admin/schools/{schoolId}/plans:
     get:
       tags:
@@ -1476,6 +1519,71 @@ components:
       required:
         - students
         - pagination
+    AdminSchoolFinancialResponse:
+      type: object
+      properties:
+        schoolId:
+          type: string
+          format: uuid
+          description: ID da escola
+        balance:
+          type: object
+          description: Resumo do saldo da escola
+          properties:
+            saldoDisponivelCents:
+              type: integer
+              description: Saldo disponível em centavos
+            totalGanhoCents:
+              type: integer
+              description: Total ganho (soma dos pagamentos recebidos) em centavos
+            pendenteCents:
+              type: integer
+              description: Total de cobranças pendentes (abertas) em centavos
+            atrasadoCents:
+              type: integer
+              description: Total de cobranças atrasadas em centavos
+          required:
+            - saldoDisponivelCents
+            - totalGanhoCents
+            - pendenteCents
+            - atrasadoCents
+        withdrawals:
+          type: array
+          description: Solicitações de saque da escola
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+              amountCents:
+                type: integer
+              status:
+                type: string
+                enum: ['PROCESSING', 'COMPLETED', 'CANCELLED']
+                description: PROCESSING = Pendente, COMPLETED = Processado, CANCELLED = Rejeitado
+              createdAt:
+                type: string
+                format: date-time
+                description: Data da solicitação
+              processedAt:
+                type: string
+                format: date-time
+                nullable: true
+                description: Data do processamento (quando aplicável)
+              observacao:
+                type: string
+                nullable: true
+                description: Observação (ex. motivo de rejeição)
+            required:
+              - id
+              - amountCents
+              - status
+              - createdAt
+      required:
+        - schoolId
+        - balance
+        - withdrawals
     AdminSchoolStudentsListResponse:
       type: object
       properties:

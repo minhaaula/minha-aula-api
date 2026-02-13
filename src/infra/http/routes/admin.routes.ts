@@ -21,6 +21,7 @@ import type { CreateCategory } from '../../../app/use-cases/create-category';
 import type { UpdateCategory } from '../../../app/use-cases/update-category';
 import type { ListSchoolStudents } from '../../../app/use-cases/list-school-students';
 import type { ListAllStudents } from '../../../app/use-cases/list-all-students';
+import type { GetAdminSchoolFinancial } from '../../../app/use-cases/get-admin-school-financial';
 
 type AdminRouterDeps = {
     getAdminStatus: GetAdminStatus;
@@ -42,6 +43,7 @@ type AdminRouterDeps = {
     resendSchoolAsaasAccount?: ResendSchoolAsaasAccount;
     listSchoolStudents?: ListSchoolStudents;
     listAllStudents?: ListAllStudents;
+    getAdminSchoolFinancial?: GetAdminSchoolFinancial;
     authMiddleware?: RequestHandler;
 };
 
@@ -77,6 +79,7 @@ export function adminRouter({
     resendSchoolAsaasAccount,
     listSchoolStudents,
     listAllStudents,
+    getAdminSchoolFinancial,
     authMiddleware
 }: AdminRouterDeps) {
     const router = Router();
@@ -145,6 +148,17 @@ export function adminRouter({
         const payload = await getAdminSchoolDetails.exec({ schoolId });
         res.json(payload);
     }));
+
+    if (getAdminSchoolFinancial) {
+        router.get('/schools/:schoolId/financial', requireAuth, requireAdminPersona, asyncHandler(async (req, res) => {
+            const paramsSchema = z.object({
+                schoolId: z.string().uuid()
+            });
+            const { schoolId } = paramsSchema.parse(req.params);
+            const payload = await getAdminSchoolFinancial.exec({ schoolId });
+            res.json(payload);
+        }));
+    }
 
     router.get('/schools', requireAuth, requireAdminPersona, asyncHandler(async (_req, res) => {
         const schools = await listSchoolsWithPlans.exec();
