@@ -17,15 +17,16 @@ export class ListAdminPaymentHistory {
         const limit = Math.min(Math.max(input.limit ?? 50, 1), 100);
         const offset = Math.max(0, input.offset ?? 0);
 
-        return this.invoices.findPaymentHistoryPaginated(
-            {
-                schoolName: input.schoolName ?? null,
-                status: input.status ?? null,
-                month: input.month ?? null,
-                year: input.year ?? null
-            },
-            limit,
-            offset
-        );
+        const findPaginated = this.invoices.findPaymentHistoryPaginated;
+        if (!findPaginated) {
+            return { items: [], total: 0, limit, offset };
+        }
+
+        return findPaginated.call(this.invoices, {
+            schoolName: input.schoolName ?? null,
+            status: input.status ?? null,
+            month: input.month ?? null,
+            year: input.year ?? null
+        }, limit, offset);
     }
 }
