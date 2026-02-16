@@ -94,6 +94,15 @@ const accountPayloadSchema = z.object({
         .nullable()
 }).passthrough(); // Permite campos adicionais no nível raiz
 
+function normalizePaymentMetadata(metadata: unknown): Record<string, string> | null {
+    if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return null;
+    const out: Record<string, string> = {};
+    for (const [k, v] of Object.entries(metadata)) {
+        if (typeof k === 'string' && typeof v === 'string') out[k] = v;
+    }
+    return Object.keys(out).length ? out : null;
+}
+
 export function asaasWebhookRouter(deps: AsaasWebhookDeps) {
     const router = Router();
 
@@ -164,7 +173,7 @@ export function asaasWebhookRouter(deps: AsaasWebhookDeps) {
                 : payload.payment.customer ?? null,
             value: payload.payment.value ?? null,
             // Metadata (schoolId, planId, financeId) enviada na criação — usada para validar escola do invoice
-            metadata: payload.payment.metadata && typeof payload.payment.metadata === 'object' ? payload.payment.metadata : null
+            metadata: normalizePaymentMetadata(payload.payment.metadata)
         } : undefined;
 
         const result = await deps.handleAsaasPaymentWebhook.exec({
