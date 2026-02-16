@@ -136,5 +136,7 @@ export interface GetSchoolProfileOutput {
     isOverdue?: boolean;
     onboardingCompleted: boolean;
     onboardingUrl?: string | null;
+    /** True se a escola já tiver ao menos um pagamento concluído (invoice PAID). */
+    hasCompletedFirstPayment: boolean;
 }
 

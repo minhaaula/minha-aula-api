@@ -1,5 +1,6 @@
 import { SchoolRepository } from '../../ports/repositories/school.repo';
 import { SchoolPlanFinanceRepository } from '../../ports/repositories/school-plan-finance.repo';
+import { SchoolPlanInvoiceRepository } from '../../ports/repositories/school-plan-invoice.repo';
 import { presentSchoolPlanFinance, type SchoolPlanFinanceView } from '../presenters/school-plan-finance.presenter';
 import type { SchoolWithPlanItem, SchoolStatus, PaymentStatus } from '../types/admin.types';
 
@@ -38,7 +39,8 @@ export type ListSchoolsWithPlansOutput = {
 export class ListSchoolsWithPlans {
     constructor(
         private readonly schools: SchoolRepository,
-        private readonly planFinances: SchoolPlanFinanceRepository
+        private readonly planFinances: SchoolPlanFinanceRepository,
+        private readonly planInvoices: SchoolPlanInvoiceRepository
     ) {}
 
     async exec(input?: ListSchoolsWithPlansInput): Promise<ListSchoolsWithPlansOutput> {
@@ -49,7 +51,10 @@ export class ListSchoolsWithPlans {
         const offset = Math.max(0, input?.offset ?? 0);
 
         const allSchools = await this.schools.findAll();
-        const planFinancesMap = await this.loadPlanFinancesMap(allSchools.map((s) => s.id));
+        const [planFinancesMap, paidSchoolIds] = await Promise.all([
+            this.loadPlanFinancesMap(allSchools.map((s) => s.id)),
+            this.planInvoices.getSchoolIdsWithPaidInvoice(allSchools.map((s) => s.id))
+        ]);
 
         let items: SchoolWithPlanItem[] = allSchools.map((school) => {
             const plan = planFinancesMap.get(school.id) ?? null;
@@ -66,7 +71,8 @@ export class ListSchoolsWithPlans {
                 ownerEmail: school.ownerEmail,
                 schoolStatus: deriveSchoolStatus(plan),
                 paymentStatus: derivePaymentStatus(plan),
-                plan
+                plan,
+                hasCompletedFirstPayment: paidSchoolIds.has(school.id)
             };
         });
 

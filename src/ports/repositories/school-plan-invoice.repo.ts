@@ -31,6 +31,10 @@ export type PaymentHistoryResult = {
 
 export interface SchoolPlanInvoiceRepository {
     findById(id: string): Promise<SchoolPlanInvoice | null>;
+    /** Retorna true se a escola tiver ao menos uma invoice com status PAID (primeiro pagamento já realizado). */
+    hasSchoolAnyPaidInvoice(schoolId: string): Promise<boolean>;
+    /** Retorna o conjunto de schoolIds (do array informado) que possuem ao menos uma invoice PAID. */
+    getSchoolIdsWithPaidInvoice(schoolIds: string[]): Promise<Set<string>>;
     findByFinanceIdAndDueDate(financeId: string, dueDate: Date): Promise<SchoolPlanInvoice | null>;
     findByProviderRef(providerRef: string): Promise<SchoolPlanInvoice | null>;
     findByExternalReference(externalReference: string): Promise<SchoolPlanInvoice | null>;

@@ -25,6 +25,8 @@ export interface SchoolWithPlanItem {
     schoolStatus: SchoolStatus;
     paymentStatus: PaymentStatus;
     plan: SchoolPlanFinanceView | null;
+    /** True se a escola já tiver ao menos um pagamento concluído (invoice PAID). */
+    hasCompletedFirstPayment: boolean;
 }
 
 /**
@@ -51,6 +53,11 @@ export interface AdminSchoolDetails extends SchoolWithPlanItem {
      */
     onboardingCompleted: boolean;
     onboardingCompletedAt: Date | null;
+    /**
+     * True se a escola já tiver ao menos um pagamento concluído (invoice PAID).
+     * False indica que ainda é o primeiro pagamento (ou que nunca pagou).
+     */
+    hasCompletedFirstPayment: boolean;
 }
 
 export interface AdminSchoolPlansResponse {

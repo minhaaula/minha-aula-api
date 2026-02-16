@@ -1878,6 +1878,9 @@ components:
             updatedAt:
               type: string
               format: date-time
+        hasCompletedFirstPayment:
+          type: boolean
+          description: True se a escola já tiver ao menos um pagamento concluído (invoice PAID)
       required:
         - id
         - name
@@ -1892,6 +1895,7 @@ components:
         - schoolStatus
         - paymentStatus
         - plan
+        - hasCompletedFirstPayment
     AdminSchoolDetailsResponse:
       allOf:
         - $ref: '#/components/schemas/SchoolWithPlanItem'
@@ -1929,8 +1933,12 @@ components:
               format: date-time
               nullable: true
               description: Data/hora de conclusão do onboarding/KYC
+            hasCompletedFirstPayment:
+              type: boolean
+              description: True se a escola já tiver ao menos um pagamento concluído (invoice PAID). False indica que ainda é o primeiro pagamento ou que nunca pagou.
           required:
             - incomeValue
+            - hasCompletedFirstPayment
     AdminSchoolPlansResponse:
       type: object
       properties:

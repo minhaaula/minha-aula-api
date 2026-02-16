@@ -789,6 +789,9 @@ components:
           format: uri
           description: Link para completar o processo de KYC/onboarding no Asaas (retornado em GET /schools/me)
           example: "https://beta.cadastro.io/c33ef9ae605f350c052be72ab094d0b7"
+        hasCompletedFirstPayment:
+          type: boolean
+          description: True se a escola já tiver ao menos um pagamento concluído (invoice PAID). False indica que ainda é o primeiro pagamento ou que nunca pagou.
         kycUrl:
           type: string
           nullable: true

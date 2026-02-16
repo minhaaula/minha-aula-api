@@ -64,7 +64,7 @@ type AdminModuleDeps = {
     enrollmentsRepo: EnrollmentRepository;
     dependentsRepo: DependentRepository;
     financialChargesRepo: SchoolFinancialChargeRepository;
-    planInvoicesRepo?: SchoolPlanInvoiceRepository;
+    planInvoicesRepo: SchoolPlanInvoiceRepository;
     passwordHasher: PasswordHasherPort;
     tokenProvider: TokenProviderPort;
     tokenTtl: number;
@@ -80,12 +80,14 @@ export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext)
 
     const listSchoolsWithPlans = new ListSchoolsWithPlans(
         deps.schoolsRepo,
-        deps.planFinancesRepo
+        deps.planFinancesRepo,
+        deps.planInvoicesRepo
     );
 
     const getAdminSchoolDetails = new GetAdminSchoolDetails(
         deps.schoolsRepo,
-        deps.planFinancesRepo
+        deps.planFinancesRepo,
+        deps.planInvoicesRepo
     );
 
     const getAdminSchoolPlans = new GetAdminSchoolPlans(

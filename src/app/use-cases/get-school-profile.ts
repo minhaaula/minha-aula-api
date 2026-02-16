@@ -66,6 +66,7 @@ export class GetSchoolProfile {
         isOverdue?: boolean;
         onboardingCompleted: boolean;
         onboardingUrl?: string | null;
+        hasCompletedFirstPayment: boolean;
         plan?: SchoolPlanFinanceView | null;
     } | null> {
         const schoolId = input.schoolId.trim();
@@ -157,6 +158,10 @@ export class GetSchoolProfile {
         // O onboarding está finalizado quando o webhook do Asaas confirma a aprovação da conta
         const onboardingCompleted = school.onboardingCompletedAt !== null;
 
+        const hasCompletedFirstPayment = this.invoices
+            ? await this.invoices.hasSchoolAnyPaidInvoice(school.id)
+            : false;
+
         return {
             id: school.id,
             name: school.name,
@@ -196,6 +201,7 @@ export class GetSchoolProfile {
             isOverdue,
             onboardingCompleted,
             onboardingUrl: school.onboardingUrl,
+            hasCompletedFirstPayment,
             plan
         };
     }
