@@ -256,7 +256,8 @@ export function adminRouter({
                 courseId: query.courseId,
                 classId: query.classId,
                 limit: query.limit,
-                offset: query.offset
+                offset: query.offset,
+                outputFormat: 'admin'
             });
             res.json({
                 students: result.students,

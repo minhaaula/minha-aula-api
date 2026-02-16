@@ -832,8 +832,9 @@ paths:
         - Admin
       summary: Listar alunos de uma escola
       description: |
-        Retorna a lista de alunos (usuário + dependentes) matriculados em uma escola,
-        incluindo informações de curso, turma e responsável.
+        Retorna a lista de titulares (alunos USER) matriculados na escola, cada um
+        com um array de dependentes (nome, cpf, data nascimento, vínculo) na mesma linha.
+        Campos por aluno: cpf, studentId, studentName, studentType, endereco, createdAt, dependentes.
 
         Esta rota é apenas de visualização para o painel administrativo.
       security:
@@ -1991,116 +1992,83 @@ components:
       properties:
         students:
           type: array
-          description: Lista de alunos matriculados na escola (usuário + dependentes)
+          description: Lista de titulares (alunos USER) com dependentes na mesma linha
           items:
             type: object
             properties:
-              enrollmentId:
+              cpf:
+                type: string
+                nullable: true
+                description: CPF do titular
+              studentId:
                 type: string
                 format: uuid
-                description: ID da matrícula
-              status:
+                description: ID do aluno (titular)
+              studentName:
                 type: string
-                description: Status da matrícula
+                description: Nome do titular
               studentType:
                 type: string
-                enum: ['USER', 'DEPENDENT']
-                description: Tipo de aluno (usuário ou dependente)
-              enrolledAt:
+                enum: ['USER']
+                description: Tipo do aluno (titular)
+              endereco:
+                type: object
+                description: Endereço do titular
+                properties:
+                  street:
+                    type: string
+                  number:
+                    type: string
+                  complement:
+                    type: string
+                    nullable: true
+                  district:
+                    type: string
+                    nullable: true
+                  city:
+                    type: string
+                  state:
+                    type: string
+                  zipCode:
+                    type: string
+                required:
+                  - street
+                  - number
+                  - city
+                  - state
+                  - zipCode
+              createdAt:
                 type: string
                 format: date-time
-                description: Data de início da matrícula
-              updatedAt:
-                type: string
-                format: date-time
-                description: Data da última atualização da matrícula
-              student:
-                type: object
-                description: Resumo do responsável/aluno principal
-                properties:
-                  id:
-                    type: string
-                    format: uuid
-                  fullName:
-                    type: string
-                  email:
-                    type: string
-                    format: email
-                  cpf:
-                    type: string
-                  phone:
-                    type: string
-                  birthDate:
-                    type: string
-                    format: date
-                    nullable: true
-                  createdAt:
-                    type: string
-                    format: date-time
-                required:
-                  - id
-                  - fullName
-                  - email
-                  - cpf
-                  - phone
-                  - createdAt
-              dependent:
-                type: object
-                nullable: true
-                description: Dados do dependente (quando a matrícula é de um dependente)
-                properties:
-                  id:
-                    type: string
-                    format: uuid
-                  userId:
-                    type: string
-                    format: uuid
-                  fullName:
-                    type: string
-                  cpf:
-                    type: string
-                    nullable: true
-                  birthDate:
-                    type: string
-                    format: date
-                    nullable: true
-                  relationship:
-                    type: string
-                    nullable: true
-                  createdAt:
-                    type: string
-                    format: date-time
-              course:
-                type: object
-                properties:
-                  id:
-                    type: string
-                    format: uuid
-                  name:
-                    type: string
-                required:
-                  - id
-                  - name
-              class:
-                type: object
-                properties:
-                  id:
-                    type: string
-                    format: uuid
-                  label:
-                    type: string
-                required:
-                  - id
-                  - label
+                description: Data de criação do cadastro
+              dependentes:
+                type: array
+                description: Dependentes vinculados ao titular (nome, cpf, data nascimento, vínculo)
+                items:
+                  type: object
+                  properties:
+                    nome:
+                      type: string
+                    cpf:
+                      type: string
+                      nullable: true
+                    dataNascimento:
+                      type: string
+                      format: date
+                      nullable: true
+                    vinculo:
+                      type: string
+                      nullable: true
+                  required:
+                    - nome
             required:
-              - enrollmentId
-              - status
+              - cpf
+              - studentId
+              - studentName
               - studentType
-              - enrolledAt
-              - updatedAt
-              - student
-              - course
-              - class
+              - endereco
+              - createdAt
+              - dependentes
         pagination:
           type: object
           description: Metadados de paginação

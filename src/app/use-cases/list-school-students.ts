@@ -1,4 +1,5 @@
 import { buildStudentSummary, type DependentSummary, type StudentSummary } from './student-summary';
+import type { PostalAddressProps } from '../../domain/value-objects/postal-address';
 import { CourseRepository } from '../../ports/repositories/course.repo';
 import { CourseClassRepository } from '../../ports/repositories/course-class.repo';
 import { EnrollmentRepository } from '../../ports/repositories/enrollment.repo';
@@ -18,15 +19,30 @@ type ListSchoolStudentsInput = {
     classId?: string | null;
     limit?: number;
     offset?: number;
+    /** Quando 'admin', retorna um item por titular com array dependentes (para painel admin). */
+    outputFormat?: 'admin' | 'legacy';
 };
 
-export type ListSchoolStudentsOutput = {
-    students: SchoolStudentRecord[];
-    total: number;
-    limit: number;
-    offset: number;
+/** Dados resumidos do dependente para listagem (nome, cpf, data nascimento, vínculo). */
+export type DependenteResumo = {
+    nome: string;
+    cpf: string | null;
+    dataNascimento: Date | null;
+    vinculo: string | null;
 };
 
+/** Item da listagem admin: um titular (USER) com array de dependentes na mesma linha. */
+export type AdminSchoolStudentItem = {
+    cpf: string | null;
+    studentId: string;
+    studentName: string;
+    studentType: 'USER';
+    endereco: PostalAddressProps;
+    createdAt: Date;
+    dependentes: DependenteResumo[];
+};
+
+/** Registro legado: uma matrícula com aluno/dependente, curso e turma (para rota da escola). */
 export type SchoolStudentRecord = {
     enrollmentId: string;
     status: Enrollment['status'];
@@ -35,14 +51,15 @@ export type SchoolStudentRecord = {
     updatedAt: Date;
     student: StudentSummary;
     dependent: DependentSummary | null;
-    course: {
-        id: string;
-        name: string;
-    };
-    class: {
-        id: string;
-        label: string;
-    };
+    course: { id: string; name: string };
+    class: { id: string; label: string };
+};
+
+export type ListSchoolStudentsOutput = {
+    students: AdminSchoolStudentItem[] | SchoolStudentRecord[];
+    total: number;
+    limit: number;
+    offset: number;
 };
 
 export class ListSchoolStudents {
@@ -112,19 +129,66 @@ export class ListSchoolStudents {
         }
 
         const dependentsByOwner = await this.loadDependents(Array.from(owners.keys()));
-        const dependentById = new Map<string, Dependent>();
-        for (const list of dependentsByOwner.values()) {
-            for (const dep of list) {
-                dependentById.set(dep.id, dep);
+
+        if (input.outputFormat === 'admin') {
+            const results: AdminSchoolStudentItem[] = [];
+            const uniqueOwnerIds = Array.from(new Set(enrollments.map((e) => e.ownerUserId)));
+
+            for (const ownerId of uniqueOwnerIds) {
+                const owner = owners.get(ownerId);
+                if (!owner) continue;
+
+                const deps = dependentsByOwner.get(ownerId) ?? [];
+                if (nameFilter) {
+                    const ownerMatches = owner.fullName.toLowerCase().includes(nameFilter);
+                    const dependentMatches = deps.some((d) => d.fullName.toLowerCase().includes(nameFilter));
+                    if (!ownerMatches && !dependentMatches) continue;
+                }
+
+                const dependentes: DependenteResumo[] = deps
+                    .slice()
+                    .sort((a, b) => (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0))
+                    .map((dep) => ({
+                        nome: dep.fullName,
+                        cpf: dep.cpf,
+                        dataNascimento: dep.birthDate,
+                        vinculo: dep.relationship
+                    }));
+
+                results.push({
+                    cpf: owner.cpf,
+                    studentId: owner.id,
+                    studentName: owner.fullName,
+                    studentType: 'USER',
+                    endereco: owner.address.toPrimitives(),
+                    createdAt: owner.createdAt,
+                    dependentes
+                });
             }
+
+            const sortedResults = results.sort((a, b) =>
+                a.studentName.localeCompare(b.studentName, undefined, { sensitivity: 'base' })
+            );
+            const total = sortedResults.length;
+            const paginatedResults = sortedResults.slice(offset, offset + limit);
+
+            return {
+                students: paginatedResults,
+                total,
+                limit,
+                offset
+            };
         }
 
+        const dependentById = new Map<string, Dependent>();
+        for (const list of dependentsByOwner.values()) {
+            for (const dep of list) dependentById.set(dep.id, dep);
+        }
         const summaries = this.buildSummaries(owners, dependentsByOwner);
-        const courseById = new Map(courses.map((course) => [course.id, course]));
+        const courseById = new Map(courses.map((c) => [c.id, c]));
         const classById = new Map(classes.map((cls) => [cls.id, cls]));
 
-        const results: SchoolStudentRecord[] = [];
-
+        const legacyResults: SchoolStudentRecord[] = [];
         for (const enrollment of enrollments) {
             const courseClass = classById.get(enrollment.courseClassId);
             if (!courseClass) continue;
@@ -154,12 +218,10 @@ export class ListSchoolStudents {
                 const dependentMatches = dependentSummary
                     ? dependentSummary.fullName.toLowerCase().includes(nameFilter)
                     : false;
-                if (!ownerMatches && !dependentMatches) {
-                    continue;
-                }
+                if (!ownerMatches && !dependentMatches) continue;
             }
 
-            results.push({
+            legacyResults.push({
                 enrollmentId: enrollment.id,
                 status: enrollment.status,
                 studentType: enrollment.studentType,
@@ -172,9 +234,9 @@ export class ListSchoolStudents {
             });
         }
 
-        const sortedResults = results.sort((a, b) => b.enrolledAt.getTime() - a.enrolledAt.getTime());
-        const total = sortedResults.length;
-        const paginatedResults = sortedResults.slice(offset, offset + limit);
+        const sortedLegacy = legacyResults.sort((a, b) => b.enrolledAt.getTime() - a.enrolledAt.getTime());
+        const total = sortedLegacy.length;
+        const paginatedResults = sortedLegacy.slice(offset, offset + limit);
 
         return {
             students: paginatedResults,
@@ -182,6 +244,18 @@ export class ListSchoolStudents {
             limit,
             offset
         };
+    }
+
+    private buildSummaries(
+        owners: Map<string, User>,
+        dependents: Map<string, Dependent[]>
+    ): Map<string, StudentSummary> {
+        const summaries = new Map<string, StudentSummary>();
+        for (const [ownerId, owner] of owners.entries()) {
+            const deps = dependents.get(ownerId) ?? [];
+            summaries.set(ownerId, buildStudentSummary(owner, deps));
+        }
+        return summaries;
     }
 
     private async resolveCourses(
@@ -251,15 +325,4 @@ export class ListSchoolStudents {
         return dependents;
     }
 
-    private buildSummaries(
-        owners: Map<string, User>,
-        dependents: Map<string, Dependent[]>
-    ): Map<string, StudentSummary> {
-        const summaries = new Map<string, StudentSummary>();
-        for (const [ownerId, owner] of owners.entries()) {
-            const deps = dependents.get(ownerId) ?? [];
-            summaries.set(ownerId, buildStudentSummary(owner, deps));
-        }
-        return summaries;
-    }
 }
