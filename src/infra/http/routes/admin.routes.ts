@@ -1,5 +1,6 @@
 import { Router, type RequestHandler } from 'express';
 import { z } from 'zod';
+import { Queue } from 'bullmq';
 import { asyncHandler } from '../utils/async-handler';
 import { GetAdminStatus } from '../../../app/use-cases/get-admin-status';
 import { ListSchoolsWithPlans } from '../../../app/use-cases/list-schools-with-plans';
@@ -541,6 +542,83 @@ export function adminRouter({
             }
         }));
     }
+
+    // Fila de jobs (BullMQ) – apenas leitura
+    router.get('/queue/jobs', requireAuth, requireAdminPersona, asyncHandler(async (req, res) => {
+        if (!process.env.REDIS_HOST) {
+            return res.status(503).json({
+                error: 'Queue not configured',
+                message: 'REDIS_HOST não está configurado. A fila de jobs não está disponível.'
+            });
+        }
+
+        const querySchema = z.object({
+            waitingLimit: z.coerce.number().int().min(1).max(200).optional(),
+            failedLimit: z.coerce.number().int().min(1).max(200).optional(),
+            completedLimit: z.coerce.number().int().min(1).max(100).optional()
+        });
+        const query = querySchema.parse(req.query);
+        const waitingLimit = query.waitingLimit ?? 50;
+        const failedLimit = query.failedLimit ?? 20;
+        const completedLimit = query.completedLimit ?? 20;
+
+        const connection = {
+            host: process.env.REDIS_HOST,
+            port: +(process.env.REDIS_PORT ?? 6379),
+            ...(process.env.REDIS_USER ? { username: process.env.REDIS_USER } : {}),
+            ...(process.env.REDIS_PASSWORD ? { password: process.env.REDIS_PASSWORD } : {}),
+        };
+
+        const queue = new Queue('outbox', { connection });
+
+        try {
+            const [repeatableJobs, waiting, active, failed, completed, workers] = await Promise.all([
+                queue.getRepeatableJobs(),
+                queue.getWaiting(0, waitingLimit - 1),
+                queue.getActive(),
+                queue.getFailed(0, failedLimit - 1),
+                queue.getCompleted(0, completedLimit - 1),
+                queue.getWorkers()
+            ]);
+
+            const toJobSummary = (job: { id?: string; name?: string; data?: { type?: string; payload?: unknown; aggregateId?: string }; failedReason?: string; attemptsMade?: number; finishedOn?: number }) => {
+                const data = job.data as { type?: string; payload?: unknown; aggregateId?: string } | undefined;
+                return {
+                    id: job.id,
+                    name: job.name,
+                    type: data?.type ?? job.name,
+                    aggregateId: data?.aggregateId ?? null,
+                    payload: data?.payload ?? null,
+                    ...(job.failedReason !== undefined && { failedReason: job.failedReason, attemptsMade: job.attemptsMade }),
+                    ...(job.finishedOn !== undefined && { finishedOn: job.finishedOn })
+                };
+            };
+
+            const payload = {
+                repeatable: repeatableJobs.map((j) => ({
+                    name: j.name,
+                    pattern: j.pattern,
+                    next: j.next ? new Date(j.next).toISOString() : null,
+                    key: j.key
+                })),
+                counts: {
+                    waiting: await queue.getWaitingCount(),
+                    active: await queue.getActiveCount(),
+                    completed: await queue.getCompletedCount(),
+                    failed: await queue.getFailedCount()
+                },
+                workers: workers.length,
+                waiting: waiting.map(toJobSummary),
+                active: active.map(toJobSummary),
+                failed: failed.map(toJobSummary),
+                completed: completed.map(toJobSummary)
+            };
+
+            res.json(payload);
+        } finally {
+            await queue.close();
+        }
+    }));
 
     return router;
 }

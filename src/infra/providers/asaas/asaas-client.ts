@@ -280,6 +280,30 @@ export class AsaasClient {
         }
     }
 
+    /**
+     * Obtém a URL de onboarding (documentos pendentes) no contexto da subconta.
+     * Deve ser chamado com a API key da subconta; Asaas recomenda aguardar ~15s após criar a subconta.
+     */
+    async getMyAccountOnboardingUrl(accountApiKey: string): Promise<string | null> {
+        if (!accountApiKey?.trim()) return null;
+        try {
+            const baseUrl = this.http.defaults.baseURL || process.env.ASAAS_BASE_URL || 'https://www.asaas.com/api/v3';
+            const client = axios.create({
+                baseURL: baseUrl,
+                headers: {
+                    access_token: accountApiKey,
+                    'Content-Type': 'application/json'
+                }
+            });
+            const { data } = await client.get<{ data?: Array<{ onboardingUrl?: string }> } | Array<{ onboardingUrl?: string }>>('/myAccount/documents');
+            const list = Array.isArray(data) ? data : (data as any)?.data ?? [];
+            const docWithUrl = list.find((doc: { onboardingUrl?: string }) => doc?.onboardingUrl);
+            return docWithUrl?.onboardingUrl ?? null;
+        } catch {
+            return null;
+        }
+    }
+
     private toDomainError(error: unknown): Error {
         if (axios.isAxiosError(error)) {
             const axiosError = error as AxiosError<any>;

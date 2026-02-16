@@ -1,9 +1,10 @@
 import { SchoolPlanInvoiceRepository } from '../../ports/repositories/school-plan-invoice.repo';
 import { SchoolPlanFinanceRepository } from '../../ports/repositories/school-plan-finance.repo';
-import { SchoolPlanInvoiceStatus, SchoolPlanInvoice } from '../../domain/entities/school-plan-invoice';
+import { SchoolPlanInvoiceStatus } from '../../domain/entities/school-plan-invoice';
 import { SchoolPlanStatus } from '../../domain/entities/school-plan-finance';
 import { SchoolRepository } from '../../ports/repositories/school.repo';
 import { AsaasProviderPort } from '../../ports/providers/asaas-port';
+import { OutboxRepository } from '../../ports/repositories/outbox.repo';
 
 type AsaasPaymentPayload = {
     id: string;
@@ -42,7 +43,8 @@ export class HandleAsaasPaymentWebhook {
         private readonly invoices: SchoolPlanInvoiceRepository,
         private readonly finances: SchoolPlanFinanceRepository,
         private readonly schools: SchoolRepository,
-        private readonly asaasProvider?: AsaasProviderPort
+        private readonly asaasProvider?: AsaasProviderPort,
+        private readonly outbox?: OutboxRepository
     ) {}
 
     async exec(input: HandleAsaasPaymentWebhookInput): Promise<HandleAsaasPaymentWebhookOutput> {
@@ -126,8 +128,12 @@ export class HandleAsaasPaymentWebhook {
             // Manter apenas os últimos 50 eventos para não crescer indefinidamente
             metadata.processedEventIds = processedEventIds.slice(-50).join(',');
         }
-        if (outcome.status === 'PAID') {
-            await this.ensureSchoolSubAccount(invoice, metadata);
+        if (outcome.status === 'PAID' && this.outbox) {
+            await this.outbox.enqueue({
+                type: 'ensure_school_asaas_account',
+                payload: { invoiceId: invoice.id },
+                aggregateId: invoice.schoolId
+            });
         }
 
         const updatedInvoice = invoice.withChanges({
@@ -190,219 +196,5 @@ export class HandleAsaasPaymentWebhook {
             }
         }
         return new Date();
-    }
-
-    /** Garante que a conta está sendo salva na escola do invoice pago (evita gravar na escola errada). */
-    private assertSchoolIsFromInvoice(schoolId: string, invoiceSchoolId: string, context: string): void {
-        if (schoolId !== invoiceSchoolId) {
-            throw new Error(
-                `Account must be saved for the school from the paid invoice. Expected schoolId=${invoiceSchoolId} (invoice), got ${schoolId} (${context}).`
-            );
-        }
-    }
-
-    /**
-     * Garante subconta Asaas para a escola do invoice que foi pago e voltou no webhook.
-     * A escola é sempre a do invoice (invoice.schoolId) — nunca do payload do webhook — pois o invoice tem schoolId único e é a fonte da verdade para a baixa.
-     */
-    private async ensureSchoolSubAccount(invoice: SchoolPlanInvoice, metadata: Record<string, string>): Promise<void> {
-        if (!this.asaasProvider?.createSubAccount) return;
-        const school = await this.schools.findById(invoice.schoolId);
-        if (!school) {
-            throw new Error(`School ${invoice.schoolId} not found when creating Asaas subaccount`);
-        }
-
-        // Validação: verificar se a escola tem os dados obrigatórios
-        if (!school.name || !school.name.trim()) {
-            throw new Error(`School ${school.id} has invalid name for creating Asaas subaccount`);
-        }
-        if (!school.email || !school.email.trim()) {
-            throw new Error(`School ${school.id} has invalid email for creating Asaas subaccount`);
-        }
-        if (!school.cnpj || school.cnpj.length !== 14) {
-            throw new Error(`School ${school.id} has invalid CNPJ for creating Asaas subaccount`);
-        }
-        if (!school.phone || school.phone.length < 10) {
-            throw new Error(`School ${school.id} has invalid phone for creating Asaas subaccount`);
-        }
-
-        const metadataAccountId = metadata.accountId ?? metadata.asaasSubAccountId ?? metadata.paymentAccountId;
-        const metadataStatus = metadata.accountStatus ?? metadata.asaasSubAccountStatus ?? metadata.paymentAccountStatus;
-        const rawCompanyType = metadata.accountCompanyType ?? metadata.companyType;
-        const normalizedCompanyType = typeof rawCompanyType === 'string'
-            ? rawCompanyType.trim().toUpperCase()
-            : undefined;
-        const rawIncomeValue = metadata.accountIncomeValue ?? metadata.incomeValue;
-        const parsedIncomeValue = typeof rawIncomeValue === 'string'
-            ? Number(rawIncomeValue.trim())
-            : typeof rawIncomeValue === 'number'
-                ? rawIncomeValue
-                : undefined;
-        const defaultIncomeValue = school.incomeValue > 0 ? school.incomeValue : 5000;
-        const incomeValue = Number.isFinite(parsedIncomeValue) && (parsedIncomeValue as number) > 0
-            ? Math.round(parsedIncomeValue as number)
-            : defaultIncomeValue;
-
-        // Validação: garantir que incomeValue seja válido
-        if (!Number.isFinite(incomeValue) || incomeValue <= 0) {
-            throw new Error(`Invalid income value for school ${school.id}: ${incomeValue}`);
-        }
-
-        const allowedCompanyTypes = new Set(['MEI', 'LIMITED', 'INDIVIDUAL', 'ASSOCIATION']);
-        const companyType = normalizedCompanyType && allowedCompanyTypes.has(normalizedCompanyType)
-            ? normalizedCompanyType
-            : 'LIMITED';
-
-        if (school.accountId) {
-            // Validação: verificar se accountId não está vazio
-            if (!school.accountId.trim()) {
-                throw new Error(`School ${school.id} has empty accountId`);
-            }
-            metadata.accountId = school.accountId;
-            if (metadataStatus) {
-                metadata.accountStatus = metadataStatus;
-            }
-            if (!metadata.accountLinkedAt) {
-                metadata.accountLinkedAt = new Date().toISOString();
-            }
-            metadata.accountCompanyType = companyType;
-            metadata.accountIncomeValue = String(incomeValue);
-            return;
-        }
-
-        if (metadataAccountId) {
-            // Validação: verificar se metadataAccountId não está vazio
-            if (!metadataAccountId.trim()) {
-                throw new Error(`Invalid accountId in metadata for school ${school.id}`);
-            }
-            const updatedFromMetadata = school.withAccountId(metadataAccountId);
-            this.assertSchoolIsFromInvoice(updatedFromMetadata.id, invoice.schoolId, 'metadata accountId');
-            await this.schools.save(updatedFromMetadata);
-            metadata.accountId = metadataAccountId;
-            if (metadataStatus) {
-                metadata.accountStatus = metadataStatus;
-            }
-            if (!metadata.accountLinkedAt) {
-                metadata.accountLinkedAt = new Date().toISOString();
-            }
-            metadata.accountCompanyType = companyType;
-            metadata.accountIncomeValue = String(incomeValue);
-            return;
-        }
-
-        // Validação: verificar se a escola tem endereço
-        const mainAddress = school.addresses[0];
-        if (!mainAddress) {
-            throw new Error(`School ${school.id} has no address to create Asaas subaccount`);
-        }
-
-        // Validação: verificar se o endereço tem os campos obrigatórios
-        if (!mainAddress.street || !mainAddress.street.trim()) {
-            throw new Error(`School ${school.id} address has invalid street`);
-        }
-        if (!mainAddress.number || !mainAddress.number.trim()) {
-            throw new Error(`School ${school.id} address has invalid number`);
-        }
-        if (!mainAddress.zipCode || mainAddress.zipCode.length !== 8) {
-            throw new Error(`School ${school.id} address has invalid zip code`);
-        }
-
-        let subAccount: { id: string; apiKey?: string; walletId?: string; status?: string };
-        try {
-            subAccount = await this.asaasProvider.createSubAccount({
-                name: school.name,
-                email: school.email,
-                cpfCnpj: school.cnpj,
-                phone: school.phone,
-                externalReference: school.id,
-                companyType,
-                incomeValue,
-                address: mainAddress.street,
-                addressNumber: mainAddress.number,
-                complement: mainAddress.complement ?? null,
-                province: mainAddress.district ?? null,
-                postalCode: mainAddress.zipCode
-            });
-        } catch (createError: unknown) {
-            const message = createError instanceof Error ? createError.message : String(createError);
-            const isEmailAlreadyInUse = /já está em uso|already in use|email.*em uso/i.test(message);
-            if (isEmailAlreadyInUse && this.asaasProvider?.listAccountsByEmail) {
-                const existing = await this.asaasProvider.listAccountsByEmail(school.email);
-                const byExternalRef = existing.find((acc: { externalReference?: string | null }) => acc.externalReference === school.id);
-                const found = byExternalRef ?? existing[0];
-                if (found?.id) {
-                    subAccount = found;
-                } else {
-                    throw createError;
-                }
-            } else {
-                throw createError;
-            }
-        }
-
-        // Validação: verificar se a resposta da API contém o ID da conta
-        if (!subAccount.id || !subAccount.id.trim()) {
-            throw new Error(`Asaas API returned invalid subaccount ID for school ${school.id}`);
-        }
-
-        // Atualizar e salvar a conta na escola do invoice que foi pago (nunca em outra escola).
-        let updatedSchool = school.withAccountId(subAccount.id);
-        if (subAccount.apiKey) {
-            updatedSchool = updatedSchool.withAccountApiKey(subAccount.apiKey);
-        }
-        if (subAccount.walletId) {
-            updatedSchool = updatedSchool.withWalletId(subAccount.walletId);
-        }
-        this.assertSchoolIsFromInvoice(updatedSchool.id, invoice.schoolId, 'subaccount');
-        await this.schools.save(updatedSchool);
-
-        metadata.accountId = subAccount.id;
-        if (subAccount.status) {
-            metadata.accountStatus = subAccount.status;
-        }
-        metadata.accountLinkedAt = new Date().toISOString();
-        metadata.accountCompanyType = companyType;
-        metadata.accountIncomeValue = String(incomeValue);
-        if (subAccount.apiKey) {
-            metadata.accountApiKey = subAccount.apiKey;
-        }
-
-        // Buscar onboarding URL em background (não bloqueia resposta do webhook; Asaas recomenda aguardar ~15s antes de consultar documentos)
-        if (subAccount.apiKey) {
-            this.fetchAndSaveOnboardingUrl(invoice.schoolId, subAccount.apiKey).catch((err) =>
-                console.warn('[HandleAsaasPaymentWebhook] Onboarding URL fetch failed:', err)
-            );
-        }
-    }
-
-    /**
-     * Busca o link de onboarding (documentos pendentes) no Asaas e persiste na escola.
-     * Aguarda 15s antes de consultar, conforme documentação Asaas para subcontas recém-criadas.
-     */
-    private async fetchAndSaveOnboardingUrl(schoolId: string, accountApiKey: string): Promise<void> {
-        try {
-            await new Promise((r) => setTimeout(r, 15000));
-            const axios = (await import('axios')).default;
-            const baseUrl = process.env.ASAAS_BASE_URL || 'https://www.asaas.com/api/v3';
-            const response = await axios.get(`${baseUrl}/myAccount/documents`, {
-                headers: {
-                    access_token: accountApiKey,
-                    'Content-Type': 'application/json'
-                }
-            });
-            const data = response.data?.data ?? response.data ?? [];
-            const list = Array.isArray(data) ? data : [];
-            const docWithUrl = list.find((doc: { onboardingUrl?: string }) => doc.onboardingUrl);
-            const onboardingUrl = docWithUrl?.onboardingUrl ?? null;
-            if (onboardingUrl) {
-                const school = await this.schools.findById(schoolId);
-                if (school) {
-                    const updated = school.withOnboardingUrl(onboardingUrl);
-                    await this.schools.save(updated);
-                }
-            }
-        } catch (err) {
-            console.warn('[HandleAsaasPaymentWebhook] Failed to fetch onboarding URL for school', schoolId, err);
-        }
     }
 }

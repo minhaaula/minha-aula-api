@@ -1,7 +1,9 @@
 import { SchoolPlanInvoiceRepository } from '../../ports/repositories/school-plan-invoice.repo';
 import { SchoolPlanFinanceRepository } from '../../ports/repositories/school-plan-finance.repo';
 import { SchoolRepository } from '../../ports/repositories/school.repo';
+import { OutboxRepository } from '../../ports/repositories/outbox.repo';
 import { AsaasProviderPort } from '../../ports/providers/asaas-port';
+import { log } from '../../shared/logger';
 
 export interface FetchPaymentReceiptsInput {
     limit?: number;
@@ -19,7 +21,8 @@ export class FetchPaymentReceipts {
         private readonly invoices: SchoolPlanInvoiceRepository,
         private readonly finances: SchoolPlanFinanceRepository,
         private readonly schools: SchoolRepository,
-        private readonly asaasProvider?: AsaasProviderPort
+        private readonly asaasProvider?: AsaasProviderPort,
+        private readonly outbox?: OutboxRepository
     ) {}
 
     async exec(input: FetchPaymentReceiptsInput = {}): Promise<FetchPaymentReceiptsOutput> {
@@ -63,66 +66,26 @@ export class FetchPaymentReceipts {
                     await this.invoices.save(updatedInvoice);
                     updated++;
 
-                    // Verificar se é a primeira parcela e se a escola não tem conta Asaas
+                    // Primeira parcela e escola sem conta: enfileirar ensure_school_asaas_account (mesmo fluxo do webhook)
                     const allInvoices = await this.invoices.findByFinanceId(invoice.financeId);
-                    const sortedInvoices = allInvoices.sort((a, b) => 
+                    const sortedInvoices = allInvoices.sort((a, b) =>
                         a.dueDate.getTime() - b.dueDate.getTime()
                     );
-                    
-                    const isFirstInvoice = sortedInvoices.length > 0 && 
-                        sortedInvoices[0].id === invoice.id;
-
-                    if (isFirstInvoice && this.asaasProvider.createSubAccount) {
+                    const isFirstInvoice = sortedInvoices.length > 0 && sortedInvoices[0].id === invoice.id;
+                    if (isFirstInvoice && this.outbox) {
                         const school = await this.schools.findById(invoice.schoolId);
                         if (school && !school.accountId) {
-                            // Criar conta Asaas para a escola
-                            try {
-                                if (school.addresses.length > 0) {
-                                    const mainAddress = school.addresses[0];
-                                    if (mainAddress.street && mainAddress.number && 
-                                        mainAddress.zipCode && mainAddress.zipCode.length === 8) {
-                                        
-                                        const companyType = 'LIMITED';
-                                        const incomeValue = school.incomeValue && school.incomeValue > 0 
-                                            ? school.incomeValue 
-                                            : 5000;
-
-                                        const subAccount = await this.asaasProvider.createSubAccount({
-                                            name: school.name,
-                                            email: school.email,
-                                            cpfCnpj: school.cnpj,
-                                            phone: school.phone,
-                                            externalReference: school.id,
-                                            companyType,
-                                            incomeValue,
-                                            address: mainAddress.street,
-                                            addressNumber: mainAddress.number,
-                                            complement: mainAddress.complement ?? null,
-                                            province: mainAddress.district ?? null,
-                                            postalCode: mainAddress.zipCode
-                                        });
-
-                                        // Atualizar escola com accountId, accountApiKey e walletId
-                                        let updatedSchool = school.withAccountId(subAccount.id);
-                                        if (subAccount.apiKey) {
-                                            updatedSchool = updatedSchool.withAccountApiKey(subAccount.apiKey);
-                                        }
-                                        if (subAccount.walletId) {
-                                            updatedSchool = updatedSchool.withWalletId(subAccount.walletId);
-                                        }
-                                        await this.schools.save(updatedSchool);
-                                        accountsCreated++;
-                                    }
-                                }
-                            } catch (accountError) {
-                                console.error(`Failed to create Asaas account for school ${invoice.schoolId}:`, accountError);
-                                // Não incrementar errors aqui, pois o recibo foi atualizado com sucesso
-                            }
+                            await this.outbox.enqueue({
+                                type: 'ensure_school_asaas_account',
+                                payload: { invoiceId: invoice.id },
+                                aggregateId: invoice.schoolId
+                            });
+                            accountsCreated++;
                         }
                     }
                 }
             } catch (error) {
-                console.error(`Failed to fetch receipt for invoice ${invoice.id}:`, error);
+                log.error('Failed to fetch receipt for invoice', { invoiceId: invoice.id, error: error instanceof Error ? error.message : String(error) });
                 errors++;
             }
         }

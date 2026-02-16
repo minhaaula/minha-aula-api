@@ -30,6 +30,7 @@ export type PaymentHistoryResult = {
 };
 
 export interface SchoolPlanInvoiceRepository {
+    findById(id: string): Promise<SchoolPlanInvoice | null>;
     findByFinanceIdAndDueDate(financeId: string, dueDate: Date): Promise<SchoolPlanInvoice | null>;
     findByProviderRef(providerRef: string): Promise<SchoolPlanInvoice | null>;
     findByExternalReference(externalReference: string): Promise<SchoolPlanInvoice | null>;

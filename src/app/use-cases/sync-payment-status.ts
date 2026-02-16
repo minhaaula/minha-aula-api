@@ -1,9 +1,8 @@
 import { SchoolPlanInvoiceRepository } from '../../ports/repositories/school-plan-invoice.repo';
 import { SchoolPlanFinanceRepository } from '../../ports/repositories/school-plan-finance.repo';
 import { SchoolRepository } from '../../ports/repositories/school.repo';
+import { OutboxRepository } from '../../ports/repositories/outbox.repo';
 import { AsaasProviderPort } from '../../ports/providers/asaas-port';
-import { SchoolPlanInvoiceStatus } from '../../domain/entities/school-plan-invoice';
-import { SchoolPlanStatus } from '../../domain/entities/school-plan-finance';
 import { HandleAsaasPaymentWebhook } from './handle-asaas-payment-webhook';
 
 export interface SyncPaymentStatusInput {
@@ -27,7 +26,8 @@ export class SyncPaymentStatus {
         private readonly invoices: SchoolPlanInvoiceRepository,
         private readonly finances: SchoolPlanFinanceRepository,
         private readonly schools: SchoolRepository,
-        private readonly asaasProvider?: AsaasProviderPort
+        private readonly asaasProvider?: AsaasProviderPort,
+        private readonly outbox?: OutboxRepository
     ) {}
 
     async exec(input: SyncPaymentStatusInput = {}): Promise<SyncPaymentStatusOutput> {
@@ -56,7 +56,8 @@ export class SyncPaymentStatus {
             this.invoices,
             this.finances,
             this.schools,
-            this.asaasProvider
+            this.asaasProvider,
+            this.outbox
         );
 
         for (const invoice of invoicesToCheck) {

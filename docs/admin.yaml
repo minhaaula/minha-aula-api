@@ -47,6 +47,71 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /admin/queue/jobs:
+    get:
+      tags:
+        - Admin
+      summary: Listar jobs da fila (BullMQ)
+      description: |
+        Retorna o status da fila de jobs (outbox): jobs repetitivos agendados, contagens
+        (waiting, active, completed, failed), workers ativos e amostras de jobs em cada estado.
+        Requer autenticação com persona ADMIN.
+        Se REDIS_HOST não estiver configurado, retorna 503.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: waitingLimit
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+          description: Máximo de jobs em waiting a retornar na amostra.
+        - in: query
+          name: failedLimit
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 20
+          description: Máximo de jobs em failed a retornar na amostra.
+        - in: query
+          name: completedLimit
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Máximo de jobs em completed a retornar na amostra.
+      responses:
+        '200':
+          description: Status da fila retornado com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueueJobsResponse'
+        '401':
+          description: Usuário não autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado (requer persona ADMIN).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Fila não configurada (REDIS_HOST ausente).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueueNotConfiguredResponse'
   /admin/schools:
     get:
       tags:
@@ -1280,6 +1345,117 @@ paths:
 
 components:
   schemas:
+    QueueNotConfiguredResponse:
+      type: object
+      description: Resposta quando a fila não está configurada (REDIS_HOST ausente).
+      properties:
+        error:
+          type: string
+          example: Queue not configured
+        message:
+          type: string
+          example: REDIS_HOST não está configurado. A fila de jobs não está disponível.
+      required:
+        - error
+        - message
+    QueueJobsResponse:
+      type: object
+      description: Status da fila de jobs (BullMQ outbox).
+      properties:
+        repeatable:
+          type: array
+          description: Jobs repetitivos (agendados por cron).
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+                example: fetch_payment_receipts
+              pattern:
+                type: string
+                example: '*/30 * * * *'
+              next:
+                type: string
+                format: date-time
+                nullable: true
+              key:
+                type: string
+        counts:
+          type: object
+          description: Contagem total de jobs em cada estado.
+          properties:
+            waiting:
+              type: integer
+            active:
+              type: integer
+            completed:
+              type: integer
+            failed:
+              type: integer
+          required:
+            - waiting
+            - active
+            - completed
+            - failed
+        workers:
+          type: integer
+          description: Número de workers ativos conectados à fila.
+        waiting:
+          type: array
+          description: Amostra de jobs aguardando processamento.
+          items:
+            $ref: '#/components/schemas/QueueJobSummary'
+        active:
+          type: array
+          description: Jobs em processamento.
+          items:
+            $ref: '#/components/schemas/QueueJobSummary'
+        failed:
+          type: array
+          description: Amostra de jobs que falharam.
+          items:
+            $ref: '#/components/schemas/QueueJobSummary'
+        completed:
+          type: array
+          description: Amostra de jobs concluídos.
+          items:
+            $ref: '#/components/schemas/QueueJobSummary'
+      required:
+        - repeatable
+        - counts
+        - workers
+        - waiting
+        - active
+        - failed
+        - completed
+    QueueJobSummary:
+      type: object
+      description: Resumo de um job na fila.
+      properties:
+        id:
+          type: string
+          nullable: true
+        name:
+          type: string
+        type:
+          type: string
+          description: Tipo do evento (ex. ensure_school_asaas_account, push_notification).
+        aggregateId:
+          type: string
+          nullable: true
+        payload:
+          type: object
+          nullable: true
+          additionalProperties: true
+        failedReason:
+          type: string
+          description: Presente em jobs falhados.
+        attemptsMade:
+          type: integer
+          description: Presente em jobs falhados.
+        finishedOn:
+          type: integer
+          description: Timestamp; presente em jobs completados.
     AdminPlansListResponse:
       type: object
       properties:

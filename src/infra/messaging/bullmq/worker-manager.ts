@@ -125,11 +125,14 @@ export function startWorker(): Worker {
                     ? asaasProviderInstance as any
                     : undefined;
 
+                const { OutboxProducer } = await import('./outbox-producer.js');
+                const outbox = new OutboxProducer();
                 const fetchReceipts = new FetchPaymentReceipts(
                     invoicesRepo,
                     financesRepo,
                     schoolsRepo,
-                    asaasProvider
+                    asaasProvider,
+                    outbox
                 );
 
                 const limit = typeof event.payload?.limit === 'number' ? event.payload.limit : 50;
@@ -160,11 +163,14 @@ export function startWorker(): Worker {
                     ? asaasProviderInstance as any
                     : undefined;
 
+                const { OutboxProducer } = await import('./outbox-producer.js');
+                const outbox = new OutboxProducer();
                 const syncStatus = new SyncPaymentStatus(
                     invoicesRepo,
                     financesRepo,
                     schoolsRepo,
-                    asaasProvider
+                    asaasProvider,
+                    outbox
                 );
 
                 const limit = typeof event.payload?.limit === 'number' ? event.payload.limit : 50;
@@ -172,6 +178,54 @@ export function startWorker(): Worker {
                 const result = await syncStatus.exec({ limit, daysAgo });
 
                 log.info('[OUTBOX] sync_payment_status completed', result);
+                return;
+            }
+
+            if (job.name === 'ensure_school_asaas_account' || jobType === 'ensure_school_asaas_account') {
+                log.info('[OUTBOX] Iniciando processamento de ensure_school_asaas_account');
+                await ensureDb();
+
+                const invoiceId = typeof event.payload?.invoiceId === 'string' ? event.payload.invoiceId : undefined;
+                if (!invoiceId) {
+                    log.warn('[OUTBOX] ensure_school_asaas_account: payload.invoiceId ausente');
+                    return;
+                }
+
+                const { SchoolPlanInvoiceRepositoryAdapter } = await import('../../db/typeorm/school-plan-invoice-repository.adapter.js');
+                const { SchoolRepositoryAdapter } = await import('../../db/typeorm/school-repository.js');
+                const { AsaasProvider } = await import('../../providers/asaas/asaas-provider.js');
+                const { EnsureSchoolAsaasAccount } = await import('../../../app/use-cases/ensure-school-asaas-account.js');
+
+                const invoicesRepo = new SchoolPlanInvoiceRepositoryAdapter();
+                const schoolsRepo = new SchoolRepositoryAdapter();
+                const asaasApiKey = process.env.ASAAS_API_KEY;
+                const asaasBaseUrl = process.env.ASAAS_BASE_URL;
+                const asaasProviderInstance = asaasApiKey ? new AsaasProvider({ apiKey: asaasApiKey, baseUrl: asaasBaseUrl }) : undefined;
+                const asaasProvider =
+                    asaasProviderInstance &&
+                    typeof asaasProviderInstance.createSubAccount === 'function' &&
+                    typeof asaasProviderInstance.getOnboardingUrl === 'function'
+                        ? (asaasProviderInstance as unknown as import('../../../ports/providers/asaas-port').AsaasProviderPort)
+                        : undefined;
+
+                const ensureAccount = new EnsureSchoolAsaasAccount(invoicesRepo, schoolsRepo, asaasProvider);
+                const result = await ensureAccount.exec({ invoiceId });
+
+                if (result.onboardingPending) {
+                    const { schoolId, accountApiKey } = result.onboardingPending;
+                    await new Promise((r) => setTimeout(r, 15000));
+                    const onboardingUrl = asaasProvider?.getOnboardingUrl
+                        ? await asaasProvider.getOnboardingUrl(accountApiKey)
+                        : null;
+                    if (onboardingUrl) {
+                        const school = await schoolsRepo.findById(schoolId);
+                        if (school) {
+                            await schoolsRepo.save(school.withOnboardingUrl(onboardingUrl));
+                            log.info('[OUTBOX] ensure_school_asaas_account: onboarding URL salva', { schoolId });
+                        }
+                    }
+                }
+                log.info('[OUTBOX] ensure_school_asaas_account completed', { invoiceId });
                 return;
             }
 

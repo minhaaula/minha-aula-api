@@ -142,4 +142,6 @@ export interface AsaasProviderPort {
     getAccountBalance?(accountId: string): Promise<AsaasAccountBalance>;
     getPayment?(paymentId: string): Promise<AsaasPaymentDetails>;
     listPayments?(params?: ListAsaasPaymentsParams): Promise<ListAsaasPaymentsResponse>;
+    /** Obtém a URL de onboarding (documentos) usando a API key da subconta. Recomenda-se aguardar ~15s após criar a subconta. */
+    getOnboardingUrl?(accountApiKey: string): Promise<string | null>;
 }

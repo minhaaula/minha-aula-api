@@ -269,6 +269,11 @@ export class AsaasProvider implements PaymentProviderPort {
         return await this.client.listPayments(params);
     }
 
+    async getOnboardingUrl(accountApiKey: string): Promise<string | null> {
+        if (!accountApiKey?.trim()) return null;
+        return this.client.getMyAccountOnboardingUrl(accountApiKey);
+    }
+
     private resolveDefaultWebhooks(fallbackEmail: string): CreateAsaasSubAccountInput['webhooks'] | undefined {
         const url = process.env.ASAAS_SUBACCOUNT_WEBHOOK_URL?.trim();
         const email = process.env.ASAAS_SUBACCOUNT_WEBHOOK_EMAIL?.trim() || fallbackEmail;

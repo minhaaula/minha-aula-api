@@ -28,6 +28,13 @@ export class SchoolPlanInvoiceRepositoryAdapter implements SchoolPlanInvoiceRepo
         return row ? this.toDomain(row) : null;
     }
 
+    async findById(id: string): Promise<SchoolPlanInvoice | null> {
+        const normalized = id?.trim();
+        if (!normalized) return null;
+        const row = await this.repo.findOne({ where: { id: normalized } });
+        return row ? this.toDomain(row) : null;
+    }
+
     async findByProviderRef(providerRef: string): Promise<SchoolPlanInvoice | null> {
         const normalized = providerRef.trim();
         if (!normalized) return null;
