@@ -366,5 +366,43 @@ export class HandleAsaasPaymentWebhook {
         if (subAccount.apiKey) {
             metadata.accountApiKey = subAccount.apiKey;
         }
+
+        // Buscar onboarding URL em background (não bloqueia resposta do webhook; Asaas recomenda aguardar ~15s antes de consultar documentos)
+        if (subAccount.apiKey) {
+            this.fetchAndSaveOnboardingUrl(invoice.schoolId, subAccount.apiKey).catch((err) =>
+                console.warn('[HandleAsaasPaymentWebhook] Onboarding URL fetch failed:', err)
+            );
+        }
+    }
+
+    /**
+     * Busca o link de onboarding (documentos pendentes) no Asaas e persiste na escola.
+     * Aguarda 15s antes de consultar, conforme documentação Asaas para subcontas recém-criadas.
+     */
+    private async fetchAndSaveOnboardingUrl(schoolId: string, accountApiKey: string): Promise<void> {
+        try {
+            await new Promise((r) => setTimeout(r, 15000));
+            const axios = (await import('axios')).default;
+            const baseUrl = process.env.ASAAS_BASE_URL || 'https://www.asaas.com/api/v3';
+            const response = await axios.get(`${baseUrl}/myAccount/documents`, {
+                headers: {
+                    access_token: accountApiKey,
+                    'Content-Type': 'application/json'
+                }
+            });
+            const data = response.data?.data ?? response.data ?? [];
+            const list = Array.isArray(data) ? data : [];
+            const docWithUrl = list.find((doc: { onboardingUrl?: string }) => doc.onboardingUrl);
+            const onboardingUrl = docWithUrl?.onboardingUrl ?? null;
+            if (onboardingUrl) {
+                const school = await this.schools.findById(schoolId);
+                if (school) {
+                    const updated = school.withOnboardingUrl(onboardingUrl);
+                    await this.schools.save(updated);
+                }
+            }
+        } catch (err) {
+            console.warn('[HandleAsaasPaymentWebhook] Failed to fetch onboarding URL for school', schoolId, err);
+        }
     }
 }
