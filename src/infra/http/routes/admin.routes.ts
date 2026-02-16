@@ -292,33 +292,31 @@ export function adminRouter({
         }));
     }
 
-    // Cursos do aluno (por id) e cursos dos dependentes (quando titular)
+    // Cursos do aluno e dos dependentes (todas as escolas) – apenas studentId
     if (listAdminStudentCourses) {
-        router.get('/schools/:schoolId/students/:studentId/courses', requireAuth, requireAdminPersona, asyncHandler(async (req, res) => {
+        router.get('/students/:studentId/courses', requireAuth, requireAdminPersona, asyncHandler(async (req, res) => {
             const paramsSchema = z.object({
-                schoolId: z.string().uuid(),
                 studentId: z.string().uuid()
             });
-            const { schoolId, studentId } = paramsSchema.parse(req.params);
-            const result = await listAdminStudentCourses.exec({ schoolId, studentId });
+            const { studentId } = paramsSchema.parse(req.params);
+            const result = await listAdminStudentCourses.exec({ studentId });
             if (result === null) {
-                return res.status(404).json({ error: 'Aluno não encontrado ou sem vínculo com a escola' });
+                return res.status(404).json({ error: 'Aluno não encontrado' });
             }
             res.json(result);
         }));
     }
 
-    // Detalhes do estudante por ID (dados do aluno + array de dependentes quando titular)
+    // Detalhes do estudante por ID (dados do aluno + dependentes + matrículas e cobranças de todas as escolas)
     if (getAdminStudentDetails) {
-        router.get('/schools/:schoolId/students/:studentId', requireAuth, requireAdminPersona, asyncHandler(async (req, res) => {
+        router.get('/students/:studentId', requireAuth, requireAdminPersona, asyncHandler(async (req, res) => {
             const paramsSchema = z.object({
-                schoolId: z.string().uuid(),
                 studentId: z.string().uuid()
             });
-            const { schoolId, studentId } = paramsSchema.parse(req.params);
-            const result = await getAdminStudentDetails.exec({ schoolId, studentId });
+            const { studentId } = paramsSchema.parse(req.params);
+            const result = await getAdminStudentDetails.exec({ studentId });
             if (result === null) {
-                return res.status(404).json({ error: 'Aluno não encontrado ou sem vínculo com a escola' });
+                return res.status(404).json({ error: 'Aluno não encontrado' });
             }
             res.json(result);
         }));

@@ -6,12 +6,12 @@ import { SchoolFinancialChargeOrm } from '../../infra/db/typeorm/entities/school
 import { AppError, ErrorCode } from '../../shared/errors';
 
 export interface GetAdminStudentDetailsInput {
-    schoolId: string;
     studentId: string;
 }
 
 type EnrollmentItem = {
     id: string;
+    school: { id: string; name: string };
     course: { id: string; name: string };
     class: { id: string; label: string };
     enrolledAt: Date;
@@ -20,6 +20,7 @@ type EnrollmentItem = {
 
 type PaidChargeItem = {
     id: string;
+    school: { id: string; name: string };
     amount: number;
     amountCents: number;
     discount: number | null;
@@ -71,29 +72,24 @@ export class GetAdminStudentDetails {
     ) {}
 
     async exec(input: GetAdminStudentDetailsInput): Promise<GetAdminStudentDetailsOutput | null> {
-        const schoolId = input.schoolId.trim();
         const studentId = input.studentId.trim();
-
-        if (!schoolId || !studentId) {
+        if (!studentId) {
             throw AppError.fromCode(ErrorCode.INVALID_IDENTIFIERS, {
-                message: 'schoolId e studentId são obrigatórios'
+                message: 'studentId é obrigatório'
             });
-        }
-
-        const hasEnrollment = await this.checkStudentEnrollmentInSchool(schoolId, studentId);
-        if (!hasEnrollment) {
-            return null;
         }
 
         const user = await this.users.findById(studentId);
         if (user) {
-            const enrollments = await this.findEnrollmentsForUser(schoolId, user.id);
-            const paidCharges = await this.findPaidChargesForUser(schoolId, user.id);
-            const dependentsList = await this.dependents.findByUserIds([user.id]);
-            const dependents: AdminStudentDependentItem[] = [];
+            const [enrollments, paidCharges, dependentsList] = await Promise.all([
+                this.findEnrollmentsForUser(user.id),
+                this.findPaidChargesForUser(user.id),
+                this.dependents.findByUserIds([user.id])
+            ]);
 
+            const dependents: AdminStudentDependentItem[] = [];
             for (const dep of dependentsList) {
-                const depEnrollments = await this.findEnrollmentsForDependent(schoolId, dep.id);
+                const depEnrollments = await this.findEnrollmentsForDependent(dep.id);
                 dependents.push({
                     id: dep.id,
                     fullName: dep.fullName,
@@ -131,8 +127,10 @@ export class GetAdminStudentDetails {
             return null;
         }
 
-        const enrollments = await this.findEnrollmentsForDependent(schoolId, dependent.id);
-        const paidCharges = await this.findPaidChargesForDependent(schoolId, dependent.id);
+        const [enrollments, paidCharges] = await Promise.all([
+            this.findEnrollmentsForDependent(dependent.id),
+            this.findPaidChargesForDependent(dependent.id)
+        ]);
 
         return {
             student: {
@@ -157,36 +155,14 @@ export class GetAdminStudentDetails {
         };
     }
 
-    private async checkStudentEnrollmentInSchool(schoolId: string, studentId: string): Promise<boolean> {
-        const repo = AppDataSource.getRepository(EnrollmentOrm);
-        const asUser = await repo
-            .createQueryBuilder('enrollment')
-            .innerJoin('enrollment.courseClass', 'class')
-            .innerJoin('class.course', 'course')
-            .where('course.schoolId = :schoolId', { schoolId })
-            .andWhere('enrollment.studentUserId = :studentId', { studentId })
-            .andWhere('enrollment.status = :status', { status: 'ACTIVE' })
-            .getCount();
-        if (asUser > 0) return true;
-        const asDependent = await repo
-            .createQueryBuilder('enrollment')
-            .innerJoin('enrollment.courseClass', 'class')
-            .innerJoin('class.course', 'course')
-            .where('course.schoolId = :schoolId', { schoolId })
-            .andWhere('enrollment.dependentId = :studentId', { studentId })
-            .andWhere('enrollment.status = :status', { status: 'ACTIVE' })
-            .getCount();
-        return asDependent > 0;
-    }
-
-    private async findEnrollmentsForUser(schoolId: string, userId: string): Promise<EnrollmentItem[]> {
+    private async findEnrollmentsForUser(userId: string): Promise<EnrollmentItem[]> {
         const repo = AppDataSource.getRepository(EnrollmentOrm);
         const rows = await repo
             .createQueryBuilder('enrollment')
             .innerJoin('enrollment.courseClass', 'class')
             .innerJoin('class.course', 'course')
-            .where('course.schoolId = :schoolId', { schoolId })
-            .andWhere('enrollment.studentUserId = :userId', { userId })
+            .innerJoin('course.school', 'school')
+            .where('enrollment.studentUserId = :userId', { userId })
             .select([
                 'enrollment.id',
                 'enrollment.enrolledAt',
@@ -194,11 +170,15 @@ export class GetAdminStudentDetails {
                 'course.id',
                 'course.name',
                 'class.id',
-                'class.label'
+                'class.label',
+                'school.id',
+                'school.name'
             ])
+            .orderBy('enrollment.enrolledAt', 'DESC')
             .getRawMany();
         return rows.map((row: any) => ({
             id: row.enrollment_id,
+            school: { id: row.school_id, name: row.school_name },
             course: { id: row.course_id, name: row.course_name },
             class: { id: row.class_id, label: row.class_label },
             enrolledAt: row.enrollment_enrolled_at,
@@ -206,14 +186,14 @@ export class GetAdminStudentDetails {
         }));
     }
 
-    private async findEnrollmentsForDependent(schoolId: string, dependentId: string): Promise<EnrollmentItem[]> {
+    private async findEnrollmentsForDependent(dependentId: string): Promise<EnrollmentItem[]> {
         const repo = AppDataSource.getRepository(EnrollmentOrm);
         const rows = await repo
             .createQueryBuilder('enrollment')
             .innerJoin('enrollment.courseClass', 'class')
             .innerJoin('class.course', 'course')
-            .where('course.schoolId = :schoolId', { schoolId })
-            .andWhere('enrollment.dependentId = :dependentId', { dependentId })
+            .innerJoin('course.school', 'school')
+            .where('enrollment.dependentId = :dependentId', { dependentId })
             .select([
                 'enrollment.id',
                 'enrollment.enrolledAt',
@@ -221,11 +201,15 @@ export class GetAdminStudentDetails {
                 'course.id',
                 'course.name',
                 'class.id',
-                'class.label'
+                'class.label',
+                'school.id',
+                'school.name'
             ])
+            .orderBy('enrollment.enrolledAt', 'DESC')
             .getRawMany();
         return rows.map((row: any) => ({
             id: row.enrollment_id,
+            school: { id: row.school_id, name: row.school_name },
             course: { id: row.course_id, name: row.course_name },
             class: { id: row.class_id, label: row.class_label },
             enrolledAt: row.enrollment_enrolled_at,
@@ -233,14 +217,14 @@ export class GetAdminStudentDetails {
         }));
     }
 
-    private async findPaidChargesForUser(schoolId: string, userId: string): Promise<PaidChargeItem[]> {
+    private async findPaidChargesForUser(userId: string): Promise<PaidChargeItem[]> {
         const repo = AppDataSource.getRepository(SchoolFinancialChargeOrm);
         const rows = await repo
             .createQueryBuilder('charge')
+            .innerJoin('charge.school', 'school')
             .innerJoin('charge.course', 'course')
             .innerJoin('charge.courseClass', 'class')
-            .where('charge.schoolId = :schoolId', { schoolId })
-            .andWhere('charge.studentUserId = :userId', { userId })
+            .where('charge.studentUserId = :userId', { userId })
             .andWhere('charge.status = :status', { status: 'PAID' })
             .andWhere('charge.paidAt IS NOT NULL')
             .select([
@@ -251,6 +235,8 @@ export class GetAdminStudentDetails {
                 'charge.description AS charge_description',
                 'charge.dueDate AS charge_due_date',
                 'charge.paidAt AS charge_paid_at',
+                'school.id AS school_id',
+                'school.name AS school_name',
                 'course.id AS course_id',
                 'course.name AS course_name',
                 'class.id AS class_id',
@@ -261,14 +247,14 @@ export class GetAdminStudentDetails {
         return rows.map((row: any) => this.mapChargeRow(row));
     }
 
-    private async findPaidChargesForDependent(schoolId: string, dependentId: string): Promise<PaidChargeItem[]> {
+    private async findPaidChargesForDependent(dependentId: string): Promise<PaidChargeItem[]> {
         const repo = AppDataSource.getRepository(SchoolFinancialChargeOrm);
         const rows = await repo
             .createQueryBuilder('charge')
+            .innerJoin('charge.school', 'school')
             .innerJoin('charge.course', 'course')
             .innerJoin('charge.courseClass', 'class')
-            .where('charge.schoolId = :schoolId', { schoolId })
-            .andWhere('charge.dependentId = :dependentId', { dependentId })
+            .where('charge.dependentId = :dependentId', { dependentId })
             .andWhere('charge.status = :status', { status: 'PAID' })
             .andWhere('charge.paidAt IS NOT NULL')
             .select([
@@ -279,6 +265,8 @@ export class GetAdminStudentDetails {
                 'charge.description AS charge_description',
                 'charge.dueDate AS charge_due_date',
                 'charge.paidAt AS charge_paid_at',
+                'school.id AS school_id',
+                'school.name AS school_name',
                 'course.id AS course_id',
                 'course.name AS course_name',
                 'class.id AS class_id',
@@ -292,6 +280,7 @@ export class GetAdminStudentDetails {
     private mapChargeRow(row: any): PaidChargeItem {
         return {
             id: row.charge_id,
+            school: { id: row.school_id, name: row.school_name ?? '' },
             amount: row.charge_amount_cents / 100,
             amountCents: row.charge_amount_cents,
             discount: row.charge_discount_cents ? row.charge_discount_cents / 100 : null,

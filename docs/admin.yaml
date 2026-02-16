@@ -1007,27 +1007,20 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-  /admin/schools/{schoolId}/students/{studentId}/courses:
+  /admin/students/{studentId}/courses:
     get:
       tags:
         - Admin
-      summary: Listar cursos do aluno (e dos dependentes)
+      summary: Listar cursos do aluno e dos dependentes (todas as escolas)
       description: |
-        Lista todos os cursos (matrículas ativas) do aluno pelo ID.
-        Se o aluno for titular (USER), retorna também os cursos de cada um dos seus dependentes
-        nessa escola, agrupados por dependente.
+        Lista todos os cursos (matrículas) do aluno pelo ID, em qualquer escola.
+        Se o aluno for titular (USER), retorna também os cursos de cada um dos seus dependentes,
+        agrupados por dependente. Cada item inclui a escola (id e name) para identificar a origem.
 
-        Esta rota é apenas de visualização para o painel administrativo.
+        Requer persona ADMIN.
       security:
         - bearerAuth: []
       parameters:
-        - in: path
-          name: schoolId
-          required: true
-          schema:
-            type: string
-            format: uuid
-          description: ID da escola
         - in: path
           name: studentId
           required: true
@@ -1037,7 +1030,7 @@ paths:
           description: ID do aluno (titular USER ou dependente)
       responses:
         '200':
-          description: Cursos do aluno (e dos dependentes quando titular).
+          description: Cursos do aluno (e dos dependentes quando titular), com escola em cada item.
           content:
             application/json:
               schema:
@@ -1055,33 +1048,24 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
-          description: Aluno não encontrado ou sem vínculo com a escola.
+          description: Aluno não encontrado.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-  /admin/schools/{schoolId}/students/{studentId}:
+  /admin/students/{studentId}:
     get:
       tags:
         - Admin
       summary: Obter detalhes do estudante por ID
       description: |
-        Retorna os detalhes do aluno pelo ID no contexto da escola:
-        dados do aluno (com studentType USER ou DEPENDENT), responsável (quando dependente),
-        matrículas ativas, cobranças pagas e array de dependentes com seus dados e matrículas
-        quando o aluno for titular (USER).
-
-        Esta rota é apenas de visualização para o painel administrativo.
+        Retorna os detalhes do aluno pelo ID: dados do aluno (studentType USER ou DEPENDENT),
+        responsável (quando dependente), matrículas e cobranças pagas em todas as escolas,
+        e array de dependentes com seus dados e matrículas quando o aluno for titular (USER).
+        Cada matrícula e cobrança inclui a escola (id e name).
       security:
         - bearerAuth: []
       parameters:
-        - in: path
-          name: schoolId
-          required: true
-          schema:
-            type: string
-            format: uuid
-          description: ID da escola
         - in: path
           name: studentId
           required: true
@@ -1109,7 +1093,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
-          description: Aluno não encontrado ou não vinculado à escola.
+          description: Aluno não encontrado.
           content:
             application/json:
               schema:
@@ -2431,9 +2415,56 @@ components:
       required:
         - students
         - pagination
+    AdminCourseEnrollmentItem:
+      type: object
+      description: Item de matrícula (curso/turma) com escola
+      properties:
+        id:
+          type: string
+          format: uuid
+        school:
+          type: object
+          description: Escola em que o curso está
+          properties:
+            id:
+              type: string
+              format: uuid
+            name:
+              type: string
+          required:
+            - id
+            - name
+        course:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            name:
+              type: string
+        class:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            label:
+              type: string
+        enrolledAt:
+          type: string
+          format: date-time
+        status:
+          type: string
+      required:
+        - id
+        - school
+        - course
+        - class
+        - enrolledAt
+        - status
     AdminSchoolStudentCoursesResponse:
       type: object
-      description: Cursos do aluno e dos dependentes (quando titular)
+      description: Cursos do aluno e dos dependentes (todas as escolas; cada item traz a escola)
       properties:
         student:
           type: object
@@ -2454,32 +2485,7 @@ components:
           type: array
           description: Matrículas (cursos/turmas) do próprio aluno
           items:
-            type: object
-            properties:
-              id:
-                type: string
-                format: uuid
-              course:
-                type: object
-                properties:
-                  id:
-                    type: string
-                    format: uuid
-                  name:
-                    type: string
-              class:
-                type: object
-                properties:
-                  id:
-                    type: string
-                    format: uuid
-                  label:
-                    type: string
-              enrolledAt:
-                type: string
-                format: date-time
-              status:
-                type: string
+            $ref: '#/components/schemas/AdminCourseEnrollmentItem'
         dependents:
           type: array
           description: Quando aluno é titular (USER), lista de dependentes com seus cursos
@@ -2494,32 +2500,7 @@ components:
               courses:
                 type: array
                 items:
-                  type: object
-                  properties:
-                    id:
-                      type: string
-                      format: uuid
-                    course:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                          format: uuid
-                        name:
-                          type: string
-                    class:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                          format: uuid
-                        label:
-                          type: string
-                    enrolledAt:
-                      type: string
-                      format: date-time
-                    status:
-                      type: string
+                  $ref: '#/components/schemas/AdminCourseEnrollmentItem'
       required:
         - student
         - courses
@@ -2576,14 +2557,19 @@ components:
               type: string
         enrollments:
           type: array
-          description: Matrículas do aluno na escola
+          description: Matrículas do aluno (todas as escolas; cada item traz a escola)
+          items:
+            $ref: '#/components/schemas/AdminCourseEnrollmentItem'
+        paidCharges:
+          type: array
+          description: Cobranças já pagas pelo aluno (todas as escolas; cada item traz a escola)
           items:
             type: object
             properties:
               id:
                 type: string
                 format: uuid
-              course:
+              school:
                 type: object
                 properties:
                   id:
@@ -2594,37 +2580,6 @@ components:
                 required:
                   - id
                   - name
-              class:
-                type: object
-                properties:
-                  id:
-                    type: string
-                    format: uuid
-                  label:
-                    type: string
-                required:
-                  - id
-                  - label
-              enrolledAt:
-                type: string
-                format: date-time
-              status:
-                type: string
-            required:
-              - id
-              - course
-              - class
-              - enrolledAt
-              - status
-        paidCharges:
-          type: array
-          description: Cobranças já pagas pelo aluno na escola
-          items:
-            type: object
-            properties:
-              id:
-                type: string
-                format: uuid
               amount:
                 type: number
               amountCents:
@@ -2650,6 +2605,7 @@ components:
                 format: date-time
               course:
                 type: object
+                description: Curso da cobrança
                 properties:
                   id:
                     type: string
@@ -2672,6 +2628,7 @@ components:
                   - label
             required:
               - id
+              - school
               - amount
               - amountCents
               - netAmount
@@ -2682,7 +2639,7 @@ components:
               - class
         dependents:
           type: array
-          description: Quando aluno é titular (USER), lista de dependentes com dados e matrículas na escola
+          description: Quando aluno é titular (USER), lista de dependentes com dados e matrículas (todas as escolas)
           items:
             type: object
             properties:
@@ -2703,33 +2660,9 @@ components:
                 nullable: true
               enrollments:
                 type: array
+                description: Matrículas do dependente (cada item traz a escola)
                 items:
-                  type: object
-                  properties:
-                    id:
-                      type: string
-                      format: uuid
-                    course:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                          format: uuid
-                        name:
-                          type: string
-                    class:
-                      type: object
-                      properties:
-                        id:
-                          type: string
-                          format: uuid
-                        label:
-                          type: string
-                    enrolledAt:
-                      type: string
-                      format: date-time
-                    status:
-                      type: string
+                  $ref: '#/components/schemas/AdminCourseEnrollmentItem'
             required:
               - id
               - fullName

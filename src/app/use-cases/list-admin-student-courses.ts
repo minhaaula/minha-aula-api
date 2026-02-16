@@ -5,12 +5,12 @@ import { EnrollmentOrm } from '../../infra/db/typeorm/entities/enrollment.orm';
 import { AppError, ErrorCode } from '../../shared/errors';
 
 export interface ListAdminStudentCoursesInput {
-    schoolId: string;
     studentId: string;
 }
 
 export type CourseEnrollmentItem = {
     id: string;
+    school: { id: string; name: string };
     course: { id: string; name: string };
     class: { id: string; label: string };
     enrolledAt: Date;
@@ -40,12 +40,10 @@ export class ListAdminStudentCourses {
     ) {}
 
     async exec(input: ListAdminStudentCoursesInput): Promise<ListAdminStudentCoursesOutput | null> {
-        const schoolId = input.schoolId.trim();
         const studentId = input.studentId.trim();
-
-        if (!schoolId || !studentId) {
+        if (!studentId) {
             throw AppError.fromCode(ErrorCode.INVALID_IDENTIFIERS, {
-                message: 'schoolId e studentId são obrigatórios'
+                message: 'studentId é obrigatório'
             });
         }
 
@@ -54,23 +52,17 @@ export class ListAdminStudentCourses {
         // Aluno é usuário (titular)?
         const user = await this.users.findById(studentId);
         if (user) {
-            const hasEnrollment = await this.checkUserEnrollmentInSchool(enrollmentRepo, schoolId, studentId);
-            if (!hasEnrollment) {
-                return null;
-            }
-            const courses = await this.findEnrollmentsForUser(enrollmentRepo, schoolId, studentId);
+            const courses = await this.findEnrollmentsForUser(enrollmentRepo, studentId);
             const dependentsList = await this.dependents.findByUserIds([studentId]);
             const dependents: DependentCoursesItem[] = [];
 
             for (const dep of dependentsList) {
-                const depCourses = await this.findEnrollmentsForDependent(enrollmentRepo, schoolId, dep.id);
-                if (depCourses.length > 0) {
-                    dependents.push({
-                        dependentId: dep.id,
-                        dependentName: dep.fullName,
-                        courses: depCourses
-                    });
-                }
+                const depCourses = await this.findEnrollmentsForDependent(enrollmentRepo, dep.id);
+                dependents.push({
+                    dependentId: dep.id,
+                    dependentName: dep.fullName,
+                    courses: depCourses
+                });
             }
 
             return {
@@ -90,12 +82,7 @@ export class ListAdminStudentCourses {
             return null;
         }
 
-        const hasEnrollment = await this.checkDependentEnrollmentInSchool(enrollmentRepo, schoolId, studentId);
-        if (!hasEnrollment) {
-            return null;
-        }
-
-        const courses = await this.findEnrollmentsForDependent(enrollmentRepo, schoolId, dependent.id);
+        const courses = await this.findEnrollmentsForDependent(enrollmentRepo, dependent.id);
 
         return {
             student: {
@@ -108,49 +95,16 @@ export class ListAdminStudentCourses {
         };
     }
 
-    private async checkUserEnrollmentInSchool(
-        repo: ReturnType<typeof AppDataSource.getRepository<EnrollmentOrm>>,
-        schoolId: string,
-        userId: string
-    ): Promise<boolean> {
-        const count = await repo
-            .createQueryBuilder('enrollment')
-            .innerJoin('enrollment.courseClass', 'class')
-            .innerJoin('class.course', 'course')
-            .where('course.schoolId = :schoolId', { schoolId })
-            .andWhere('enrollment.studentUserId = :userId', { userId })
-            .andWhere('enrollment.status = :status', { status: 'ACTIVE' })
-            .getCount();
-        return count > 0;
-    }
-
-    private async checkDependentEnrollmentInSchool(
-        repo: ReturnType<typeof AppDataSource.getRepository<EnrollmentOrm>>,
-        schoolId: string,
-        dependentId: string
-    ): Promise<boolean> {
-        const count = await repo
-            .createQueryBuilder('enrollment')
-            .innerJoin('enrollment.courseClass', 'class')
-            .innerJoin('class.course', 'course')
-            .where('course.schoolId = :schoolId', { schoolId })
-            .andWhere('enrollment.dependentId = :dependentId', { dependentId })
-            .andWhere('enrollment.status = :status', { status: 'ACTIVE' })
-            .getCount();
-        return count > 0;
-    }
-
     private async findEnrollmentsForUser(
         repo: ReturnType<typeof AppDataSource.getRepository<EnrollmentOrm>>,
-        schoolId: string,
         userId: string
     ): Promise<CourseEnrollmentItem[]> {
         const rows = await repo
             .createQueryBuilder('enrollment')
             .innerJoin('enrollment.courseClass', 'class')
             .innerJoin('class.course', 'course')
-            .where('course.schoolId = :schoolId', { schoolId })
-            .andWhere('enrollment.studentUserId = :userId', { userId })
+            .innerJoin('course.school', 'school')
+            .where('enrollment.studentUserId = :userId', { userId })
             .select([
                 'enrollment.id',
                 'enrollment.enrolledAt',
@@ -158,13 +112,16 @@ export class ListAdminStudentCourses {
                 'course.id',
                 'course.name',
                 'class.id',
-                'class.label'
+                'class.label',
+                'school.id',
+                'school.name'
             ])
             .orderBy('enrollment.enrolledAt', 'DESC')
             .getRawMany();
 
         return rows.map((row: any) => ({
             id: row.enrollment_id,
+            school: { id: row.school_id, name: row.school_name },
             course: { id: row.course_id, name: row.course_name },
             class: { id: row.class_id, label: row.class_label },
             enrolledAt: row.enrollment_enrolled_at,
@@ -174,15 +131,14 @@ export class ListAdminStudentCourses {
 
     private async findEnrollmentsForDependent(
         repo: ReturnType<typeof AppDataSource.getRepository<EnrollmentOrm>>,
-        schoolId: string,
         dependentId: string
     ): Promise<CourseEnrollmentItem[]> {
         const rows = await repo
             .createQueryBuilder('enrollment')
             .innerJoin('enrollment.courseClass', 'class')
             .innerJoin('class.course', 'course')
-            .where('course.schoolId = :schoolId', { schoolId })
-            .andWhere('enrollment.dependentId = :dependentId', { dependentId })
+            .innerJoin('course.school', 'school')
+            .where('enrollment.dependentId = :dependentId', { dependentId })
             .select([
                 'enrollment.id',
                 'enrollment.enrolledAt',
@@ -190,13 +146,16 @@ export class ListAdminStudentCourses {
                 'course.id',
                 'course.name',
                 'class.id',
-                'class.label'
+                'class.label',
+                'school.id',
+                'school.name'
             ])
             .orderBy('enrollment.enrolledAt', 'DESC')
             .getRawMany();
 
         return rows.map((row: any) => ({
             id: row.enrollment_id,
+            school: { id: row.school_id, name: row.school_name },
             course: { id: row.course_id, name: row.course_name },
             class: { id: row.class_id, label: row.class_label },
             enrolledAt: row.enrollment_enrolled_at,
