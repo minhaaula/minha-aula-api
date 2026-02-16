@@ -903,15 +903,69 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /admin/schools/{schoolId}/students/{studentId}/courses:
+    get:
+      tags:
+        - Admin
+      summary: Listar cursos do aluno (e dos dependentes)
+      description: |
+        Lista todos os cursos (matrículas ativas) do aluno pelo ID.
+        Se o aluno for titular (USER), retorna também os cursos de cada um dos seus dependentes
+        nessa escola, agrupados por dependente.
+
+        Esta rota é apenas de visualização para o painel administrativo.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: schoolId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID da escola
+        - in: path
+          name: studentId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID do aluno (titular USER ou dependente)
+      responses:
+        '200':
+          description: Cursos do aluno (e dos dependentes quando titular).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminSchoolStudentCoursesResponse'
+        '401':
+          description: Usuário não autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado (requer persona ADMIN).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Aluno não encontrado ou sem vínculo com a escola.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /admin/schools/{schoolId}/students/{studentId}:
     get:
       tags:
         - Admin
-      summary: Obter detalhes de um aluno na escola
+      summary: Obter detalhes do estudante por ID
       description: |
-        Retorna os detalhes de um aluno dentro do contexto de uma escola,
-        incluindo dados do aluno, responsável (quando dependente), matrículas
-        ativas e histórico de cobranças pagas.
+        Retorna os detalhes do aluno pelo ID no contexto da escola:
+        dados do aluno (com studentType USER ou DEPENDENT), responsável (quando dependente),
+        matrículas ativas, cobranças pagas e array de dependentes com seus dados e matrículas
+        quando o aluno for titular (USER).
 
         Esta rota é apenas de visualização para o painel administrativo.
       security:
@@ -2101,8 +2155,102 @@ components:
       required:
         - students
         - pagination
+    AdminSchoolStudentCoursesResponse:
+      type: object
+      description: Cursos do aluno e dos dependentes (quando titular)
+      properties:
+        student:
+          type: object
+          properties:
+            studentId:
+              type: string
+              format: uuid
+            studentName:
+              type: string
+            studentType:
+              type: string
+              enum: ['USER', 'DEPENDENT']
+          required:
+            - studentId
+            - studentName
+            - studentType
+        courses:
+          type: array
+          description: Matrículas (cursos/turmas) do próprio aluno
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+              course:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  name:
+                    type: string
+              class:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  label:
+                    type: string
+              enrolledAt:
+                type: string
+                format: date-time
+              status:
+                type: string
+        dependents:
+          type: array
+          description: Quando aluno é titular (USER), lista de dependentes com seus cursos
+          items:
+            type: object
+            properties:
+              dependentId:
+                type: string
+                format: uuid
+              dependentName:
+                type: string
+              courses:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                    course:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                        name:
+                          type: string
+                    class:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                        label:
+                          type: string
+                    enrolledAt:
+                      type: string
+                      format: date-time
+                    status:
+                      type: string
+      required:
+        - student
+        - courses
+        - dependents
     AdminSchoolStudentDetailsResponse:
       type: object
+      description: Detalhes do aluno por ID, com array de dependentes (dados + matrículas) quando titular
       properties:
         student:
           type: object
@@ -2122,12 +2270,17 @@ components:
               type: string
               format: date
               nullable: true
+            studentType:
+              type: string
+              enum: ['USER', 'DEPENDENT']
+              description: USER = titular, DEPENDENT = dependente
           required:
             - id
             - fullName
             - email
             - phone
             - cpf
+            - studentType
         responsible:
           type: object
           nullable: true
@@ -2251,10 +2404,66 @@ components:
               - paidAt
               - course
               - class
+        dependents:
+          type: array
+          description: Quando aluno é titular (USER), lista de dependentes com dados e matrículas na escola
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+              fullName:
+                type: string
+              cpf:
+                type: string
+                nullable: true
+              birthDate:
+                type: string
+                format: date
+                nullable: true
+              relationship:
+                type: string
+                nullable: true
+              enrollments:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                    course:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                        name:
+                          type: string
+                    class:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                        label:
+                          type: string
+                    enrolledAt:
+                      type: string
+                      format: date-time
+                    status:
+                      type: string
+            required:
+              - id
+              - fullName
+              - enrollments
       required:
         - student
+        - responsible
         - enrollments
         - paidCharges
+        - dependents
     AdminSchoolStudentPaymentsResponse:
       type: object
       properties:

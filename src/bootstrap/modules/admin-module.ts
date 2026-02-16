@@ -39,6 +39,8 @@ import { GetAdminSchoolFinancial } from '../../app/use-cases/get-admin-school-fi
 import { GetAdminSchoolBilling } from '../../app/use-cases/get-admin-school-billing';
 import { ListAdminSchoolInvoices } from '../../app/use-cases/list-admin-school-invoices';
 import { ListAdminPaymentHistory } from '../../app/use-cases/list-admin-payment-history';
+import { ListAdminStudentCourses } from '../../app/use-cases/list-admin-student-courses';
+import { GetAdminStudentDetails } from '../../app/use-cases/get-admin-student-details';
 import { SchoolWithdrawalRepositoryAdapter } from '../../infra/db/typeorm/school-withdrawal-repository.adapter';
 import { scheduleAllJobs } from '../../infra/messaging/bullmq/job-scheduler';
 import { startWorker } from '../../infra/messaging/bullmq/worker-manager';
@@ -126,6 +128,9 @@ export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext)
 
     const listAllStudents = new ListAllStudents(deps.enrollmentsRepo, deps.usersRepo);
 
+    const listAdminStudentCourses = new ListAdminStudentCourses(deps.usersRepo, deps.dependentsRepo);
+    const getAdminStudentDetails = new GetAdminStudentDetails(deps.usersRepo, deps.dependentsRepo);
+
     const withdrawalsRepo = new SchoolWithdrawalRepositoryAdapter();
     const getAdminSchoolFinancial = new GetAdminSchoolFinancial(
         deps.schoolsRepo,
@@ -178,6 +183,8 @@ export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext)
         resendSchoolAsaasAccount,
         listSchoolStudents,
         listAllStudents,
+        listAdminStudentCourses,
+        getAdminStudentDetails,
         getAdminSchoolFinancial,
         getAdminSchoolBilling,
         listAdminSchoolInvoices,

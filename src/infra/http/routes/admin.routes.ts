@@ -21,6 +21,8 @@ import type { CreateCategory } from '../../../app/use-cases/create-category';
 import type { UpdateCategory } from '../../../app/use-cases/update-category';
 import type { ListSchoolStudents } from '../../../app/use-cases/list-school-students';
 import type { ListAllStudents } from '../../../app/use-cases/list-all-students';
+import type { ListAdminStudentCourses } from '../../../app/use-cases/list-admin-student-courses';
+import type { GetAdminStudentDetails } from '../../../app/use-cases/get-admin-student-details';
 import type { GetAdminSchoolFinancial } from '../../../app/use-cases/get-admin-school-financial';
 import type { GetAdminSchoolBilling } from '../../../app/use-cases/get-admin-school-billing';
 import type { ListAdminSchoolInvoices } from '../../../app/use-cases/list-admin-school-invoices';
@@ -46,6 +48,8 @@ type AdminRouterDeps = {
     resendSchoolAsaasAccount?: ResendSchoolAsaasAccount;
     listSchoolStudents?: ListSchoolStudents;
     listAllStudents?: ListAllStudents;
+    listAdminStudentCourses?: ListAdminStudentCourses;
+    getAdminStudentDetails?: GetAdminStudentDetails;
     getAdminSchoolFinancial?: GetAdminSchoolFinancial;
     getAdminSchoolBilling?: GetAdminSchoolBilling;
     listAdminSchoolInvoices?: ListAdminSchoolInvoices;
@@ -85,6 +89,8 @@ export function adminRouter({
     resendSchoolAsaasAccount,
     listSchoolStudents,
     listAllStudents,
+    listAdminStudentCourses,
+    getAdminStudentDetails,
     getAdminSchoolFinancial,
     getAdminSchoolBilling,
     listAdminSchoolInvoices,
@@ -270,6 +276,38 @@ export function adminRouter({
                     hasMore: result.offset + result.limit < result.total
                 }
             });
+        }));
+    }
+
+    // Cursos do aluno (por id) e cursos dos dependentes (quando titular)
+    if (listAdminStudentCourses) {
+        router.get('/schools/:schoolId/students/:studentId/courses', requireAuth, requireAdminPersona, asyncHandler(async (req, res) => {
+            const paramsSchema = z.object({
+                schoolId: z.string().uuid(),
+                studentId: z.string().uuid()
+            });
+            const { schoolId, studentId } = paramsSchema.parse(req.params);
+            const result = await listAdminStudentCourses.exec({ schoolId, studentId });
+            if (result === null) {
+                return res.status(404).json({ error: 'Aluno não encontrado ou sem vínculo com a escola' });
+            }
+            res.json(result);
+        }));
+    }
+
+    // Detalhes do estudante por ID (dados do aluno + array de dependentes quando titular)
+    if (getAdminStudentDetails) {
+        router.get('/schools/:schoolId/students/:studentId', requireAuth, requireAdminPersona, asyncHandler(async (req, res) => {
+            const paramsSchema = z.object({
+                schoolId: z.string().uuid(),
+                studentId: z.string().uuid()
+            });
+            const { schoolId, studentId } = paramsSchema.parse(req.params);
+            const result = await getAdminStudentDetails.exec({ schoolId, studentId });
+            if (result === null) {
+                return res.status(404).json({ error: 'Aluno não encontrado ou sem vínculo com a escola' });
+            }
+            res.json(result);
         }));
     }
 
