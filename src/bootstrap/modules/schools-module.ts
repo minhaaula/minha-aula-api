@@ -124,7 +124,7 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         ? deps.paymentProvider as AsaasProviderPort
         : undefined;
     
-    const createSchool = new CreateSchool(deps.schoolsRepo, deps.passwordHasher, asaasProvider);
+    const createSchool = new CreateSchool(deps.schoolsRepo, deps.passwordHasher, asaasProvider, deps.usersRepo);
     const createCourse = new CreateCourse(deps.schoolsRepo, deps.coursesRepo);
     const createCourseClass = new CreateCourseClass(deps.coursesRepo, deps.classesRepo);
     const updateCourseClass = new UpdateCourseClass(deps.coursesRepo, deps.classesRepo);

@@ -23,6 +23,7 @@ import type { ListSchoolStudents } from '../../../app/use-cases/list-school-stud
 import type { ListAllStudents } from '../../../app/use-cases/list-all-students';
 import type { ListAdminStudentCourses } from '../../../app/use-cases/list-admin-student-courses';
 import type { GetAdminStudentDetails } from '../../../app/use-cases/get-admin-student-details';
+import type { ListSchoolCourses } from '../../../app/use-cases/list-school-courses';
 import type { GetAdminSchoolFinancial } from '../../../app/use-cases/get-admin-school-financial';
 import type { GetAdminSchoolBilling } from '../../../app/use-cases/get-admin-school-billing';
 import type { ListAdminSchoolInvoices } from '../../../app/use-cases/list-admin-school-invoices';
@@ -50,6 +51,7 @@ type AdminRouterDeps = {
     listAllStudents?: ListAllStudents;
     listAdminStudentCourses?: ListAdminStudentCourses;
     getAdminStudentDetails?: GetAdminStudentDetails;
+    listSchoolCourses?: ListSchoolCourses;
     getAdminSchoolFinancial?: GetAdminSchoolFinancial;
     getAdminSchoolBilling?: GetAdminSchoolBilling;
     listAdminSchoolInvoices?: ListAdminSchoolInvoices;
@@ -91,6 +93,7 @@ export function adminRouter({
     listAllStudents,
     listAdminStudentCourses,
     getAdminStudentDetails,
+    listSchoolCourses,
     getAdminSchoolFinancial,
     getAdminSchoolBilling,
     listAdminSchoolInvoices,
@@ -237,6 +240,15 @@ export function adminRouter({
         const payload = await getAdminSchoolPlans.exec({ schoolId });
         res.json(payload);
     }));
+
+    if (listSchoolCourses) {
+        router.get('/schools/:schoolId/courses', requireAuth, requireAdminPersona, asyncHandler(async (req, res) => {
+            const paramsSchema = z.object({ schoolId: z.string().uuid() });
+            const { schoolId } = paramsSchema.parse(req.params);
+            const courses = await listSchoolCourses.exec({ schoolId });
+            res.json({ courses });
+        }));
+    }
 
     if (listSchoolStudents) {
         const studentsQuerySchema = z.object({

@@ -12,6 +12,26 @@ export class AsaasProvider implements PaymentProviderPort {
         this.client = new AsaasClient(apiKey, baseUrl);
     }
 
+    /**
+     * Normaliza telefone para formato de celular brasileiro (11 dígitos: DDD + 9 + 8 dígitos).
+     * Asaas exige "número móvel válido".
+     * - 10 dígitos (DDD + 8): insere 9 após o DDD.
+     * - 11 dígitos com 3º dígito !== 9: trata como DDD + 8 + 1 sobrando e insere 9 (ex.: 12283727727 → 12928372727).
+     */
+    private normalizeToBrazilianMobile(raw: string): string {
+        const digits = raw.replace(/\D/g, '');
+        if (digits.length === 10) {
+            return digits.slice(0, 2) + '9' + digits.slice(2);
+        }
+        if (digits.length >= 11 && digits[2] !== '9') {
+            return digits.slice(0, 2) + '9' + digits.slice(2, 10);
+        }
+        if (digits.length >= 11) {
+            return digits.slice(0, 11);
+        }
+        return digits;
+    }
+
     authorize(input: CreateChargeInput): Promise<{ providerRef: string; }> {
         throw new Error('Method not implemented.');
     }
@@ -115,26 +135,36 @@ export class AsaasProvider implements PaymentProviderPort {
             }
         }
 
+        // Asaas exige mobilePhone em formato de celular válido (BR: DDD + 9 + 8 dígitos = 11 dígitos).
+        // Se vier só fixo (10 dígitos: DDD + 8), normalizamos inserindo 9 após o DDD.
+        const rawPhone = (input.mobilePhone ?? input.phone ?? '').toString().trim();
+        if (!rawPhone || rawPhone.replace(/\D/g, '').length < 10) {
+            throw new Error('SubAccount mobilePhone is required (min 10 digits)');
+        }
+        const mobilePhone = this.normalizeToBrazilianMobile(rawPhone);
+
         const payload: any = {
             name: input.name,
             email: input.email,
             cpfCnpj: input.cpfCnpj,
+            mobilePhone,
             incomeValue: input.incomeValue
         };
 
-        // Adicionar campos opcionais apenas se tiverem valor (conforme documentação do Asaas)
+        // Campos obrigatórios para criação de subconta (documentação Asaas AccountSaveRequestDTO)
+        if (input.address) payload.address = input.address;
+        if (input.addressNumber) payload.addressNumber = input.addressNumber;
+        if (input.province) payload.province = input.province;
+        if (input.postalCode) payload.postalCode = input.postalCode;
+
+        // Adicionar campos opcionais
         if (input.birthDate) payload.birthDate = input.birthDate;
         if (input.phone) payload.phone = input.phone;
-        if (input.mobilePhone) payload.mobilePhone = input.mobilePhone;
         if (input.companyType) payload.companyType = input.companyType;
         if (input.externalReference) payload.externalReference = input.externalReference;
         if (input.observations) payload.observations = input.observations;
         if (input.additionalEmails) payload.additionalEmails = input.additionalEmails;
-        if (input.address) payload.address = input.address;
-        if (input.addressNumber) payload.addressNumber = input.addressNumber;
         if (input.complement) payload.complement = input.complement;
-        if (input.province) payload.province = input.province;
-        if (input.postalCode) payload.postalCode = input.postalCode;
         if (input.municipalInscription) payload.municipalInscription = input.municipalInscription;
         if (input.stateInscription) payload.stateInscription = input.stateInscription;
         

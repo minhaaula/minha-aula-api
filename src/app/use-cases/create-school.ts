@@ -1,19 +1,48 @@
 import { SchoolRepository } from '../../ports/repositories/school.repo';
+import { UserRepository } from '../../ports/repositories/user.repo';
 import { School } from '../../domain/entities/school';
+import { User } from '../../domain/entities/user';
 import { Uuid } from '../../shared/uuid';
+import { Email } from '../../domain/value-objects/email';
 import { PostalAddress, type PostalAddressProps } from '../../domain/value-objects/postal-address';
 import { PasswordHasherPort } from '../../ports/providers/password-hasher.port';
 import { AsaasProviderPort } from '../../ports/providers/asaas-port';
+import { UserPersonaEnum } from '../../domain/value-objects/user-persona';
+import { AppError, ErrorCode } from '../../shared/errors';
 import type { CreateSchoolInput, CreateSchoolOutput } from '../types/school.types';
+
+/** Data de nascimento padrão para o usuário dono quando não é informada (User exige birthDate). */
+const DEFAULT_OWNER_BIRTH_DATE = new Date('1980-01-01');
 
 export class CreateSchool {
     constructor(
         private readonly schools: SchoolRepository,
         private readonly passwordHasher: PasswordHasherPort,
-        private readonly asaasProvider?: AsaasProviderPort
+        private readonly asaasProvider?: AsaasProviderPort,
+        private readonly users?: UserRepository
     ) {}
 
     async exec(input: CreateSchoolInput): Promise<CreateSchoolOutput> {
+        // Evitar escolas duplicadas: e-mail e CNPJ devem ser únicos.
+        const emailNorm = input.email.trim().toLowerCase();
+        if (this.schools.findByEmail) {
+            const existingByEmail = await this.schools.findByEmail(emailNorm);
+            if (existingByEmail) {
+                throw AppError.fromCode(ErrorCode.BUSINESS_RULE_VIOLATION, {
+                    message: 'Já existe uma escola cadastrada com este e-mail.'
+                });
+            }
+        }
+        const cnpjDigits = input.cnpj.replace(/\D/g, '');
+        if (cnpjDigits.length === 14 && this.schools.findByCnpj) {
+            const existingByCnpj = await this.schools.findByCnpj(cnpjDigits);
+            if (existingByCnpj) {
+                throw AppError.fromCode(ErrorCode.BUSINESS_RULE_VIOLATION, {
+                    message: 'Já existe uma escola cadastrada com este CNPJ.'
+                });
+            }
+        }
+
         const addresses = (input.addresses ?? []).map((address) => PostalAddress.create({
             street: address.street,
             number: address.number,
@@ -37,6 +66,43 @@ export class CreateSchool {
             ? await this.passwordHasher.hash(input.ownerPassword)
             : null;
 
+        let ownerUserId: string | null = input.ownerUserId ?? null;
+
+        // Se temos dados do dono mas não temos ownerUserId, criar usuário (persona SCHOOL) e vincular.
+        // Assim a escola passa a ter owner_user_id e o dono pode ser referenciado em outros fluxos.
+        if (!ownerUserId && ownerPasswordHash && input.ownerName && input.ownerCpf && input.ownerEmail && this.users && addresses.length > 0) {
+            const ownerEmailNorm = input.ownerEmail.trim().toLowerCase();
+            const ownerCpfDigits = input.ownerCpf.replace(/\D/g, '');
+            const existingByEmail = await this.users.findByEmail(ownerEmailNorm);
+            const existingByCpf = ownerCpfDigits.length === 11 ? await this.users.findByCpf(ownerCpfDigits) : null;
+            if (!existingByEmail && !existingByCpf) {
+                const ownerId = Uuid();
+                const mainAddress = addresses[0];
+                const ownerAddress = PostalAddress.create({
+                    street: mainAddress.street,
+                    number: mainAddress.number,
+                    complement: mainAddress.complement ?? null,
+                    district: mainAddress.district ?? null,
+                    city: mainAddress.city,
+                    state: mainAddress.state,
+                    zipCode: mainAddress.zipCode
+                });
+                const ownerUser = User.create({
+                    id: ownerId,
+                    fullName: input.ownerName.trim(),
+                    birthDate: DEFAULT_OWNER_BIRTH_DATE,
+                    email: Email.create(input.ownerEmail),
+                    phone: input.phone,
+                    cpf: ownerCpfDigits,
+                    address: ownerAddress,
+                    persona: UserPersonaEnum.SCHOOL,
+                    passwordHash: ownerPasswordHash
+                });
+                await this.users.save(ownerUser);
+                ownerUserId = ownerId;
+            }
+        }
+
         const school = School.create({
             id: Uuid(),
             name: input.name,
@@ -44,7 +110,7 @@ export class CreateSchool {
             email: input.email,
             phone: input.phone,
             cnpj: input.cnpj,
-            ownerUserId: input.ownerUserId ?? null,
+            ownerUserId,
             ownerName: input.ownerName ?? null,
             ownerCpf: input.ownerCpf ?? null,
             ownerEmail: input.ownerEmail ?? null,

@@ -30,6 +30,18 @@ export class SchoolRepositoryAdapter implements SchoolRepository {
         return row ? this.toDomain(row) : null;
     }
 
+    async findByCnpj(cnpj: string): Promise<School | null> {
+        const digits = cnpj.replace(/\D/g, '');
+        if (digits.length !== 14) return null;
+        const row = await this.repo.findOne({
+            where: { cnpj: digits },
+            relations: {
+                addresses: true
+            }
+        });
+        return row ? this.toDomain(row) : null;
+    }
+
     async findByOwnerUserId(userId: string): Promise<School | null> {
         const normalized = userId.trim();
         if (!normalized) return null;

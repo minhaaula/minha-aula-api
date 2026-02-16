@@ -389,6 +389,45 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /admin/schools/{schoolId}/courses:
+    get:
+      tags:
+        - Admin
+      summary: Listar cursos da escola
+      description: |
+        Retorna a listagem de cursos ativos da escola pelo ID da escola.
+        Inclui nome, descrição, categorias/subcategorias e data de criação.
+
+        Requer autenticação com persona ADMIN.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: schoolId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID da escola
+      responses:
+        '200':
+          description: Lista de cursos retornada com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminSchoolCoursesListResponse'
+        '401':
+          description: Usuário não autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado (requer persona ADMIN).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /admin/plans:
     get:
       tags:
@@ -1728,6 +1767,59 @@ components:
       required:
         - currentPlan
         - history
+    AdminSchoolCoursesListResponse:
+      type: object
+      properties:
+        courses:
+          type: array
+          description: Lista de cursos ativos da escola
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+              schoolId:
+                type: string
+                format: uuid
+              name:
+                type: string
+              description:
+                type: string
+                nullable: true
+              categories:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                    name:
+                      type: string
+                      nullable: true
+                    subcategories:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                            format: uuid
+                          name:
+                            type: string
+                            nullable: true
+              createdAt:
+                type: string
+                format: date-time
+            required:
+              - id
+              - schoolId
+              - name
+              - categories
+              - createdAt
+      required:
+        - courses
     AdminAllStudentsListResponse:
       type: object
       properties:

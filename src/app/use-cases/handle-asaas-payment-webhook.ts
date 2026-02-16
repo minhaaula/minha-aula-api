@@ -15,6 +15,8 @@ type AsaasPaymentPayload = {
     dueDate?: string | null;
     customer?: { id?: string | null } | null;
     value?: number | null;
+    /** Metadata enviada na criação da cobrança (schoolId, planId, financeId) — usada para validar que o invoice é da escola correta. */
+    metadata?: Record<string, string> | null;
 };
 
 type HandleAsaasPaymentWebhookInput = {
@@ -51,6 +53,8 @@ export class HandleAsaasPaymentWebhook {
             return { handled: false, reason: 'Missing payment payload' };
         }
 
+        // Busca do invoice: sempre por provider_ref (id do pagamento) primeiro; fallback por externalReference.
+        // O invoice guarda schoolId de forma única — toda a baixa e dados de subconta usam somente a escola do invoice.
         const providerRef = payment.id.trim();
         let invoice = await this.invoices.findByProviderRef(providerRef);
         if (!invoice && payment.externalReference) {
@@ -59,6 +63,12 @@ export class HandleAsaasPaymentWebhook {
 
         if (!invoice) {
             return { handled: false, reason: 'Invoice not found' };
+        }
+
+        // Garantir que o invoice é da escola do pagamento quando o Asaas envia metadata.schoolId (evita baixa na escola errada).
+        const paymentSchoolId = payment.metadata?.schoolId?.trim();
+        if (paymentSchoolId && invoice.schoolId !== paymentSchoolId) {
+            return { handled: false, reason: `Invoice schoolId (${invoice.schoolId}) does not match payment metadata schoolId (${paymentSchoolId})` };
         }
 
         const status = payment.status?.toUpperCase?.() ?? '';
@@ -182,6 +192,19 @@ export class HandleAsaasPaymentWebhook {
         return new Date();
     }
 
+    /** Garante que a conta está sendo salva na escola do invoice pago (evita gravar na escola errada). */
+    private assertSchoolIsFromInvoice(schoolId: string, invoiceSchoolId: string, context: string): void {
+        if (schoolId !== invoiceSchoolId) {
+            throw new Error(
+                `Account must be saved for the school from the paid invoice. Expected schoolId=${invoiceSchoolId} (invoice), got ${schoolId} (${context}).`
+            );
+        }
+    }
+
+    /**
+     * Garante subconta Asaas para a escola do invoice que foi pago e voltou no webhook.
+     * A escola é sempre a do invoice (invoice.schoolId) — nunca do payload do webhook — pois o invoice tem schoolId único e é a fonte da verdade para a baixa.
+     */
     private async ensureSchoolSubAccount(invoice: SchoolPlanInvoice, metadata: Record<string, string>): Promise<void> {
         if (!this.asaasProvider?.createSubAccount) return;
         const school = await this.schools.findById(invoice.schoolId);
@@ -253,6 +276,7 @@ export class HandleAsaasPaymentWebhook {
                 throw new Error(`Invalid accountId in metadata for school ${school.id}`);
             }
             const updatedFromMetadata = school.withAccountId(metadataAccountId);
+            this.assertSchoolIsFromInvoice(updatedFromMetadata.id, invoice.schoolId, 'metadata accountId');
             await this.schools.save(updatedFromMetadata);
             metadata.accountId = metadataAccountId;
             if (metadataStatus) {
@@ -283,27 +307,45 @@ export class HandleAsaasPaymentWebhook {
             throw new Error(`School ${school.id} address has invalid zip code`);
         }
 
-        const subAccount = await this.asaasProvider.createSubAccount({
-            name: school.name,
-            email: school.email,
-            cpfCnpj: school.cnpj,
-            phone: school.phone,
-            externalReference: school.id,
-            companyType,
-            incomeValue,
-            address: mainAddress.street,
-            addressNumber: mainAddress.number,
-            complement: mainAddress.complement ?? null,
-            province: mainAddress.district ?? null,
-            postalCode: mainAddress.zipCode
-        });
+        let subAccount: { id: string; apiKey?: string; walletId?: string; status?: string };
+        try {
+            subAccount = await this.asaasProvider.createSubAccount({
+                name: school.name,
+                email: school.email,
+                cpfCnpj: school.cnpj,
+                phone: school.phone,
+                externalReference: school.id,
+                companyType,
+                incomeValue,
+                address: mainAddress.street,
+                addressNumber: mainAddress.number,
+                complement: mainAddress.complement ?? null,
+                province: mainAddress.district ?? null,
+                postalCode: mainAddress.zipCode
+            });
+        } catch (createError: unknown) {
+            const message = createError instanceof Error ? createError.message : String(createError);
+            const isEmailAlreadyInUse = /já está em uso|already in use|email.*em uso/i.test(message);
+            if (isEmailAlreadyInUse && this.asaasProvider?.listAccountsByEmail) {
+                const existing = await this.asaasProvider.listAccountsByEmail(school.email);
+                const byExternalRef = existing.find((acc: { externalReference?: string | null }) => acc.externalReference === school.id);
+                const found = byExternalRef ?? existing[0];
+                if (found?.id) {
+                    subAccount = found;
+                } else {
+                    throw createError;
+                }
+            } else {
+                throw createError;
+            }
+        }
 
         // Validação: verificar se a resposta da API contém o ID da conta
         if (!subAccount.id || !subAccount.id.trim()) {
             throw new Error(`Asaas API returned invalid subaccount ID for school ${school.id}`);
         }
 
-        // Atualizar escola com accountId, accountApiKey e walletId
+        // Atualizar e salvar a conta na escola do invoice que foi pago (nunca em outra escola).
         let updatedSchool = school.withAccountId(subAccount.id);
         if (subAccount.apiKey) {
             updatedSchool = updatedSchool.withAccountApiKey(subAccount.apiKey);
@@ -311,6 +353,7 @@ export class HandleAsaasPaymentWebhook {
         if (subAccount.walletId) {
             updatedSchool = updatedSchool.withWalletId(subAccount.walletId);
         }
+        this.assertSchoolIsFromInvoice(updatedSchool.id, invoice.schoolId, 'subaccount');
         await this.schools.save(updatedSchool);
 
         metadata.accountId = subAccount.id;

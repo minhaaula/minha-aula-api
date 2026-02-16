@@ -162,7 +162,9 @@ export function asaasWebhookRouter(deps: AsaasWebhookDeps) {
             customer: typeof payload.payment.customer === 'string'
                 ? { id: payload.payment.customer }
                 : payload.payment.customer ?? null,
-            value: payload.payment.value ?? null
+            value: payload.payment.value ?? null,
+            // Metadata (schoolId, planId, financeId) enviada na criação — usada para validar escola do invoice
+            metadata: payload.payment.metadata && typeof payload.payment.metadata === 'object' ? payload.payment.metadata : null
         } : undefined;
 
         const result = await deps.handleAsaasPaymentWebhook.exec({

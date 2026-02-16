@@ -135,6 +135,8 @@ export interface AsaasProviderPort {
     authorizeCharge(input: { amount: Money; method: PaymentMethod; customerId: string; metadata?: Record<string, string>; }): Promise<{ providerRef: string }>;
     captureCharge(providerRef: string, amount?: Money): Promise<void>;
     createSubAccount?(input: CreateAsaasSubAccountInput): Promise<AsaasSubAccount>;
+    /** Lista subcontas por e-mail (útil quando a API retorna "email já está em uso"). */
+    listAccountsByEmail?(email: string): Promise<AsaasSubAccount[]>;
     createTransfer?(input: CreateAsaasTransferInput): Promise<AsaasTransferResponse>;
     getAccount?(accountId: string): Promise<AsaasAccountDetails>;
     getAccountBalance?(accountId: string): Promise<AsaasAccountBalance>;

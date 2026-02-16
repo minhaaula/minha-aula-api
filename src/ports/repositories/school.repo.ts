@@ -8,6 +8,7 @@ export type SchoolCityInfo = {
 export interface SchoolRepository {
     findById(id: string): Promise<School | null>;
     findByEmail?(email: string): Promise<School | null>;
+    findByCnpj?(cnpj: string): Promise<School | null>;
     findByOwnerUserId?(userId: string): Promise<School | null>;
     findByOwnerEmail?(email: string): Promise<School | null>;
     findAll(): Promise<School[]>;
