@@ -182,12 +182,16 @@ export function startWorker(): Worker {
             }
 
             if (job.name === 'ensure_school_asaas_account' || jobType === 'ensure_school_asaas_account') {
-                log.info('[OUTBOX] Iniciando processamento de ensure_school_asaas_account');
+                log.info('[OUTBOX] ensure_school_asaas_account: job recebido', {
+                    jobId: job.id,
+                    invoiceId: event.payload?.invoiceId,
+                    aggregateId: event.aggregateId
+                });
                 await ensureDb();
 
                 const invoiceId = typeof event.payload?.invoiceId === 'string' ? event.payload.invoiceId : undefined;
                 if (!invoiceId) {
-                    log.warn('[OUTBOX] ensure_school_asaas_account: payload.invoiceId ausente');
+                    log.warn('[OUTBOX] ensure_school_asaas_account: payload.invoiceId ausente, job ignorado');
                     return;
                 }
 
@@ -208,24 +212,122 @@ export function startWorker(): Worker {
                         ? (asaasProviderInstance as unknown as import('../../../ports/providers/asaas-port').AsaasProviderPort)
                         : undefined;
 
-                const ensureAccount = new EnsureSchoolAsaasAccount(invoicesRepo, schoolsRepo, asaasProvider);
-                const result = await ensureAccount.exec({ invoiceId });
+                if (!asaasProvider) {
+                    log.warn('[OUTBOX] ensure_school_asaas_account: Asaas não configurado (ASAAS_API_KEY ou provider sem createSubAccount/getOnboardingUrl)', { invoiceId });
+                }
 
-                if (result.onboardingPending) {
-                    const { schoolId, accountApiKey } = result.onboardingPending;
-                    await new Promise((r) => setTimeout(r, 15000));
-                    const onboardingUrl = asaasProvider?.getOnboardingUrl
-                        ? await asaasProvider.getOnboardingUrl(accountApiKey)
-                        : null;
-                    if (onboardingUrl) {
-                        const school = await schoolsRepo.findById(schoolId);
-                        if (school) {
-                            await schoolsRepo.save(school.withOnboardingUrl(onboardingUrl));
-                            log.info('[OUTBOX] ensure_school_asaas_account: onboarding URL salva', { schoolId });
+                try {
+                    const ensureAccount = new EnsureSchoolAsaasAccount(invoicesRepo, schoolsRepo, asaasProvider);
+                    const result = await ensureAccount.exec({ invoiceId });
+
+                    log.info('[OUTBOX] ensure_school_asaas_account: use case retornou', {
+                        invoiceId,
+                        done: result.done,
+                        hasOnboardingPending: Boolean(result.onboardingPending),
+                        schoolId: result.onboardingPending?.schoolId
+                    });
+
+                    if (result.onboardingPending) {
+                        const { schoolId, accountApiKey } = result.onboardingPending;
+                        log.info('[OUTBOX] ensure_school_asaas_account: aguardando 15s antes de buscar onboarding URL (conforme doc Asaas)', { schoolId });
+                        await new Promise((r) => setTimeout(r, 15000));
+
+                        let onboardingUrl: string | null = null;
+                        if (asaasProvider?.getOnboardingUrl) {
+                            try {
+                                onboardingUrl = await asaasProvider.getOnboardingUrl(accountApiKey);
+                                log.info('[OUTBOX] ensure_school_asaas_account: getOnboardingUrl retornou', {
+                                    schoolId,
+                                    hasUrl: Boolean(onboardingUrl),
+                                    urlLength: onboardingUrl?.length ?? 0
+                                });
+                            } catch (onbErr: unknown) {
+                                log.error('[OUTBOX] ensure_school_asaas_account: erro ao buscar onboarding URL', {
+                                    schoolId,
+                                    error: onbErr instanceof Error ? onbErr.message : String(onbErr)
+                                });
+                            }
+                        } else {
+                            log.warn('[OUTBOX] ensure_school_asaas_account: provider sem getOnboardingUrl, onboarding URL não será salva', { schoolId });
+                        }
+
+                        if (onboardingUrl) {
+                            const school = await schoolsRepo.findById(schoolId);
+                            if (school) {
+                                await schoolsRepo.save(school.withOnboardingUrl(onboardingUrl));
+                                log.info('[OUTBOX] ensure_school_asaas_account: onboarding URL salva na escola', { schoolId });
+                            } else {
+                                log.warn('[OUTBOX] ensure_school_asaas_account: escola não encontrada ao salvar onboarding URL', { schoolId });
+                            }
+                        } else {
+                            log.warn('[OUTBOX] ensure_school_asaas_account: onboarding URL vazia (job recorrente a cada 15 min tentará buscar)', { schoolId });
                         }
                     }
+                    log.info('[OUTBOX] ensure_school_asaas_account completed', { invoiceId });
+                } catch (err: unknown) {
+                    log.error('[OUTBOX] ensure_school_asaas_account: falha ao processar job', {
+                        invoiceId,
+                        error: err instanceof Error ? err.message : String(err),
+                        stack: err instanceof Error ? err.stack : undefined
+                    });
+                    throw err;
                 }
-                log.info('[OUTBOX] ensure_school_asaas_account completed', { invoiceId });
+                return;
+            }
+
+            if (job.name === 'fetch_school_onboarding_url' || jobType === 'fetch_school_onboarding_url') {
+                log.info('[OUTBOX] fetch_school_onboarding_url: iniciando (escolas com account_api_key e sem onboarding_url)');
+                await ensureDb();
+
+                const limit = typeof event.payload?.limit === 'number' ? Math.min(event.payload.limit, 100) : 50;
+                const { SchoolRepositoryAdapter } = await import('../../db/typeorm/school-repository.js');
+                const { AsaasProvider } = await import('../../providers/asaas/asaas-provider.js');
+                const schoolsRepo = new SchoolRepositoryAdapter();
+                const findMethod = schoolsRepo.findWithAccountKeyWithoutOnboardingUrl?.bind(schoolsRepo);
+                if (!findMethod) {
+                    log.warn('[OUTBOX] fetch_school_onboarding_url: repositório sem findWithAccountKeyWithoutOnboardingUrl');
+                    return;
+                }
+
+                const schools = await findMethod(limit);
+                if (schools.length === 0) {
+                    log.info('[OUTBOX] fetch_school_onboarding_url: nenhuma escola pendente de onboarding');
+                    return;
+                }
+
+                const asaasApiKey = process.env.ASAAS_API_KEY;
+                const asaasBaseUrl = process.env.ASAAS_BASE_URL;
+                const asaasProviderInstance = asaasApiKey ? new AsaasProvider({ apiKey: asaasApiKey, baseUrl: asaasBaseUrl }) : undefined;
+                const asaasProvider =
+                    asaasProviderInstance &&
+                    typeof asaasProviderInstance.getOnboardingUrl === 'function'
+                        ? (asaasProviderInstance as unknown as import('../../../ports/providers/asaas-port').AsaasProviderPort)
+                        : undefined;
+
+                if (!asaasProvider?.getOnboardingUrl) {
+                    log.warn('[OUTBOX] fetch_school_onboarding_url: Asaas não configurado ou sem getOnboardingUrl');
+                    return;
+                }
+
+                let saved = 0;
+                for (const school of schools) {
+                    if (!school.accountApiKey?.trim()) continue;
+                    let url: string | null = null;
+                    try {
+                        url = await asaasProvider.getOnboardingUrl(school.accountApiKey);
+                    } catch (err: unknown) {
+                        log.warn('[OUTBOX] fetch_school_onboarding_url: erro ao buscar URL', {
+                            schoolId: school.id,
+                            error: err instanceof Error ? err.message : String(err)
+                        });
+                    }
+                    if (url?.trim()) {
+                        await schoolsRepo.save(school.withOnboardingUrl(url));
+                        saved++;
+                        log.info('[OUTBOX] fetch_school_onboarding_url: onboarding URL salva', { schoolId: school.id });
+                    }
+                }
+                log.info('[OUTBOX] fetch_school_onboarding_url completed', { total: schools.length, saved });
                 return;
             }
 
@@ -288,11 +390,9 @@ export async function stopWorker(timeoutMs: number = 30000): Promise<void> {
     log.info('[Worker Manager] Iniciando shutdown gracioso do worker...');
     
     try {
-        // Verificar se há jobs ativos usando a Queue (apenas para log)
         const { Queue } = await import('bullmq');
         const queue = new Queue('outbox', { connection });
         const activeJobs = await queue.getActive();
-        
         if (activeJobs.length > 0) {
             log.info(`[Worker Manager] Aguardando ${activeJobs.length} job(s) ativo(s) terminarem...`, {
                 jobs: activeJobs.map((j: any) => ({ name: j.name, id: j.id }))

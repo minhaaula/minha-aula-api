@@ -56,7 +56,7 @@ function printUsage(): void {
 Opções:
   --url             URL alvo (default: ${defaultUrl()})
   --event           Evento enviado (default: PAYMENT_CONFIRMED)
-  --id              ID do pagamento (default: pay_<timestamp>)
+  --id              ID do pagamento = provider_ref da invoice (obrigatório para bater na invoice certa)
   --status          Status do pagamento (default: RECEIVED)
   --externalRef     Referência externa
   --paymentDate     Data de pagamento (ISO 8601)
@@ -65,8 +65,8 @@ Opções:
   --dueDate         Data de vencimento (YYYY-MM-DD)
   --value           Valor do pagamento (número)
 
-Exemplo:
-  npm run simulate:asaas-webhook -- --externalRef finance-123:2024-06-05`);
+Exemplo (use o provider_ref de uma invoice ISSUED):
+  npm run simulate:asaas-webhook -- --id pay_abc123xyz`);
 }
 
 function defaultUrl(): string {
@@ -105,6 +105,14 @@ async function main() {
         payment: paymentPayload
     };
 
+    const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+    };
+    const webhookToken = process.env.ASAAS_WEBHOOK_TOKEN?.trim();
+    if (webhookToken) {
+        headers['asaas-access-token'] = webhookToken;
+    }
+
     // eslint-disable-next-line no-console
     console.log(`POST ${url}`);
     // eslint-disable-next-line no-console
@@ -112,9 +120,7 @@ async function main() {
 
     const response = await fetch(url, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
+        headers,
         body: JSON.stringify(body)
     }).catch((error) => {
         throw new Error(`Failed to call webhook endpoint: ${String(error)}`);

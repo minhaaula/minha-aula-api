@@ -1,4 +1,5 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
+import { log } from '../../../shared/logger';
 import { AsaasCreateBoletoPayload, AsaasCreateChargeResponse } from './dto/boleto-charge';
 import { AsaasCreateSubAccountPayload, AsaasSubAccountResponse } from './dto/subaccount';
 import { AsaasCreateTransferPayload, AsaasCreateTransferResponse } from './dto/transfer';
@@ -281,8 +282,30 @@ export class AsaasClient {
     }
 
     /**
+     * Extrai a primeira URL de onboarding de um item (pode ser grupo com .documents[] ou item plano).
+     * Suporta camelCase (onboardingUrl) e snake_case (onboarding_url).
+     */
+    private static pickOnboardingUrl(item: Record<string, unknown>): string | null {
+        const url = (item?.onboardingUrl ?? item?.onboarding_url) as string | undefined;
+        if (url && typeof url === 'string' && url.trim()) return url;
+        const docs = item?.documents as Array<Record<string, unknown>> | undefined;
+        if (Array.isArray(docs)) {
+            for (const d of docs) {
+                const u = (d?.onboardingUrl ?? d?.onboarding_url) as string | undefined;
+                if (u && typeof u === 'string' && u.trim()) return u;
+            }
+        }
+        return null;
+    }
+
+    /**
      * Obtém a URL de onboarding (documentos pendentes) no contexto da subconta.
      * Deve ser chamado com a API key da subconta; Asaas recomenda aguardar ~15s após criar a subconta.
+     * Suporta resposta em formato de lista plana ou com grupos contendo .documents[].
+     *
+     * Contrato Asaas: GET /v3/myAccount/documents, header access_token (API key da subconta).
+     * Resposta: { data?: Array<{ id, type, status, onboardingUrl?, documents? }> }. onboardingUrl pode vir null
+     * (ex.: sandbox sem whitelabel liberado ou subconta fora do fluxo whitelabel).
      */
     async getMyAccountOnboardingUrl(accountApiKey: string): Promise<string | null> {
         if (!accountApiKey?.trim()) return null;
@@ -293,13 +316,31 @@ export class AsaasClient {
                 headers: {
                     access_token: accountApiKey,
                     'Content-Type': 'application/json'
-                }
+                },
+                timeout: 30_000 // 30s para não travar o job
             });
-            const { data } = await client.get<{ data?: Array<{ onboardingUrl?: string }> } | Array<{ onboardingUrl?: string }>>('/myAccount/documents');
-            const list = Array.isArray(data) ? data : (data as any)?.data ?? [];
-            const docWithUrl = list.find((doc: { onboardingUrl?: string }) => doc?.onboardingUrl);
-            return docWithUrl?.onboardingUrl ?? null;
-        } catch {
+            const { data } = await client.get<{ data?: unknown[] } | unknown[]>('/myAccount/documents');
+            const list = Array.isArray(data) ? data : (data as { data?: unknown[] })?.data ?? [];
+            const items = list as Record<string, unknown>[];
+            let url: string | null = null;
+            for (const item of items) {
+                url = AsaasClient.pickOnboardingUrl(item);
+                if (url) break;
+            }
+            return url;
+        } catch (err: unknown) {
+            if (axios.isAxiosError(err)) {
+                const status = err.response?.status;
+                const code = err.response?.data?.errors?.[0]?.code;
+                const description = err.response?.data?.errors?.[0]?.description;
+                log.warn('[Asaas] getMyAccountOnboardingUrl: falha na requisição', {
+                    status,
+                    code,
+                    description: description ?? err.message
+                });
+            } else {
+                log.warn('[Asaas] getMyAccountOnboardingUrl: erro', { error: err instanceof Error ? err.message : String(err) });
+            }
             return null;
         }
     }

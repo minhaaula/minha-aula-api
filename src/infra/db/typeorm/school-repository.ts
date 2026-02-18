@@ -76,6 +76,18 @@ export class SchoolRepositoryAdapter implements SchoolRepository {
         return rows.map((row) => this.toDomain(row));
     }
 
+    async findWithAccountKeyWithoutOnboardingUrl(limit = 50): Promise<School[]> {
+        const qb = this.repo
+            .createQueryBuilder('s')
+            .leftJoinAndSelect('s.addresses', 'addresses')
+            .where('s.accountApiKey IS NOT NULL')
+            .andWhere('(s.onboardingUrl IS NULL OR s.onboardingUrl = :empty)', { empty: '' })
+            .orderBy('s.createdAt', 'DESC')
+            .take(limit);
+        const rows = await qb.getMany();
+        return rows.map((row) => this.toDomain(row));
+    }
+
     async save(school: School): Promise<void> {
         const row = await this.toOrm(school);
         await this.repo.save(row);

@@ -5,6 +5,7 @@ import { SchoolPlanStatus } from '../../domain/entities/school-plan-finance';
 import { SchoolRepository } from '../../ports/repositories/school.repo';
 import { AsaasProviderPort } from '../../ports/providers/asaas-port';
 import { OutboxRepository } from '../../ports/repositories/outbox.repo';
+import { log } from '../../shared/logger';
 
 type AsaasPaymentPayload = {
     id: string;
@@ -129,6 +130,11 @@ export class HandleAsaasPaymentWebhook {
             metadata.processedEventIds = processedEventIds.slice(-50).join(',');
         }
         if (outcome.status === 'PAID' && this.outbox) {
+            log.info('[Webhook Asaas] Enfileirando job ensure_school_asaas_account (conta Asaas + onboarding)', {
+                invoiceId: invoice.id,
+                schoolId: invoice.schoolId,
+                providerRef
+            });
             await this.outbox.enqueue({
                 type: 'ensure_school_asaas_account',
                 payload: { invoiceId: invoice.id },

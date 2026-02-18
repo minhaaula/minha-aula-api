@@ -15,4 +15,6 @@ export interface SchoolRepository {
     save(school: School): Promise<void>;
     updateOwnerPassword?(schoolId: string, hashedPassword: string): Promise<void>;
     findCitiesBySchoolIds?(schoolIds: string[]): Promise<SchoolCityInfo[]>;
+    /** Escolas com conta Asaas (account_api_key) mas ainda sem URL de onboarding. */
+    findWithAccountKeyWithoutOnboardingUrl?(limit?: number): Promise<School[]>;
 }

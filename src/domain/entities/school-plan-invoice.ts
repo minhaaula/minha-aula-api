@@ -1,3 +1,5 @@
+import { validateInvoiceStatusTransition, getInvoiceTransitionError } from './state-transitions';
+
 export type SchoolPlanInvoiceStatus = 'ISSUED' | 'PAID' | 'FAILED' | 'CANCELLED';
 
 const VALID_STATUSES: SchoolPlanInvoiceStatus[] = ['ISSUED', 'PAID', 'FAILED', 'CANCELLED'];
@@ -161,7 +163,6 @@ export class SchoolPlanInvoice {
             }
             // Validar transição de estado
             if (changes.status !== this._status) {
-                const { validateInvoiceStatusTransition, getInvoiceTransitionError } = require('./state-transitions');
                 if (!validateInvoiceStatusTransition(this._status, changes.status)) {
                     throw new Error(getInvoiceTransitionError(this._status, changes.status));
                 }

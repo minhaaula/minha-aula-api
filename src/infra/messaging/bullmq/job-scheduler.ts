@@ -156,15 +156,73 @@ export async function schedulePaymentSyncJob(): Promise<void> {
 }
 
 /**
+ * Agenda o job que busca onboarding URL para escolas com account_api_key e sem onboarding_url (a cada 15 min).
+ */
+export async function scheduleFetchSchoolOnboardingJob(): Promise<void> {
+    if (!process.env.REDIS_HOST) {
+        log.warn('[Job Scheduler] REDIS_HOST não configurado. Job fetch_school_onboarding_url não será agendado.');
+        return;
+    }
+
+    try {
+        const queue = new Queue('outbox', { connection });
+        const desiredPattern = '*/2 * * * *';
+        const repeatableJobs = await queue.getRepeatableJobs();
+        const existingJob = repeatableJobs.find((job) => job.name === 'fetch_school_onboarding_url');
+
+        if (existingJob) {
+            if (existingJob.pattern === desiredPattern) {
+                log.info('[Job Scheduler] Job fetch_school_onboarding_url já está agendado (a cada 2 min)', {
+                    id: existingJob.id,
+                    pattern: existingJob.pattern,
+                    nextRun: existingJob.next
+                });
+                await queue.close();
+                return;
+            }
+            await queue.removeRepeatableByKey(existingJob.key);
+            log.info('[Job Scheduler] Job fetch_school_onboarding_url antigo removido (pattern anterior: ' + existingJob.pattern + '), reagendando com */2');
+        }
+
+        log.info('[Job Scheduler] Executando fetch_school_onboarding_url imediatamente...');
+        await queue.add(
+            'fetch_school_onboarding_url',
+            { type: 'fetch_school_onboarding_url', payload: { limit: 50 }, aggregateId: 'fetch-school-onboarding-immediate' },
+            { removeOnComplete: true, attempts: 3, backoff: { type: 'exponential', delay: 5000 } }
+        );
+
+        await queue.add(
+            'fetch_school_onboarding_url',
+            { type: 'fetch_school_onboarding_url', payload: { limit: 50 }, aggregateId: 'fetch-school-onboarding' },
+            {
+                repeat: { pattern: '*/2 * * * *', tz: 'America/Sao_Paulo' },
+                removeOnComplete: true,
+                attempts: 3,
+                backoff: { type: 'exponential', delay: 5000 }
+            }
+        );
+
+        log.info('[Job Scheduler] Job fetch_school_onboarding_url agendado para executar a cada 2 minutos');
+        await queue.close();
+    } catch (error) {
+        log.error('[Job Scheduler] Erro ao agendar job fetch_school_onboarding_url', {
+            error: error instanceof Error ? error.message : String(error)
+        });
+        throw error;
+    }
+}
+
+/**
  * Agenda todos os jobs repetitivos
  */
 export async function scheduleAllJobs(): Promise<void> {
     log.info('[Job Scheduler] Iniciando agendamento de jobs...');
-    
+
     await Promise.all([
         scheduleReceiptsJob(),
-        schedulePaymentSyncJob()
+        schedulePaymentSyncJob(),
+        scheduleFetchSchoolOnboardingJob()
     ]);
-    
+
     log.info('[Job Scheduler] Todos os jobs foram agendados com sucesso');
 }

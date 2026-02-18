@@ -87,7 +87,13 @@ export class ListSchoolsWithPlans {
         }
 
         const total = items.length;
-        const sorted = items.sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+        // Mais recentes primeiro; depois ordenação por nome para consistência
+        const sorted = items.sort((a, b) => {
+            const dateA = a.createdAt.getTime();
+            const dateB = b.createdAt.getTime();
+            if (dateB !== dateA) return dateB - dateA;
+            return a.name.localeCompare(b.name, 'pt-BR');
+        });
         const schools = sorted.slice(offset, offset + limit);
 
         return {

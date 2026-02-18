@@ -1,4 +1,5 @@
 import { SubscriptionPlan } from './subscription-plan';
+import { validateFinanceStatusTransition, getFinanceTransitionError } from './state-transitions';
 
 export type SchoolPlanStatus = 'TRIAL' | 'ACTIVE' | 'PAST_DUE' | 'SUSPENDED' | 'CANCELLED';
 
@@ -108,7 +109,6 @@ export class SchoolPlanFinance {
             }
             // Validar transição de estado
             if (changes.status !== this._status) {
-                const { validateFinanceStatusTransition, getFinanceTransitionError } = require('./state-transitions');
                 if (!validateFinanceStatusTransition(this._status, changes.status)) {
                     throw new Error(getFinanceTransitionError(this._status, changes.status));
                 }
