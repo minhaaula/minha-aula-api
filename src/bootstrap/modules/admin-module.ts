@@ -41,7 +41,7 @@ import { ListAdminSchoolInvoices } from '../../app/use-cases/list-admin-school-i
 import { ListAdminPaymentHistory } from '../../app/use-cases/list-admin-payment-history';
 import { ListAdminStudentCourses } from '../../app/use-cases/list-admin-student-courses';
 import { GetAdminStudentDetails } from '../../app/use-cases/get-admin-student-details';
-import { ListSchoolCourses } from '../../app/use-cases/list-school-courses';
+import { ListAdminSchoolCourses } from '../../app/use-cases/list-admin-school-courses';
 import { SchoolWithdrawalRepositoryAdapter } from '../../infra/db/typeorm/school-withdrawal-repository.adapter';
 import { scheduleAllJobs } from '../../infra/messaging/bullmq/job-scheduler';
 import { startWorker } from '../../infra/messaging/bullmq/worker-manager';
@@ -133,7 +133,12 @@ export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext)
 
     const listAdminStudentCourses = new ListAdminStudentCourses(deps.usersRepo, deps.dependentsRepo);
     const getAdminStudentDetails = new GetAdminStudentDetails(deps.usersRepo, deps.dependentsRepo);
-    const listSchoolCourses = new ListSchoolCourses(deps.coursesRepo, deps.categoriesRepo);
+    const listAdminSchoolCourses = new ListAdminSchoolCourses(
+        deps.coursesRepo,
+        deps.categoriesRepo,
+        deps.classesRepo,
+        deps.enrollmentsRepo
+    );
 
     const withdrawalsRepo = new SchoolWithdrawalRepositoryAdapter();
     const getAdminSchoolFinancial = new GetAdminSchoolFinancial(
@@ -189,7 +194,7 @@ export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext)
         listAllStudents,
         listAdminStudentCourses,
         getAdminStudentDetails,
-        listSchoolCourses,
+        listAdminSchoolCourses,
         getAdminSchoolFinancial,
         getAdminSchoolBilling,
         listAdminSchoolInvoices,
