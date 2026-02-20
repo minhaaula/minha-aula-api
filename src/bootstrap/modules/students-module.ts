@@ -31,6 +31,7 @@ import { UpdateDependent } from '../../app/use-cases/update-dependent';
 import { GetMyProfile } from '../../app/use-cases/get-my-profile';
 import { ListMyEnrollmentRequests } from '../../app/use-cases/list-my-enrollment-requests';
 import { UpdateStudentProfile } from '../../app/use-cases/update-student-profile';
+import { DeactivateStudentAccount } from '../../app/use-cases/deactivate-student-account';
 import { ListSchoolCourses } from '../../app/use-cases/list-school-courses';
 import { ListSchoolReviews } from '../../app/use-cases/list-school-reviews';
 import { CreateSchoolReview } from '../../app/use-cases/create-school-review';
@@ -77,6 +78,7 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
     const getStudentDirectoryEntry = new GetStudentDirectoryEntry(deps.usersRepo, deps.dependentsRepo);
     const getMyProfile = new GetMyProfile(deps.usersRepo, deps.dependentsRepo);
     const updateStudentProfile = new UpdateStudentProfile(deps.usersRepo);
+    const deactivateStudentAccount = new DeactivateStudentAccount(deps.usersRepo);
     const listMyCourses = new ListMyCourses(deps.enrollmentsRepo, deps.coursesRepo, deps.schoolsRepo);
     const listAllCourses = deps.categoriesRepo
         ? new ListAllCourses(deps.coursesRepo, deps.categoriesRepo)
@@ -160,6 +162,7 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
         getStudentDirectoryEntry,
         getMyProfile,
         updateStudentProfile,
+        deactivateStudentAccount,
         listMyCourses,
         listAllCourses,
         listStudentPayments,

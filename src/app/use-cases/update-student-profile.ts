@@ -80,7 +80,10 @@ export class UpdateStudentProfile {
             address,
             persona: user.persona,
             passwordHash: user.passwordHash,
-            createdAt: user.createdAt
+            createdAt: user.createdAt,
+            active: user.active,
+            deactivationReason: user.deactivationReason,
+            deactivationDescription: user.deactivationDescription
         });
 
         await this.users.save(updated);

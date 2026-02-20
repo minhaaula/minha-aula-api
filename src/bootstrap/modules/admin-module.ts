@@ -231,6 +231,9 @@ async function initializeJobsAndWorker(): Promise<void> {
 
     // Verificar se Redis está configurado
     if (!process.env.REDIS_HOST) {
+        console.warn('\n[Admin Module] ⚠️  REDIS_HOST não configurado no .env');
+        console.warn('[Admin Module] Jobs da fila (emails, push, etc.) NÃO serão processados.');
+        console.warn('[Admin Module] Para ativar: defina REDIS_HOST (e opcionalmente REDIS_PORT, REDIS_PASSWORD) no .env e reinicie a API.\n');
         log.warn('[Admin Module] REDIS_HOST não configurado. Jobs e worker não serão iniciados.');
         return;
     }
@@ -242,6 +245,7 @@ async function initializeJobsAndWorker(): Promise<void> {
 
         // Iniciar o worker para processar jobs da fila
         startWorker();
+        console.log('[Admin Module] ✓ Worker BullMQ ativo – jobs da fila (emails, push, etc.) serão processados neste processo.');
         log.info('[Admin Module] ✓ Worker iniciado com sucesso');
 
         // Nota: Os handlers de shutdown (SIGTERM/SIGINT) são configurados no main.ts

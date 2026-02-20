@@ -12,3 +12,8 @@ export const updateStudentProfileSchema = z.object({
     address: addressSchema.optional()
 });
 
+export const deactivateStudentAccountSchema = z.object({
+    motivo: z.string().trim().min(1, 'O motivo é obrigatório'),
+    descricao: z.string().trim()
+});
+

@@ -9,6 +9,7 @@ import { GetStudentPaymentDetails } from '../../../app/use-cases/get-student-pay
 import { GetMyProfile } from '../../../app/use-cases/get-my-profile';
 import { ListMyEnrollmentRequests } from '../../../app/use-cases/list-my-enrollment-requests';
 import { UpdateStudentProfile } from '../../../app/use-cases/update-student-profile';
+import { DeactivateStudentAccount } from '../../../app/use-cases/deactivate-student-account';
 import { ListSchoolCourses } from '../../../app/use-cases/list-school-courses';
 import { ListSchoolReviews } from '../../../app/use-cases/list-school-reviews';
 import { CreateSchoolReview } from '../../../app/use-cases/create-school-review';
@@ -24,7 +25,7 @@ import { requirePersona } from '../middlewares/require-persona';
 import { UserPersonaEnum } from '../../../domain/value-objects/user-persona';
 import { AuthenticatedRequest } from '../middlewares/auth';
 import { asyncHandler } from '../utils/async-handler';
-import { updateStudentProfileSchema } from '../validators/student-schemas';
+import { updateStudentProfileSchema, deactivateStudentAccountSchema } from '../validators/student-schemas';
 
 export function studentsRouter(deps: { 
     listStudents: ListStudents; 
@@ -36,6 +37,7 @@ export function studentsRouter(deps: {
     getMyProfile?: GetMyProfile;
     listMyEnrollmentRequests?: ListMyEnrollmentRequests;
     updateStudentProfile?: UpdateStudentProfile;
+    deactivateStudentAccount?: DeactivateStudentAccount;
     listSchoolCourses?: ListSchoolCourses;
     listSchoolReviews?: ListSchoolReviews;
     createSchoolReview?: CreateSchoolReview;
@@ -189,6 +191,23 @@ export function studentsRouter(deps: {
                 address: data.address
             });
 
+            res.json(result);
+        }));
+    }
+
+    if (deps.deactivateStudentAccount) {
+        r.post('/me/account/deactivate', requireStudent, asyncHandler(async (req, res) => {
+            const authReq = req as AuthenticatedRequest;
+            if (!authReq.user?.sub) {
+                return res.status(401).json({ error: 'Não autorizado', code: 'UNAUTHORIZED' });
+            }
+
+            const dto = deactivateStudentAccountSchema.parse(req.body ?? {});
+            const result = await deps.deactivateStudentAccount.exec({
+                userId: authReq.user.sub,
+                motivo: dto.motivo,
+                descricao: dto.descricao ?? ''
+            });
             res.json(result);
         }));
     }

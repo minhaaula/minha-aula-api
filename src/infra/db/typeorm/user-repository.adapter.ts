@@ -59,6 +59,14 @@ export class UserRepositoryAdapter implements UserRepository {
         await this.repo.update(userId, { passwordHash: hashedPassword });
     }
 
+    async deactivateAccount(userId: string, motivo: string, descricao: string): Promise<void> {
+        await this.repo.update(userId, {
+            active: 0,
+            deactivationReason: motivo.trim() || null,
+            deactivationDescription: descricao.trim() || null
+        });
+    }
+
     async countByPersona(persona: string): Promise<number> {
         const normalized = persona.trim();
         if (!normalized) return 0;
@@ -191,7 +199,10 @@ export class UserRepositoryAdapter implements UserRepository {
             address,
             persona: row.persona,
             passwordHash: row.passwordHash,
-            createdAt: row.createdAt
+            createdAt: row.createdAt,
+            active: row.active !== 0,
+            deactivationReason: row.deactivationReason ?? null,
+            deactivationDescription: row.deactivationDescription ?? null
         });
     }
 
@@ -214,6 +225,9 @@ export class UserRepositoryAdapter implements UserRepository {
         row.persona = user.persona;
         row.passwordHash = user.passwordHash;
         row.createdAt = user.createdAt;
+        row.active = user.active ? 1 : 0;
+        row.deactivationReason = user.deactivationReason ?? null;
+        row.deactivationDescription = user.deactivationDescription ?? null;
         return row;
     }
 }

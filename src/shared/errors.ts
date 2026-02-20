@@ -44,6 +44,8 @@ export enum ErrorCode {
     SCHOOL_CONTEXT_NOT_FOUND = 'SCHOOL_CONTEXT_NOT_FOUND',
     NOT_ALLOWED = 'NOT_ALLOWED',
     INVALID_CREDENTIALS = 'INVALID_CREDENTIALS',
+    ACCOUNT_DEACTIVATED = 'ACCOUNT_DEACTIVATED',
+    ACCOUNT_ALREADY_DEACTIVATED = 'ACCOUNT_ALREADY_DEACTIVATED',
     
     // Configuração (5000-5999)
     CONFIGURATION_ERROR = 'CONFIGURATION_ERROR',
@@ -109,6 +111,8 @@ export const ErrorMessages: Record<ErrorCode, string> = {
     [ErrorCode.SCHOOL_CONTEXT_NOT_FOUND]: 'Contexto de escola não encontrado para o usuário',
     [ErrorCode.NOT_ALLOWED]: 'Operação não permitida',
     [ErrorCode.INVALID_CREDENTIALS]: 'Credenciais inválidas',
+    [ErrorCode.ACCOUNT_DEACTIVATED]: 'Conta desativada',
+    [ErrorCode.ACCOUNT_ALREADY_DEACTIVATED]: 'Conta já está desativada',
     
     // Configuração
     [ErrorCode.CONFIGURATION_ERROR]: 'Erro de configuração',

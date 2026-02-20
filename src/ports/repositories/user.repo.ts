@@ -9,6 +9,8 @@ export interface UserRepository {
     findBySchoolId?(schoolId: string): Promise<User[]>;
     save(user: User): Promise<void>;
     updatePassword?(userId: string, hashedPassword: string): Promise<void>;
+    /** Desativa a conta do usuário (exclusão lógica). Apenas para persona STUDENT. */
+    deactivateAccount?(userId: string, motivo: string, descricao: string): Promise<void>;
     countByPersona?(persona: string): Promise<number>;
     /** Lista todos os usuários com persona STUDENT (inclui os sem matrícula). */
     findStudentsPaginatedForAdmin?(

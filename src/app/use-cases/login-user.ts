@@ -26,6 +26,10 @@ export class LoginUser {
 
         if (!user) throw AppError.fromCode(ErrorCode.INVALID_CREDENTIALS);
 
+        if (!user.active) {
+            throw AppError.fromCode(ErrorCode.ACCOUNT_DEACTIVATED);
+        }
+
         const valid = await this.hasher.compare(input.password, user.passwordHash);
         if (!valid) throw AppError.fromCode(ErrorCode.INVALID_CREDENTIALS);
 

@@ -13,7 +13,10 @@ export class User {
         public readonly address: PostalAddress,
         public readonly persona: UserPersona,
         private _passwordHash: string,
-        public readonly createdAt: Date
+        public readonly createdAt: Date,
+        public readonly active: boolean,
+        public readonly deactivationReason: string | null,
+        public readonly deactivationDescription: string | null
     ) {}
 
     static create(params: {
@@ -27,6 +30,9 @@ export class User {
         persona: string;
         passwordHash: string;
         createdAt?: Date;
+        active?: boolean;
+        deactivationReason?: string | null;
+        deactivationDescription?: string | null;
     }) {
         if (!(params.birthDate instanceof Date) || Number.isNaN(params.birthDate.getTime())) {
             throw new Error('Invalid birth date');
@@ -52,7 +58,10 @@ export class User {
             params.address,
             params.persona,
             params.passwordHash,
-            params.createdAt ?? new Date()
+            params.createdAt ?? new Date(),
+            params.active ?? true,
+            params.deactivationReason ?? null,
+            params.deactivationDescription ?? null
         );
     }
 
