@@ -124,7 +124,13 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         ? deps.paymentProvider as AsaasProviderPort
         : undefined;
     
-    const createSchool = new CreateSchool(deps.schoolsRepo, deps.passwordHasher, deps.usersRepo);
+    const createSchool = new CreateSchool(
+        deps.schoolsRepo,
+        deps.passwordHasher,
+        deps.usersRepo,
+        deps.outbox,
+        deps.frontendBaseUrl
+    );
     const createCourse = new CreateCourse(deps.schoolsRepo, deps.coursesRepo);
     const createCourseClass = new CreateCourseClass(deps.coursesRepo, deps.classesRepo);
     const updateCourseClass = new UpdateCourseClass(deps.coursesRepo, deps.classesRepo);
@@ -212,7 +218,16 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         deps.coursesRepo,
         deps.classesRepo
     );
-    const enrollStudent = new EnrollStudent(deps.coursesRepo, deps.classesRepo, deps.usersRepo, deps.dependentsRepo, deps.enrollmentsRepo);
+    const enrollStudent = new EnrollStudent(
+        deps.coursesRepo,
+        deps.classesRepo,
+        deps.usersRepo,
+        deps.dependentsRepo,
+        deps.enrollmentsRepo,
+        deps.schoolsRepo,
+        deps.outbox,
+        deps.frontendBaseUrl
+    );
     const listEnrollmentRequests = new ListEnrollmentRequests(deps.enrollmentRequestsRepo);
     const createEnrollmentRequest = new CreateEnrollmentRequest(
         deps.schoolsRepo,

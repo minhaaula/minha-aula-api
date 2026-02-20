@@ -6,6 +6,7 @@ import { Uuid } from '../../shared/uuid';
 import { Email } from '../../domain/value-objects/email';
 import { PostalAddress, type PostalAddressProps } from '../../domain/value-objects/postal-address';
 import { PasswordHasherPort } from '../../ports/providers/password-hasher.port';
+import { OutboxRepository } from '../../ports/repositories/outbox.repo';
 import { UserPersonaEnum } from '../../domain/value-objects/user-persona';
 import { AppError, ErrorCode } from '../../shared/errors';
 import type { CreateSchoolInput, CreateSchoolOutput } from '../types/school.types';
@@ -17,7 +18,9 @@ export class CreateSchool {
     constructor(
         private readonly schools: SchoolRepository,
         private readonly passwordHasher: PasswordHasherPort,
-        private readonly users?: UserRepository
+        private readonly users?: UserRepository,
+        private readonly outbox?: OutboxRepository,
+        private readonly frontendBaseUrl?: string
     ) {}
 
     async exec(input: CreateSchoolInput): Promise<CreateSchoolOutput> {
@@ -116,6 +119,24 @@ export class CreateSchool {
             incomeValue: input.incomeValue
         });
         await this.schools.save(school);
+
+        // Enfileira email de boas-vindas (processado pelo worker quando o módulo admin está ativo)
+        if (this.outbox) {
+            const to = school.ownerEmail ?? school.email;
+            this.outbox
+                .enqueue({
+                    type: 'send_welcome_school_email',
+                    aggregateId: school.id,
+                    payload: {
+                        to,
+                        schoolName: school.name,
+                        schoolEmail: school.email,
+                        ownerName: school.ownerName ?? undefined,
+                        loginUrl: this.frontendBaseUrl ? `${this.frontendBaseUrl}/login` : undefined
+                    }
+                })
+                .catch(() => {});
+        }
 
         // A subconta Asaas não é mais criada aqui. Ela é criada no webhook quando o primeiro
         // pagamento do plano é recebido (ensureSchoolSubAccount), usando sempre a escola do invoice pago.

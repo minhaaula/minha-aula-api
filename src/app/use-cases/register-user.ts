@@ -4,14 +4,17 @@ import { Email } from '../../domain/value-objects/email';
 import { User } from '../../domain/entities/user';
 import { Uuid } from '../../shared/uuid';
 import { PostalAddress } from '../../domain/value-objects/postal-address';
-import { UserPersona, assertUserPersona } from '../../domain/value-objects/user-persona';
+import { UserPersona, assertUserPersona, UserPersonaEnum } from '../../domain/value-objects/user-persona';
+import { OutboxRepository } from '../../ports/repositories/outbox.repo';
 import { AppError, ErrorCode } from '../../shared/errors';
 import type { RegisterUserInput, RegisterUserOutput } from '../types/auth.types';
 
 export class RegisterUser {
     constructor(
         private readonly users: UserRepository,
-        private readonly hasher: PasswordHasherPort
+        private readonly hasher: PasswordHasherPort,
+        private readonly outbox?: OutboxRepository,
+        private readonly frontendBaseUrl?: string
     ) {}
 
     async exec(input: RegisterUserInput): Promise<RegisterUserOutput> {
@@ -59,6 +62,22 @@ export class RegisterUser {
         });
 
         await this.users.save(user);
+
+        // Enfileira email de boas-vindas para aluno (processado pelo worker quando o módulo admin está ativo)
+        if (user.persona === UserPersonaEnum.STUDENT && this.outbox) {
+            this.outbox
+                .enqueue({
+                    type: 'send_welcome_student_email',
+                    aggregateId: user.id,
+                    payload: {
+                        to: user.email.value,
+                        userName: user.fullName,
+                        userEmail: user.email.value,
+                        loginUrl: this.frontendBaseUrl ? `${this.frontendBaseUrl}/login` : undefined
+                    }
+                })
+                .catch(() => {});
+        }
 
         return {
             userId: user.id,

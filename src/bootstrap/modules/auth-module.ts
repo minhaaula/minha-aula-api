@@ -14,6 +14,7 @@ import { ResetUserPassword } from '../../app/use-cases/reset-user-password';
 import { ValidatePasswordResetToken } from '../../app/use-cases/validate-password-reset-token';
 import { PasswordResetTokenRepositoryAdapter } from '../../infra/db/typeorm/password-reset-token-repository.adapter';
 import { EmailProviderPort } from '../../ports/providers/email-provider.port';
+import type { OutboxRepository } from '../../ports/repositories/outbox.repo';
 
 export type AuthModuleDeps = {
     usersRepo: UserRepositoryAdapter;
@@ -23,11 +24,17 @@ export type AuthModuleDeps = {
     activeModules?: readonly ModuleName[];
     schoolsRepo: SchoolRepositoryAdapter;
     emailProvider?: EmailProviderPort;
+    outbox?: OutboxRepository;
     frontendBaseUrl?: string;
 };
 
 export function buildAuthModule(deps: AuthModuleDeps, ctx: ModuleSetupContext): ModuleBuildResult {
-    const registerUser = new RegisterUser(deps.usersRepo, deps.passwordHasher);
+    const registerUser = new RegisterUser(
+        deps.usersRepo,
+        deps.passwordHasher,
+        deps.outbox,
+        deps.frontendBaseUrl
+    );
     const loginUser = new LoginUser(
         deps.usersRepo,
         deps.passwordHasher,

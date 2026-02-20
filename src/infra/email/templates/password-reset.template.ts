@@ -1,6 +1,6 @@
 import { EmailTemplate } from '../template-engine';
 
-const COMPANY_YEAR = '© 2025 Minha Aula Admin. Todos os direitos reservados.';
+const COMPANY_YEAR = '© 2025 Minha Aula. Todos os direitos reservados.';
 
 export interface PasswordResetTemplateData {
     resetUrl: string;

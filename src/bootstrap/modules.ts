@@ -304,6 +304,7 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
                     activeModules: selected,
                     schoolsRepo,
                     emailProvider,
+                    outbox,
                     frontendBaseUrl
                 }, ctx);
                 mergeModuleResult(serverDeps, docFiles, result);
@@ -375,10 +376,10 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
                     financialChargesRepo,
                     bankAccountsRepo,
                     emailProvider,
+                    outbox,
                     frontendBaseUrl,
                     storageProvider,
-                    notificationsRepo,
-                    outbox
+                    notificationsRepo
                 }, ctx);
                 mergeModuleResult(serverDeps, docFiles, result);
                 break;

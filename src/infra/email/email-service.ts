@@ -7,7 +7,10 @@ import {
     getPasswordResetTemplate,
     getWelcomeTemplate,
     getEmailConfirmationTemplate,
-    getPaymentNotificationTemplate
+    getPaymentNotificationTemplate,
+    getWelcomeSchoolTemplate,
+    getWelcomeStudentTemplate,
+    getEnrollmentConfirmationTemplate
 } from './templates';
 import type {
     PasswordResetTemplateData,
@@ -15,8 +18,14 @@ import type {
     EmailConfirmationTemplateData,
     PaymentNotificationTemplateData
 } from './templates';
+import type {
+    NotificationEmailPort,
+    WelcomeSchoolEmailData,
+    WelcomeStudentEmailData,
+    EnrollmentConfirmationEmailData
+} from '../../ports/providers/notification-email.port';
 
-export class EmailService {
+export class EmailService implements NotificationEmailPort {
     constructor(private readonly emailProvider: EmailProviderPort) {}
 
     /**
@@ -63,6 +72,60 @@ export class EmailService {
      */
     async sendPaymentNotificationEmail(data: PaymentNotificationTemplateData & { to: string }): Promise<void> {
         const template = getPaymentNotificationTemplate(data);
+        await this.emailProvider.sendEmail({
+            to: data.to,
+            subject: template.subject,
+            html: template.html,
+            text: template.text
+        });
+    }
+
+    /**
+     * Envia email de boas-vindas para escola (cadastro da escola)
+     */
+    async sendWelcomeSchoolEmail(data: WelcomeSchoolEmailData): Promise<void> {
+        const template = getWelcomeSchoolTemplate({
+            schoolName: data.schoolName,
+            schoolEmail: data.schoolEmail,
+            ownerName: data.ownerName,
+            loginUrl: data.loginUrl
+        });
+        await this.emailProvider.sendEmail({
+            to: data.to,
+            subject: template.subject,
+            html: template.html,
+            text: template.text
+        });
+    }
+
+    /**
+     * Envia email de boas-vindas para aluno (cadastro com persona STUDENT)
+     */
+    async sendWelcomeStudentEmail(data: WelcomeStudentEmailData): Promise<void> {
+        const template = getWelcomeStudentTemplate({
+            userName: data.userName,
+            userEmail: data.userEmail,
+            loginUrl: data.loginUrl
+        });
+        await this.emailProvider.sendEmail({
+            to: data.to,
+            subject: template.subject,
+            html: template.html,
+            text: template.text
+        });
+    }
+
+    /**
+     * Envia email de confirmação de matrícula (aluno matriculado em curso)
+     */
+    async sendEnrollmentConfirmationEmail(data: EnrollmentConfirmationEmailData): Promise<void> {
+        const template = getEnrollmentConfirmationTemplate({
+            studentName: data.studentName,
+            courseName: data.courseName,
+            schoolName: data.schoolName,
+            className: data.className,
+            loginUrl: data.loginUrl
+        });
         await this.emailProvider.sendEmail({
             to: data.to,
             subject: template.subject,

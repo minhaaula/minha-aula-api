@@ -1,4 +1,4 @@
-# 📧 Templates de Email - Minha Aula Admin
+# 📧 Templates de Email - Minha Aula
 
 Este diretório contém templates HTML e o serviço de envio de emails transacionais.
 
@@ -40,6 +40,22 @@ email/
 ### 5. Notificação de Boleto
 - **Variáveis:** `studentName`, `boletoUrl`, `digitableLine`, `amount`, `dueDate`, `description`, `type`, etc.
 - **Uso:** `getBoletoNotificationTemplate(data)` (sem método dedicado no EmailService; usar `sendCustomEmail` com o template).
+
+### 6. Boas-vindas Escola
+- **Variáveis:** `schoolName`, `schoolEmail`, `ownerName` (opcional), `loginUrl` (opcional)
+- **Uso:** `getWelcomeSchoolTemplate(data)` ou `emailService.sendWelcomeSchoolEmail({ to, ...data })`. O cadastro de escola (CreateSchool) **enfileira** um job `send_welcome_school_email`; o **worker** (módulo admin) processa e envia o email.
+
+### 7. Boas-vindas Aluno
+- **Variáveis:** `userName`, `userEmail` (opcional), `loginUrl` (opcional)
+- **Uso:** `getWelcomeStudentTemplate(data)` ou `emailService.sendWelcomeStudentEmail({ to, ...data })`. O cadastro de aluno (RegisterUser, persona STUDENT) **enfileira** um job `send_welcome_student_email`; o **worker** processa e envia.
+
+### 8. Confirmação de Matrícula
+- **Variáveis:** `studentName`, `courseName`, `schoolName`, `className` (opcional), `loginUrl` (opcional)
+- **Uso:** `getEnrollmentConfirmationTemplate(data)` ou `emailService.sendEnrollmentConfirmationEmail({ to, ...data })`. A matrícula (EnrollStudent) **enfileira** um job `send_enrollment_confirmation_email`; o **worker** processa e envia.
+
+## Fila de notificações (BullMQ)
+
+Os emails de boas-vindas e de confirmação de matrícula são **enfileirados** (outbox) por qualquer módulo (auth, schools). O **envio real** é feito apenas pelo **worker**, que é iniciado quando o **módulo admin** está ativo. Assim, o sistema inteiro pode publicar eventos na fila, mas só o processo que roda o admin (ou `npm run worker`) processa os jobs e envia os emails.
 
 ## 🚀 Uso com EmailService
 
@@ -84,7 +100,7 @@ await emailService.sendPaymentNotificationEmail({
 
 ## Providers suportados
 
-- **Twilio SendGrid:** `SENDGRID_API_KEY`, `SENDGRID_FROM_EMAIL`, `SENDGRID_FROM_NAME` (ex.: "Minha Aula Admin")
+- **Twilio SendGrid:** `SENDGRID_API_KEY`, `SENDGRID_FROM_EMAIL`, `SENDGRID_FROM_NAME` (ex.: "Minha Aula")
 - **Nodemailer:** `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_USER`, `EMAIL_PASS`, `EMAIL_FROM`
 
 ## Características dos templates
@@ -92,7 +108,7 @@ await emailService.sendPaymentNotificationEmail({
 - Responsivos e compatíveis com clientes de email
 - CSS inline para máxima compatibilidade
 - Layout em tabelas HTML (padrão para email)
-- Branding Minha Aula Admin (footer © 2025)
+- Branding Minha Aula (footer © 2025)
 
 ## Notas
 

@@ -331,6 +331,82 @@ export function startWorker(): Worker {
                 return;
             }
 
+            // ——— Notificações por email (processadas apenas quando o worker está ativo, ex.: módulo admin) ———
+            if (job.name === 'send_welcome_school_email' || jobType === 'send_welcome_school_email') {
+                const { createEmailProviderFromEnv } = await import('../../email/create-email-provider.js');
+                const { EmailService } = await import('../../email/email-service.js');
+                const provider = createEmailProviderFromEnv();
+                if (!provider) {
+                    log.warn('[OUTBOX] send_welcome_school_email: EmailProvider não configurado, job ignorado');
+                    return;
+                }
+                const p = event.payload as { to?: string; schoolName?: string; schoolEmail?: string; ownerName?: string; loginUrl?: string };
+                if (!p?.to || !p?.schoolName || !p?.schoolEmail) {
+                    log.warn('[OUTBOX] send_welcome_school_email: payload inválido', { hasTo: !!p?.to, hasSchoolName: !!p?.schoolName });
+                    return;
+                }
+                const emailService = new EmailService(provider);
+                await emailService.sendWelcomeSchoolEmail({
+                    to: p.to,
+                    schoolName: p.schoolName,
+                    schoolEmail: p.schoolEmail,
+                    ownerName: p.ownerName,
+                    loginUrl: p.loginUrl
+                });
+                log.info('[OUTBOX] send_welcome_school_email enviado', { to: p.to });
+                return;
+            }
+
+            if (job.name === 'send_welcome_student_email' || jobType === 'send_welcome_student_email') {
+                const { createEmailProviderFromEnv } = await import('../../email/create-email-provider.js');
+                const { EmailService } = await import('../../email/email-service.js');
+                const provider = createEmailProviderFromEnv();
+                if (!provider) {
+                    log.warn('[OUTBOX] send_welcome_student_email: EmailProvider não configurado, job ignorado');
+                    return;
+                }
+                const p = event.payload as { to?: string; userName?: string; userEmail?: string; loginUrl?: string };
+                if (!p?.to || !p?.userName) {
+                    log.warn('[OUTBOX] send_welcome_student_email: payload inválido', { hasTo: !!p?.to, hasUserName: !!p?.userName });
+                    return;
+                }
+                const emailService = new EmailService(provider);
+                await emailService.sendWelcomeStudentEmail({
+                    to: p.to,
+                    userName: p.userName,
+                    userEmail: p.userEmail,
+                    loginUrl: p.loginUrl
+                });
+                log.info('[OUTBOX] send_welcome_student_email enviado', { to: p.to });
+                return;
+            }
+
+            if (job.name === 'send_enrollment_confirmation_email' || jobType === 'send_enrollment_confirmation_email') {
+                const { createEmailProviderFromEnv } = await import('../../email/create-email-provider.js');
+                const { EmailService } = await import('../../email/email-service.js');
+                const provider = createEmailProviderFromEnv();
+                if (!provider) {
+                    log.warn('[OUTBOX] send_enrollment_confirmation_email: EmailProvider não configurado, job ignorado');
+                    return;
+                }
+                const p = event.payload as { to?: string; studentName?: string; courseName?: string; schoolName?: string; className?: string; loginUrl?: string };
+                if (!p?.to || !p?.studentName || !p?.courseName || !p?.schoolName) {
+                    log.warn('[OUTBOX] send_enrollment_confirmation_email: payload inválido', p);
+                    return;
+                }
+                const emailService = new EmailService(provider);
+                await emailService.sendEnrollmentConfirmationEmail({
+                    to: p.to,
+                    studentName: p.studentName,
+                    courseName: p.courseName,
+                    schoolName: p.schoolName,
+                    className: p.className,
+                    loginUrl: p.loginUrl
+                });
+                log.info('[OUTBOX] send_enrollment_confirmation_email enviado', { to: p.to });
+                return;
+            }
+
             // default: manter comportamento atual (log)
             log.warn('[OUTBOX] unhandled event', { name: job.name, payload: event.payload });
         },

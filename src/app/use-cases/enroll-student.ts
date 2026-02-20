@@ -1,8 +1,10 @@
 import { CourseRepository } from '../../ports/repositories/course.repo';
 import { CourseClassRepository } from '../../ports/repositories/course-class.repo';
+import { SchoolRepository } from '../../ports/repositories/school.repo';
 import { UserRepository } from '../../ports/repositories/user.repo';
 import { DependentRepository } from '../../ports/repositories/dependent.repo';
 import { EnrollmentRepository } from '../../ports/repositories/enrollment.repo';
+import { OutboxRepository } from '../../ports/repositories/outbox.repo';
 import { Enrollment } from '../../domain/entities/enrollment';
 import { Uuid } from '../../shared/uuid';
 import { equalUuid } from '../../shared/normalize-uuid';
@@ -15,7 +17,10 @@ export class EnrollStudent {
         private readonly classes: CourseClassRepository,
         private readonly users: UserRepository,
         private readonly dependents: DependentRepository,
-        private readonly enrollments: EnrollmentRepository
+        private readonly enrollments: EnrollmentRepository,
+        private readonly schools?: SchoolRepository,
+        private readonly outbox?: OutboxRepository,
+        private readonly frontendBaseUrl?: string
     ) {}
 
     async exec(input: EnrollStudentInput): Promise<EnrollStudentOutput> {
@@ -43,6 +48,31 @@ export class EnrollStudent {
         const enrollment = this.createEnrollment(courseClass.id, owner.id, dependentId, course.monthlyPriceCents);
 
         await this.enrollments.save(enrollment);
+
+        // Enfileira email de confirmação de matrícula (processado pelo worker quando o módulo admin está ativo)
+        if (this.outbox && this.schools) {
+            const school = await this.schools.findById(schoolId);
+            if (school) {
+                const studentName = dependentId
+                    ? ((await this.dependents.findById(dependentId))?.fullName ?? owner.fullName)
+                    : owner.fullName;
+                const to = owner.email.value;
+                this.outbox
+                    .enqueue({
+                        type: 'send_enrollment_confirmation_email',
+                        aggregateId: enrollment.id,
+                        payload: {
+                            to,
+                            studentName,
+                            courseName: course.name,
+                            schoolName: school.name,
+                            className: courseClass.label,
+                            loginUrl: this.frontendBaseUrl ? `${this.frontendBaseUrl}/login` : undefined
+                        }
+                    })
+                    .catch(() => {});
+            }
+        }
 
         return {
             id: enrollment.id,
