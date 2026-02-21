@@ -117,6 +117,7 @@ export type SchoolsRouterDeps = {
     listSchoolNotifications?: ListSchoolNotifications;
     sendClassPushNotification?: SendClassPushNotification;
     getSchoolPendingDocuments?: import('../../../app/use-cases/get-school-pending-documents').GetSchoolPendingDocuments;
+    uploadSchoolOnboardingDocument?: import('../../../app/use-cases/admin-upload-school-onboarding-document').AdminUploadSchoolOnboardingDocument;
 };
 
 export function schoolsRouter(deps: SchoolsRouterDeps) {
@@ -223,7 +224,8 @@ export function schoolsRouter(deps: SchoolsRouterDeps) {
 
     if (deps.getSchoolPendingDocuments) {
         router.use('/kyc', buildKycRoutes({
-            getSchoolPendingDocuments: deps.getSchoolPendingDocuments
+            getSchoolPendingDocuments: deps.getSchoolPendingDocuments,
+            uploadSchoolOnboardingDocument: deps.uploadSchoolOnboardingDocument
         }, guards));
     }
 

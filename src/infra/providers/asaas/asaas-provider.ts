@@ -1,7 +1,7 @@
 import { Money } from '../../../domain/value-objects/money';
 import { PaymentProviderPort, CreateChargeInput, CreatePixChargeInput } from '../../../ports/providers/payment-provider.port';
 import { AsaasClient } from './asaas-client';
-import { AsaasChargeResponse, AsaasSubAccount, CreateAsaasSubAccountInput, CreateAsaasTransferInput, AsaasTransferResponse, AsaasAccountDetails, AsaasAccountBalance, AsaasPaymentDetails, ListAsaasPaymentsParams, ListAsaasPaymentsResponse } from '../../../ports/providers/asaas-port';
+import { AsaasChargeResponse, AsaasSubAccount, CreateAsaasSubAccountInput, CreateAsaasTransferInput, AsaasTransferResponse, AsaasAccountDetails, AsaasAccountBalance, AsaasPaymentDetails, ListAsaasPaymentsParams, ListAsaasPaymentsResponse, AsaasPendingDocumentsResult, AsaasPendingDocumentGroup } from '../../../ports/providers/asaas-port';
 import { CreateBoletoChargeInput } from '../../../ports/providers/payment-provider.port';
 
 
@@ -272,6 +272,36 @@ export class AsaasProvider implements PaymentProviderPort {
     async getOnboardingUrl(accountApiKey: string): Promise<string | null> {
         if (!accountApiKey?.trim()) return null;
         return this.client.getMyAccountOnboardingUrl(accountApiKey);
+    }
+
+    async getPendingDocuments(accountApiKey: string): Promise<AsaasPendingDocumentsResult> {
+        if (!accountApiKey?.trim()) {
+            return { rejectReasons: null, data: [] };
+        }
+        try {
+            const raw = await this.client.getMyAccountDocuments(accountApiKey);
+            const data: AsaasPendingDocumentGroup[] = raw.data.map((item: Record<string, unknown>) => ({
+                id: String(item.id ?? ''),
+                status: String(item.status ?? ''),
+                type: String(item.type ?? ''),
+                title: String(item.title ?? ''),
+                description: String(item.description ?? ''),
+                onboardingUrl: typeof item.onboardingUrl === 'string' && item.onboardingUrl.trim() ? item.onboardingUrl : null,
+                onboardingUrlExpirationDate: typeof item.onboardingUrlExpirationDate === 'string' ? item.onboardingUrlExpirationDate : null,
+                responsible: item.responsible as AsaasPendingDocumentGroup['responsible'],
+                documents: Array.isArray(item.documents) ? item.documents.map((d: Record<string, unknown>) => ({ id: String(d.id ?? ''), status: String(d.status ?? '') })) : undefined
+            }));
+            return { rejectReasons: raw.rejectReasons, data };
+        } catch {
+            return { rejectReasons: null, data: [] };
+        }
+    }
+
+    async uploadDocument(accountApiKey: string, documentGroupId: string, fileBuffer: Buffer, mimeType: string, type: string): Promise<void> {
+        if (!accountApiKey?.trim()) throw new Error('accountApiKey is required');
+        if (!documentGroupId?.trim()) throw new Error('documentGroupId is required');
+        if (!type?.trim()) throw new Error('type is required');
+        await this.client.uploadMyAccountDocument(accountApiKey, documentGroupId, fileBuffer, mimeType, type);
     }
 
     private resolveDefaultWebhooks(fallbackEmail: string): CreateAsaasSubAccountInput['webhooks'] | undefined {

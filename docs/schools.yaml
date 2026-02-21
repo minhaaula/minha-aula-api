@@ -2886,3 +2886,78 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /schools/kyc/documents/{documentGroupId}/upload:
+    post:
+      tags:
+        - Schools
+      summary: Enviar documento de onboarding (KYC)
+      description: |
+        Envia um documento para um grupo pendente de KYC da escola no Asaas (envio manual).
+        Use quando o link de onboarding não estiver disponível ou quando o cliente preferir enviar pelo app.
+        O `documentGroupId` e o `type` vêm da lista retornada em GET /schools/kyc/documents.
+        A escola só pode enviar documentos da própria conta. Requer autenticação com persona SCHOOL.
+        Tipos aceitos: IDENTIFICATION, IDENTIFICATION_SELFIE, MINUTES_OF_ELECTION, SOCIAL_CONTRACT, OTHER.
+        Arquivos: PDF ou imagem (JPEG/PNG), até 10MB.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: documentGroupId
+          required: true
+          schema:
+            type: string
+          description: ID do grupo de documentos (retornado em GET /schools/kyc/documents)
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - documentFile
+                - type
+              properties:
+                documentFile:
+                  type: string
+                  format: binary
+                  description: Arquivo (PDF ou imagem JPEG/PNG)
+                type:
+                  type: string
+                  enum:
+                    - IDENTIFICATION
+                    - IDENTIFICATION_SELFIE
+                    - MINUTES_OF_ELECTION
+                    - SOCIAL_CONTRACT
+                    - OTHER
+                  description: Tipo do documento (deve coincidir com o tipo do grupo)
+      responses:
+        '200':
+          description: Documento enviado com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadOnboardingDocumentResponse'
+        '400':
+          description: Validação (arquivo ausente, type inválido, escola sem conta Asaas).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Não autorizado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Requer persona SCHOOL.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Escola não encontrada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'

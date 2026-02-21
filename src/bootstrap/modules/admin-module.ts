@@ -48,6 +48,8 @@ import { SchoolWithdrawalRepositoryAdapter } from '../../infra/db/typeorm/school
 import { ScheduleChargeDueReminders } from '../../app/use-cases/schedule-charge-due-reminders';
 import { AdminMarkInvoicePaid } from '../../app/use-cases/admin-mark-invoice-paid';
 import { AdminMarkChargePaid } from '../../app/use-cases/admin-mark-charge-paid';
+import { SyncSchoolOnboardingDocuments } from '../../app/use-cases/sync-school-onboarding-documents';
+import { AdminUploadSchoolOnboardingDocument } from '../../app/use-cases/admin-upload-school-onboarding-document';
 import { scheduleAllJobs } from '../../infra/messaging/bullmq/job-scheduler';
 import { startWorker } from '../../infra/messaging/bullmq/worker-manager';
 import { log } from '../../shared/logger';
@@ -172,6 +174,14 @@ export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext)
         : undefined;
     const adminMarkChargePaid = new AdminMarkChargePaid(deps.financialChargesRepo);
 
+    const syncSchoolOnboardingDocuments = deps.asaasProvider
+        ? new SyncSchoolOnboardingDocuments(deps.schoolsRepo, deps.asaasProvider)
+        : undefined;
+
+    const adminUploadSchoolOnboardingDocument = deps.asaasProvider
+        ? new AdminUploadSchoolOnboardingDocument(deps.schoolsRepo, deps.asaasProvider)
+        : undefined;
+
     const scheduleChargeDueReminders = new ScheduleChargeDueReminders(
         deps.financialChargesRepo,
         deps.planInvoicesRepo,
@@ -223,6 +233,8 @@ export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext)
         listAdminPaymentHistory,
         adminMarkInvoicePaid,
         adminMarkChargePaid,
+        syncSchoolOnboardingDocuments,
+        adminUploadSchoolOnboardingDocument,
         scheduleChargeDueReminders,
         authMiddleware: ctx.authMiddleware
     });
