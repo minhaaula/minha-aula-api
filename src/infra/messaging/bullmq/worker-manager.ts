@@ -425,6 +425,94 @@ export function startWorker(): Worker {
                 return;
             }
 
+            if (job.name === 'schedule_charge_due_reminders' || jobType === 'schedule_charge_due_reminders') {
+                log.info('[OUTBOX] Processando job: schedule_charge_due_reminders');
+                await ensureDb();
+                try {
+                    const { ScheduleChargeDueReminders } = await import('../../../app/use-cases/schedule-charge-due-reminders.js');
+                    const { SchoolFinancialChargeRepositoryAdapter } = await import('../../db/typeorm/school-financial-charge-repository.adapter.js');
+                    const { SchoolPlanInvoiceRepositoryAdapter } = await import('../../db/typeorm/school-plan-invoice-repository.adapter.js');
+                    const { ChargeDueReminderRepositoryAdapter } = await import('../../db/typeorm/charge-due-reminder-repository.adapter.js');
+                    const { OutboxProducer } = await import('./outbox-producer.js');
+                    const { UserRepositoryAdapter } = await import('../../db/typeorm/user-repository.adapter.js');
+                    const { SchoolRepositoryAdapter } = await import('../../db/typeorm/school-repository.js');
+                    const { CourseRepositoryAdapter } = await import('../../db/typeorm/course-repository.js');
+
+                    const chargeRepo = new SchoolFinancialChargeRepositoryAdapter();
+                    const invoiceRepo = new SchoolPlanInvoiceRepositoryAdapter();
+                    const reminderRepo = new ChargeDueReminderRepositoryAdapter();
+                    const outbox = new OutboxProducer();
+                    const userRepo = new UserRepositoryAdapter();
+                    const schoolRepo = new SchoolRepositoryAdapter();
+                    const courseRepo = new CourseRepositoryAdapter();
+
+                    const useCase = new ScheduleChargeDueReminders(
+                        chargeRepo,
+                        invoiceRepo,
+                        reminderRepo,
+                        outbox,
+                        userRepo,
+                        schoolRepo,
+                        courseRepo
+                    );
+                    const result = await useCase.exec(undefined);
+                    log.info('[OUTBOX] schedule_charge_due_reminders concluído', result);
+                } catch (err) {
+                    log.error('[OUTBOX] schedule_charge_due_reminders falhou', { error: err instanceof Error ? err.message : String(err) });
+                    throw err;
+                }
+                return;
+            }
+
+            if (job.name === 'send_charge_due_reminder_email' || jobType === 'send_charge_due_reminder_email') {
+                log.info('[OUTBOX] Processando job de email: send_charge_due_reminder_email');
+                try {
+                    const { createEmailProviderFromEnv } = await import('../../email/create-email-provider.js');
+                    const { EmailService } = await import('../../email/email-service.js');
+                    const { getChargeDueReminderTemplate } = await import('../../email/templates/charge-due-reminder.template.js');
+                    const provider = createEmailProviderFromEnv();
+                    if (!provider) {
+                        log.warn('[OUTBOX] send_charge_due_reminder_email: EmailProvider não configurado, job ignorado');
+                        return;
+                    }
+                    const p = event.payload as {
+                        to?: string;
+                        recipientName?: string;
+                        description?: string;
+                        amount?: string;
+                        dueDate?: string;
+                        type?: 'tuition' | 'enrollment' | 'plan';
+                        courseName?: string;
+                        boletoUrl?: string;
+                    };
+                    if (!p?.to || !p?.description || !p?.amount || !p?.dueDate || !p?.type) {
+                        log.warn('[OUTBOX] send_charge_due_reminder_email: payload inválido', { hasTo: !!p?.to, hasDescription: !!p?.description });
+                        return;
+                    }
+                    const template = getChargeDueReminderTemplate({
+                        recipientName: p.recipientName ?? '',
+                        description: p.description,
+                        amount: p.amount,
+                        dueDate: p.dueDate,
+                        type: p.type,
+                        courseName: p.courseName,
+                        boletoUrl: p.boletoUrl ?? null
+                    });
+                    const emailService = new EmailService(provider);
+                    await emailService.sendCustomEmail({
+                        to: p.to,
+                        subject: template.subject,
+                        html: template.html,
+                        text: template.text
+                    });
+                    log.info('[OUTBOX] send_charge_due_reminder_email enviado', { to: p.to });
+                } catch (err) {
+                    log.error('[OUTBOX] send_charge_due_reminder_email falhou', { error: err instanceof Error ? err.message : String(err) });
+                    throw err;
+                }
+                return;
+            }
+
             // default: manter comportamento atual (log)
             log.warn('[OUTBOX] unhandled event', { name: job.name, payload: event.payload });
         },

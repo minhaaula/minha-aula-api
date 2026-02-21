@@ -212,6 +212,69 @@ export async function scheduleFetchSchoolOnboardingJob(): Promise<void> {
     }
 }
 
+const CHARGE_DUE_REMINDER_JOB_NAME = 'schedule_charge_due_reminders';
+
+/**
+ * Agenda o job de lembretes de vencimento (cobranças que vencem em até 10 dias).
+ * Enfileira emails na fila; roda a cada 6 horas.
+ */
+export async function scheduleChargeDueRemindersJob(): Promise<void> {
+    if (!process.env.REDIS_HOST) {
+        log.warn('[Job Scheduler] REDIS_HOST não configurado. Job schedule_charge_due_reminders não será agendado.');
+        return;
+    }
+
+    try {
+        const queue = new Queue('outbox', { connection });
+        const repeatableJobs = await queue.getRepeatableJobs();
+        const existingJob = repeatableJobs.find((job) => job.name === CHARGE_DUE_REMINDER_JOB_NAME);
+
+        if (existingJob) {
+            log.info('[Job Scheduler] Job schedule_charge_due_reminders já está agendado', {
+                id: existingJob.id,
+                pattern: existingJob.pattern,
+                nextRun: existingJob.next
+            });
+            await queue.close();
+            return;
+        }
+
+        log.info('[Job Scheduler] Executando schedule_charge_due_reminders imediatamente...');
+        await queue.add(
+            CHARGE_DUE_REMINDER_JOB_NAME,
+            {
+                type: CHARGE_DUE_REMINDER_JOB_NAME,
+                payload: {},
+                aggregateId: 'charge-due-reminders-scheduler-immediate'
+            },
+            { removeOnComplete: true, attempts: 3, backoff: { type: 'exponential', delay: 5000 } }
+        );
+
+        await queue.add(
+            CHARGE_DUE_REMINDER_JOB_NAME,
+            {
+                type: CHARGE_DUE_REMINDER_JOB_NAME,
+                payload: {},
+                aggregateId: 'charge-due-reminders-scheduler'
+            },
+            {
+                repeat: { pattern: '0 */6 * * *', tz: 'America/Sao_Paulo' },
+                removeOnComplete: true,
+                attempts: 3,
+                backoff: { type: 'exponential', delay: 5000 }
+            }
+        );
+
+        log.info('[Job Scheduler] Job schedule_charge_due_reminders agendado para executar a cada 6 horas');
+        await queue.close();
+    } catch (error) {
+        log.error('[Job Scheduler] Erro ao agendar job schedule_charge_due_reminders', {
+            error: error instanceof Error ? error.message : String(error)
+        });
+        throw error;
+    }
+}
+
 /**
  * Agenda todos os jobs repetitivos
  */
@@ -221,7 +284,8 @@ export async function scheduleAllJobs(): Promise<void> {
     await Promise.all([
         scheduleReceiptsJob(),
         schedulePaymentSyncJob(),
-        scheduleFetchSchoolOnboardingJob()
+        scheduleFetchSchoolOnboardingJob(),
+        scheduleChargeDueRemindersJob()
     ]);
 
     log.info('[Job Scheduler] Todos os jobs foram agendados com sucesso');

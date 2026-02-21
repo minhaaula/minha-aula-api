@@ -29,6 +29,9 @@ import type { GetAdminSchoolFinancial } from '../../../app/use-cases/get-admin-s
 import type { GetAdminSchoolBilling } from '../../../app/use-cases/get-admin-school-billing';
 import type { ListAdminSchoolInvoices } from '../../../app/use-cases/list-admin-school-invoices';
 import type { ListAdminPaymentHistory } from '../../../app/use-cases/list-admin-payment-history';
+import type { ScheduleChargeDueReminders } from '../../../app/use-cases/schedule-charge-due-reminders';
+import type { AdminMarkInvoicePaid } from '../../../app/use-cases/admin-mark-invoice-paid';
+import type { AdminMarkChargePaid } from '../../../app/use-cases/admin-mark-charge-paid';
 
 type AdminRouterDeps = {
     getAdminStatus: GetAdminStatus;
@@ -57,6 +60,9 @@ type AdminRouterDeps = {
     getAdminSchoolBilling?: GetAdminSchoolBilling;
     listAdminSchoolInvoices?: ListAdminSchoolInvoices;
     listAdminPaymentHistory?: ListAdminPaymentHistory;
+    adminMarkInvoicePaid?: AdminMarkInvoicePaid;
+    adminMarkChargePaid?: AdminMarkChargePaid;
+    scheduleChargeDueReminders?: ScheduleChargeDueReminders;
     authMiddleware?: RequestHandler;
 };
 
@@ -99,6 +105,9 @@ export function adminRouter({
     getAdminSchoolBilling,
     listAdminSchoolInvoices,
     listAdminPaymentHistory,
+    adminMarkInvoicePaid,
+    adminMarkChargePaid,
+    scheduleChargeDueReminders,
     authMiddleware
 }: AdminRouterDeps) {
     const router = Router();
@@ -404,6 +413,46 @@ export function adminRouter({
         }));
     }
 
+    if (scheduleChargeDueReminders) {
+        router.post('/charge-due-reminders/trigger', requireAuth, requireAdminPersona, asyncHandler(async (_req, res) => {
+            const result = await scheduleChargeDueReminders.exec(undefined);
+            res.json({
+                message: 'Job de lembretes de cobrança disparado. Emails enfileirados.',
+                chargesEnqueued: result.chargesEnqueued,
+                invoicesEnqueued: result.invoicesEnqueued,
+                errors: result.errors
+            });
+        }));
+    }
+
+    if (adminMarkInvoicePaid) {
+        const markInvoicePaidBodySchema = z.object({
+            paidAt: z.string().datetime().optional()
+        });
+        router.post('/invoices/:invoiceId/mark-paid', requireAuth, requireAdminPersona, asyncHandler(async (req, res) => {
+            const paramsSchema = z.object({ invoiceId: z.string().uuid() });
+            const { invoiceId } = paramsSchema.parse(req.params);
+            const body = markInvoicePaidBodySchema.parse(req.body ?? {});
+            const paidAt = body.paidAt ? new Date(body.paidAt) : undefined;
+            const result = await adminMarkInvoicePaid.exec({ invoiceId, paidAt });
+            res.json(result);
+        }));
+    }
+
+    if (adminMarkChargePaid) {
+        const markChargePaidBodySchema = z.object({
+            paidAt: z.string().datetime().optional()
+        });
+        router.post('/charges/:chargeId/mark-paid', requireAuth, requireAdminPersona, asyncHandler(async (req, res) => {
+            const paramsSchema = z.object({ chargeId: z.string().uuid() });
+            const { chargeId } = paramsSchema.parse(req.params);
+            const body = markChargePaidBodySchema.parse(req.body ?? {});
+            const paidAt = body.paidAt ? new Date(body.paidAt) : undefined;
+            const result = await adminMarkChargePaid.exec({ chargeId, paidAt });
+            res.json(result);
+        }));
+    }
+
     // CRUD de Planos de assinatura
     if (listAdminSubscriptionPlans) {
         router.get('/plans', requireAuth, requireAdminPersona, asyncHandler(async (_req, res) => {
@@ -523,16 +572,26 @@ export function adminRouter({
         validateDiscountCoupon
     }, authMiddleware));
 
-    // Rota para reenviar solicitação de conta Asaas
+    // Rotas para conta Asaas da escola (gerar ou reenviar quando falhar)
     if (resendSchoolAsaasAccount) {
         router.post('/schools/:schoolId/resend-asaas-account', requireAuth, requireAdminPersona, asyncHandler(async (req, res) => {
             const paramsSchema = z.object({
                 schoolId: z.string().uuid()
             });
             const { schoolId } = paramsSchema.parse(req.params);
-            
             const result = await resendSchoolAsaasAccount.exec({ schoolId });
-            
+            if (result.success) {
+                res.status(200).json(result);
+            } else {
+                res.status(400).json(result);
+            }
+        }));
+        router.post('/schools/:schoolId/generate-asaas-account', requireAuth, requireAdminPersona, asyncHandler(async (req, res) => {
+            const paramsSchema = z.object({
+                schoolId: z.string().uuid()
+            });
+            const { schoolId } = paramsSchema.parse(req.params);
+            const result = await resendSchoolAsaasAccount.exec({ schoolId });
             if (result.success) {
                 res.status(200).json(result);
             } else {

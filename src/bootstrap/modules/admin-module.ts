@@ -20,6 +20,8 @@ import type { EnrollmentRepository } from '../../ports/repositories/enrollment.r
 import type { DependentRepository } from '../../ports/repositories/dependent.repo';
 import type { SchoolFinancialChargeRepository } from '../../ports/repositories/school-financial-charge.repo';
 import type { SchoolPlanInvoiceRepository } from '../../ports/repositories/school-plan-invoice.repo';
+import type { ChargeDueReminderRepository } from '../../ports/repositories/charge-due-reminder.repo';
+import type { OutboxRepository } from '../../ports/repositories/outbox.repo';
 import type { PasswordHasherPort } from '../../ports/providers/password-hasher.port';
 import type { TokenProviderPort } from '../../ports/providers/token-provider.port';
 import type { AsaasProviderPort } from '../../ports/providers/asaas-port';
@@ -43,6 +45,9 @@ import { ListAdminStudentCourses } from '../../app/use-cases/list-admin-student-
 import { GetAdminStudentDetails } from '../../app/use-cases/get-admin-student-details';
 import { ListAdminSchoolCourses } from '../../app/use-cases/list-admin-school-courses';
 import { SchoolWithdrawalRepositoryAdapter } from '../../infra/db/typeorm/school-withdrawal-repository.adapter';
+import { ScheduleChargeDueReminders } from '../../app/use-cases/schedule-charge-due-reminders';
+import { AdminMarkInvoicePaid } from '../../app/use-cases/admin-mark-invoice-paid';
+import { AdminMarkChargePaid } from '../../app/use-cases/admin-mark-charge-paid';
 import { scheduleAllJobs } from '../../infra/messaging/bullmq/job-scheduler';
 import { startWorker } from '../../infra/messaging/bullmq/worker-manager';
 import { log } from '../../shared/logger';
@@ -65,6 +70,8 @@ type AdminModuleDeps = {
     dependentsRepo: DependentRepository;
     financialChargesRepo: SchoolFinancialChargeRepository;
     planInvoicesRepo: SchoolPlanInvoiceRepository;
+    outbox: OutboxRepository;
+    chargeDueReminderRepo: ChargeDueReminderRepository;
     passwordHasher: PasswordHasherPort;
     tokenProvider: TokenProviderPort;
     tokenTtl: number;
@@ -160,6 +167,21 @@ export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext)
         ? new ListAdminPaymentHistory(deps.planInvoicesRepo)
         : undefined;
 
+    const adminMarkInvoicePaid = deps.planInvoicesRepo
+        ? new AdminMarkInvoicePaid(deps.planInvoicesRepo)
+        : undefined;
+    const adminMarkChargePaid = new AdminMarkChargePaid(deps.financialChargesRepo);
+
+    const scheduleChargeDueReminders = new ScheduleChargeDueReminders(
+        deps.financialChargesRepo,
+        deps.planInvoicesRepo,
+        deps.chargeDueReminderRepo,
+        deps.outbox,
+        deps.usersRepo,
+        deps.schoolsRepo,
+        deps.coursesRepo
+    );
+
     // Use cases de cupons
     const couponsRepo = new DiscountCouponRepositoryAdapter();
     const createDiscountCoupon = new CreateDiscountCoupon(couponsRepo);
@@ -199,6 +221,9 @@ export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext)
         getAdminSchoolBilling,
         listAdminSchoolInvoices,
         listAdminPaymentHistory,
+        adminMarkInvoicePaid,
+        adminMarkChargePaid,
+        scheduleChargeDueReminders,
         authMiddleware: ctx.authMiddleware
     });
 
