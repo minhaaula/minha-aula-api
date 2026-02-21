@@ -7,7 +7,7 @@ import {
 import { SchoolPlanInvoiceOrm } from './entities/school-plan-invoice.orm';
 import { SchoolOrm } from './entities/school.orm';
 import { SchoolPlanInvoice } from '../../../domain/entities/school-plan-invoice';
-import { IsNull } from 'typeorm';
+import { IsNull, Not, Between } from 'typeorm';
 
 export class SchoolPlanInvoiceRepositoryAdapter implements SchoolPlanInvoiceRepository {
     private readonly repo = AppDataSource.getRepository(SchoolPlanInvoiceOrm);
@@ -115,6 +115,20 @@ export class SchoolPlanInvoiceRepositoryAdapter implements SchoolPlanInvoiceRepo
             .limit(limit)
             .getMany();
 
+        return rows.map((row) => this.toDomain(row));
+    }
+
+    async findIssuedByDueDateRange(startDate: Date, endDate: Date): Promise<SchoolPlanInvoice[]> {
+        const startStr = startDate.toISOString().slice(0, 10);
+        const endStr = endDate.toISOString().slice(0, 10);
+        const rows = await this.repo.find({
+            where: {
+                status: 'ISSUED',
+                dueDate: Between(startStr, endStr),
+                boletoUrl: Not(IsNull())
+            },
+            order: { dueDate: 'ASC' }
+        });
         return rows.map((row) => this.toDomain(row));
     }
 

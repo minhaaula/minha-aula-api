@@ -29,6 +29,7 @@ import type { GetAdminSchoolFinancial } from '../../../app/use-cases/get-admin-s
 import type { GetAdminSchoolBilling } from '../../../app/use-cases/get-admin-school-billing';
 import type { ListAdminSchoolInvoices } from '../../../app/use-cases/list-admin-school-invoices';
 import type { ListAdminPaymentHistory } from '../../../app/use-cases/list-admin-payment-history';
+import type { ScheduleChargeDueReminders } from '../../../app/use-cases/schedule-charge-due-reminders';
 
 type AdminRouterDeps = {
     getAdminStatus: GetAdminStatus;
@@ -57,6 +58,7 @@ type AdminRouterDeps = {
     getAdminSchoolBilling?: GetAdminSchoolBilling;
     listAdminSchoolInvoices?: ListAdminSchoolInvoices;
     listAdminPaymentHistory?: ListAdminPaymentHistory;
+    scheduleChargeDueReminders?: ScheduleChargeDueReminders;
     authMiddleware?: RequestHandler;
 };
 
@@ -99,6 +101,7 @@ export function adminRouter({
     getAdminSchoolBilling,
     listAdminSchoolInvoices,
     listAdminPaymentHistory,
+    scheduleChargeDueReminders,
     authMiddleware
 }: AdminRouterDeps) {
     const router = Router();
@@ -400,6 +403,18 @@ export function adminRouter({
                     currentPage: Math.floor(result.offset / result.limit) + 1,
                     hasMore: result.offset + result.limit < result.total
                 }
+            });
+        }));
+    }
+
+    if (scheduleChargeDueReminders) {
+        router.post('/charge-due-reminders/trigger', requireAuth, requireAdminPersona, asyncHandler(async (_req, res) => {
+            const result = await scheduleChargeDueReminders.exec(undefined);
+            res.json({
+                message: 'Job de lembretes de cobrança disparado. Emails enfileirados.',
+                chargesEnqueued: result.chargesEnqueued,
+                invoicesEnqueued: result.invoicesEnqueued,
+                errors: result.errors
             });
         }));
     }

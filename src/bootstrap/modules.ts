@@ -9,6 +9,7 @@ import { CourseRepositoryAdapter } from '../infra/db/typeorm/course-repository';
 import { CourseClassRepositoryAdapter } from '../infra/db/typeorm/course-class-repository.adapter';
 import { DependentRepositoryAdapter } from '../infra/db/typeorm/dependent-repository.adapter';
 import { SchoolFinancialChargeRepositoryAdapter } from '../infra/db/typeorm/school-financial-charge-repository.adapter';
+import { ChargeDueReminderRepositoryAdapter } from '../infra/db/typeorm/charge-due-reminder-repository.adapter';
 import { EnrollmentRepositoryAdapter } from '../infra/db/typeorm/enrollment-repository';
 import { EnrollmentRequestRepositoryAdapter } from '../infra/db/typeorm/enrollment-request-repository.adapter';
 import { ClassSessionRepositoryAdapter } from '../infra/db/typeorm/class-session-repository.adapter';
@@ -115,6 +116,7 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
     const notificationsRepo = new NotificationRepositoryAdapter();
     const pushTokensRepo = new PushTokenRepositoryAdapter();
     const outbox = new OutboxProducer();
+    const chargeDueReminderRepoForAdmin = new ChargeDueReminderRepositoryAdapter();
 
     // Status de integrações (filas e push) — apenas logs informativos
     {
@@ -332,6 +334,8 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
                     enrollmentsRepo,
                     dependentsRepo,
                     financialChargesRepo,
+                    outbox,
+                    chargeDueReminderRepo: chargeDueReminderRepoForAdmin,
                     passwordHasher,
                     tokenProvider,
                     tokenTtl,

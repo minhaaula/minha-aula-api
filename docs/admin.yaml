@@ -112,6 +112,37 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/QueueNotConfiguredResponse'
+  /admin/charge-due-reminders/trigger:
+    post:
+      tags:
+        - Admin
+      summary: Disparar job de lembretes de cobrança
+      description: |
+        Dispara imediatamente o job de lembretes de vencimento: busca cobranças e faturas
+        que vencem em até 10 dias, registra no banco (para não reenviar) e enfileira um email
+        de lembrete para cada uma na fila. O worker processa a fila e envia os emails.
+        Requer autenticação com persona ADMIN.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Job disparado com sucesso. Emails enfileirados.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChargeDueRemindersTriggerResponse'
+        '401':
+          description: Usuário não autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado (requer persona ADMIN).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /admin/schools:
     get:
       tags:
@@ -1440,6 +1471,27 @@ components:
         finishedOn:
           type: integer
           description: Timestamp; presente em jobs completados.
+    ChargeDueRemindersTriggerResponse:
+      type: object
+      description: Resposta ao disparar o job de lembretes de cobrança (emails enfileirados).
+      properties:
+        message:
+          type: string
+          example: Job de lembretes de cobrança disparado. Emails enfileirados.
+        chargesEnqueued:
+          type: integer
+          description: Quantidade de cobranças de alunos (mensalidade/taxa) que tiveram email enfileirado.
+        invoicesEnqueued:
+          type: integer
+          description: Quantidade de faturas de plano (escola) que tiveram email enfileirado.
+        errors:
+          type: integer
+          description: Quantidade de erros ao processar itens (ex. email ausente).
+      required:
+        - message
+        - chargesEnqueued
+        - invoicesEnqueued
+        - errors
     AdminPlansListResponse:
       type: object
       properties:

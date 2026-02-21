@@ -42,6 +42,8 @@ export interface SchoolPlanInvoiceRepository {
     findBySchoolId?(schoolId: string): Promise<SchoolPlanInvoice[]>;
     findPaidWithoutReceiptUrl(limit: number): Promise<SchoolPlanInvoice[]>;
     findIssuedWithProviderRef(limit: number, daysAgo?: number): Promise<SchoolPlanInvoice[]>;
+    /** Faturas emitidas com vencimento entre start e end (inclusive), com boleto disponível. */
+    findIssuedByDueDateRange(startDate: Date, endDate: Date): Promise<SchoolPlanInvoice[]>;
     save(invoice: SchoolPlanInvoice): Promise<void>;
     findPaymentHistoryPaginated?(
         filters: PaymentHistoryFilters,
