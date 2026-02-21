@@ -1,4 +1,5 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
+import FormData from 'form-data';
 import { log } from '../../../shared/logger';
 import { AsaasCreateBoletoPayload, AsaasCreateChargeResponse } from './dto/boleto-charge';
 import { AsaasCreateSubAccountPayload, AsaasSubAccountResponse } from './dto/subaccount';
@@ -299,6 +300,58 @@ export class AsaasClient {
     }
 
     /**
+     * Obtém documentos pendentes da subconta (GET /v3/myAccount/documents).
+     * Conforme doc Asaas: aguardar 15s após criar a subconta antes de chamar.
+     * Retorna a estrutura completa para exibir grupos e extrair onboardingUrl.
+     */
+    async getMyAccountDocuments(accountApiKey: string): Promise<{ rejectReasons: string | null; data: Array<Record<string, unknown>> }> {
+        if (!accountApiKey?.trim()) {
+            return { rejectReasons: null, data: [] };
+        }
+        const baseUrl = this.http.defaults.baseURL || process.env.ASAAS_BASE_URL || 'https://www.asaas.com/api/v3';
+        const client = axios.create({
+            baseURL: baseUrl,
+            headers: {
+                access_token: accountApiKey,
+                'Content-Type': 'application/json'
+            },
+            timeout: 30_000
+        });
+        const { data } = await client.get<{ rejectReasons?: string | null; data?: unknown[] }>('/myAccount/documents');
+        const list = Array.isArray(data?.data) ? data.data : (data && typeof data === 'object' && Array.isArray((data as { data?: unknown[] }).data)) ? (data as { data: unknown[] }).data : [];
+        const rejectReasons = (data && typeof data === 'object' && 'rejectReasons' in data) ? (data.rejectReasons ?? null) : null;
+        return {
+            rejectReasons: typeof rejectReasons === 'string' ? rejectReasons : null,
+            data: list as Array<Record<string, unknown>>
+        };
+    }
+
+    /**
+     * Envia um documento para um grupo (POST /v3/myAccount/documents/{id}).
+     * multipart/form-data: documentFile (arquivo) + type (ex.: IDENTIFICATION).
+     * Deve ser chamado com a API key da subconta. Não enviar via API se o grupo já tiver onboardingUrl (Asaas rejeita).
+     */
+    async uploadMyAccountDocument(accountApiKey: string, documentGroupId: string, fileBuffer: Buffer, mimeType: string, type: string): Promise<void> {
+        if (!accountApiKey?.trim() || !documentGroupId?.trim() || !type?.trim()) {
+            throw new Error('accountApiKey, documentGroupId and type are required');
+        }
+        const baseUrl = this.http.defaults.baseURL || process.env.ASAAS_BASE_URL || 'https://www.asaas.com/api/v3';
+        const form = new FormData();
+        const ext = mimeType === 'application/pdf' ? 'pdf' : 'jpg';
+        form.append('documentFile', fileBuffer, { filename: `document.${ext}`, contentType: mimeType });
+        form.append('type', type);
+        const client = axios.create({
+            baseURL: baseUrl,
+            headers: {
+                access_token: accountApiKey,
+                ...form.getHeaders()
+            },
+            timeout: 30_000
+        });
+        await client.post(`/myAccount/documents/${documentGroupId}`, form);
+    }
+
+    /**
      * Obtém a URL de onboarding (documentos pendentes) no contexto da subconta.
      * Deve ser chamado com a API key da subconta; Asaas recomenda aguardar ~15s após criar a subconta.
      * Suporta resposta em formato de lista plana ou com grupos contendo .documents[].
@@ -310,24 +363,12 @@ export class AsaasClient {
     async getMyAccountOnboardingUrl(accountApiKey: string): Promise<string | null> {
         if (!accountApiKey?.trim()) return null;
         try {
-            const baseUrl = this.http.defaults.baseURL || process.env.ASAAS_BASE_URL || 'https://www.asaas.com/api/v3';
-            const client = axios.create({
-                baseURL: baseUrl,
-                headers: {
-                    access_token: accountApiKey,
-                    'Content-Type': 'application/json'
-                },
-                timeout: 30_000 // 30s para não travar o job
-            });
-            const { data } = await client.get<{ data?: unknown[] } | unknown[]>('/myAccount/documents');
-            const list = Array.isArray(data) ? data : (data as { data?: unknown[] })?.data ?? [];
-            const items = list as Record<string, unknown>[];
-            let url: string | null = null;
+            const { data: items } = await this.getMyAccountDocuments(accountApiKey);
             for (const item of items) {
-                url = AsaasClient.pickOnboardingUrl(item);
-                if (url) break;
+                const url = AsaasClient.pickOnboardingUrl(item);
+                if (url) return url;
             }
-            return url;
+            return null;
         } catch (err: unknown) {
             if (axios.isAxiosError(err)) {
                 const status = err.response?.status;

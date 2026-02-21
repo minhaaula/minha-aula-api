@@ -33,6 +33,7 @@ import { GetCourseClass } from '../../app/use-cases/get-course-class';
 import { GetSchoolProfile } from '../../app/use-cases/get-school-profile';
 import { UpdateSchool } from '../../app/use-cases/update-school';
 import { GetSchoolPendingDocuments } from '../../app/use-cases/get-school-pending-documents';
+import { AdminUploadSchoolOnboardingDocument } from '../../app/use-cases/admin-upload-school-onboarding-document';
 import { UpdateCourse } from '../../app/use-cases/update-course';
 import { DeleteCourse } from '../../app/use-cases/delete-course';
 import { SchoolPlanInvoiceRepositoryAdapter } from '../../infra/db/typeorm/school-plan-invoice-repository.adapter';
@@ -154,7 +155,11 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
     const getSchoolPendingDocuments = asaasProvider
         ? new GetSchoolPendingDocuments(deps.schoolsRepo, asaasProvider)
         : undefined;
-    
+
+    const uploadSchoolOnboardingDocument = asaasProvider
+        ? new AdminUploadSchoolOnboardingDocument(deps.schoolsRepo, asaasProvider)
+        : undefined;
+
     const listSchoolBankAccounts = deps.bankAccountsRepo
         ? new ListSchoolBankAccounts(deps.bankAccountsRepo)
         : undefined;
@@ -406,7 +411,8 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         validateSchoolCoupon,
         listSchoolNotifications,
         sendClassPushNotification,
-        getSchoolPendingDocuments
+        getSchoolPendingDocuments,
+        uploadSchoolOnboardingDocument
     });
 
     const asaasWebhookRouterInstance = asaasWebhookRouter({

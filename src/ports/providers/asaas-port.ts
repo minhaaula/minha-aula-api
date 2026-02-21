@@ -144,4 +144,34 @@ export interface AsaasProviderPort {
     listPayments?(params?: ListAsaasPaymentsParams): Promise<ListAsaasPaymentsResponse>;
     /** Obtém a URL de onboarding (documentos) usando a API key da subconta. Recomenda-se aguardar ~15s após criar a subconta. */
     getOnboardingUrl?(accountApiKey: string): Promise<string | null>;
+    /**
+     * Lista documentos pendentes da subconta (GET /v3/myAccount/documents).
+     * Conforme documentação Asaas: aguardar 15s após criar a subconta antes de chamar.
+     * Retorna grupos com onboardingUrl para redirecionar o cliente ao envio via link.
+     */
+    getPendingDocuments?(accountApiKey: string): Promise<AsaasPendingDocumentsResult>;
+    /**
+     * Envia um documento para um grupo pendente (POST /v3/myAccount/documents/{id}).
+     * Usar quando não houver onboardingUrl (envio manual). Campo multipart: documentFile + type.
+     * O type deve ser o do grupo (ex.: IDENTIFICATION, IDENTIFICATION_SELFIE, MINUTES_OF_ELECTION).
+     */
+    uploadDocument?(accountApiKey: string, documentGroupId: string, fileBuffer: Buffer, mimeType: string, type: string): Promise<void>;
+}
+
+/** Grupo de documentos pendentes (AccountDocumentGroupResponseDTO). */
+export interface AsaasPendingDocumentGroup {
+    id: string;
+    status: string;
+    type: string;
+    title: string;
+    description: string;
+    onboardingUrl: string | null;
+    onboardingUrlExpirationDate: string | null;
+    responsible?: { name: string | null; type: string } | null;
+    documents?: Array<{ id: string; status: string }>;
+}
+
+export interface AsaasPendingDocumentsResult {
+    rejectReasons: string | null;
+    data: AsaasPendingDocumentGroup[];
 }

@@ -1,4 +1,5 @@
 import { Router, type RequestHandler } from 'express';
+import multer from 'multer';
 import { z } from 'zod';
 import { Queue } from 'bullmq';
 import { asyncHandler } from '../utils/async-handler';
@@ -32,6 +33,22 @@ import type { ListAdminPaymentHistory } from '../../../app/use-cases/list-admin-
 import type { ScheduleChargeDueReminders } from '../../../app/use-cases/schedule-charge-due-reminders';
 import type { AdminMarkInvoicePaid } from '../../../app/use-cases/admin-mark-invoice-paid';
 import type { AdminMarkChargePaid } from '../../../app/use-cases/admin-mark-charge-paid';
+import type { SyncSchoolOnboardingDocuments } from '../../../app/use-cases/sync-school-onboarding-documents';
+import type { AdminUploadSchoolOnboardingDocument } from '../../../app/use-cases/admin-upload-school-onboarding-document';
+import { AppError, ErrorCode } from '../../../shared/errors';
+
+const documentUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 10 * 1024 * 1024 },
+    fileFilter: (_req, file, cb) => {
+        const allowed = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
+        if (allowed.includes(file.mimetype)) {
+            cb(null, true);
+        } else {
+            cb(new Error('Tipo não permitido. Use PDF ou imagem (JPEG/PNG).'));
+        }
+    }
+});
 
 type AdminRouterDeps = {
     getAdminStatus: GetAdminStatus;
@@ -62,6 +79,8 @@ type AdminRouterDeps = {
     listAdminPaymentHistory?: ListAdminPaymentHistory;
     adminMarkInvoicePaid?: AdminMarkInvoicePaid;
     adminMarkChargePaid?: AdminMarkChargePaid;
+    syncSchoolOnboardingDocuments?: SyncSchoolOnboardingDocuments;
+    adminUploadSchoolOnboardingDocument?: AdminUploadSchoolOnboardingDocument;
     scheduleChargeDueReminders?: ScheduleChargeDueReminders;
     authMiddleware?: RequestHandler;
 };
@@ -107,6 +126,8 @@ export function adminRouter({
     listAdminPaymentHistory,
     adminMarkInvoicePaid,
     adminMarkChargePaid,
+    syncSchoolOnboardingDocuments,
+    adminUploadSchoolOnboardingDocument,
     scheduleChargeDueReminders,
     authMiddleware
 }: AdminRouterDeps) {
@@ -573,6 +594,35 @@ export function adminRouter({
     }, authMiddleware));
 
     // Rotas para conta Asaas da escola (gerar ou reenviar quando falhar)
+    if (syncSchoolOnboardingDocuments) {
+        router.post('/schools/:schoolId/sync-onboarding-documents', requireAuth, requireAdminPersona, asyncHandler(async (req, res) => {
+            const paramsSchema = z.object({ schoolId: z.string().uuid() });
+            const { schoolId } = paramsSchema.parse(req.params);
+            const result = await syncSchoolOnboardingDocuments.exec({ schoolId });
+            res.json(result);
+        }));
+    }
+
+    if (adminUploadSchoolOnboardingDocument) {
+        router.post('/schools/:schoolId/documents/:documentGroupId/upload', requireAuth, requireAdminPersona, documentUpload.single('documentFile'), asyncHandler(async (req, res) => {
+            const paramsSchema = z.object({ schoolId: z.string().uuid(), documentGroupId: z.string().min(1) });
+            const { schoolId, documentGroupId } = paramsSchema.parse(req.params);
+            const type = z.string().min(1).parse(req.body?.type);
+            const file = req.file;
+            if (!file) {
+                throw AppError.fromCode(ErrorCode.VALIDATION_ERROR, { message: 'Campo documentFile é obrigatório' });
+            }
+            const result = await adminUploadSchoolOnboardingDocument.exec({
+                schoolId,
+                documentGroupId,
+                fileBuffer: file.buffer,
+                mimeType: file.mimetype,
+                type
+            });
+            res.json(result);
+        }));
+    }
+
     if (resendSchoolAsaasAccount) {
         router.post('/schools/:schoolId/resend-asaas-account', requireAuth, requireAdminPersona, asyncHandler(async (req, res) => {
             const paramsSchema = z.object({

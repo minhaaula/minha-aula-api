@@ -882,6 +882,136 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /admin/schools/{schoolId}/sync-onboarding-documents:
+    post:
+      tags:
+        - Admin
+      summary: Sincronizar documentos e onboarding (Asaas)
+      description: |
+        Consulta no Asaas os documentos pendentes da escola (GET /v3/myAccount/documents)
+        e atualiza a onboardingUrl salva na escola quando disponível.
+        Conforme documentação Asaas: após criar a subconta, recomenda-se aguardar 15 segundos
+        antes da primeira consulta; para escolas já com conta, pode ser chamado a qualquer momento.
+        Use quando não houver confiança de que o onboarding_url foi enviado/atualizado (ex. job falhou).
+        Retorna a lista de grupos de documentos e a URL para redirecionar o cliente ao envio via link (cadastro.io).
+        Requer autenticação com persona ADMIN.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: schoolId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Identificador da escola
+      responses:
+        '200':
+          description: Documentos sincronizados; onboardingUrl atualizada na escola quando disponível.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncOnboardingDocumentsResponse'
+        '401':
+          description: Usuário não autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado (requer persona ADMIN).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Escola não encontrada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/schools/{schoolId}/documents/{documentGroupId}/upload:
+    post:
+      tags:
+        - Admin
+      summary: Enviar documento de onboarding para Asaas (manual)
+      description: |
+        Envia um documento para um grupo pendente da subconta Asaas da escola (POST /v3/myAccount/documents/{id}).
+        Use quando o onboardingUrl não estiver disponível (envio manual). O documentGroupId e o type vêm da lista
+        retornada por POST /admin/schools/{schoolId}/sync-onboarding-documents.
+        Requer autenticação com persona ADMIN.
+        Tipos aceitos: IDENTIFICATION, IDENTIFICATION_SELFIE, MINUTES_OF_ELECTION, SOCIAL_CONTRACT, OTHER.
+        Arquivos: PDF ou imagem (JPEG/PNG), até 10MB.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: schoolId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Identificador da escola
+        - in: path
+          name: documentGroupId
+          required: true
+          schema:
+            type: string
+          description: ID do grupo de documentos retornado pelo sync-onboarding-documents
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - documentFile
+                - type
+              properties:
+                documentFile:
+                  type: string
+                  format: binary
+                  description: Arquivo (PDF ou imagem JPEG/PNG)
+                type:
+                  type: string
+                  enum:
+                    - IDENTIFICATION
+                    - IDENTIFICATION_SELFIE
+                    - MINUTES_OF_ELECTION
+                    - SOCIAL_CONTRACT
+                    - OTHER
+                  description: Tipo do documento (deve coincidir com o tipo do grupo no Asaas)
+      responses:
+        '200':
+          description: Documento enviado com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadOnboardingDocumentResponse'
+        '400':
+          description: Validação (arquivo ausente, type inválido, escola sem conta Asaas).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Usuário não autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado (requer persona ADMIN).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Escola não encontrada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /admin/schools/{schoolId}/resend-asaas-account:
     post:
       tags:
@@ -3216,6 +3346,64 @@ components:
         - courseName
         - className
         - schoolName
+    SyncOnboardingDocumentsResponse:
+      type: object
+      description: Resposta ao sincronizar documentos/onboarding da escola com o Asaas.
+      properties:
+        schoolId:
+          type: string
+          format: uuid
+        documents:
+          type: array
+          description: Grupos de documentos pendentes retornados pelo Asaas (GET /myAccount/documents).
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              type:
+                type: string
+              title:
+                type: string
+              description:
+                type: string
+              status:
+                type: string
+              onboardingUrl:
+                type: string
+                nullable: true
+              onboardingUrlExpirationDate:
+                type: string
+                format: date-time
+                nullable: true
+        onboardingUrl:
+          type: string
+          nullable: true
+          description: URL para redirecionar o cliente ao envio de documentos (cadastro.io). Atualizada na escola quando disponível.
+        onboardingUrlUpdated:
+          type: boolean
+          description: Indica se a escola foi atualizada com nova onboardingUrl.
+      required:
+        - schoolId
+        - documents
+        - onboardingUrl
+        - onboardingUrlUpdated
+    UploadOnboardingDocumentResponse:
+      type: object
+      description: Resposta ao enviar documento de onboarding para o Asaas (envio manual).
+      properties:
+        schoolId:
+          type: string
+          format: uuid
+        documentGroupId:
+          type: string
+        uploaded:
+          type: boolean
+          enum: [true]
+      required:
+        - schoolId
+        - documentGroupId
+        - uploaded
     ResendAsaasAccountResponse:
       type: object
       properties:
