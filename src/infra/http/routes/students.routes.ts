@@ -196,6 +196,7 @@ export function studentsRouter(deps: {
     }
 
     if (deps.deactivateStudentAccount) {
+        const deactivateStudentAccount = deps.deactivateStudentAccount;
         r.post('/me/account/deactivate', requireStudent, asyncHandler(async (req, res) => {
             const authReq = req as AuthenticatedRequest;
             if (!authReq.user?.sub) {
@@ -203,7 +204,7 @@ export function studentsRouter(deps: {
             }
 
             const dto = deactivateStudentAccountSchema.parse(req.body ?? {});
-            const result = await deps.deactivateStudentAccount.exec({
+            const result = await deactivateStudentAccount.exec({
                 userId: authReq.user.sub,
                 motivo: dto.motivo,
                 descricao: dto.descricao ?? ''
