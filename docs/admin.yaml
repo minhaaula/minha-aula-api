@@ -143,6 +143,130 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /admin/invoices/{invoiceId}/mark-paid:
+    post:
+      tags:
+        - Admin
+      summary: Dar baixa em fatura (escola)
+      description: |
+        Marca uma fatura de plano da escola como paga manualmente (dar baixa).
+        Use quando o pagamento foi confirmado fora do sistema ou para corrigir status.
+        Só é possível dar baixa em faturas com status ISSUED ou FAILED.
+        Requer autenticação com persona ADMIN.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: invoiceId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID da fatura (SchoolPlanInvoice)
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                paidAt:
+                  type: string
+                  format: date-time
+                  description: Data/hora do pagamento (ISO 8601). Se omitido, usa a data atual.
+      responses:
+        '200':
+          description: Fatura marcada como paga.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminMarkInvoicePaidResponse'
+        '400':
+          description: Transição de status inválida ou data inválida.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Usuário não autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado (requer persona ADMIN).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Fatura não encontrada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/charges/{chargeId}/mark-paid:
+    post:
+      tags:
+        - Admin
+      summary: Dar baixa em cobrança (aluno)
+      description: |
+        Marca uma cobrança de aluno (mensalidade, taxa de matrícula, etc.) como paga manualmente (dar baixa).
+        Use quando o pagamento foi confirmado fora do sistema ou para corrigir status.
+        Só é possível dar baixa em cobranças com status OPEN, PENDING_SYNC, OVERDUE ou FAILED. Não permite cobrança cancelada.
+        Requer autenticação com persona ADMIN.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: chargeId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID da cobrança (SchoolFinancialCharge)
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                paidAt:
+                  type: string
+                  format: date-time
+                  description: Data/hora do pagamento (ISO 8601). Se omitido, usa a data atual.
+      responses:
+        '200':
+          description: Cobrança marcada como paga.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminMarkChargePaidResponse'
+        '400':
+          description: Cobrança cancelada ou status não permite baixa.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Usuário não autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado (requer persona ADMIN).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Cobrança não encontrada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /admin/schools:
     get:
       tags:
@@ -777,6 +901,64 @@ paths:
         - Escola deve ter pelo menos um endereço completo (rua, número e CEP com 8 dígitos)
         - Asaas provider deve estar configurado
         
+        Requer autenticação com persona ADMIN.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: schoolId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Identificador da escola
+      responses:
+        '200':
+          description: Conta Asaas criada/atualizada com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResendAsaasAccountResponse'
+        '400':
+          description: Erro ao criar conta (escola sem endereço, endereço incompleto, ou erro do Asaas).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResendAsaasAccountResponse'
+        '401':
+          description: Usuário não autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado (requer persona ADMIN).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Escola não encontrada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/schools/{schoolId}/generate-asaas-account:
+    post:
+      tags:
+        - Admin
+      summary: Gerar conta Asaas da escola
+      description: |
+        Gera (ou recria) a conta Asaas (subconta) para uma escola. Use esta rota quando
+        houver falha no fluxo automático (ex. primeira fatura, webhook) e for necessário
+        criar a conta manualmente.
+        
+        Comportamento idêntico a `resend-asaas-account`:
+        - Cria/atualiza a subconta no Asaas com os dados da escola
+        - Atualiza a escola com accountId, accountApiKey e walletId
+        - Busca o link de onboarding (KYC) após 15 segundos
+        
+        **Requisitos:** Escola com endereço completo (rua, número, CEP 8 dígitos). Asaas configurado.
         Requer autenticação com persona ADMIN.
       security:
         - bearerAuth: []
@@ -1492,6 +1674,40 @@ components:
         - chargesEnqueued
         - invoicesEnqueued
         - errors
+    AdminMarkInvoicePaidResponse:
+      type: object
+      description: Resposta ao dar baixa em fatura de escola.
+      properties:
+        invoiceId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          example: PAID
+        paidAt:
+          type: string
+          format: date-time
+      required:
+        - invoiceId
+        - status
+        - paidAt
+    AdminMarkChargePaidResponse:
+      type: object
+      description: Resposta ao dar baixa em cobrança de aluno.
+      properties:
+        chargeId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          example: PAID
+        paidAt:
+          type: string
+          format: date-time
+      required:
+        - chargeId
+        - status
+        - paidAt
     AdminPlansListResponse:
       type: object
       properties:
