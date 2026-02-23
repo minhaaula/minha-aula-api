@@ -16,6 +16,7 @@ API RESTful para gerenciamento de pagamentos, escolas, estudantes e matrículas,
 - **BullMQ 5.7** - Sistema de filas baseado em Redis
 - **Redis** - Armazenamento em memória para filas
 - **Firebase Cloud Messaging (FCM)** - Push notifications
+- **Twilio** - Notificações via WhatsApp (opcional)
 - **AWS S3 / Railway Storage** - Armazenamento de arquivos
 
 ### Email Providers (Prioridade)
@@ -150,6 +151,14 @@ REDIS_PASSWORD=      # Opcional
 #### Firebase (Push Notifications - Opcional)
 ```env
 FIREBASE_SERVICE_ACCOUNT_JSON={"type":"service_account",...}
+```
+
+#### Twilio WhatsApp (Opcional)
+Para enviar notificações via WhatsApp, configure e enfileire jobs `whatsapp_notification`. Em sandbox use o número do Twilio (ex: `whatsapp:+14155238886`) e faça opt-in enviando a mensagem indicada ao número.
+```env
+TWILIO_ACCOUNT_SID=
+TWILIO_AUTH_TOKEN=
+TWILIO_WHATSAPP_FROM=whatsapp:+14155238886
 ```
 
 #### Email (Prioridade: Mailchimp > SendGrid > Nodemailer)
@@ -338,7 +347,12 @@ node dist/infra/messaging/bullmq/outbox-worker.js
 - **Trigger**: Manual via API ou eventos do sistema
 - **Configuração**: Requer `FIREBASE_SERVICE_ACCOUNT_JSON`
 
-#### 2. Busca de Recibos (`fetch_payment_receipts`)
+#### 2. WhatsApp (`whatsapp_notification`)
+- **Descrição**: Envia mensagem de texto via Twilio WhatsApp para um número ou para vários usuários (por `userIds`).
+- **Payload**: `{ message: string, to?: string, userIds?: string[] }`. Use `to` para um destinatário (telefone) ou `userIds` para resolver telefone pelos usuários.
+- **Configuração**: Requer `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_FROM`.
+
+#### 3. Busca de Recibos (`fetch_payment_receipts`)
 - **Descrição**: Busca recibos de transações pagas no Asaas
 - **Frequência**: A cada 30 minutos (agendado automaticamente)
 - **Agendamento Manual**: `npm run schedule:receipts` (se não usar módulo ADMIN)
@@ -346,7 +360,7 @@ node dist/infra/messaging/bullmq/outbox-worker.js
   - Busca recibos para invoices pagas sem `receiptUrl`
   - Cria conta Asaas automaticamente se for primeira parcela
 
-#### 3. Sincronização de Status (`sync_payment_status`)
+#### 4. Sincronização de Status (`sync_payment_status`)
 - **Descrição**: Sincroniza status de pagamentos do Asaas (prevenção de falhas de webhook)
 - **Frequência**: A cada 15 minutos (agendado automaticamente)
 - **Agendamento Manual**: `npm run schedule:payment-sync` (se não usar módulo ADMIN)

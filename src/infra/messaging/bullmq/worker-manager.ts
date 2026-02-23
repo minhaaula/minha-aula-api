@@ -8,13 +8,7 @@ import { AppDataSource } from '../../db/typeorm/datasource';
 import { PushTokenRepositoryAdapter } from '../../db/typeorm/push-token-repository.adapter';
 import { sendFcmMulticast } from '../../providers/firebase/fcm-provider';
 import { log } from '../../../shared/logger';
-
-const connection = {
-    host: process.env.REDIS_HOST,
-    port: +(process.env.REDIS_PORT ?? 6379),
-    ...(process.env.REDIS_USER ? { username: process.env.REDIS_USER } : {}),
-    ...(process.env.REDIS_PASSWORD ? { password: process.env.REDIS_PASSWORD } : {}),
-};
+import { connection, getOutboxQueueName } from './queue-config';
 
 type OutboxEvent = { type: string; payload: any; aggregateId: string };
 
@@ -46,10 +40,11 @@ export function startWorker(): Worker {
         throw new Error('REDIS_HOST não configurado');
     }
 
-    log.info('[Worker Manager] Iniciando worker BullMQ...');
+    const queueName = getOutboxQueueName();
+    log.info('[Worker Manager] Iniciando worker BullMQ...', { queue: queueName });
 
     workerInstance = new Worker(
-        'outbox',
+        queueName,
         async (job) => {
             const event = job.data as OutboxEvent;
             // Log detalhado para diagnóstico
@@ -101,6 +96,80 @@ export function startWorker(): Worker {
                 }
 
                 log.info('[OUTBOX] push_notification sent', { successCount, failureCount, invalid: invalid.length });
+                return;
+            }
+
+            if (job.name === 'whatsapp_notification' || jobType === 'whatsapp_notification') {
+                const message = String(event.payload?.message ?? '').trim();
+                const to = typeof event.payload?.to === 'string' ? event.payload.to.trim() : undefined;
+                const userIds = Array.isArray(event.payload?.userIds) ? event.payload.userIds : [];
+                const mediaUrls = Array.isArray(event.payload?.mediaUrls)
+                    ? event.payload.mediaUrls.filter((u: unknown) => typeof u === 'string' && (u as string).trim())
+                    : [];
+                const cobranca = event.payload?.cobranca && typeof event.payload.cobranca === 'object' ? event.payload.cobranca as Record<string, unknown> : null;
+
+                let body: string;
+                if (cobranca && typeof cobranca.pixCopiaECola === 'string' && cobranca.pixCopiaECola.trim()) {
+                    const { getCobrancaWhatsAppBody } = await import('../../whatsapp/templates/cobranca.template.js');
+                    body = getCobrancaWhatsAppBody({
+                        studentName: typeof cobranca.studentName === 'string' ? cobranca.studentName : '',
+                        amount: typeof cobranca.amount === 'string' ? cobranca.amount : '',
+                        dueDate: typeof cobranca.dueDate === 'string' ? cobranca.dueDate : '',
+                        description: typeof cobranca.description === 'string' ? cobranca.description : '',
+                        type: (['tuition', 'enrollment', 'plan'] as const).includes(cobranca.type as any) ? cobranca.type as 'tuition' | 'enrollment' | 'plan' : 'tuition',
+                        courseName: typeof cobranca.courseName === 'string' ? cobranca.courseName : undefined,
+                        pixCopiaECola: String(cobranca.pixCopiaECola).trim(),
+                        boletoUrl: typeof cobranca.boletoUrl === 'string' ? cobranca.boletoUrl : cobranca.boletoUrl === null ? null : undefined
+                    });
+                } else {
+                    body = message || ' ';
+                }
+
+                log.info('[OUTBOX] whatsapp_notification processando', { hasTo: !!to, userIdsCount: userIds.length, fromCobranca: !!cobranca });
+                if (!body.trim() && mediaUrls.length === 0) {
+                    log.warn('[OUTBOX] whatsapp_notification payload inválido: sem mensagem nem mídia');
+                    return;
+                }
+                const whatsappProvider = (await import('../../providers/twilio/create-whatsapp-provider.js')).createWhatsAppProviderFromEnv();
+                if (!whatsappProvider) {
+                    log.warn('[OUTBOX] whatsapp_notification: Twilio NÃO configurado no worker. Defina TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN e TWILIO_WHATSAPP_FROM no .env e reinicie o worker (npm run worker).');
+                    return;
+                }
+
+                const media = mediaUrls.length > 0 ? mediaUrls : undefined;
+
+                if (to) {
+                    try {
+                        await whatsappProvider.sendMessage({ to, body, mediaUrls: media });
+                        log.info('[OUTBOX] whatsapp_notification sent (single)', { to: to.replace(/\d(?=\d{4})/g, '*') });
+                    } catch (err) {
+                        log.error('[OUTBOX] whatsapp_notification falha (single)', { err });
+                        throw err;
+                    }
+                    return;
+                }
+
+                if (userIds.length) {
+                    await ensureDb();
+                    const { UserRepositoryAdapter } = await import('../../db/typeorm/user-repository.adapter.js');
+                    const userRepo = new UserRepositoryAdapter();
+                    let sent = 0;
+                    let skipped = 0;
+                    for (const userId of userIds) {
+                        const user = await userRepo.findById(userId);
+                        if (!user?.phone?.trim()) {
+                            skipped++;
+                            continue;
+                        }
+                        try {
+                            await whatsappProvider.sendMessage({ to: user.phone, body, mediaUrls: media });
+                            sent++;
+                        } catch (err) {
+                            log.warn('[OUTBOX] whatsapp_notification falha para userId', { userId, err });
+                        }
+                    }
+                    log.info('[OUTBOX] whatsapp_notification sent', { sent, skipped, total: userIds.length });
+                }
                 return;
             }
 
@@ -573,7 +642,7 @@ export async function stopWorker(timeoutMs: number = 30000): Promise<void> {
     
     try {
         const { Queue } = await import('bullmq');
-        const queue = new Queue('outbox', { connection });
+        const queue = new Queue(getOutboxQueueName(), { connection });
         const activeJobs = await queue.getActive();
         if (activeJobs.length > 0) {
             log.info(`[Worker Manager] Aguardando ${activeJobs.length} job(s) ativo(s) terminarem...`, {

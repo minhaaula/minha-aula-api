@@ -8,7 +8,8 @@ import type { CourseRepository } from '../../ports/repositories/course.repo';
 
 const OPEN_CHARGE_STATUSES = ['PENDING_SYNC', 'OPEN', 'OVERDUE'] as const;
 const DUE_REMINDER_DAYS = 10;
-const JOB_TYPE = 'send_charge_due_reminder_email';
+const JOB_TYPE_EMAIL = 'send_charge_due_reminder_email';
+const JOB_TYPE_WHATSAPP = 'whatsapp_notification';
 
 function formatCurrency(cents: number, currency: string = 'BRL'): string {
     const value = cents / 100;
@@ -85,7 +86,7 @@ export class ScheduleChargeDueReminders {
 
                     await this.reminderRepo.markReminderSent('SCHOOL_FINANCIAL_CHARGE', charge.id);
                     await this.outbox.enqueue({
-                        type: JOB_TYPE,
+                        type: JOB_TYPE_EMAIL,
                         aggregateId: charge.id,
                         payload: {
                             to: owner.email.value,
@@ -98,6 +99,28 @@ export class ScheduleChargeDueReminders {
                             boletoUrl: charge.asaasInvoiceUrl ?? undefined
                         }
                     });
+                    const chargeCode =
+                        (charge.asaasPayload && typeof charge.asaasPayload.pixCopiaECola === 'string' && charge.asaasPayload.pixCopiaECola.trim()) ||
+                        (charge.asaasPayload && typeof charge.asaasPayload.digitableLine === 'string' && charge.asaasPayload.digitableLine.trim());
+                    if (owner.phone?.trim() && chargeCode) {
+                        await this.outbox.enqueue({
+                            type: JOB_TYPE_WHATSAPP,
+                            aggregateId: charge.id,
+                            payload: {
+                                to: owner.phone.trim(),
+                                cobranca: {
+                                    studentName: owner.fullName,
+                                    amount: formatCurrency(charge.netAmountCents, 'BRL'),
+                                    dueDate: formatDate(charge.dueDate),
+                                    description: charge.description || (chargeType === 'tuition' ? 'Mensalidade' : 'Taxa de matrícula'),
+                                    type: chargeType,
+                                    courseName: courseName ?? undefined,
+                                    pixCopiaECola: chargeCode,
+                                    boletoUrl: charge.asaasInvoiceUrl ?? null
+                                }
+                            }
+                        });
+                    }
                     chargesEnqueued++;
                 } catch {
                     errors++;
@@ -116,7 +139,7 @@ export class ScheduleChargeDueReminders {
 
                 await this.reminderRepo.markReminderSent('SCHOOL_PLAN_INVOICE', invoice.id);
                 await this.outbox.enqueue({
-                    type: JOB_TYPE,
+                    type: JOB_TYPE_EMAIL,
                     aggregateId: invoice.id,
                     payload: {
                         to: school.email,
@@ -128,6 +151,27 @@ export class ScheduleChargeDueReminders {
                         boletoUrl: invoice.boletoUrl ?? undefined
                     }
                 });
+                const invoiceCode =
+                    (invoice.pixCopiaECola && invoice.pixCopiaECola.trim()) ||
+                    (invoice.digitableLine && invoice.digitableLine.trim());
+                if (school.phone?.trim() && invoiceCode) {
+                    await this.outbox.enqueue({
+                        type: JOB_TYPE_WHATSAPP,
+                        aggregateId: invoice.id,
+                        payload: {
+                            to: school.phone.trim(),
+                            cobranca: {
+                                studentName: school.name,
+                                amount: formatCurrency(invoice.amountCents, invoice.currency),
+                                dueDate: formatDate(invoice.dueDate),
+                                description: invoice.description || 'Assinatura plano',
+                                type: 'plan',
+                                pixCopiaECola: invoiceCode,
+                                boletoUrl: invoice.boletoUrl ?? null
+                            }
+                        }
+                    });
+                }
                 invoicesEnqueued++;
             } catch {
                 errors++;

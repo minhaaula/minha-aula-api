@@ -36,6 +36,7 @@ import type { AdminMarkChargePaid } from '../../../app/use-cases/admin-mark-char
 import type { SyncSchoolOnboardingDocuments } from '../../../app/use-cases/sync-school-onboarding-documents';
 import type { AdminUploadSchoolOnboardingDocument } from '../../../app/use-cases/admin-upload-school-onboarding-document';
 import { AppError, ErrorCode } from '../../../shared/errors';
+import { connection, getOutboxQueueName } from '../../messaging/bullmq/queue-config';
 
 const documentUpload = multer({
     storage: multer.memoryStorage(),
@@ -669,14 +670,7 @@ export function adminRouter({
         const failedLimit = query.failedLimit ?? 20;
         const completedLimit = query.completedLimit ?? 20;
 
-        const connection = {
-            host: process.env.REDIS_HOST,
-            port: +(process.env.REDIS_PORT ?? 6379),
-            ...(process.env.REDIS_USER ? { username: process.env.REDIS_USER } : {}),
-            ...(process.env.REDIS_PASSWORD ? { password: process.env.REDIS_PASSWORD } : {}),
-        };
-
-        const queue = new Queue('outbox', { connection });
+        const queue = new Queue(getOutboxQueueName(), { connection });
 
         try {
             const [repeatableJobs, waiting, active, failed, completed, workers] = await Promise.all([
