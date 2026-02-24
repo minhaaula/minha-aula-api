@@ -285,12 +285,12 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
 
     const asaasApiKey = process.env.ASAAS_API_KEY ?? '';
     const asaasBaseUrl = process.env.ASAAS_BASE_URL;
-    const needsPaymentProvider = selected.includes('payments') || selected.includes('schools') || selected.includes('students');
+    const needsPaymentProvider = selected.includes('payments') || selected.includes('schools') || selected.includes('students') || selected.includes('admin');
 
     let paymentProvider: (PaymentProviderPort & Partial<AsaasProviderPort>) | undefined;
     if (needsPaymentProvider) {
         if (!asaasApiKey) {
-            throw new Error('ASAAS_API_KEY is required when payments, schools or students module is enabled');
+            throw new Error('ASAAS_API_KEY is required when payments, schools, students or admin module is enabled');
         }
         paymentProvider = new AsaasProvider({ apiKey: asaasApiKey, baseUrl: asaasBaseUrl });
     }
