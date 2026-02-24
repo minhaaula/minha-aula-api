@@ -119,6 +119,14 @@ CORS_ORIGIN=*
 # Exemplo para múltiplas origens: CORS_ORIGIN=https://app1.com,https://app2.com
 ```
 
+#### Proxy / IP real (produção)
+Se você roda a API atrás de proxy/load balancer (ex.: Railway/Nginx/Cloudflare) e ele envia o header `X-Forwarded-For`, habilite o `trust proxy` no Express para o rate limit e `req.ip` funcionarem corretamente:
+
+```env
+# true | false | número de hops (ex.: 1) | string do Express (ex.: loopback)
+TRUST_PROXY=1
+```
+
 #### Asaas (Pagamentos)
 ```env
 ASAAS_API_KEY=your_asaas_token_here
