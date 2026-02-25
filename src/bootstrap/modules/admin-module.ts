@@ -50,6 +50,7 @@ import { AdminMarkInvoicePaid } from '../../app/use-cases/admin-mark-invoice-pai
 import { AdminMarkChargePaid } from '../../app/use-cases/admin-mark-charge-paid';
 import { SyncSchoolOnboardingDocuments } from '../../app/use-cases/sync-school-onboarding-documents';
 import { AdminUploadSchoolOnboardingDocument } from '../../app/use-cases/admin-upload-school-onboarding-document';
+import { GetSchoolPendingDocuments } from '../../app/use-cases/get-school-pending-documents';
 import { scheduleAllJobs } from '../../infra/messaging/bullmq/job-scheduler';
 import { startWorker } from '../../infra/messaging/bullmq/worker-manager';
 import { log } from '../../shared/logger';
@@ -203,6 +204,11 @@ export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext)
         ? new ResendSchoolAsaasAccount(deps.schoolsRepo, deps.asaasProvider)
         : undefined;
 
+    // Listar documentos pendentes de KYC/onboarding da escola (admin)
+    const getSchoolPendingDocuments = deps.asaasProvider
+        ? new GetSchoolPendingDocuments(deps.schoolsRepo, deps.asaasProvider)
+        : undefined;
+
     // Montar router pronto
     const router = adminRouter({
         getAdminStatus,
@@ -235,6 +241,7 @@ export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext)
         adminMarkChargePaid,
         syncSchoolOnboardingDocuments,
         adminUploadSchoolOnboardingDocument,
+        getSchoolPendingDocuments,
         scheduleChargeDueReminders,
         authMiddleware: ctx.authMiddleware
     });

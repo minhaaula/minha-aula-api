@@ -35,6 +35,7 @@ import type { AdminMarkInvoicePaid } from '../../../app/use-cases/admin-mark-inv
 import type { AdminMarkChargePaid } from '../../../app/use-cases/admin-mark-charge-paid';
 import type { SyncSchoolOnboardingDocuments } from '../../../app/use-cases/sync-school-onboarding-documents';
 import type { AdminUploadSchoolOnboardingDocument } from '../../../app/use-cases/admin-upload-school-onboarding-document';
+import type { GetSchoolPendingDocuments } from '../../../app/use-cases/get-school-pending-documents';
 import { AppError, ErrorCode } from '../../../shared/errors';
 
 const documentUpload = multer({
@@ -81,6 +82,7 @@ type AdminRouterDeps = {
     adminMarkChargePaid?: AdminMarkChargePaid;
     syncSchoolOnboardingDocuments?: SyncSchoolOnboardingDocuments;
     adminUploadSchoolOnboardingDocument?: AdminUploadSchoolOnboardingDocument;
+    getSchoolPendingDocuments?: GetSchoolPendingDocuments;
     scheduleChargeDueReminders?: ScheduleChargeDueReminders;
     authMiddleware?: RequestHandler;
 };
@@ -128,6 +130,7 @@ export function adminRouter({
     adminMarkChargePaid,
     syncSchoolOnboardingDocuments,
     adminUploadSchoolOnboardingDocument,
+    getSchoolPendingDocuments,
     scheduleChargeDueReminders,
     authMiddleware
 }: AdminRouterDeps) {
@@ -594,6 +597,18 @@ export function adminRouter({
     }, authMiddleware));
 
     // Rotas para conta Asaas da escola (gerar ou reenviar quando falhar)
+    if (getSchoolPendingDocuments) {
+        router.get('/schools/:schoolId/kyc/documents', requireAuth, requireAdminPersona, asyncHandler(async (req, res) => {
+            const paramsSchema = z.object({ schoolId: z.string().uuid() });
+            const { schoolId } = paramsSchema.parse(req.params);
+            const result = await getSchoolPendingDocuments.exec({ schoolId });
+            res.json({
+                documents: result.documents,
+                onboardingUrl: result.onboardingUrl
+            });
+        }));
+    }
+
     if (syncSchoolOnboardingDocuments) {
         router.post('/schools/:schoolId/sync-onboarding-documents', requireAuth, requireAdminPersona, asyncHandler(async (req, res) => {
             const paramsSchema = z.object({ schoolId: z.string().uuid() });

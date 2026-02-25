@@ -129,19 +129,6 @@ export class HandleAsaasPaymentWebhook {
             // Manter apenas os últimos 50 eventos para não crescer indefinidamente
             metadata.processedEventIds = processedEventIds.slice(-50).join(',');
         }
-        if (outcome.status === 'PAID' && this.outbox) {
-            log.info('[Webhook Asaas] Enfileirando job ensure_school_asaas_account (conta Asaas + onboarding)', {
-                invoiceId: invoice.id,
-                schoolId: invoice.schoolId,
-                providerRef
-            });
-            await this.outbox.enqueue({
-                type: 'ensure_school_asaas_account',
-                payload: { invoiceId: invoice.id },
-                aggregateId: invoice.schoolId
-            });
-        }
-
         const updatedInvoice = invoice.withChanges({
             status: outcome.status,
             paidAt,
@@ -168,6 +155,21 @@ export class HandleAsaasPaymentWebhook {
             updatedAt: new Date()
         });
         await this.finances.save(updatedFinance);
+
+        // Enfileirar job APÓS persistir invoice como PAID — evita race onde o worker
+        // processa o job antes do save e encontra invoice ainda ISSUED.
+        if (outcome.status === 'PAID' && this.outbox) {
+            log.info('[Webhook Asaas] Enfileirando job ensure_school_asaas_account (conta Asaas + onboarding)', {
+                invoiceId: invoice.id,
+                schoolId: invoice.schoolId,
+                providerRef
+            });
+            await this.outbox.enqueue({
+                type: 'ensure_school_asaas_account',
+                payload: { invoiceId: invoice.id },
+                aggregateId: invoice.schoolId
+            });
+        }
 
         return { handled: true };
     }
