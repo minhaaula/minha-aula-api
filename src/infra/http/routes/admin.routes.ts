@@ -245,6 +245,12 @@ export function adminRouter({
         name: z.string().trim().min(1).optional(),
         status: z.enum(['ACTIVE', 'INACTIVE']).optional(),
         paymentStatus: z.enum(['EM_DIA', 'ATRASADO']).optional(),
+        cnpj: z.string().trim().min(1).optional(),
+        ownerCpf: z.string().trim().min(1).optional(),
+        hasAsaasAccount: z.enum(['WITH', 'WITHOUT']).optional(),
+        hasOnboardingUrl: z.enum(['WITH', 'WITHOUT']).optional(),
+        firstPayment: z.enum(['YES', 'NO']).optional(),
+        onboarding: z.enum(['YES', 'NO']).optional(),
         limit: z.coerce.number().int().positive().max(500).optional(),
         offset: z.coerce.number().int().min(0).optional()
     });
@@ -253,6 +259,12 @@ export function adminRouter({
             name: typeof req.query.name === 'string' ? req.query.name : undefined,
             status: typeof req.query.status === 'string' ? req.query.status : undefined,
             paymentStatus: typeof req.query.paymentStatus === 'string' ? req.query.paymentStatus : undefined,
+            cnpj: typeof req.query.cnpj === 'string' ? req.query.cnpj : undefined,
+            ownerCpf: typeof req.query.ownerCpf === 'string' ? req.query.ownerCpf : undefined,
+            hasAsaasAccount: typeof req.query.hasAsaasAccount === 'string' ? req.query.hasAsaasAccount : undefined,
+            hasOnboardingUrl: typeof req.query.hasOnboardingUrl === 'string' ? req.query.hasOnboardingUrl : undefined,
+            firstPayment: typeof req.query.firstPayment === 'string' ? req.query.firstPayment : undefined,
+            onboarding: typeof req.query.onboarding === 'string' ? req.query.onboarding : undefined,
             limit: req.query.limit,
             offset: req.query.offset
         });
@@ -260,6 +272,12 @@ export function adminRouter({
             name: query.name,
             status: query.status,
             paymentStatus: query.paymentStatus,
+            cnpj: query.cnpj,
+            ownerCpf: query.ownerCpf,
+            hasAsaasAccount: query.hasAsaasAccount,
+            hasOnboardingUrl: query.hasOnboardingUrl,
+            firstPayment: query.firstPayment,
+            onboarding: query.onboarding,
             limit: query.limit,
             offset: query.offset
         });

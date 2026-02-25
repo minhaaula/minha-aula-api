@@ -274,8 +274,8 @@ paths:
       summary: Listar escolas com planos e status
       description: |
         Retorna as escolas cadastradas com informações do plano de assinatura atual e seu status.
-        Suporta filtros por nome, status (ativo/inativo) e mensalidade (em dia/atrasado), e paginação.
-        Requer autenticação com persona ADMIN.
+        Suporta filtros por nome, status, mensalidade, CNPJ, CPF do titular, conta Asaas, onboardingUrl,
+        primeiro pagamento e onboarding concluído. Requer autenticação com persona ADMIN.
       security:
         - bearerAuth: []
       parameters:
@@ -299,6 +299,46 @@ paths:
             type: string
             enum: ['EM_DIA', 'ATRASADO']
           description: Filtrar por status da mensalidade (em dia ou atrasado).
+        - in: query
+          name: cnpj
+          required: false
+          schema:
+            type: string
+          description: Busca parcial por CNPJ (ignora formatação).
+        - in: query
+          name: ownerCpf
+          required: false
+          schema:
+            type: string
+          description: Busca parcial por CPF do titular (ignora formatação).
+        - in: query
+          name: hasAsaasAccount
+          required: false
+          schema:
+            type: string
+            enum: ['WITH', 'WITHOUT']
+          description: Filtrar por conta Asaas (WITH = tem conta, WITHOUT = sem conta).
+        - in: query
+          name: hasOnboardingUrl
+          required: false
+          schema:
+            type: string
+            enum: ['WITH', 'WITHOUT']
+          description: Filtrar por presença de onboardingUrl (WITH = tem, WITHOUT = não tem).
+        - in: query
+          name: firstPayment
+          required: false
+          schema:
+            type: string
+            enum: ['YES', 'NO']
+          description: Filtrar por primeiro pagamento concluído (YES = já fez, NO = ainda não).
+        - in: query
+          name: onboarding
+          required: false
+          schema:
+            type: string
+            enum: ['YES', 'NO']
+          description: Filtrar por onboarding concluído (YES = concluído, NO = pendente).
         - in: query
           name: limit
           required: false
@@ -2263,6 +2303,13 @@ components:
         hasCompletedFirstPayment:
           type: boolean
           description: True se a escola já tiver ao menos um pagamento concluído (invoice PAID)
+        onboardingCompleted:
+          type: boolean
+          description: Indica se o onboarding/KYC foi concluído
+        accountId:
+          type: string
+          nullable: true
+          description: ID da conta no Asaas associada à escola (null se não houver conta)
       required:
         - id
         - name
@@ -2278,6 +2325,8 @@ components:
         - paymentStatus
         - plan
         - hasCompletedFirstPayment
+        - onboardingCompleted
+        - accountId
     AdminSchoolDetailsResponse:
       allOf:
         - $ref: '#/components/schemas/SchoolWithPlanItem'

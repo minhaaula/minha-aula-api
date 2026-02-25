@@ -9,7 +9,6 @@ export interface ResendSchoolAsaasAccountInput {
 export interface ResendSchoolAsaasAccountOutput {
     schoolId: string;
     accountId: string | null;
-    accountApiKey: string | null;
     walletId: string | null;
     onboardingUrl: string | null;
     success: boolean;
@@ -37,7 +36,6 @@ export class ResendSchoolAsaasAccount {
             return {
                 schoolId: school.id,
                 accountId: school.accountId,
-                accountApiKey: school.accountApiKey,
                 walletId: school.walletId,
                 onboardingUrl: school.onboardingUrl,
                 success: false,
@@ -50,7 +48,6 @@ export class ResendSchoolAsaasAccount {
             return {
                 schoolId: school.id,
                 accountId: school.accountId,
-                accountApiKey: school.accountApiKey,
                 walletId: school.walletId,
                 onboardingUrl: school.onboardingUrl,
                 success: false,
@@ -63,7 +60,6 @@ export class ResendSchoolAsaasAccount {
             return {
                 schoolId: school.id,
                 accountId: school.accountId,
-                accountApiKey: school.accountApiKey,
                 walletId: school.walletId,
                 onboardingUrl: school.onboardingUrl,
                 success: false,
@@ -139,7 +135,6 @@ export class ResendSchoolAsaasAccount {
             return {
                 schoolId: school.id,
                 accountId: subAccount.id,
-                accountApiKey: subAccount.apiKey ?? null,
                 walletId: subAccount.walletId ?? null,
                 onboardingUrl,
                 success: true,
@@ -152,7 +147,6 @@ export class ResendSchoolAsaasAccount {
             return {
                 schoolId: school.id,
                 accountId: school.accountId,
-                accountApiKey: school.accountApiKey,
                 walletId: school.walletId,
                 onboardingUrl: school.onboardingUrl,
                 success: false,

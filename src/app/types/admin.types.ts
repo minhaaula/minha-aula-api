@@ -27,6 +27,10 @@ export interface SchoolWithPlanItem {
     plan: SchoolPlanFinanceView | null;
     /** True se a escola já tiver ao menos um pagamento concluído (invoice PAID). */
     hasCompletedFirstPayment: boolean;
+    /** Indica se o onboarding/KYC foi concluído (webhook de aprovação recebido). */
+    onboardingCompleted: boolean;
+    /** ID da subconta Asaas (null se ainda não criada). */
+    accountId: string | null;
 }
 
 /**
@@ -40,9 +44,9 @@ export interface AdminSchoolDetails extends SchoolWithPlanItem {
     /**
      * Identificadores da conta no provedor de pagamentos (Asaas).
      * Podem ser nulos quando a conta ainda não foi criada/associada.
+     * Nota: accountApiKey não é exposto (dado sensível, uso interno).
      */
     accountId: string | null;
-    accountApiKey: string | null;
     walletId: string | null;
     /**
      * Link de onboarding/KYC gerado pelo provedor (quando disponível).

@@ -28,7 +28,6 @@ export function buildStudentsRoutes(deps: StudentsRoutesDeps, guards: SchoolRout
 
     // Registrar rota /directory/:cpf ANTES da rota / para evitar conflitos
     if (deps.getStudentDirectoryEntry) {
-        console.log('✓ Rota /schools/students/directory/:cpf registrada');
         router.get('/directory/:cpf', ...protectedMiddleware, asyncHandler(async (req, res) => {
             const paramsSchema = z.object({ cpf: z.string().trim().min(1) });
             const { cpf } = paramsSchema.parse(req.params);

@@ -49,7 +49,6 @@ export class GetAdminSchoolDetails {
             incomeValue: school.incomeValue,
             ownerUserId: school.ownerUserId,
             accountId: school.accountId,
-            accountApiKey: school.accountApiKey,
             walletId: school.walletId,
             onboardingUrl: school.onboardingUrl,
             onboardingCompleted,
