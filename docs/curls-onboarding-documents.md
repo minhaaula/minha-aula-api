@@ -106,7 +106,21 @@ Exemplo de resposta:
 
 ---
 
-## 6. Escola – Enviar documento (upload manual)
+## 6. Escola – Sincronizar documentos
+
+A escola autenticada pode sincronizar os próprios documentos com o Asaas e atualizar a `onboardingUrl`. Use para forçar atualização (onboarding manual).
+
+```bash
+curl -s -X POST "$BASE_URL/schools/kyc/sync-onboarding-documents" \
+  -H "Authorization: Bearer $SCHOOL_TOKEN" \
+  -H "Content-Type: application/json"
+```
+
+Resposta igual à do admin sync (schoolId, documents, onboardingUrl, onboardingUrlUpdated).
+
+---
+
+## 7. Escola – Enviar documento (upload manual)
 
 A escola envia documento para a própria conta. Use um `id` e o `type` retornados em GET /schools/kyc/documents.
 

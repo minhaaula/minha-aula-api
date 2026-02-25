@@ -33,6 +33,7 @@ import { GetCourseClass } from '../../app/use-cases/get-course-class';
 import { GetSchoolProfile } from '../../app/use-cases/get-school-profile';
 import { UpdateSchool } from '../../app/use-cases/update-school';
 import { GetSchoolPendingDocuments } from '../../app/use-cases/get-school-pending-documents';
+import { SyncSchoolOnboardingDocuments } from '../../app/use-cases/sync-school-onboarding-documents';
 import { AdminUploadSchoolOnboardingDocument } from '../../app/use-cases/admin-upload-school-onboarding-document';
 import { UpdateCourse } from '../../app/use-cases/update-course';
 import { DeleteCourse } from '../../app/use-cases/delete-course';
@@ -156,6 +157,9 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         ? new GetSchoolPendingDocuments(deps.schoolsRepo, asaasProvider)
         : undefined;
 
+    const syncSchoolOnboardingDocuments = asaasProvider
+        ? new SyncSchoolOnboardingDocuments(deps.schoolsRepo, asaasProvider)
+        : undefined;
     const uploadSchoolOnboardingDocument = asaasProvider
         ? new AdminUploadSchoolOnboardingDocument(deps.schoolsRepo, asaasProvider)
         : undefined;
@@ -412,6 +416,7 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         listSchoolNotifications,
         sendClassPushNotification,
         getSchoolPendingDocuments,
+        syncSchoolOnboardingDocuments,
         uploadSchoolOnboardingDocument
     });
 

@@ -2886,6 +2886,72 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /schools/kyc/sync-onboarding-documents:
+    post:
+      tags:
+        - Schools
+      summary: Sincronizar documentos de onboarding com o Asaas
+      description: |
+        Sincroniza os documentos pendentes da escola com o Asaas e atualiza a `onboardingUrl` na escola
+        quando um novo link for disponibilizado. Use para forçar atualização da lista de documentos e
+        do link de onboarding (onboarding manual). Requer autenticação com persona SCHOOL.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Documentos sincronizados com sucesso.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  schoolId:
+                    type: string
+                    format: uuid
+                  documents:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        type:
+                          type: string
+                        title:
+                          type: string
+                        description:
+                          type: string
+                        status:
+                          type: string
+                        onboardingUrl:
+                          type: string
+                          nullable: true
+                        onboardingUrlExpirationDate:
+                          type: string
+                          nullable: true
+                  onboardingUrl:
+                    type: string
+                    nullable: true
+                  onboardingUrlUpdated:
+                    type: boolean
+        '401':
+          description: Não autorizado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Requer persona SCHOOL.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Escola não encontrada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /schools/kyc/documents/{documentGroupId}/upload:
     post:
       tags:

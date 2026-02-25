@@ -3,6 +3,7 @@ import multer from 'multer';
 import { z } from 'zod';
 import { asyncHandler } from '../../utils/async-handler';
 import type { GetSchoolPendingDocuments } from '../../../../app/use-cases/get-school-pending-documents';
+import type { SyncSchoolOnboardingDocuments } from '../../../../app/use-cases/sync-school-onboarding-documents';
 import type { AdminUploadSchoolOnboardingDocument } from '../../../../app/use-cases/admin-upload-school-onboarding-document';
 import type { SchoolRouteGuards } from './guards';
 import type { SchoolContextRequest } from '../../middlewares/resolve-school-context';
@@ -23,6 +24,7 @@ const documentUpload = multer({
 
 type KycRoutesDeps = {
     getSchoolPendingDocuments: GetSchoolPendingDocuments;
+    syncSchoolOnboardingDocuments?: SyncSchoolOnboardingDocuments;
     uploadSchoolOnboardingDocument?: AdminUploadSchoolOnboardingDocument;
 };
 
@@ -41,6 +43,16 @@ export function buildKycRoutes(deps: KycRoutesDeps, guards: SchoolRouteGuards) {
             onboardingUrl: result.onboardingUrl
         });
     }));
+
+    if (deps.syncSchoolOnboardingDocuments) {
+        router.post('/sync-onboarding-documents', ...protectedMiddleware, asyncHandler(async (req, res) => {
+            const schoolId = (req as SchoolContextRequest).schoolId as string;
+
+            const result = await deps.syncSchoolOnboardingDocuments!.exec({ schoolId });
+
+            res.json(result);
+        }));
+    }
 
     const uploadSchoolOnboardingDocument = deps.uploadSchoolOnboardingDocument;
     if (uploadSchoolOnboardingDocument) {
