@@ -59,6 +59,20 @@ export class UploadSchoolImage {
         // Normalizar categoria
         const category = normalizeSchoolImageCategory(input.category);
 
+        // LOGO e BANNER: substituir o antigo (máx 1 por escola)
+        const singleImageCategories = [SchoolImageCategory.LOGO, SchoolImageCategory.BANNER];
+        if (singleImageCategories.includes(category)) {
+            const existing = await this.schoolImages.findBySchoolId(schoolId, category);
+            for (const img of existing) {
+                try {
+                    await this.storage.deleteFile(img.key);
+                } catch {
+                    // Ignorar falha ao deletar do storage
+                }
+                await this.schoolImages.delete(img.id);
+            }
+        }
+
         // Gerar nome único para o arquivo
         const fileExtension = this.getFileExtension(input.fileName);
         const uniqueFileName = `${Uuid()}${fileExtension}`;

@@ -567,6 +567,11 @@ paths:
                           type: string
                           format: uuid
                           description: ID da escola
+                        schoolLogo:
+                          type: string
+                          format: uri
+                          nullable: true
+                          description: URL assinada do logo da escola (quando existir). Válida por 1 hora.
                         courseDescription:
                           type: string
                           nullable: true
@@ -583,6 +588,7 @@ paths:
                         - courseName
                         - schoolName
                         - schoolId
+                        - schoolLogo
                         - courseDescription
                         - category
                         - subcategory
