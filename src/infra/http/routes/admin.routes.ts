@@ -30,6 +30,8 @@ import type { GetAdminSchoolFinancial } from '../../../app/use-cases/get-admin-s
 import type { GetAdminSchoolBilling } from '../../../app/use-cases/get-admin-school-billing';
 import type { ListAdminSchoolInvoices } from '../../../app/use-cases/list-admin-school-invoices';
 import type { ListAdminPaymentHistory } from '../../../app/use-cases/list-admin-payment-history';
+import type { ListAdminEnrollmentRequests } from '../../../app/use-cases/list-admin-enrollment-requests';
+import type { ListAdminStudentCharges } from '../../../app/use-cases/list-admin-student-charges';
 import type { ScheduleChargeDueReminders } from '../../../app/use-cases/schedule-charge-due-reminders';
 import type { AdminMarkInvoicePaid } from '../../../app/use-cases/admin-mark-invoice-paid';
 import type { AdminMarkChargePaid } from '../../../app/use-cases/admin-mark-charge-paid';
@@ -78,6 +80,8 @@ type AdminRouterDeps = {
     getAdminSchoolBilling?: GetAdminSchoolBilling;
     listAdminSchoolInvoices?: ListAdminSchoolInvoices;
     listAdminPaymentHistory?: ListAdminPaymentHistory;
+    listAdminEnrollmentRequests?: ListAdminEnrollmentRequests;
+    listAdminStudentCharges?: ListAdminStudentCharges;
     adminMarkInvoicePaid?: AdminMarkInvoicePaid;
     adminMarkChargePaid?: AdminMarkChargePaid;
     syncSchoolOnboardingDocuments?: SyncSchoolOnboardingDocuments;
@@ -126,6 +130,8 @@ export function adminRouter({
     getAdminSchoolBilling,
     listAdminSchoolInvoices,
     listAdminPaymentHistory,
+    listAdminEnrollmentRequests,
+    listAdminStudentCharges,
     adminMarkInvoicePaid,
     adminMarkChargePaid,
     syncSchoolOnboardingDocuments,
@@ -358,6 +364,18 @@ export function adminRouter({
         }));
     }
 
+    // Mensalidades do aluno em todas as escolas (sem filtro por schoolId)
+    if (listAdminStudentCharges) {
+        router.get('/students/:studentId/charges', requireAuth, requireAdminPersona, asyncHandler(async (req, res) => {
+            const paramsSchema = z.object({
+                studentId: z.string().uuid()
+            });
+            const { studentId } = paramsSchema.parse(req.params);
+            const result = await listAdminStudentCharges.exec({ studentId });
+            res.json(result);
+        }));
+    }
+
     // Detalhes do estudante por ID (dados do aluno + dependentes + matrículas e cobranças de todas as escolas)
     if (getAdminStudentDetails) {
         router.get('/students/:studentId', requireAuth, requireAdminPersona, asyncHandler(async (req, res) => {
@@ -441,7 +459,7 @@ export function adminRouter({
                 limit: query.limit,
                 offset: query.offset
             });
-            res.json({
+            const payload: Record<string, unknown> = {
                 payments: result.items,
                 pagination: {
                     total: result.total,
@@ -451,7 +469,46 @@ export function adminRouter({
                     currentPage: Math.floor(result.offset / result.limit) + 1,
                     hasMore: result.offset + result.limit < result.total
                 }
+            };
+            if (result.summary) {
+                payload.summary = {
+                    balanceAvailableReais: result.summary.balanceAvailableReais,
+                    totalReceivedCents: result.summary.totalReceivedCents,
+                    totalOverdueCents: result.summary.totalOverdueCents
+                };
+            }
+            res.json(payload);
+        }));
+    }
+
+    // Pedidos de matrícula de todas as escolas
+    if (listAdminEnrollmentRequests) {
+        const enrollmentRequestsQuerySchema = z.object({
+            studentName: z.string().trim().min(1).optional(),
+            studentCpf: z.string().trim().min(1).optional(),
+            schoolName: z.string().trim().min(1).optional(),
+            status: z.enum(['PENDING', 'APPROVED', 'REJECTED', 'CANCELLED']).optional(),
+            limit: z.coerce.number().int().positive().max(100).optional(),
+            offset: z.coerce.number().int().min(0).optional()
+        });
+        router.get('/enrollment-requests', requireAuth, requireAdminPersona, asyncHandler(async (req, res) => {
+            const query = enrollmentRequestsQuerySchema.parse({
+                studentName: typeof req.query.studentName === 'string' ? req.query.studentName : undefined,
+                studentCpf: typeof req.query.studentCpf === 'string' ? req.query.studentCpf : undefined,
+                schoolName: typeof req.query.schoolName === 'string' ? req.query.schoolName : undefined,
+                status: typeof req.query.status === 'string' ? req.query.status : undefined,
+                limit: req.query.limit,
+                offset: req.query.offset
             });
+            const result = await listAdminEnrollmentRequests.exec({
+                studentName: query.studentName,
+                studentCpf: query.studentCpf,
+                schoolName: query.schoolName,
+                status: query.status,
+                limit: query.limit,
+                offset: query.offset
+            });
+            res.json(result);
         }));
     }
 

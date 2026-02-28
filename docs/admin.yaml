@@ -1313,6 +1313,78 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /admin/enrollment-requests:
+    get:
+      tags:
+        - Admin
+      summary: Listar pedidos de matrícula de todas as escolas
+      description: |
+        Retorna pedidos de matrícula de todas as escolas, paginado e com filtros por
+        nome do aluno, CPF do aluno e nome da escola.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: studentName
+          required: false
+          schema:
+            type: string
+          description: Filtrar por nome do aluno (titular ou dependente, contém, case-insensitive).
+        - in: query
+          name: studentCpf
+          required: false
+          schema:
+            type: string
+          description: Filtrar por CPF do aluno (apenas dígitos).
+        - in: query
+          name: schoolName
+          required: false
+          schema:
+            type: string
+          description: Filtrar por nome da escola (contém, case-insensitive).
+        - in: query
+          name: status
+          required: false
+          schema:
+            type: string
+            enum: ['PENDING', 'APPROVED', 'REJECTED', 'CANCELLED']
+          description: Filtrar por status do pedido.
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+          description: Quantidade máxima de registros por página.
+        - in: query
+          name: offset
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+          description: Quantidade de registros a pular (paginação).
+      responses:
+        '200':
+          description: Lista de pedidos de matrícula retornada com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminEnrollmentRequestsListResponse'
+        '401':
+          description: Usuário não autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado (requer persona ADMIN).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /admin/schools/{schoolId}/students:
     get:
       tags:
@@ -1418,6 +1490,49 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AdminSchoolStudentCoursesResponse'
+        '401':
+          description: Usuário não autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado (requer persona ADMIN).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Aluno não encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/students/{studentId}/charges:
+    get:
+      tags:
+        - Admin
+      summary: Listar mensalidades do aluno (todas as escolas)
+      description: |
+        Retorna todas as cobranças (mensalidades) do aluno em todos os cursos e escolas.
+        Sem filtro por schoolId. O studentId pode ser o ID do titular (USER) ou do dependente (DEPENDENT).
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: studentId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID do aluno (usuário titular ou dependente)
+      responses:
+        '200':
+          description: Lista de mensalidades retornada com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminStudentChargesListResponse'
         '401':
           description: Usuário não autenticado.
           content:
@@ -1682,10 +1797,12 @@ paths:
       summary: Obter dados consolidados do dashboard
       description: |
         Retorna informações consolidadas para o dashboard administrativo:
-        - Total de alunos cadastrados
-        - Total de turmas ativas
-        - Previsão de receita do mês atual
-        - Últimos 5 alunos matriculados
+        - KPIs: total de escolas, alunos, turmas, escolas ativas/inadimplentes,
+          matrículas no mês, faturamento escolas/plataforma, inadimplência total
+        - Receita plataforma e faturamento escolas por mês (últimos 6 meses)
+        - Top escolas por quantidade de alunos
+        - Status dos pagamentos do mês (Pago, Emitido, Atrasado)
+        - Últimas escolas cadastradas
         
         Requer autenticação com persona ADMIN.
       security:
@@ -2600,6 +2717,104 @@ components:
       required:
         - schoolId
         - invoices
+    AdminEnrollmentRequestItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: ID do pedido
+        status:
+          type: string
+          enum: ['PENDING', 'APPROVED', 'REJECTED', 'CANCELLED']
+        schoolId:
+          type: string
+          format: uuid
+        schoolName:
+          type: string
+          description: Nome da escola
+        courseClassId:
+          type: string
+          format: uuid
+        courseLabel:
+          type: string
+          nullable: true
+        courseClassLabel:
+          type: string
+          nullable: true
+        requestedForUserId:
+          type: string
+          format: uuid
+        requestedForDependentId:
+          type: string
+          format: uuid
+          nullable: true
+        studentName:
+          type: string
+        dependentName:
+          type: string
+          nullable: true
+        decidedAt:
+          type: string
+          format: date-time
+          nullable: true
+        decidedByUserId:
+          type: string
+          format: uuid
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        enrollmentFeeAmount:
+          type: number
+          nullable: true
+          description: Valor da taxa de matrícula em reais
+        enrollmentFeeDueDate:
+          type: string
+          format: date
+          nullable: true
+        firstMonthlyPaymentDate:
+          type: string
+          format: date
+        enrollmentId:
+          type: string
+          format: uuid
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+    AdminEnrollmentRequestsListResponse:
+      type: object
+      properties:
+        requests:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminEnrollmentRequestItem'
+        pagination:
+          type: object
+          properties:
+            total:
+              type: integer
+            limit:
+              type: integer
+            offset:
+              type: integer
+            totalPage:
+              type: integer
+            currentPage:
+              type: integer
+            hasMore:
+              type: boolean
+          required:
+            - total
+            - limit
+            - offset
+            - totalPage
+            - currentPage
+            - hasMore
+      required:
+        - requests
+        - pagination
     AdminPaymentHistoryItem:
       type: object
       description: Item do histórico de pagamento (fatura escola x Minha Aula)
@@ -2678,6 +2893,24 @@ components:
             - totalPage
             - currentPage
             - hasMore
+        summary:
+          type: object
+          description: Totais da nossa empresa (opcional, presente quando disponível)
+          properties:
+            balanceAvailableReais:
+              type: number
+              nullable: true
+              description: Saldo disponível na Asaas (conta principal), em reais. null se indisponível.
+            totalReceivedCents:
+              type: integer
+              description: Valor total recebido (nossa empresa), em centavos
+            totalOverdueCents:
+              type: integer
+              description: Valor total atrasado (nossa empresa), em centavos
+          required:
+            - balanceAvailableReais
+            - totalReceivedCents
+            - totalOverdueCents
       required:
         - payments
         - pagination
@@ -2802,6 +3035,9 @@ components:
                 type: string
                 format: date-time
                 description: Data de criação do cadastro
+              countCursosVinculados:
+                type: integer
+                description: Quantidade de cursos distintos em que o titular (ou dependentes) está matriculado na escola
               dependentes:
                 type: array
                 description: Dependentes vinculados ao titular (nome, cpf, data nascimento, vínculo)
@@ -2829,6 +3065,7 @@ components:
               - studentType
               - endereco
               - createdAt
+              - countCursosVinculados
               - dependentes
         pagination:
           type: object
@@ -2978,6 +3215,26 @@ components:
               type: string
               enum: ['USER', 'DEPENDENT']
               description: USER = titular, DEPENDENT = dependente
+            endereco:
+              type: object
+              description: Endereço do aluno (ou do responsável quando dependente)
+              properties:
+                street:
+                  type: string
+                number:
+                  type: string
+                complement:
+                  type: string
+                  nullable: true
+                district:
+                  type: string
+                  nullable: true
+                city:
+                  type: string
+                state:
+                  type: string
+                zipCode:
+                  type: string
           required:
             - id
             - fullName
@@ -2985,6 +3242,7 @@ components:
             - phone
             - cpf
             - studentType
+            - endereco
         responsible:
           type: object
           nullable: true
@@ -3120,6 +3378,74 @@ components:
         - enrollments
         - paidCharges
         - dependents
+    AdminStudentChargesListResponse:
+      type: object
+      description: Lista de mensalidades do aluno em todas as escolas
+      properties:
+        charges:
+          type: array
+          description: Cobranças (mensalidades) do aluno em todos os cursos e escolas
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+              school:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  name:
+                    type: string
+              course:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  name:
+                    type: string
+              class:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  label:
+                    type: string
+              amountCents:
+                type: integer
+              discountCents:
+                type: integer
+                nullable: true
+              netAmountCents:
+                type: integer
+              description:
+                type: string
+                nullable: true
+              dueDate:
+                type: string
+                format: date
+              status:
+                type: string
+                description: PENDING_SYNC, OPEN, OVERDUE, PAID, CANCELLED, FAILED
+              paidAt:
+                type: string
+                format: date-time
+                nullable: true
+            required:
+              - id
+              - school
+              - course
+              - class
+              - amountCents
+              - netAmountCents
+              - dueDate
+              - status
+      required:
+        - charges
     AdminSchoolStudentPaymentsResponse:
       type: object
       properties:
@@ -3333,28 +3659,90 @@ components:
     AdminDashboardResponse:
       type: object
       properties:
-        totalStudents:
-          type: integer
-          description: Total de alunos cadastrados no sistema (persona STUDENT)
-          example: 1247
-        totalClasses:
-          type: integer
-          description: Total de turmas ativas no sistema
-          example: 85
-        currentMonthRevenueExpectation:
-          type: integer
-          description: Previsão de receita para o mês atual em centavos (soma dos boletos do mês)
-          example: 125000
-        recentEnrollments:
+        kpis:
+          type: object
+          description: Indicadores principais
+          properties:
+            totalEscolas:
+              type: integer
+              example: 24
+            totalAlunos:
+              type: integer
+              example: 1847
+            totalEscolasMesAnterior:
+              type: integer
+              example: 22
+            totalAlunosMesAnterior:
+              type: integer
+              example: 1782
+            totalTurmas:
+              type: integer
+              example: 156
+            escolasAtivas:
+              type: integer
+              example: 22
+            escolasInadimplentes:
+              type: integer
+              example: 2
+            matriculasNoMes:
+              type: integer
+              example: 89
+            faturamentoEscolasMes:
+              type: integer
+              description: Receita das escolas (mensalidades) no mês em centavos
+              example: 387420
+            faturamentoMinhaAulaMes:
+              type: integer
+              description: Receita plataforma no mês em centavos
+              example: 72000
+            faturamentoMinhaAulaMesAnterior:
+              type: integer
+              example: 68100
+            inadimplenciaTotal:
+              type: integer
+              description: Total de cobranças atrasadas em centavos
+              example: 12400
+        receitaPlataformaPorMes:
           type: array
-          description: Últimos 5 alunos matriculados
           items:
-            $ref: '#/components/schemas/RecentStudentEnrollment'
-      required:
-        - totalStudents
-        - totalClasses
-        - currentMonthRevenueExpectation
-        - recentEnrollments
+            type: object
+            properties:
+              mes: { type: string }
+              valor: { type: number }
+              ano: { type: integer }
+        faturamentoEscolasPorMes:
+          type: array
+          items:
+            type: object
+            properties:
+              mes: { type: string }
+              valor: { type: number }
+              ano: { type: integer }
+        topEscolasPorAlunos:
+          type: array
+          items:
+            type: object
+            properties:
+              nome: { type: string }
+              alunos: { type: integer }
+              cidade: { type: string, nullable: true }
+        statusPagamentosMes:
+          type: array
+          items:
+            type: object
+            properties:
+              status: { type: string }
+              quantidade: { type: integer }
+              valor: { type: number }
+        ultimasEscolasCadastradas:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string }
+              nome: { type: string }
+              cidade: { type: string, nullable: true }
+              data: { type: string, format: date-time }
     RecentStudentEnrollment:
       type: object
       properties:

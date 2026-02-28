@@ -1,6 +1,6 @@
 import { Between } from 'typeorm';
 import { AppDataSource } from './datasource';
-import { SchoolFinancialChargeRepository, StudentPaymentInfo, PaidChargeSummary } from '../../../ports/repositories/school-financial-charge.repo';
+import { SchoolFinancialChargeRepository, StudentPaymentInfo, PaidChargeSummary, AdminStudentChargeItem } from '../../../ports/repositories/school-financial-charge.repo';
 import { SchoolFinancialCharge, SchoolFinancialChargeStatus } from '../../../domain/entities/school-financial-charge';
 import { SchoolFinancialChargeOrm } from './entities/school-financial-charge.orm';
 
@@ -330,6 +330,84 @@ export class SchoolFinancialChargeRepositoryAdapter implements SchoolFinancialCh
             pendenteCents: item.pendenteCents,
             atrasadoCents: item.atrasadoCents,
             totalCents: item.ganhoCents + item.pendenteCents + item.atrasadoCents
+        }));
+    }
+
+    async getTuitionRevenueByMonthForDashboard(monthsLimit: number): Promise<Array<{ year: number; month: number; valorCents: number }>> {
+        const limit = Math.min(Math.max(monthsLimit, 1), 24);
+        const rows = await this.repo
+            .createQueryBuilder('charge')
+            .select('YEAR(charge.paidAt) AS year, MONTH(charge.paidAt) AS month, SUM(charge.netAmountCents) AS valorCents')
+            .where("charge.status = 'PAID'")
+            .andWhere('charge.paidAt IS NOT NULL')
+            .groupBy('YEAR(charge.paidAt)')
+            .addGroupBy('MONTH(charge.paidAt)')
+            .orderBy('year', 'DESC')
+            .addOrderBy('month', 'DESC')
+            .limit(limit)
+            .getRawMany();
+        return (rows as any[]).map((r) => ({
+            year: Number(r.year),
+            month: Number(r.month),
+            valorCents: Math.floor(Number(r.valorCents) || 0)
+        })).reverse();
+    }
+
+    async getOverdueTotalCents(): Promise<number> {
+        const row = await this.repo
+            .createQueryBuilder('charge')
+            .select('COALESCE(SUM(charge.netAmountCents), 0)', 'total')
+            .where("charge.status = 'OVERDUE'")
+            .getRawOne<{ total: string }>();
+        return Math.floor(Number(row?.total ?? 0));
+    }
+
+    async findChargesByStudentIdForAdmin(studentId: string, studentType: 'USER' | 'DEPENDENT'): Promise<AdminStudentChargeItem[]> {
+        const qb = this.repo
+            .createQueryBuilder('charge')
+            .innerJoin('charge.school', 'school')
+            .innerJoin('charge.course', 'course')
+            .innerJoin('charge.courseClass', 'class')
+            .where('charge.status != :cancelled', { cancelled: 'CANCELLED' });
+
+        if (studentType === 'USER') {
+            qb.andWhere('charge.studentUserId = :studentId', { studentId });
+        } else {
+            qb.andWhere('charge.dependentId = :studentId', { studentId });
+        }
+
+        const rows = await qb
+            .select([
+                'charge.id AS id',
+                'charge.amountCents AS amountCents',
+                'charge.discountCents AS discountCents',
+                'charge.netAmountCents AS netAmountCents',
+                'charge.description AS description',
+                'charge.dueDate AS dueDate',
+                'charge.status AS status',
+                'charge.paidAt AS paidAt',
+                'school.id AS schoolId',
+                'school.name AS schoolName',
+                'course.id AS courseId',
+                'course.name AS courseName',
+                'class.id AS classId',
+                'class.label AS classLabel'
+            ])
+            .orderBy('charge.dueDate', 'DESC')
+            .getRawMany();
+
+        return rows.map((row: any) => ({
+            id: row.id,
+            school: { id: row.schoolId, name: row.schoolName ?? '' },
+            course: { id: row.courseId, name: row.courseName ?? '' },
+            class: { id: row.classId, label: row.classLabel ?? '' },
+            amountCents: row.amountCents ?? 0,
+            discountCents: row.discountCents,
+            netAmountCents: row.netAmountCents ?? 0,
+            description: row.description,
+            dueDate: new Date(row.dueDate),
+            status: row.status as SchoolFinancialChargeStatus,
+            paidAt: row.paidAt ? new Date(row.paidAt) : null
         }));
     }
 

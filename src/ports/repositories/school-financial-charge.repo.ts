@@ -9,6 +9,21 @@ export type StudentPaymentInfo = {
     status: SchoolFinancialChargeStatus;
 };
 
+/** Item de cobrança para listagem admin (mensalidades do aluno em todas as escolas). */
+export type AdminStudentChargeItem = {
+    id: string;
+    school: { id: string; name: string };
+    course: { id: string; name: string };
+    class: { id: string; label: string };
+    amountCents: number;
+    discountCents: number | null;
+    netAmountCents: number;
+    description: string | null;
+    dueDate: Date;
+    status: SchoolFinancialChargeStatus;
+    paidAt: Date | null;
+};
+
 export type PaidChargeSummary = {
     id: string;
     netAmountCents: number;
@@ -39,5 +54,11 @@ export interface SchoolFinancialChargeRepository {
     ): Promise<Array<{ year: number; month: number; ganhoCents: number; pendenteCents: number; atrasadoCents: number; totalCents: number }>>;
     getCurrentMonthRevenue?(schoolId: string, month: number, year: number): Promise<number>;
     countChargesWithDiscount?(courseClassId: string, ownerUserId: string, studentUserId: string | null, dependentId: string | null): Promise<number>;
+    /** Lista todas as cobranças (mensalidades) do aluno em todas as escolas. studentType USER = studentUserId, DEPENDENT = dependentId. */
+    findChargesByStudentIdForAdmin?(studentId: string, studentType: 'USER' | 'DEPENDENT'): Promise<AdminStudentChargeItem[]>;
+    /** Receita de mensalidades (charges PAID) por mês para dashboard. */
+    getTuitionRevenueByMonthForDashboard?(monthsLimit: number): Promise<Array<{ year: number; month: number; valorCents: number }>>;
+    /** Total de cobranças atrasadas (status OVERDUE) em centavos. */
+    getOverdueTotalCents?(): Promise<number>;
 }
 

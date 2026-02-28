@@ -233,6 +233,18 @@ export class AsaasClient {
         }
     }
 
+    /** Saldo da conta principal (API key usada no client). GET /finance/balance */
+    async getMainAccountBalance(): Promise<{ balance: number }> {
+        try {
+            const { data } = await this.http.get<{ balance: number }>('/finance/balance');
+            return {
+                balance: typeof data?.balance === 'number' ? data.balance : 0
+            };
+        } catch (error) {
+            throw this.toDomainError(error);
+        }
+    }
+
     async getAccountBalance(accountId: string): Promise<{ balance: number; availableBalance: number; blockedBalance?: number }> {
         try {
             // Tentar endpoint específico de balance primeiro (se existir)

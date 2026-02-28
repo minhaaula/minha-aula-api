@@ -1,3 +1,4 @@
+import type { PostalAddressProps } from '../../domain/value-objects/postal-address';
 import { UserRepository } from '../../ports/repositories/user.repo';
 import { DependentRepository } from '../../ports/repositories/dependent.repo';
 import { AppDataSource } from '../../infra/db/typeorm/datasource';
@@ -52,6 +53,7 @@ export interface GetAdminStudentDetailsOutput {
         cpf: string;
         birthDate: Date | null;
         studentType: 'USER' | 'DEPENDENT';
+        endereco: PostalAddressProps;
     };
     responsible: {
         id: string;
@@ -108,7 +110,8 @@ export class GetAdminStudentDetails {
                     phone: user.phone,
                     cpf: user.cpf,
                     birthDate: user.birthDate,
-                    studentType: 'USER'
+                    studentType: 'USER',
+                    endereco: user.address.toPrimitives()
                 },
                 responsible: null,
                 enrollments,
@@ -140,7 +143,8 @@ export class GetAdminStudentDetails {
                 phone: '',
                 cpf: dependent.cpf || '',
                 birthDate: dependent.birthDate,
-                studentType: 'DEPENDENT'
+                studentType: 'DEPENDENT',
+                endereco: responsible.address.toPrimitives()
             },
             responsible: {
                 id: responsible.id,

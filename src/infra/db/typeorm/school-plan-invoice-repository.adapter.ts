@@ -2,7 +2,8 @@ import { AppDataSource } from './datasource';
 import {
     SchoolPlanInvoiceRepository,
     PaymentHistoryFilters,
-    PaymentHistoryResult
+    PaymentHistoryResult,
+    PaymentHistoryTotals
 } from '../../../ports/repositories/school-plan-invoice.repo';
 import { SchoolPlanInvoiceOrm } from './entities/school-plan-invoice.orm';
 import { SchoolOrm } from './entities/school.orm';
@@ -219,6 +220,87 @@ export class SchoolPlanInvoiceRepositoryAdapter implements SchoolPlanInvoiceRepo
             total,
             limit: safeLimit,
             offset: safeOffset
+        };
+    }
+
+    async getRevenueByMonthForDashboard(monthsLimit: number): Promise<Array<{ year: number; month: number; valorCents: number }>> {
+        const limit = Math.min(Math.max(monthsLimit, 1), 24);
+        const rows = await this.repo
+            .createQueryBuilder('inv')
+            .select('YEAR(inv.paidAt) AS year, MONTH(inv.paidAt) AS month, SUM(inv.amountCents) AS valorCents')
+            .where("inv.status = 'PAID'")
+            .andWhere('inv.paidAt IS NOT NULL')
+            .groupBy('YEAR(inv.paidAt)')
+            .addGroupBy('MONTH(inv.paidAt)')
+            .orderBy('year', 'DESC')
+            .addOrderBy('month', 'DESC')
+            .limit(limit)
+            .getRawMany();
+        return (rows as any[]).map((r) => ({
+            year: Number(r.year),
+            month: Number(r.month),
+            valorCents: Math.floor(Number(r.valorCents) || 0)
+        })).reverse();
+    }
+
+    async getPaymentStatusSummaryForMonth(year: number, month: number): Promise<Array<{ status: string; count: number; valorCents: number }>> {
+        const today = new Date().toISOString().slice(0, 10);
+        const baseWhere = { year, month, today };
+
+        const [paid, issued, overdue] = await Promise.all([
+            this.repo
+                .createQueryBuilder('inv')
+                .select('COUNT(inv.id)', 'count')
+                .addSelect('COALESCE(SUM(inv.amountCents), 0)', 'valorCents')
+                .where("inv.status = 'PAID'")
+                .andWhere('YEAR(inv.dueDate) = :year', baseWhere)
+                .andWhere('MONTH(inv.dueDate) = :month', baseWhere)
+                .getRawOne<{ count: string; valorCents: string }>(),
+            this.repo
+                .createQueryBuilder('inv')
+                .select('COUNT(inv.id)', 'count')
+                .addSelect('COALESCE(SUM(inv.amountCents), 0)', 'valorCents')
+                .where("inv.status = 'ISSUED'")
+                .andWhere('YEAR(inv.dueDate) = :year', baseWhere)
+                .andWhere('MONTH(inv.dueDate) = :month', baseWhere)
+                .andWhere('inv.dueDate >= :today', baseWhere)
+                .getRawOne<{ count: string; valorCents: string }>(),
+            this.repo
+                .createQueryBuilder('inv')
+                .select('COUNT(inv.id)', 'count')
+                .addSelect('COALESCE(SUM(inv.amountCents), 0)', 'valorCents')
+                .where("inv.status = 'ISSUED'")
+                .andWhere('YEAR(inv.dueDate) = :year', baseWhere)
+                .andWhere('MONTH(inv.dueDate) = :month', baseWhere)
+                .andWhere('inv.dueDate < :today', baseWhere)
+                .getRawOne<{ count: string; valorCents: string }>()
+        ]);
+
+        const result: Array<{ status: string; count: number; valorCents: number }> = [];
+        if (Number(paid?.count ?? 0) > 0) result.push({ status: 'Pago', count: Number(paid!.count), valorCents: Math.floor(Number(paid!.valorCents) || 0) });
+        if (Number(issued?.count ?? 0) > 0) result.push({ status: 'Emitido', count: Number(issued!.count), valorCents: Math.floor(Number(issued!.valorCents) || 0) });
+        if (Number(overdue?.count ?? 0) > 0) result.push({ status: 'Atrasado', count: Number(overdue!.count), valorCents: Math.floor(Number(overdue!.valorCents) || 0) });
+        return result;
+    }
+
+    async getPaymentHistoryTotals(): Promise<PaymentHistoryTotals> {
+        const today = new Date().toISOString().slice(0, 10);
+        const [receivedRow, overdueRow] = await Promise.all([
+            this.repo
+                .createQueryBuilder('inv')
+                .select('COALESCE(SUM(inv.amountCents), 0)', 'total')
+                .where("inv.status = 'PAID'")
+                .getRawOne<{ total: string }>(),
+            this.repo
+                .createQueryBuilder('inv')
+                .select('COALESCE(SUM(inv.amountCents), 0)', 'total')
+                .where("inv.status = 'ISSUED'")
+                .andWhere('inv.dueDate < :today', { today })
+                .getRawOne<{ total: string }>()
+        ]);
+        return {
+            totalReceivedCents: Math.floor(Number(receivedRow?.total ?? 0)),
+            totalOverdueCents: Math.floor(Number(overdueRow?.total ?? 0))
         };
     }
 

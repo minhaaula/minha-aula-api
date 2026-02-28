@@ -29,7 +29,14 @@ export class GetAdminSchoolDetails {
         const onboardingCompleted = school.onboardingCompletedAt !== null;
         const hasCompletedFirstPayment = await this.planInvoices.hasSchoolAnyPaidInvoice(school.id);
 
-        const schoolStatus = !plan ? 'INACTIVE' as const : (plan.status === 'ACTIVE' || plan.status === 'TRIAL' ? 'ACTIVE' : 'INACTIVE');
+        // Escola sem primeiro pagamento E sem onboarding completo não pode ser ACTIVE.
+        // INACTIVE quando: (não fez primeiro pagamento E não tem onboarding completo), ou pediu encerramento, ou plano não ACTIVE/TRIAL.
+        const planWouldBeActive = plan && (plan.status === 'ACTIVE' || plan.status === 'TRIAL');
+        const hasFirstPaymentOrOnboarding = hasCompletedFirstPayment || onboardingCompleted;
+        const schoolStatus =
+            !hasFirstPaymentOrOnboarding || !planWouldBeActive
+                ? ('INACTIVE' as const)
+                : ('ACTIVE' as const);
         const paymentStatus = !plan ? null : (plan.status === 'ACTIVE' || plan.status === 'TRIAL' ? 'EM_DIA' : 'ATRASADO');
 
         return {

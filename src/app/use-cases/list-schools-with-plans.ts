@@ -4,7 +4,14 @@ import { SchoolPlanInvoiceRepository } from '../../ports/repositories/school-pla
 import { presentSchoolPlanFinance, type SchoolPlanFinanceView } from '../presenters/school-plan-finance.presenter';
 import type { SchoolWithPlanItem, SchoolStatus, PaymentStatus } from '../types/admin.types';
 
-function deriveSchoolStatus(planView: SchoolPlanFinanceView | null): SchoolStatus {
+/** Escola sem primeiro pagamento E sem onboarding completo não pode ser ACTIVE. INACTIVE quando pediu encerramento (quando existir campo). */
+function deriveSchoolStatus(
+    planView: SchoolPlanFinanceView | null,
+    hasCompletedFirstPayment: boolean,
+    onboardingCompleted: boolean
+): SchoolStatus {
+    const hasFirstPaymentOrOnboarding = hasCompletedFirstPayment || onboardingCompleted;
+    if (!hasFirstPaymentOrOnboarding) return 'INACTIVE';
     if (!planView) return 'INACTIVE';
     return planView.status === 'ACTIVE' || planView.status === 'TRIAL' ? 'ACTIVE' : 'INACTIVE';
 }
@@ -95,7 +102,7 @@ export class ListSchoolsWithPlans {
                 ownerName: school.ownerName,
                 ownerCpf: school.ownerCpf,
                 ownerEmail: school.ownerEmail,
-                schoolStatus: deriveSchoolStatus(plan),
+                schoolStatus: deriveSchoolStatus(plan, hasCompletedFirstPayment, onboardingCompleted),
                 paymentStatus: derivePaymentStatus(plan),
                 plan,
                 hasCompletedFirstPayment,

@@ -326,6 +326,7 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
                     schoolsRepo,
                     planFinancesRepo: schoolPlanFinancesRepo,
                     planInvoicesRepo: schoolPlanInvoicesRepo,
+                    enrollmentRequestsRepo,
                     subscriptionPlansRepo,
                     categoriesRepo,
                     usersRepo,

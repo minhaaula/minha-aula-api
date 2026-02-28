@@ -1,3 +1,4 @@
+import { Between } from 'typeorm';
 import { AppDataSource } from './datasource';
 import { SchoolRepository } from '../../../ports/repositories/school.repo';
 import { School } from '../../../domain/entities/school';
@@ -189,6 +190,29 @@ export class SchoolRepositoryAdapter implements SchoolRepository {
             return item;
         });
         return row;
+    }
+
+    async countCreatedBefore(date: Date): Promise<number> {
+        return this.repo.count({
+            where: { createdAt: Between(new Date(0), date) }
+        });
+    }
+
+    async findLatestCreated(limit: number): Promise<Array<{ id: string; name: string; city: string | null; createdAt: Date }>> {
+        const rows = await AppDataSource.query(
+            `SELECT s.id AS id, s.name AS name, s.created_at AS createdAt,
+                    (SELECT city FROM school_addresses WHERE school_id = s.id LIMIT 1) AS city
+             FROM schools s
+             ORDER BY s.created_at DESC
+             LIMIT ?`,
+            [limit]
+        );
+        return rows.map((r: any) => ({
+            id: r.id,
+            name: r.name,
+            city: r.city ?? null,
+            createdAt: new Date(r.createdAt)
+        }));
     }
 
     async findCitiesBySchoolIds(schoolIds: string[]): Promise<import('../../../ports/repositories/school.repo').SchoolCityInfo[]> {

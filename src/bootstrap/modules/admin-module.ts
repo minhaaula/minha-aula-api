@@ -20,6 +20,7 @@ import type { EnrollmentRepository } from '../../ports/repositories/enrollment.r
 import type { DependentRepository } from '../../ports/repositories/dependent.repo';
 import type { SchoolFinancialChargeRepository } from '../../ports/repositories/school-financial-charge.repo';
 import type { SchoolPlanInvoiceRepository } from '../../ports/repositories/school-plan-invoice.repo';
+import type { EnrollmentRequestRepository } from '../../ports/repositories/enrollment-request.repo';
 import type { ChargeDueReminderRepository } from '../../ports/repositories/charge-due-reminder.repo';
 import type { OutboxRepository } from '../../ports/repositories/outbox.repo';
 import type { PasswordHasherPort } from '../../ports/providers/password-hasher.port';
@@ -41,6 +42,8 @@ import { GetAdminSchoolFinancial } from '../../app/use-cases/get-admin-school-fi
 import { GetAdminSchoolBilling } from '../../app/use-cases/get-admin-school-billing';
 import { ListAdminSchoolInvoices } from '../../app/use-cases/list-admin-school-invoices';
 import { ListAdminPaymentHistory } from '../../app/use-cases/list-admin-payment-history';
+import { ListAdminEnrollmentRequests } from '../../app/use-cases/list-admin-enrollment-requests';
+import { ListAdminStudentCharges } from '../../app/use-cases/list-admin-student-charges';
 import { ListAdminStudentCourses } from '../../app/use-cases/list-admin-student-courses';
 import { GetAdminStudentDetails } from '../../app/use-cases/get-admin-student-details';
 import { ListAdminSchoolCourses } from '../../app/use-cases/list-admin-school-courses';
@@ -73,6 +76,7 @@ type AdminModuleDeps = {
     dependentsRepo: DependentRepository;
     financialChargesRepo: SchoolFinancialChargeRepository;
     planInvoicesRepo: SchoolPlanInvoiceRepository;
+    enrollmentRequestsRepo: EnrollmentRequestRepository;
     outbox: OutboxRepository;
     chargeDueReminderRepo: ChargeDueReminderRepository;
     passwordHasher: PasswordHasherPort;
@@ -125,10 +129,12 @@ export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext)
     );
 
     const getAdminDashboard = new GetAdminDashboard(
-        deps.usersRepo,
+        deps.schoolsRepo,
         deps.classesRepo,
         deps.enrollmentsRepo,
-        deps.financialChargesRepo
+        deps.financialChargesRepo,
+        deps.planInvoicesRepo,
+        listSchoolsWithPlans
     );
 
     const listSchoolStudents = new ListSchoolStudents(
@@ -167,8 +173,17 @@ export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext)
         : undefined;
 
     const listAdminPaymentHistory = deps.planInvoicesRepo
-        ? new ListAdminPaymentHistory(deps.planInvoicesRepo)
+        ? new ListAdminPaymentHistory(deps.planInvoicesRepo, deps.asaasProvider)
         : undefined;
+
+    const listAdminEnrollmentRequests = deps.enrollmentRequestsRepo?.findManyForAdmin
+        ? new ListAdminEnrollmentRequests(deps.enrollmentRequestsRepo)
+        : undefined;
+
+    const listAdminStudentCharges =
+        deps.financialChargesRepo?.findChargesByStudentIdForAdmin
+            ? new ListAdminStudentCharges(deps.usersRepo, deps.dependentsRepo, deps.financialChargesRepo)
+            : undefined;
 
     const adminMarkInvoicePaid = deps.planInvoicesRepo
         ? new AdminMarkInvoicePaid(deps.planInvoicesRepo)
@@ -232,11 +247,13 @@ export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext)
         listAllStudents,
         listAdminStudentCourses,
         getAdminStudentDetails,
+        listAdminStudentCharges,
         listAdminSchoolCourses,
         getAdminSchoolFinancial,
         getAdminSchoolBilling,
         listAdminSchoolInvoices,
         listAdminPaymentHistory,
+        listAdminEnrollmentRequests,
         adminMarkInvoicePaid,
         adminMarkChargePaid,
         syncSchoolOnboardingDocuments,

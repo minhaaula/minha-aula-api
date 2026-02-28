@@ -257,6 +257,10 @@ export class AsaasProvider implements PaymentProviderPort {
         return await this.client.getAccountBalance(accountId);
     }
 
+    async getMainAccountBalance(): Promise<{ balance: number }> {
+        return await this.client.getMainAccountBalance();
+    }
+
     async getPayment(paymentId: string): Promise<AsaasPaymentDetails> {
         if (!paymentId || !paymentId.trim()) {
             throw new Error('Payment ID is required');

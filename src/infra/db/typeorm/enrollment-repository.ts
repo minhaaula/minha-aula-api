@@ -47,6 +47,52 @@ export class EnrollmentRepositoryAdapter implements EnrollmentRepository {
         await this.repo.save(this.toOrm(enrollment));
     }
 
+    async countTotalActiveStudents(): Promise<number> {
+        const row = await this.repo
+            .createQueryBuilder('enrollment')
+            .select(
+                "COUNT(DISTINCT CONCAT(enrollment.studentType, '-', COALESCE(enrollment.studentUserId, enrollment.dependentId, '')))",
+                'count'
+            )
+            .where('enrollment.status = :status', { status: 'ACTIVE' })
+            .getRawOne<{ count: string }>();
+        return Number(row?.count ?? 0);
+    }
+
+    async countEnrollmentsInMonth(year: number, month: number): Promise<number> {
+        return this.repo
+            .createQueryBuilder('enrollment')
+            .where('YEAR(enrollment.enrolledAt) = :year', { year })
+            .andWhere('MONTH(enrollment.enrolledAt) = :month', { month })
+            .getCount();
+    }
+
+    async getTopSchoolsByStudentCount(limit: number): Promise<Array<{ schoolId: string; schoolName: string; city: string | null; count: number }>> {
+        const rows = await this.repo
+            .createQueryBuilder('enrollment')
+            .innerJoin('enrollment.courseClass', 'class')
+            .innerJoin('class.course', 'course')
+            .innerJoin('course.school', 'school')
+            .leftJoin('school.addresses', 'addr')
+            .where('enrollment.status = :status', { status: 'ACTIVE' })
+            .select('school.id AS schoolId')
+            .addSelect('school.name AS schoolName')
+            .addSelect('MAX(addr.city)', 'city')
+            .addSelect('COUNT(DISTINCT COALESCE(enrollment.studentUserId, enrollment.dependentId))', 'count')
+            .groupBy('school.id')
+            .addGroupBy('school.name')
+            .orderBy('count', 'DESC')
+            .limit(limit)
+            .getRawMany();
+
+        return (rows as any[]).map((r) => ({
+            schoolId: r.schoolId,
+            schoolName: r.schoolName ?? '',
+            city: r.city ?? null,
+            count: Number(r.count) || 0
+        }));
+    }
+
     async findRecent(limit: number): Promise<EnrollmentWithDetails[]> {
         const results = await this.repo
             .createQueryBuilder('enrollment')

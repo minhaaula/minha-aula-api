@@ -39,6 +39,7 @@ export type AdminSchoolStudentItem = {
     studentType: 'USER';
     endereco: PostalAddressProps;
     createdAt: Date;
+    countCursosVinculados: number;
     dependentes: DependenteResumo[];
 };
 
@@ -131,6 +132,16 @@ export class ListSchoolStudents {
         const dependentsByOwner = await this.loadDependents(Array.from(owners.keys()));
 
         if (input.outputFormat === 'admin') {
+            const classById = new Map(classes.map((cls) => [cls.id, cls]));
+            const courseIdsByOwner = new Map<string, Set<string>>();
+            for (const e of enrollments) {
+                const cls = classById.get(e.courseClassId);
+                if (!cls) continue;
+                const set = courseIdsByOwner.get(e.ownerUserId) ?? new Set<string>();
+                set.add(cls.courseId);
+                courseIdsByOwner.set(e.ownerUserId, set);
+            }
+
             const results: AdminSchoolStudentItem[] = [];
             const uniqueOwnerIds = Array.from(new Set(enrollments.map((e) => e.ownerUserId)));
 
@@ -155,6 +166,8 @@ export class ListSchoolStudents {
                         vinculo: dep.relationship
                     }));
 
+                const countCursosVinculados = courseIdsByOwner.get(ownerId)?.size ?? 0;
+
                 results.push({
                     cpf: owner.cpf,
                     studentId: owner.id,
@@ -162,6 +175,7 @@ export class ListSchoolStudents {
                     studentType: 'USER',
                     endereco: owner.address.toPrimitives(),
                     createdAt: owner.createdAt,
+                    countCursosVinculados,
                     dependentes
                 });
             }

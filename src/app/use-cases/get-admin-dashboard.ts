@@ -1,74 +1,156 @@
-import { UserRepository } from '../../ports/repositories/user.repo';
+import { SchoolRepository } from '../../ports/repositories/school.repo';
 import { CourseClassRepository } from '../../ports/repositories/course-class.repo';
 import { EnrollmentRepository } from '../../ports/repositories/enrollment.repo';
 import { SchoolFinancialChargeRepository } from '../../ports/repositories/school-financial-charge.repo';
+import { SchoolPlanInvoiceRepository } from '../../ports/repositories/school-plan-invoice.repo';
+import { ListSchoolsWithPlans } from './list-schools-with-plans';
 
-type RecentStudent = {
-    id: string;
-    name: string;
-    cpf: string;
-    enrolledAt: Date;
-    courseName: string;
-    className: string;
-    schoolName: string;
+const MES_ABREV: Record<number, string> = {
+    1: 'Jan', 2: 'Fev', 3: 'Mar', 4: 'Abr', 5: 'Mai', 6: 'Jun',
+    7: 'Jul', 8: 'Ago', 9: 'Set', 10: 'Out', 11: 'Nov', 12: 'Dez'
 };
 
-type DashboardOutput = {
-    totalStudents: number;
-    totalClasses: number;
-    currentMonthRevenueExpectation: number;
-    recentEnrollments: RecentStudent[];
+export type DashboardKpis = {
+    totalEscolas: number;
+    totalAlunos: number;
+    totalEscolasMesAnterior: number;
+    totalAlunosMesAnterior: number;
+    totalTurmas: number;
+    escolasAtivas: number;
+    escolasInadimplentes: number;
+    matriculasNoMes: number;
+    faturamentoEscolasMes: number;
+    faturamentoMinhaAulaMes: number;
+    faturamentoMinhaAulaMesAnterior: number;
+    inadimplenciaTotal: number;
+};
+
+export type ReceitaPorMes = { mes: string; valor: number; ano: number };
+export type TopEscolaPorAlunos = { nome: string; alunos: number; cidade: string | null };
+export type StatusPagamentoMes = { status: string; quantidade: number; valor: number };
+export type UltimaEscolaCadastrada = { id: string; nome: string; cidade: string | null; data: string };
+
+export type DashboardOutput = {
+    kpis: DashboardKpis;
+    receitaPlataformaPorMes: ReceitaPorMes[];
+    faturamentoEscolasPorMes: ReceitaPorMes[];
+    topEscolasPorAlunos: TopEscolaPorAlunos[];
+    statusPagamentosMes: StatusPagamentoMes[];
+    ultimasEscolasCadastradas: UltimaEscolaCadastrada[];
 };
 
 export class GetAdminDashboard {
     constructor(
-        private readonly users: UserRepository,
+        private readonly schools: SchoolRepository,
         private readonly classes: CourseClassRepository,
         private readonly enrollments: EnrollmentRepository,
-        private readonly financialCharges: SchoolFinancialChargeRepository
+        private readonly financialCharges: SchoolFinancialChargeRepository,
+        private readonly planInvoices: SchoolPlanInvoiceRepository,
+        private readonly listSchoolsWithPlans: ListSchoolsWithPlans
     ) {}
 
     async exec(): Promise<DashboardOutput> {
-        // Buscar total de alunos (usuários com persona STUDENT)
-        const totalStudents = await this.users.countByPersona?.('STUDENT') ?? 0;
-
-        // Buscar total de turmas
-        const totalClasses = await this.classes.countAll?.() ?? 0;
-
-        // Buscar previsão de receita do mês atual
         const now = new Date();
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+        const year = now.getFullYear();
+        const month = now.getMonth() + 1;
+        const lastDayPrevMonth = new Date(year, month - 1, 0);
 
-        const currentMonthCharges = await this.financialCharges.findByDateRange?.(
-            startOfMonth,
-            endOfMonth
-        ) ?? [];
+        const prevYear = lastDayPrevMonth.getFullYear();
+        const prevMonth = lastDayPrevMonth.getMonth() + 1;
+        const monthsLimit = 6;
 
-        const currentMonthRevenueExpectation = currentMonthCharges.reduce(
-            (sum, charge) => sum + charge.amountCents,
-            0
-        );
+        const [
+            allSchools,
+            totalEscolasMesAnterior,
+            totalAlunos,
+            totalTurmas,
+            schoolsList,
+            matriculasNoMes,
+            inadimplenciaTotal,
+            receitaPlataformaRaw,
+            faturamentoEscolasRaw,
+            topEscolas,
+            statusPagamentos,
+            ultimasEscolas
+        ] = await Promise.all([
+            this.schools.findAll(),
+            this.schools.countCreatedBefore?.(lastDayPrevMonth) ?? this.schools.findAll().then((s) => s.length),
+            this.enrollments.countTotalActiveStudents?.() ?? 0,
+            this.classes.countAll?.() ?? 0,
+            this.listSchoolsWithPlans.exec({ limit: 1000 }).then((r) => r.schools),
+            this.enrollments.countEnrollmentsInMonth?.(year, month) ?? 0,
+            this.financialCharges.getOverdueTotalCents?.() ?? 0,
+            this.planInvoices.getRevenueByMonthForDashboard?.(monthsLimit) ?? Promise.resolve([]),
+            this.financialCharges.getTuitionRevenueByMonthForDashboard?.(monthsLimit) ?? Promise.resolve([]),
+            this.enrollments.getTopSchoolsByStudentCount?.(5) ?? Promise.resolve([]),
+            this.planInvoices.getPaymentStatusSummaryForMonth?.(year, month) ?? Promise.resolve([]),
+            this.schools.findLatestCreated?.(5) ?? Promise.resolve([])
+        ]);
 
-        // Buscar últimos 5 alunos matriculados
-        const recentEnrollmentsData = await this.enrollments.findRecent?.(5) ?? [];
+        const totalEscolas = allSchools.length;
+        const escolasAtivas = schoolsList.filter((s) => s.schoolStatus === 'ACTIVE').length;
+        const escolasInadimplentes = schoolsList.filter((s) => s.paymentStatus === 'ATRASADO').length;
 
-        const recentEnrollments: RecentStudent[] = recentEnrollmentsData.map(enrollment => ({
-            id: enrollment.studentId,
-            name: enrollment.studentName ?? 'N/A',
-            cpf: enrollment.studentCpf ?? 'N/A',
-            enrolledAt: enrollment.createdAt,
-            courseName: enrollment.courseName ?? 'N/A',
-            className: enrollment.className ?? 'N/A',
-            schoolName: enrollment.schoolName ?? 'N/A'
+        const faturamentoEscolasMes =
+            faturamentoEscolasRaw.find((r) => r.year === year && r.month === month)?.valorCents ?? 0;
+        const faturamentoMinhaAulaMes =
+            receitaPlataformaRaw.find((r) => r.year === year && r.month === month)?.valorCents ?? 0;
+        const faturamentoMinhaAulaMesAnterior =
+            receitaPlataformaRaw.find((r) => r.year === prevYear && r.month === prevMonth)?.valorCents ?? 0;
+
+        const totalAlunosMesAnterior = Math.max(0, totalAlunos - matriculasNoMes);
+
+        const kpis: DashboardKpis = {
+            totalEscolas,
+            totalAlunos,
+            totalEscolasMesAnterior,
+            totalAlunosMesAnterior,
+            totalTurmas,
+            escolasAtivas,
+            escolasInadimplentes,
+            matriculasNoMes,
+            faturamentoEscolasMes,
+            faturamentoMinhaAulaMes,
+            faturamentoMinhaAulaMesAnterior,
+            inadimplenciaTotal
+        };
+
+        const toReceitaPorMes = (rows: Array<{ year: number; month: number; valorCents: number }>): ReceitaPorMes[] =>
+            rows.map((r) => ({
+                mes: MES_ABREV[r.month] ?? String(r.month),
+                valor: r.valorCents,
+                ano: r.year
+            }));
+
+        const receitaPlataformaPorMes = toReceitaPorMes(receitaPlataformaRaw);
+        const faturamentoEscolasPorMes = toReceitaPorMes(faturamentoEscolasRaw);
+
+        const topEscolasPorAlunos: TopEscolaPorAlunos[] = topEscolas.map((s) => ({
+            nome: s.schoolName,
+            alunos: s.count,
+            cidade: s.city
+        }));
+
+        const statusPagamentosMes: StatusPagamentoMes[] = statusPagamentos.map((s) => ({
+            status: s.status,
+            quantidade: s.count,
+            valor: s.valorCents
+        }));
+
+        const ultimasEscolasCadastradas: UltimaEscolaCadastrada[] = ultimasEscolas.map((s) => ({
+            id: s.id,
+            nome: s.name,
+            cidade: s.city,
+            data: s.createdAt.toISOString()
         }));
 
         return {
-            totalStudents,
-            totalClasses,
-            currentMonthRevenueExpectation,
-            recentEnrollments
+            kpis,
+            receitaPlataformaPorMes,
+            faturamentoEscolasPorMes,
+            topEscolasPorAlunos,
+            statusPagamentosMes,
+            ultimasEscolasCadastradas
         };
     }
 }
-

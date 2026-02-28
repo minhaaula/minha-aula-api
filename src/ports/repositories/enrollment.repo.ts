@@ -62,4 +62,10 @@ export interface EnrollmentRepository {
         limit: number,
         offset: number
     ): Promise<AdminStudentListResult>;
+    /** Conta matrículas criadas no mês/ano. */
+    countEnrollmentsInMonth?(year: number, month: number): Promise<number>;
+    /** Conta alunos únicos com matrícula ativa (usuários + dependentes). */
+    countTotalActiveStudents?(): Promise<number>;
+    /** Top escolas por quantidade de alunos (matrículas ativas). */
+    getTopSchoolsByStudentCount?(limit: number): Promise<Array<{ schoolId: string; schoolName: string; city: string | null; count: number }>>;
 }

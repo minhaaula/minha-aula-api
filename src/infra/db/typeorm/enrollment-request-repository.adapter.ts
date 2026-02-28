@@ -1,7 +1,8 @@
 import { AppDataSource } from './datasource';
 import {
     EnrollmentRequestRepository,
-    EnrollmentRequestWithDetails
+    EnrollmentRequestWithDetails,
+    AdminEnrollmentRequestItem
 } from '../../../ports/repositories/enrollment-request.repo';
 import { EnrollmentRequest, EnrollmentRequestStatus } from '../../../domain/entities/enrollment-request';
 import { EnrollmentRequestOrm } from './entities/enrollment-request.orm';
@@ -93,6 +94,66 @@ export class EnrollmentRequestRepositoryAdapter implements EnrollmentRequestRepo
             studentName: row.requestedFor.fullName,
             dependentName: row.dependent?.fullName ?? null
         }));
+    }
+
+    async findManyForAdmin(params: {
+        studentName?: string | null;
+        studentCpf?: string | null;
+        schoolName?: string | null;
+        status?: EnrollmentRequestStatus | null;
+        limit?: number;
+        offset?: number;
+    }): Promise<{ items: AdminEnrollmentRequestItem[]; total: number }> {
+        const studentName = params.studentName?.trim() || null;
+        const studentCpf = params.studentCpf?.trim().replace(/\D/g, '') || null;
+        const schoolName = params.schoolName?.trim() || null;
+        const limit = Math.min(Math.max(params.limit ?? 50, 1), 100);
+        const offset = Math.max(0, params.offset ?? 0);
+
+        const qb = this.repo
+            .createQueryBuilder('request')
+            .innerJoinAndSelect('request.courseClass', 'courseClass')
+            .innerJoinAndSelect('courseClass.course', 'course')
+            .innerJoinAndSelect('request.requestedFor', 'student')
+            .innerJoinAndSelect('request.school', 'school')
+            .leftJoinAndSelect('request.dependent', 'dependent');
+
+        if (studentName) {
+            qb.andWhere(
+                '(LOWER(student.fullName) LIKE LOWER(:studentName) OR (dependent.id IS NOT NULL AND LOWER(dependent.fullName) LIKE LOWER(:studentName)))',
+                { studentName: `%${studentName}%` }
+            );
+        }
+        if (studentCpf) {
+            qb.andWhere(
+                '(student.cpf = :studentCpf OR (dependent.id IS NOT NULL AND dependent.cpf = :studentCpf))',
+                { studentCpf }
+            );
+        }
+        if (schoolName) {
+            qb.andWhere('LOWER(school.name) LIKE LOWER(:schoolName)', { schoolName: `%${schoolName}%` });
+        }
+        if (params.status) {
+            qb.andWhere('request.status = :status', { status: params.status });
+        }
+
+        qb.orderBy('request.createdAt', 'DESC');
+
+        const [rows, total] = await qb
+            .skip(offset)
+            .take(limit)
+            .getManyAndCount();
+
+        const items: AdminEnrollmentRequestItem[] = rows.map((row) => ({
+            request: this.toDomain(row),
+            courseClassLabel: row.courseClass?.label ?? null,
+            courseLabel: row.courseClass?.course?.name ?? null,
+            studentName: row.requestedFor.fullName,
+            dependentName: row.dependent?.fullName ?? null,
+            schoolName: row.school?.name ?? ''
+        }));
+
+        return { items, total };
     }
 
     async countPendingBySchoolId(schoolId: string): Promise<number> {
