@@ -79,7 +79,6 @@ Após criar a conta, o script busca os detalhes completos e mostra o status atua
 ### 3. Aguardar Webhooks
 
 Se os webhooks estiverem configurados, você receberá eventos como:
-- `ACCOUNT_CREATED` - Conta criada
 - `ACCOUNT_STATUS_GENERAL_APPROVAL_PENDING` - Aguardando aprovação
 - `ACCOUNT_STATUS_GENERAL_APPROVAL_APPROVED` - Conta aprovada
 
