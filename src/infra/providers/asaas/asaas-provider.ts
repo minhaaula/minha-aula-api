@@ -349,8 +349,7 @@ export class AsaasProvider implements PaymentProviderPort {
                 'ACCOUNT_STATUS_GENERAL_APPROVAL_APPROVED',
                 'ACCOUNT_STATUS_GENERAL_APPROVAL_REJECTED',
                 'ACCOUNT_STATUS_GENERAL_APPROVAL_AWAITING_APPROVAL',
-                'ACCOUNT_STATUS_GENERAL_APPROVAL_PENDING',
-                'ACCOUNT_CREATED'
+                'ACCOUNT_STATUS_GENERAL_APPROVAL_PENDING'
             ];
 
         webhooks.push({
