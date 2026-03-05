@@ -1015,13 +1015,16 @@ paths:
     get:
       tags:
         - Students
-      summary: Listar meus pedidos de matrícula pendentes
-      description: Retorna todos os pedidos de matrícula com status PENDING do estudante logado, incluindo pedidos para o próprio estudante e para seus dependentes. Requer persona STUDENT.
+      summary: Listar meus pedidos de matrícula em aberto
+      description: |
+        Retorna apenas pedidos de matrícula **EM ABERTO** (status PENDING) do estudante logado e dos seus dependentes.
+        Inclui valor da mensalidade, desconto (quando houver), turma, horários, nome e logo da escola.
+        Requer persona STUDENT.
       security:
         - bearerAuth: []
       responses:
         '200':
-          description: Lista de pedidos de matrícula pendentes do estudante e seus dependentes.
+          description: Lista de pedidos de matrícula em aberto do estudante e seus dependentes.
           content:
             application/json:
               schema:
@@ -1039,15 +1042,55 @@ paths:
                         status:
                           type: string
                           enum: [PENDING]
-                          description: Status do pedido (sempre PENDING)
+                          description: Status do pedido (sempre PENDING - em aberto)
                         schoolId:
                           type: string
                           format: uuid
                           description: ID da escola
+                        schoolName:
+                          type: string
+                          nullable: true
+                          description: Nome da escola
+                        schoolLogo:
+                          type: string
+                          format: uri
+                          nullable: true
+                          description: URL da logo da escola (quando disponível)
                         courseClassId:
                           type: string
                           format: uuid
                           description: ID da turma
+                        courseClassLabel:
+                          type: string
+                          nullable: true
+                          description: Nome da turma
+                        courseLabel:
+                          type: string
+                          nullable: true
+                          description: Nome do curso
+                        monthlyTuitionAmount:
+                          type: number
+                          nullable: true
+                          description: Valor da mensalidade em reais
+                        discount:
+                          type: number
+                          nullable: true
+                          description: Desconto aplicado em reais (quando houver)
+                        schedule:
+                          type: array
+                          description: Horários da turma (dia, início, fim)
+                          items:
+                            type: object
+                            properties:
+                              day:
+                                type: string
+                                description: Dia da semana (ex. MON, TUE)
+                              start:
+                                type: string
+                                description: Hora de início (ex. 09:00)
+                              end:
+                                type: string
+                                description: Hora de término (ex. 10:30)
                         requestedForUserId:
                           type: string
                           format: uuid
@@ -1061,76 +1104,59 @@ paths:
                           type: string
                           format: date-time
                           nullable: true
-                          description: Data da decisão do pedido
                         decidedByUserId:
                           type: string
                           format: uuid
                           nullable: true
-                          description: ID do usuário que decidiu o pedido
                         notes:
                           type: string
                           nullable: true
-                          description: Observações do pedido
-                        discount:
-                          type: number
-                          nullable: true
-                          description: Desconto aplicado (em reais)
                         enrollmentFeeAmount:
                           type: number
                           nullable: true
-                          description: Valor da taxa de matrícula (em reais)
+                          description: Valor da taxa de matrícula em reais
                         enrollmentFeeDueDate:
                           type: string
                           format: date
                           nullable: true
-                          description: Data de vencimento da taxa de matrícula
                         firstMonthlyPaymentDate:
                           type: string
                           format: date
-                          description: Data do primeiro pagamento mensal
                         enrollmentId:
                           type: string
                           format: uuid
                           nullable: true
-                          description: ID da matrícula criada (quando aprovado)
                         createdAt:
                           type: string
                           format: date-time
-                          description: Data de criação do pedido
-                        courseLabel:
-                          type: string
-                          nullable: true
-                          description: Nome do curso
-                        courseClassLabel:
-                          type: string
-                          nullable: true
-                          description: Nome da turma
                         studentName:
                           type: string
                           nullable: true
-                          description: Nome do aluno
                         dependentName:
                           type: string
                           nullable: true
-                          description: Nome do dependente (quando aplicável)
                       required:
                         - id
                         - status
                         - schoolId
+                        - schoolName
+                        - schoolLogo
                         - courseClassId
+                        - courseClassLabel
+                        - courseLabel
+                        - monthlyTuitionAmount
+                        - discount
+                        - schedule
                         - requestedForUserId
                         - requestedForDependentId
                         - decidedAt
                         - decidedByUserId
                         - notes
-                        - discount
                         - enrollmentFeeAmount
                         - enrollmentFeeDueDate
                         - firstMonthlyPaymentDate
                         - enrollmentId
                         - createdAt
-                        - courseLabel
-                        - courseClassLabel
                         - studentName
                         - dependentName
                 required:

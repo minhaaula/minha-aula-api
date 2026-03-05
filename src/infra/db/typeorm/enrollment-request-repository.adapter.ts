@@ -46,6 +46,7 @@ export class EnrollmentRequestRepositoryAdapter implements EnrollmentRequestRepo
             .innerJoinAndSelect('request.courseClass', 'courseClass')
             .innerJoinAndSelect('courseClass.course', 'course')
             .innerJoinAndSelect('request.requestedFor', 'student')
+            .innerJoinAndSelect('request.school', 'school')
             .leftJoinAndSelect('request.dependent', 'dependent');
 
         if (params.schoolId) {
@@ -92,7 +93,10 @@ export class EnrollmentRequestRepositoryAdapter implements EnrollmentRequestRepo
             courseClassLabel: row.courseClass?.label ?? null,
             courseLabel: row.courseClass?.course?.name ?? null,
             studentName: row.requestedFor.fullName,
-            dependentName: row.dependent?.fullName ?? null
+            dependentName: row.dependent?.fullName ?? null,
+            schoolName: row.school?.name ?? null,
+            monthlyPriceCents: row.courseClass?.monthlyPriceCents ?? null,
+            schedule: Array.isArray(row.courseClass?.schedule) ? row.courseClass.schedule : null
         }));
     }
 

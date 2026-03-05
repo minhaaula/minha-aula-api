@@ -127,7 +127,12 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
     const rejectEnrollmentRequest = new RejectEnrollmentRequest(deps.enrollmentRequestsRepo);
     const listEnrollmentRequests = new ListEnrollmentRequests(deps.enrollmentRequestsRepo);
     const getEnrollmentRequest = new GetEnrollmentRequest(deps.enrollmentRequestsRepo);
-    const listMyEnrollmentRequests = new ListMyEnrollmentRequests(deps.enrollmentRequestsRepo, deps.dependentsRepo);
+    const listMyEnrollmentRequests = new ListMyEnrollmentRequests(
+        deps.enrollmentRequestsRepo,
+        deps.dependentsRepo,
+        schoolImagesRepo,
+        deps.storageProvider
+    );
     const listSchoolCourses = deps.categoriesRepo
         ? new ListSchoolCourses(deps.coursesRepo, deps.categoriesRepo)
         : undefined;

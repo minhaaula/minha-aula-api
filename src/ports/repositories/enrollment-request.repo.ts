@@ -1,11 +1,19 @@
 import { EnrollmentRequest, EnrollmentRequestStatus } from '../../domain/entities/enrollment-request';
 
+export type ScheduleEntry = { day: string; start: string; end: string };
+
 export interface EnrollmentRequestWithDetails {
     request: EnrollmentRequest;
     courseClassLabel: string | null;
     courseLabel: string | null;
     studentName: string;
     dependentName: string | null;
+    /** Nome da escola (preenchido quando o repositório carrega a relação school). */
+    schoolName?: string | null;
+    /** Valor da mensalidade em centavos (da turma). */
+    monthlyPriceCents?: number | null;
+    /** Horários da turma (dia, início, fim). */
+    schedule?: ScheduleEntry[] | null;
 }
 
 export type AdminEnrollmentRequestItem = EnrollmentRequestWithDetails & { schoolName: string };
