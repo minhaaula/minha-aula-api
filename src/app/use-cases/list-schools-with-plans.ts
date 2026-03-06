@@ -41,7 +41,7 @@ export type ListSchoolsWithPlansInput = {
     hasAsaasAccount?: WithWithoutFilter | null;
     /** Filtro por onboardingUrl: WITH = tem URL, WITHOUT = não tem */
     hasOnboardingUrl?: WithWithoutFilter | null;
-    /** Filtro por primeiro pagamento: YES = já fez, NO = ainda não fez */
+    /** Filtro por primeiro pagamento: YES = ainda não fez, NO = já fez (valores alinhados ao frontend) */
     firstPayment?: YesNoFilter | null;
     /** Filtro por onboarding concluído: YES = concluído, NO = pendente */
     onboarding?: YesNoFilter | null;
@@ -144,7 +144,7 @@ export class ListSchoolsWithPlans {
         }
         if (firstPaymentFilter) {
             items = items.filter((s) =>
-                firstPaymentFilter === 'YES' ? s.hasCompletedFirstPayment : !s.hasCompletedFirstPayment
+                firstPaymentFilter === 'NO' ? s.hasCompletedFirstPayment : !s.hasCompletedFirstPayment
             );
         }
         if (onboardingFilter) {
