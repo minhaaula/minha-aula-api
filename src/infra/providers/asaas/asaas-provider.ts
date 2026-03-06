@@ -1,7 +1,7 @@
 import { Money } from '../../../domain/value-objects/money';
 import { PaymentProviderPort, CreateChargeInput, CreatePixChargeInput } from '../../../ports/providers/payment-provider.port';
 import { AsaasClient } from './asaas-client';
-import { AsaasChargeResponse, AsaasSubAccount, CreateAsaasSubAccountInput, CreateAsaasTransferInput, AsaasTransferResponse, AsaasAccountDetails, AsaasAccountBalance, AsaasPaymentDetails, ListAsaasPaymentsParams, ListAsaasPaymentsResponse, AsaasPendingDocumentsResult, AsaasPendingDocumentGroup } from '../../../ports/providers/asaas-port';
+import { AsaasChargeResponse, AsaasSubAccount, CreateAsaasSubAccountInput, CreateAsaasTransferInput, AsaasTransferResponse, AsaasAccountDetails, AsaasAccountBalance, AsaasPaymentDetails, ListAsaasPaymentsParams, ListAsaasPaymentsResponse, AsaasPendingDocumentsResult, AsaasPendingDocumentGroup, AsaasAccountStatus } from '../../../ports/providers/asaas-port';
 import { CreateBoletoChargeInput } from '../../../ports/providers/payment-provider.port';
 
 
@@ -306,6 +306,15 @@ export class AsaasProvider implements PaymentProviderPort {
         if (!documentGroupId?.trim()) throw new Error('documentGroupId is required');
         if (!type?.trim()) throw new Error('type is required');
         await this.client.uploadMyAccountDocument(accountApiKey, documentGroupId, fileBuffer, mimeType, type);
+    }
+
+    async getAccountStatus(accountApiKey: string): Promise<AsaasAccountStatus | null> {
+        if (!accountApiKey?.trim()) return null;
+        try {
+            return await this.client.getMyAccountStatus(accountApiKey);
+        } catch {
+            return null;
+        }
     }
 
     private resolveDefaultWebhooks(fallbackEmail: string): CreateAsaasSubAccountInput['webhooks'] | undefined {

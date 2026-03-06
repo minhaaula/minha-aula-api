@@ -158,6 +158,11 @@ export interface AsaasProviderPort {
      * O type deve ser o do grupo (ex.: IDENTIFICATION, IDENTIFICATION_SELFIE, MINUTES_OF_ELECTION).
      */
     uploadDocument?(accountApiKey: string, documentGroupId: string, fileBuffer: Buffer, mimeType: string, type: string): Promise<void>;
+    /**
+     * Obtém o status cadastral da subconta (GET /v3/myAccount/status).
+     * Deve ser chamado com a API key da subconta. Retorna commercialInfo, bankAccountInfo, documentation, general.
+     */
+    getAccountStatus?(accountApiKey: string): Promise<AsaasAccountStatus | null>;
 }
 
 /** Grupo de documentos pendentes (AccountDocumentGroupResponseDTO). */
@@ -177,3 +182,12 @@ export interface AsaasPendingDocumentsResult {
     rejectReasons: string | null;
     data: AsaasPendingDocumentGroup[];
 }
+
+/** Status cadastral da subconta (GET /v3/myAccount/status). */
+export type AsaasAccountStatus = {
+    id: string;
+    commercialInfo: string;
+    bankAccountInfo: string;
+    documentation: string;
+    general: string;
+};

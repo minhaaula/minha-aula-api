@@ -364,6 +364,43 @@ export class AsaasClient {
     }
 
     /**
+     * Obtém o status cadastral da subconta (GET /v3/myAccount/status).
+     * Chamar com a API key da subconta (access_token).
+     * Retorna: id, commercialInfo, bankAccountInfo, documentation, general (ex.: APPROVED, AWAITING_APPROVAL).
+     */
+    async getMyAccountStatus(accountApiKey: string): Promise<{
+        id: string;
+        commercialInfo: string;
+        bankAccountInfo: string;
+        documentation: string;
+        general: string;
+    }> {
+        if (!accountApiKey?.trim()) {
+            throw new Error('accountApiKey is required');
+        }
+        const baseUrl = this.http.defaults.baseURL || process.env.ASAAS_BASE_URL || 'https://www.asaas.com/api/v3';
+        const client = axios.create({
+            baseURL: baseUrl,
+            headers: {
+                access_token: accountApiKey,
+                'Content-Type': 'application/json'
+            },
+            timeout: 15_000
+        });
+        const { data } = await client.get<{ id: string; commercialInfo: string; bankAccountInfo: string; documentation: string; general: string }>('/myAccount/status');
+        if (!data || typeof data !== 'object' || !data.id) {
+            throw new Error('Asaas API returned invalid account status response');
+        }
+        return {
+            id: data.id,
+            commercialInfo: data.commercialInfo ?? '',
+            bankAccountInfo: data.bankAccountInfo ?? '',
+            documentation: data.documentation ?? '',
+            general: data.general ?? ''
+        };
+    }
+
+    /**
      * Obtém a URL de onboarding (documentos pendentes) no contexto da subconta.
      * Deve ser chamado com a API key da subconta; Asaas recomenda aguardar ~15s após criar a subconta.
      * Suporta resposta em formato de lista plana ou com grupos contendo .documents[].

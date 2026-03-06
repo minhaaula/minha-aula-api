@@ -38,6 +38,7 @@ import type { AdminMarkChargePaid } from '../../../app/use-cases/admin-mark-char
 import type { SyncSchoolOnboardingDocuments } from '../../../app/use-cases/sync-school-onboarding-documents';
 import type { AdminUploadSchoolOnboardingDocument } from '../../../app/use-cases/admin-upload-school-onboarding-document';
 import type { GetSchoolPendingDocuments } from '../../../app/use-cases/get-school-pending-documents';
+import type { SyncSchoolSubaccountStatus } from '../../../app/use-cases/sync-school-subaccount-status';
 import { AppError, ErrorCode } from '../../../shared/errors';
 
 const documentUpload = multer({
@@ -87,6 +88,7 @@ type AdminRouterDeps = {
     syncSchoolOnboardingDocuments?: SyncSchoolOnboardingDocuments;
     adminUploadSchoolOnboardingDocument?: AdminUploadSchoolOnboardingDocument;
     getSchoolPendingDocuments?: GetSchoolPendingDocuments;
+    syncSchoolSubaccountStatus?: SyncSchoolSubaccountStatus;
     scheduleChargeDueReminders?: ScheduleChargeDueReminders;
     authMiddleware?: RequestHandler;
 };
@@ -137,6 +139,7 @@ export function adminRouter({
     syncSchoolOnboardingDocuments,
     adminUploadSchoolOnboardingDocument,
     getSchoolPendingDocuments,
+    syncSchoolSubaccountStatus,
     scheduleChargeDueReminders,
     authMiddleware
 }: AdminRouterDeps) {
@@ -689,6 +692,15 @@ export function adminRouter({
             const paramsSchema = z.object({ schoolId: z.string().uuid() });
             const { schoolId } = paramsSchema.parse(req.params);
             const result = await syncSchoolOnboardingDocuments.exec({ schoolId });
+            res.json(result);
+        }));
+    }
+
+    if (syncSchoolSubaccountStatus) {
+        router.post('/schools/:schoolId/sync-subaccount-status', requireAuth, requireAdminPersona, asyncHandler(async (req, res) => {
+            const paramsSchema = z.object({ schoolId: z.string().uuid() });
+            const { schoolId } = paramsSchema.parse(req.params);
+            const result = await syncSchoolSubaccountStatus.exec({ schoolId });
             res.json(result);
         }));
     }

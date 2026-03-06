@@ -54,6 +54,7 @@ import { AdminMarkChargePaid } from '../../app/use-cases/admin-mark-charge-paid'
 import { SyncSchoolOnboardingDocuments } from '../../app/use-cases/sync-school-onboarding-documents';
 import { AdminUploadSchoolOnboardingDocument } from '../../app/use-cases/admin-upload-school-onboarding-document';
 import { GetSchoolPendingDocuments } from '../../app/use-cases/get-school-pending-documents';
+import { SyncSchoolSubaccountStatus } from '../../app/use-cases/sync-school-subaccount-status';
 import { scheduleAllJobs } from '../../infra/messaging/bullmq/job-scheduler';
 import { startWorker } from '../../infra/messaging/bullmq/worker-manager';
 import { log } from '../../shared/logger';
@@ -224,6 +225,11 @@ export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext)
         ? new GetSchoolPendingDocuments(deps.schoolsRepo, deps.asaasProvider)
         : undefined;
 
+    // Sincronizar status da subconta Asaas (GET myAccount/status) e atualizar onboarding
+    const syncSchoolSubaccountStatus = deps.asaasProvider
+        ? new SyncSchoolSubaccountStatus(deps.schoolsRepo, deps.asaasProvider)
+        : undefined;
+
     // Montar router pronto
     const router = adminRouter({
         getAdminStatus,
@@ -259,6 +265,7 @@ export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext)
         syncSchoolOnboardingDocuments,
         adminUploadSchoolOnboardingDocument,
         getSchoolPendingDocuments,
+        syncSchoolSubaccountStatus,
         scheduleChargeDueReminders,
         authMiddleware: ctx.authMiddleware
     });

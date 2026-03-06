@@ -970,6 +970,63 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /admin/schools/{schoolId}/sync-subaccount-status:
+    post:
+      tags:
+        - Admin
+      summary: Consultar status da subconta Asaas
+      description: |
+        Consulta no Asaas o status cadastral da subconta da escola (GET /v3/myAccount/status)
+        e retorna os dados. Não persiste o status; a informação vem direto da API.
+        Quando general === APPROVED, marca o onboarding como concluído (onboardingCompletedAt) no nosso lado.
+        Requer autenticação com persona ADMIN.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: schoolId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Identificador da escola
+      responses:
+        '200':
+          description: Status da subconta obtido do Asaas.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncSubaccountStatusResponse'
+        '400':
+          description: Escola sem API key da subconta ou provedor não configurado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Usuário não autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado (requer persona ADMIN).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Escola não encontrada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '502':
+          description: Erro ao comunicar com o Asaas (não foi possível obter o status).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /admin/schools/{schoolId}/documents/{documentGroupId}/upload:
     post:
       tags:
@@ -3825,6 +3882,47 @@ components:
         - documents
         - onboardingUrl
         - onboardingUrlUpdated
+    AsaasAccountStatus:
+      type: object
+      description: Status cadastral da subconta retornado pelo Asaas (GET /v3/myAccount/status).
+      properties:
+        id:
+          type: string
+          description: ID da conta no Asaas
+        commercialInfo:
+          type: string
+          description: Ex. APPROVED, AWAITING_APPROVAL
+        bankAccountInfo:
+          type: string
+        documentation:
+          type: string
+        general:
+          type: string
+          description: Status geral; quando APPROVED o onboarding pode ser marcado como concluído
+      required:
+        - id
+        - commercialInfo
+        - bankAccountInfo
+        - documentation
+        - general
+    SyncSubaccountStatusResponse:
+      type: object
+      description: Resposta ao consultar status da subconta Asaas (GET myAccount/status). Dados vindos direto da API; não persistidos.
+      properties:
+        schoolId:
+          type: string
+          format: uuid
+        status:
+          $ref: '#/components/schemas/AsaasAccountStatus'
+        onboardingCompletedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Se o onboarding foi marcado como concluído (general === APPROVED)
+      required:
+        - schoolId
+        - status
+        - onboardingCompletedAt
     UploadOnboardingDocumentResponse:
       type: object
       description: Resposta ao enviar documento de onboarding para o Asaas (envio manual).
