@@ -82,7 +82,7 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
     const listMyCourses = new ListMyCourses(deps.enrollmentsRepo, deps.coursesRepo, deps.schoolsRepo);
     const schoolImagesRepo = new SchoolImageRepositoryAdapter();
     const listAllCourses = deps.categoriesRepo
-        ? new ListAllCourses(deps.coursesRepo, deps.categoriesRepo, schoolImagesRepo, deps.storageProvider)
+        ? new ListAllCourses(deps.coursesRepo, deps.categoriesRepo, schoolImagesRepo, deps.storageProvider, deps.schoolReviewsRepo)
         : undefined;
     const listStudentPayments = new ListStudentPayments(deps.financialChargesRepo);
     const getStudentPaymentDetails = new GetStudentPaymentDetails(

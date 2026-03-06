@@ -264,7 +264,8 @@ export class CourseRepositoryAdapter implements CourseRepository {
                 'course.description AS courseDescription',
                 'school.id AS schoolId',
                 'school.name AS schoolName',
-                'MIN(address.city) AS schoolCity'
+                'MIN(address.city) AS schoolCity',
+                'MIN(address.state) AS schoolState'
             ])
             .groupBy('course.id')
             .addGroupBy('course.name')
@@ -307,7 +308,8 @@ export class CourseRepositoryAdapter implements CourseRepository {
             courseDescription: row.courseDescription,
             schoolId: row.schoolId,
             schoolName: row.schoolName,
-            schoolCity: row.schoolCity || null
+            schoolCity: row.schoolCity || null,
+            schoolState: row.schoolState || null
         }));
     }
 }

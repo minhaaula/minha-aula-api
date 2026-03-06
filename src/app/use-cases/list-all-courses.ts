@@ -1,6 +1,7 @@
 import { CourseRepository } from '../../ports/repositories/course.repo';
 import { CategoryRepository } from '../../ports/repositories/category.repo';
 import { SchoolImageRepository } from '../../ports/repositories/school-image.repo';
+import { SchoolReviewRepository } from '../../ports/repositories/school-review.repo';
 import { SchoolImageCategory } from '../../domain/value-objects/school-image-category';
 import type { StorageProviderPort } from '../../ports/providers/storage-provider.port';
 
@@ -19,6 +20,12 @@ export interface CourseListItem {
     courseDescription: string | null;
     category: string | null;
     subcategory: string | null;
+    /** Cidade da escola (primeiro endereço). */
+    schoolCity: string | null;
+    /** Estado da escola (primeiro endereço). */
+    schoolState: string | null;
+    /** Média geral de avaliação da escola (1 a 5), se houver avaliações. */
+    schoolRatingAverage: number | null;
 }
 
 export class ListAllCourses {
@@ -26,7 +33,8 @@ export class ListAllCourses {
         private readonly courses: CourseRepository,
         private readonly categories: CategoryRepository,
         private readonly schoolImages?: SchoolImageRepository,
-        private readonly storage?: StorageProviderPort
+        private readonly storage?: StorageProviderPort,
+        private readonly schoolReviews?: SchoolReviewRepository
     ) {}
 
     async exec(input: ListAllCoursesInput): Promise<{ courses: CourseListItem[] }> {
@@ -75,6 +83,16 @@ export class ListAllCourses {
             );
         }
 
+        // Média de avaliação por escola (1 a 5)
+        const schoolIds = [...new Set(coursesData.map((d) => d.schoolId))];
+        const ratingMap = new Map<string, number>();
+        if (this.schoolReviews?.getAverageRatingBySchoolIds && schoolIds.length > 0) {
+            const ratings = await this.schoolReviews.getAverageRatingBySchoolIds(schoolIds);
+            for (const r of ratings) {
+                ratingMap.set(r.schoolId, r.averageRating);
+            }
+        }
+
         // Construir resultado final
         const courses: CourseListItem[] = coursesData.map((data) => {
             const catInfo = categoriesMap.get(data.courseId) || { category: null, subcategory: null };
@@ -86,7 +104,10 @@ export class ListAllCourses {
                 schoolLogo: this.schoolImages && this.storage ? (logoMap.get(data.schoolId) ?? null) : null,
                 courseDescription: data.courseDescription,
                 category: catInfo.category,
-                subcategory: catInfo.subcategory
+                subcategory: catInfo.subcategory,
+                schoolCity: data.schoolCity ?? null,
+                schoolState: data.schoolState ?? null,
+                schoolRatingAverage: ratingMap.get(data.schoolId) ?? null
             };
         });
 

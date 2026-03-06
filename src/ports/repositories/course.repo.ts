@@ -13,6 +13,7 @@ export type CourseWithSchoolInfo = {
     schoolId: string;
     schoolName: string;
     schoolCity: string | null;
+    schoolState: string | null;
 };
 
 export interface CourseRepository {

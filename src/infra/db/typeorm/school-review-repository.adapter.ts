@@ -39,6 +39,26 @@ export class SchoolReviewRepositoryAdapter implements SchoolReviewRepository {
         return row ? this.toDomain(row) : null;
     }
 
+    async getAverageRatingBySchoolIds(schoolIds: string[]): Promise<Array<{ schoolId: string; averageRating: number; count: number }>> {
+        if (schoolIds.length === 0) return [];
+        const rows = await this.repo
+            .createQueryBuilder('review')
+            .select('review.school_id', 'schoolId')
+            .addSelect('AVG(review.rating)', 'averageRating')
+            .addSelect('COUNT(review.id)', 'count')
+            .where('review.school_id IN (:...schoolIds)', { schoolIds })
+            .groupBy('review.school_id')
+            .getRawMany<{ schoolId?: string; school_id?: string; averageRating: string; count: string }>();
+        return rows.map((r) => {
+            const id = r.schoolId ?? r.school_id ?? '';
+            return {
+                schoolId: id,
+                averageRating: Math.round(Number(r.averageRating) * 10) / 10,
+                count: Number(r.count)
+            };
+        });
+    }
+
     async save(review: SchoolReview): Promise<void> {
         await this.repo.save(this.toOrm(review));
     }
