@@ -212,6 +212,7 @@ paths:
       summary: Dar baixa em cobrança (aluno)
       description: |
         Marca uma cobrança de aluno (mensalidade, taxa de matrícula, etc.) como paga manualmente (dar baixa).
+        Se a cobrança tiver PIX ou boleto no Asaas, o pagamento é marcado como recebido no Asaas (receiveInCash).
         Use quando o pagamento foi confirmado fora do sistema ou para corrigir status.
         Só é possível dar baixa em cobranças com status OPEN, PENDING_SYNC, OVERDUE ou FAILED. Não permite cobrança cancelada.
         Requer autenticação com persona ADMIN.

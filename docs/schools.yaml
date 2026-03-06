@@ -724,6 +724,7 @@ paths:
       description: |
         Permite à escola dar baixa manual em uma cobrança do aluno, marcando-a como paga.
         A cobrança deve pertencer à escola do usuário autenticado.
+        Se a cobrança tiver PIX ou boleto no Asaas, o pagamento é marcado como recebido no Asaas (receiveInCash).
         Payload: data (data do pagamento) e observacao (opcional).
       security:
         - bearerAuth: []
