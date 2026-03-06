@@ -979,7 +979,8 @@ paths:
       description: |
         Consulta no Asaas o status cadastral da subconta da escola (GET /v3/myAccount/status)
         e retorna os dados. Não persiste o status; a informação vem direto da API.
-        Quando general === APPROVED, marca o onboarding como concluído (onboardingCompletedAt) no nosso lado.
+        Quando commercialInfo, bankAccountInfo, documentation e general estiverem todos APPROVED,
+        marca o onboarding como concluído (onboardingCompletedAt) no nosso lado.
         Requer autenticação com persona ADMIN.
       security:
         - bearerAuth: []
@@ -3919,7 +3920,7 @@ components:
           type: string
           format: date-time
           nullable: true
-          description: Se o onboarding foi marcado como concluído (general === APPROVED)
+          description: Se o onboarding foi marcado como concluído (todos os status Asaas APPROVED)
       required:
         - schoolId
         - status

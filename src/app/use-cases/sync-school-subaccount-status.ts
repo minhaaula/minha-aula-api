@@ -10,14 +10,15 @@ export interface SyncSchoolSubaccountStatusOutput {
     schoolId: string;
     /** Status retornado pelo Asaas (GET /v3/myAccount/status). Não é persistido; consulta direta na API. */
     status: AsaasAccountStatus;
-    /** Se o onboarding foi marcado como concluído nesta chamada (general === APPROVED). */
+    /** Se o onboarding foi marcado como concluído nesta chamada (todos os status Asaas APPROVED). */
     onboardingCompletedAt: Date | null;
 }
 
 /**
  * Consulta o status cadastral da subconta Asaas da escola (GET /v3/myAccount/status) e retorna os dados.
  * Não persiste o status; apenas chama o Asaas e devolve a resposta.
- * Quando general === 'APPROVED', marca onboarding como concluído (onboardingCompletedAt) no nosso lado.
+ * Quando commercialInfo, bankAccountInfo, documentation e general estiverem todos APPROVED,
+ * marca o onboarding como concluído (onboardingCompletedAt) no nosso lado.
  */
 export class SyncSchoolSubaccountStatus {
     constructor(
@@ -55,8 +56,14 @@ export class SyncSchoolSubaccountStatus {
             });
         }
 
+        const allApproved =
+            status.commercialInfo === 'APPROVED' &&
+            status.bankAccountInfo === 'APPROVED' &&
+            status.documentation === 'APPROVED' &&
+            status.general === 'APPROVED';
+
         let onboardingCompletedAt = school.onboardingCompletedAt;
-        if (status.general === 'APPROVED' && !school.onboardingCompletedAt) {
+        if (allApproved && !school.onboardingCompletedAt) {
             const updated = school.withOnboardingCompletedAt(new Date());
             await this.schools.save(updated);
             onboardingCompletedAt = updated.onboardingCompletedAt;
