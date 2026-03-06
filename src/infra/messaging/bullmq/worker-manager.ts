@@ -513,6 +513,34 @@ export function startWorker(): Worker {
                 return;
             }
 
+            if (job.name === 'generate_monthly_tuition_charges' || jobType === 'generate_monthly_tuition_charges') {
+                log.info('[OUTBOX] Processando job: generate_monthly_tuition_charges');
+                await ensureDb();
+                try {
+                    const { runGenerateMonthlyCharges } = await import('../../cron/generate-monthly-charges.js');
+                    const result = await runGenerateMonthlyCharges();
+                    log.info('[OUTBOX] generate_monthly_tuition_charges concluído', result);
+                } catch (err) {
+                    log.error('[OUTBOX] generate_monthly_tuition_charges falhou', { error: err instanceof Error ? err.message : String(err) });
+                    throw err;
+                }
+                return;
+            }
+
+            if (job.name === 'send_boleto_notifications' || jobType === 'send_boleto_notifications') {
+                log.info('[OUTBOX] Processando job: send_boleto_notifications');
+                await ensureDb();
+                try {
+                    const { runSendBoletoNotifications } = await import('../../cron/send-boleto-notifications.js');
+                    const result = await runSendBoletoNotifications();
+                    log.info('[OUTBOX] send_boleto_notifications concluído', result);
+                } catch (err) {
+                    log.error('[OUTBOX] send_boleto_notifications falhou', { error: err instanceof Error ? err.message : String(err) });
+                    throw err;
+                }
+                return;
+            }
+
             // default: manter comportamento atual (log)
             log.warn('[OUTBOX] unhandled event', { name: job.name, payload: event.payload });
         },

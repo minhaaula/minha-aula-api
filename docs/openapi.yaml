@@ -2,12 +2,17 @@ openapi: 3.0.3
 info:
   title: Minha Aula API
   version: 1.0.0
-  description: API para gerenciamento de pagamentos, autenticação de usuários.
+  description: |
+    API para gerenciamento de pagamentos, escolas, estudantes e matrículas.
+    Pode ser implantada com módulos distintos (auth, admin, payments, schools, students).
+    Quando apenas o módulo **students** está ativo, as rotas públicas em `/schools` (ex.: GET /schools/categories) continuam disponíveis para o app de estudantes.
 servers:
   - url: http://localhost:3000
     description: Ambiente local
   - url: https://minha-aula-api-production.up.railway.app
-    description: Ambiente Prod
+    description: Ambiente Prod (API completa)
+  - url: https://minha-aula-students-api-production.up.railway.app
+    description: Ambiente Prod (API Estudantes)
 tags:
   - name: Auth
     description: Fluxo de cadastro e autenticação de usuários.

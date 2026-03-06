@@ -9,7 +9,7 @@ import { EnrollmentRequest } from '../../domain/entities/enrollment-request';
 import { SchoolFinancialCharge } from '../../domain/entities/school-financial-charge';
 import { UserPersonaEnum } from '../../domain/value-objects/user-persona';
 import { Uuid } from '../../shared/uuid';
-import { getUtcDay, toUtcDateOnly, getTodayUtc, isSameMonthYear } from '../../shared/date-utils';
+import { getUtcDay, toUtcDateOnly } from '../../shared/date-utils';
 import type { ApproveEnrollmentRequestInput, ApproveEnrollmentRequestOutput } from '../types/enrollment.types';
 import type { IssueEnrollmentFeeBoleto } from './issue-enrollment-fee-boleto';
 import type { GenerateTuitionPix } from './generate-tuition-pix';
@@ -39,7 +39,7 @@ export class ApproveEnrollmentRequest {
             request.requestedForDependentId
         );
 
-        // Buscar curso para obter o valor cheio
+        // Buscar curso para obter o valor cheio (curso ou turma)
         const courseClass = await this.classes.findById(request.courseClassId);
         if (!courseClass) {
             throw AppError.fromCode(ErrorCode.COURSE_CLASS_NOT_FOUND, {
@@ -54,9 +54,11 @@ export class ApproveEnrollmentRequest {
                 requestId: request.id
             });
         }
+        // Preço da mensalidade pode estar no curso ou na turma
+        const effectiveMonthlyPriceCents = course.monthlyPriceCents ?? courseClass.monthlyPriceCents;
 
-        // Criar matrícula com valor cheio do curso
-        const enrollment = this.createEnrollmentFromRequest(request, course.monthlyPriceCents);
+        // Criar matrícula com valor cheio (curso ou turma)
+        const enrollment = this.createEnrollmentFromRequest(request, effectiveMonthlyPriceCents);
 
         // Criar cobrança de taxa de matrícula se aplicável
         const pendingCharge = await this.buildEnrollmentCharge(request);
@@ -95,9 +97,9 @@ export class ApproveEnrollmentRequest {
             }
         }
 
-        // Gerar primeira mensalidade se a data de vencimento já passou ou está no mesmo mês
+        // Gerar primeira mensalidade sempre que houver valor (data do primeiro pagamento pode ser passada, atual ou futura)
         let firstTuitionChargeId: string | null = null;
-        if (course.monthlyPriceCents && course.monthlyPriceCents > 0) {
+        if (effectiveMonthlyPriceCents && effectiveMonthlyPriceCents > 0) {
             try {
                 const firstTuitionCharge = await this.createFirstTuitionCharge(
                     enrollment,
@@ -109,8 +111,8 @@ export class ApproveEnrollmentRequest {
                 );
                 if (firstTuitionCharge) {
                     firstTuitionChargeId = firstTuitionCharge.id;
-                    
-                    // Gerar PIX da mensalidade automaticamente
+
+                    // Gerar PIX da mensalidade automaticamente (quando disponível)
                     if (this.generateTuitionPix) {
                         try {
                             await this.generateTuitionPix.exec({
@@ -270,18 +272,9 @@ export class ApproveEnrollmentRequest {
         discountCents: number | null,
         discountMonths: number | null
     ): Promise<SchoolFinancialCharge | null> {
-        const now = getTodayUtc();
         const firstPaymentDate = toUtcDateOnly(new Date(firstMonthlyPaymentDate));
-        
-        // Só criar se a data de vencimento já passou ou está no mesmo mês
-        const isSameMonth = isSameMonthYear(firstPaymentDate, now);
-        const isPast = firstPaymentDate < now;
-        
-        if (!isSameMonth && !isPast) {
-            return null; // Ainda não é hora de gerar
-        }
 
-        // Verificar se já existe cobrança para este mês/ano
+        // Verificar se já existe cobrança para este mês/ano (evita duplicata)
         if (this.financialCharges.findTuitionChargesForMonth) {
             const existingCharges = await this.financialCharges.findTuitionChargesForMonth(
                 enrollment.courseClassId,
@@ -291,23 +284,16 @@ export class ApproveEnrollmentRequest {
                 firstPaymentDate.getFullYear(),
                 firstPaymentDate.getMonth() + 1
             );
-            
+
             if (existingCharges.length > 0) {
-                return null; // Já existe cobrança
+                return null; // Já existe cobrança para esta data
             }
         }
 
-        const monthNames = [
-            'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-            'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
-        ];
-        const monthName = monthNames[firstPaymentDate.getMonth()];
-        const year = firstPaymentDate.getFullYear();
-
-        // Garantir que amountCents seja um número válido
-        const monthlyPrice = enrollment.fullAmountCents ?? course.monthlyPriceCents;
+        // Valor: matrícula já tem fullAmountCents (curso ou turma); fallback para curso/turma
+        const monthlyPrice = enrollment.fullAmountCents ?? course.monthlyPriceCents ?? courseClass.monthlyPriceCents;
         if (!monthlyPrice || monthlyPrice <= 0) {
-            return null; // Não criar cobrança se não houver preço definido
+            return null;
         }
 
         // Aplicar desconto se houver e se ainda não atingiu o limite de meses
@@ -331,6 +317,13 @@ export class ApproveEnrollmentRequest {
                 chargeDiscountReason = `Desconto aplicado (${remainingMonths} de ${discountMonths} ${discountMonths === 1 ? 'mês' : 'meses'})`;
             }
         }
+
+        const monthNames = [
+            'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+            'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+        ];
+        const monthName = monthNames[firstPaymentDate.getMonth()];
+        const year = firstPaymentDate.getFullYear();
 
         const charge = SchoolFinancialCharge.create({
             id: Uuid(),

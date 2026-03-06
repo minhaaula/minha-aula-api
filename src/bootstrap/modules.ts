@@ -31,6 +31,9 @@ import { buildPaymentsModule } from './modules/payments-module';
 import { buildSchoolsModule } from './modules/schools-module';
 import { buildStudentsModule } from './modules/students-module';
 import { ModuleSetupContext, ModuleBuildResult } from './modules/types';
+import { ListCategories } from '../app/use-cases/list-categories';
+import { Router } from 'express';
+import { asyncHandler } from '../infra/http/utils/async-handler';
 import { AsaasProvider } from '../infra/providers/asaas/asaas-provider';
 import { PaymentProviderPort } from '../ports/providers/payment-provider.port';
 import { AsaasProviderPort } from '../ports/providers/asaas-port';
@@ -418,6 +421,18 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
 
     serverDeps.activeModules = selected;
     serverDeps.openapiFiles = Array.from(docFiles);
+
+    // Quando só o módulo students está ativo, montar rota pública GET /schools/categories
+    // para o app de estudantes (evita 404 em https://.../schools/categories)
+    if (selected.includes('students') && !selected.includes('schools')) {
+        const listCategories = new ListCategories(categoriesRepo);
+        const schoolsPublicRouter = Router();
+        schoolsPublicRouter.get('/categories', asyncHandler(async (_req, res) => {
+            const result = await listCategories.exec();
+            res.json(result);
+        }));
+        serverDeps.schoolsRouter = schoolsPublicRouter;
+    }
 
     return { app: makeServer(serverDeps), modules: selected };
 }

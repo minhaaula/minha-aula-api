@@ -275,6 +275,110 @@ export async function scheduleChargeDueRemindersJob(): Promise<void> {
     }
 }
 
+const GENERATE_MONTHLY_CHARGES_JOB_NAME = 'generate_monthly_tuition_charges';
+
+/**
+ * Agenda o job de geração de cobranças mensais (mensalidades do próximo mês).
+ * Roda a cada 5 minutos.
+ */
+export async function scheduleGenerateMonthlyChargesJob(): Promise<void> {
+    if (!process.env.REDIS_HOST) {
+        log.warn('[Job Scheduler] REDIS_HOST não configurado. Job generate_monthly_tuition_charges não será agendado.');
+        return;
+    }
+
+    try {
+        const queue = new Queue('outbox', { connection });
+        const repeatableJobs = await queue.getRepeatableJobs();
+        const existingJob = repeatableJobs.find((job) => job.name === GENERATE_MONTHLY_CHARGES_JOB_NAME);
+
+        if (existingJob) {
+            log.info('[Job Scheduler] Job generate_monthly_tuition_charges já está agendado', {
+                id: existingJob.id,
+                pattern: existingJob.pattern,
+                nextRun: existingJob.next
+            });
+            await queue.close();
+            return;
+        }
+
+        await queue.add(
+            GENERATE_MONTHLY_CHARGES_JOB_NAME,
+            {
+                type: GENERATE_MONTHLY_CHARGES_JOB_NAME,
+                payload: {},
+                aggregateId: 'generate-monthly-charges-scheduler'
+            },
+            {
+                repeat: { pattern: '*/5 * * * *', tz: 'America/Sao_Paulo' },
+                removeOnComplete: true,
+                attempts: 3,
+                backoff: { type: 'exponential', delay: 60000 }
+            }
+        );
+
+        log.info('[Job Scheduler] Job generate_monthly_tuition_charges agendado para executar a cada 5 minutos');
+        await queue.close();
+    } catch (error) {
+        log.error('[Job Scheduler] Erro ao agendar job generate_monthly_tuition_charges', {
+            error: error instanceof Error ? error.message : String(error)
+        });
+        throw error;
+    }
+}
+
+const SEND_BOLETO_NOTIFICATIONS_JOB_NAME = 'send_boleto_notifications';
+
+/**
+ * Agenda o job de envio de notificações de boletos (e-mail para boletos criados nas últimas 24h).
+ * Roda uma vez por dia às 09:00 (America/Sao_Paulo).
+ */
+export async function scheduleBoletoNotificationsJob(): Promise<void> {
+    if (!process.env.REDIS_HOST) {
+        log.warn('[Job Scheduler] REDIS_HOST não configurado. Job send_boleto_notifications não será agendado.');
+        return;
+    }
+
+    try {
+        const queue = new Queue('outbox', { connection });
+        const repeatableJobs = await queue.getRepeatableJobs();
+        const existingJob = repeatableJobs.find((job) => job.name === SEND_BOLETO_NOTIFICATIONS_JOB_NAME);
+
+        if (existingJob) {
+            log.info('[Job Scheduler] Job send_boleto_notifications já está agendado', {
+                id: existingJob.id,
+                pattern: existingJob.pattern,
+                nextRun: existingJob.next
+            });
+            await queue.close();
+            return;
+        }
+
+        await queue.add(
+            SEND_BOLETO_NOTIFICATIONS_JOB_NAME,
+            {
+                type: SEND_BOLETO_NOTIFICATIONS_JOB_NAME,
+                payload: {},
+                aggregateId: 'send-boleto-notifications-scheduler'
+            },
+            {
+                repeat: { pattern: '0 9 * * *', tz: 'America/Sao_Paulo' },
+                removeOnComplete: true,
+                attempts: 3,
+                backoff: { type: 'exponential', delay: 60000 }
+            }
+        );
+
+        log.info('[Job Scheduler] Job send_boleto_notifications agendado para executar diariamente às 09:00');
+        await queue.close();
+    } catch (error) {
+        log.error('[Job Scheduler] Erro ao agendar job send_boleto_notifications', {
+            error: error instanceof Error ? error.message : String(error)
+        });
+        throw error;
+    }
+}
+
 /**
  * Agenda todos os jobs repetitivos
  */
@@ -285,7 +389,9 @@ export async function scheduleAllJobs(): Promise<void> {
         scheduleReceiptsJob(),
         schedulePaymentSyncJob(),
         scheduleFetchSchoolOnboardingJob(),
-        scheduleChargeDueRemindersJob()
+        scheduleChargeDueRemindersJob(),
+        scheduleGenerateMonthlyChargesJob(),
+        scheduleBoletoNotificationsJob()
     ]);
 
     log.info('[Job Scheduler] Todos os jobs foram agendados com sucesso');
