@@ -716,6 +716,92 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /schools/finance/charges/{chargeId}/mark-paid:
+    post:
+      tags:
+        - Schools
+      summary: Dar baixa em pagamento (marcar cobrança como paga)
+      description: |
+        Permite à escola dar baixa manual em uma cobrança do aluno, marcando-a como paga.
+        A cobrança deve pertencer à escola do usuário autenticado.
+        Payload: data (data do pagamento) e observacao (opcional).
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: chargeId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID da cobrança
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - data
+              properties:
+                data:
+                  type: string
+                  format: date
+                  description: Data do pagamento (baixa)
+                observacao:
+                  type: string
+                  maxLength: 500
+                  nullable: true
+                  description: Observação da baixa (opcional)
+      responses:
+        '200':
+          description: Cobrança marcada como paga.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  chargeId:
+                    type: string
+                    format: uuid
+                  status:
+                    type: string
+                    enum: [PAID]
+                  paidAt:
+                    type: string
+                    format: date-time
+                  observacao:
+                    type: string
+                    nullable: true
+                required:
+                  - chargeId
+                  - status
+                  - paidAt
+                  - observacao
+        '400':
+          description: Cobrança cancelada ou status não permite baixa.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Não autorizado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Cobrança não pertence a esta escola.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Cobrança não encontrada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /schools/finance/summary:
     get:
       tags:

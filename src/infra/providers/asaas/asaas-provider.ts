@@ -269,6 +269,21 @@ export class AsaasProvider implements PaymentProviderPort {
         return await this.client.getPayment(paymentId);
     }
 
+    async deletePayment(paymentId: string): Promise<{ deleted: boolean; id: string }> {
+        if (!paymentId || !paymentId.trim()) {
+            throw new Error('Payment ID is required');
+        }
+        return await this.client.deletePayment(paymentId);
+    }
+
+    async receivePaymentInCash(
+        paymentId: string,
+        payload: { paymentDate: string; value: number; notifyCustomer?: boolean }
+    ): Promise<void> {
+        if (!paymentId || !paymentId.trim()) throw new Error('Payment ID is required');
+        await this.client.receivePaymentInCash(paymentId, payload);
+    }
+
     async listPayments(params?: ListAsaasPaymentsParams): Promise<ListAsaasPaymentsResponse> {
         return await this.client.listPayments(params);
     }

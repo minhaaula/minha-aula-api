@@ -22,6 +22,7 @@ export class SchoolFinancialCharge {
         private _asaasInvoiceUrl: string | null,
         private _asaasPayload: Record<string, unknown> | null,
         private _paidAt: Date | null,
+        private _paidObservation: string | null,
         private _cancelledAt: Date | null,
         private _createdAt: Date,
         private _updatedAt: Date
@@ -102,6 +103,7 @@ export class SchoolFinancialCharge {
             null,
             null,
             null,
+            null,
             new Date(),
             new Date()
         );
@@ -127,6 +129,7 @@ export class SchoolFinancialCharge {
         asaasInvoiceUrl: string | null;
         asaasPayload: Record<string, unknown> | null;
         paidAt: Date | null;
+        paidObservation: string | null;
         cancelledAt: Date | null;
         createdAt: Date;
         updatedAt: Date;
@@ -151,6 +154,7 @@ export class SchoolFinancialCharge {
             params.asaasInvoiceUrl,
             params.asaasPayload,
             params.paidAt,
+            params.paidObservation,
             params.cancelledAt,
             params.createdAt,
             params.updatedAt
@@ -199,6 +203,10 @@ export class SchoolFinancialCharge {
 
     get paidAt() {
         return this._paidAt;
+    }
+
+    get paidObservation() {
+        return this._paidObservation;
     }
 
     get cancelledAt() {

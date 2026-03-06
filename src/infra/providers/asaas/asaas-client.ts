@@ -171,6 +171,38 @@ export class AsaasClient {
         }
     }
 
+    /**
+     * Exclui uma cobrança no Asaas (DELETE /v3/payments/{id}).
+     * Só pode excluir cobranças pendentes; se já foi paga/cancelada, a API pode retornar erro.
+     */
+    async deletePayment(paymentId: string): Promise<{ deleted: boolean; id: string }> {
+        if (!paymentId?.trim()) {
+            throw new Error('paymentId is required');
+        }
+        const { data } = await this.http.delete<{ deleted?: boolean; id?: string }>(`/payments/${paymentId}`);
+        return {
+            deleted: data?.deleted === true,
+            id: data?.id ?? paymentId
+        };
+    }
+
+    /**
+     * Marca a cobrança como recebida em dinheiro no Asaas (POST /v3/payments/{id}/receiveInCash).
+     * Usado quando a escola dá baixa manual: o PIX/boleto fica marcado como pago no Asaas.
+     */
+    async receivePaymentInCash(
+        paymentId: string,
+        payload: { paymentDate: string; value: number; notifyCustomer?: boolean }
+    ): Promise<void> {
+        if (!paymentId?.trim()) throw new Error('paymentId is required');
+        const body = {
+            paymentDate: payload.paymentDate,
+            value: payload.value,
+            ...(payload.notifyCustomer !== undefined && { notifyCustomer: payload.notifyCustomer })
+        };
+        await this.http.post(`/payments/${paymentId}/receiveInCash`, body);
+    }
+
     async listPayments(params?: {
         status?: string;
         externalReference?: string;

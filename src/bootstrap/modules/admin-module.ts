@@ -189,7 +189,11 @@ export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext)
     const adminMarkInvoicePaid = deps.planInvoicesRepo
         ? new AdminMarkInvoicePaid(deps.planInvoicesRepo)
         : undefined;
-    const adminMarkChargePaid = new AdminMarkChargePaid(deps.financialChargesRepo);
+    const adminMarkChargePaid = new AdminMarkChargePaid(
+        deps.financialChargesRepo,
+        deps.schoolsRepo,
+        deps.asaasProvider
+    );
 
     const syncSchoolOnboardingDocuments = deps.asaasProvider
         ? new SyncSchoolOnboardingDocuments(deps.schoolsRepo, deps.asaasProvider)

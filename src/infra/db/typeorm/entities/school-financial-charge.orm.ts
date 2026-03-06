@@ -72,6 +72,9 @@ export class SchoolFinancialChargeOrm {
     @Column('datetime', { name: 'paid_at', nullable: true })
     paidAt!: Date | null;
 
+    @Column('varchar', { name: 'paid_observation', length: 500, nullable: true })
+    paidObservation!: string | null;
+
     @Column('datetime', { name: 'cancelled_at', nullable: true })
     cancelledAt!: Date | null;
 
