@@ -162,7 +162,7 @@ export class SchoolMarkChargePaid {
         if (!school?.accountId?.trim() || !school.accountApiKey?.trim()) {
             return this.paymentProvider;
         }
-        const { AsaasProviderFactory } = await import('../../infra/providers/asaas/asaas-provider-factory');
+        const { AsaasProviderFactory } = await import('../../infra/providers/asaas/asaas-provider-factory.js');
         const sub = AsaasProviderFactory.createSubAccountProvider(school.accountApiKey);
         return sub ?? this.paymentProvider;
     }

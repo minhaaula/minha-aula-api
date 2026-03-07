@@ -135,7 +135,7 @@ export class AdminMarkChargePaid {
         if (!school?.accountApiKey?.trim()) {
             return this.asaasProvider;
         }
-        const { AsaasProviderFactory } = await import('../../infra/providers/asaas/asaas-provider-factory');
+        const { AsaasProviderFactory } = await import('../../infra/providers/asaas/asaas-provider-factory.js');
         const sub = AsaasProviderFactory.createSubAccountProvider(school.accountApiKey);
         return (sub as AsaasProviderPort) ?? this.asaasProvider;
     }
