@@ -79,7 +79,7 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
     const getMyProfile = new GetMyProfile(deps.usersRepo, deps.dependentsRepo);
     const updateStudentProfile = new UpdateStudentProfile(deps.usersRepo);
     const deactivateStudentAccount = new DeactivateStudentAccount(deps.usersRepo);
-    const listMyCourses = new ListMyCourses(deps.enrollmentsRepo, deps.coursesRepo, deps.schoolsRepo);
+    const listMyCourses = new ListMyCourses(deps.enrollmentsRepo, deps.coursesRepo, deps.schoolsRepo, schoolImagesRepo, deps.storageProvider);
     const schoolImagesRepo = new SchoolImageRepositoryAdapter();
     const listAllCourses = deps.categoriesRepo
         ? new ListAllCourses(deps.coursesRepo, deps.categoriesRepo, schoolImagesRepo, deps.storageProvider, deps.schoolReviewsRepo)
@@ -113,7 +113,9 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
         deps.usersRepo,
         deps.schoolsRepo,
         deps.coursesRepo,
-        deps.paymentProvider
+        deps.paymentProvider,
+        schoolImagesRepo,
+        deps.storageProvider
     );
     const approveEnrollmentRequest = new ApproveEnrollmentRequest(
         deps.enrollmentRequestsRepo,

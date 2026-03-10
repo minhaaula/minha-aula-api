@@ -259,7 +259,9 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         deps.usersRepo,
         deps.schoolsRepo,
         deps.coursesRepo,
-        deps.paymentProvider
+        deps.paymentProvider,
+        schoolImagesRepo,
+        deps.storageProvider
     );
     const approveEnrollmentRequest = new ApproveEnrollmentRequest(
         deps.enrollmentRequestsRepo,

@@ -3,6 +3,9 @@ import { UserRepository } from '../../ports/repositories/user.repo';
 import { SchoolRepository } from '../../ports/repositories/school.repo';
 import { CourseRepository } from '../../ports/repositories/course.repo';
 import { PaymentProviderPort } from '../../ports/providers/payment-provider.port';
+import { SchoolImageRepository } from '../../ports/repositories/school-image.repo';
+import { SchoolImageCategory } from '../../domain/value-objects/school-image-category';
+import type { StorageProviderPort } from '../../ports/providers/storage-provider.port';
 import { AsaasProvider } from '../../infra/providers/asaas/asaas-provider';
 import { Money } from '../../domain/value-objects/money';
 import { SchoolFinancialChargeStatus } from '../../domain/entities/school-financial-charge';
@@ -26,7 +29,13 @@ export interface GenerateTuitionPixOutput {
     dueDate: Date;
     status: SchoolFinancialChargeStatus;
     amountCents: number;
+    /** Valor do desconto em centavos, ou null se não houver. */
+    discountCents: number | null;
+    /** Valor líquido a pagar em centavos (já aplicando desconto). */
+    netAmountCents: number;
     courseName: string;
+    /** URL do logo da escola, ou null. */
+    schoolLogo: string | null;
 }
 
 export class GenerateTuitionPix {
@@ -38,7 +47,9 @@ export class GenerateTuitionPix {
         private readonly users: UserRepository,
         private readonly schools: SchoolRepository,
         private readonly courses: CourseRepository,
-        private readonly paymentProvider: PaymentProviderPort
+        private readonly paymentProvider: PaymentProviderPort,
+        private readonly schoolImages?: SchoolImageRepository,
+        private readonly storage?: StorageProviderPort
     ) {}
 
     async exec(input: GenerateTuitionPixInput): Promise<GenerateTuitionPixOutput> {
@@ -74,7 +85,8 @@ export class GenerateTuitionPix {
             const payload = charge.asaasPayload ?? {};
             const pixQrCode = typeof payload.pixQrCode === 'string' ? payload.pixQrCode : null;
             const pixCopiaECola = typeof payload.pixCopiaECola === 'string' ? payload.pixCopiaECola : null;
-            
+            const schoolLogo = await this.getSchoolLogoUrl(charge.schoolId);
+
             return {
                 chargeId: charge.id,
                 paymentProviderRef: charge.asaasPaymentId,
@@ -84,7 +96,10 @@ export class GenerateTuitionPix {
                 dueDate: charge.dueDate,
                 status: charge.status,
                 amountCents: charge.netAmountCents,
-                courseName: course.name
+                discountCents: charge.discountCents,
+                netAmountCents: charge.netAmountCents,
+                courseName: course.name,
+                schoolLogo
             };
         }
 
@@ -137,6 +152,8 @@ export class GenerateTuitionPix {
 
         await this.charges.save(charge);
 
+        const schoolLogo = await this.getSchoolLogoUrl(charge.schoolId);
+
         return {
             chargeId: charge.id,
             paymentProviderRef: charge.asaasPaymentId!,
@@ -146,8 +163,23 @@ export class GenerateTuitionPix {
             dueDate: pix.dueDate,
             status: charge.status,
             amountCents: charge.netAmountCents,
-            courseName: course.name
+            discountCents: charge.discountCents,
+            netAmountCents: charge.netAmountCents,
+            courseName: course.name,
+            schoolLogo
         };
+    }
+
+    private async getSchoolLogoUrl(schoolId: string): Promise<string | null> {
+        if (!this.schoolImages || !this.storage) return null;
+        try {
+            const logos = await this.schoolImages.findBySchoolId(schoolId, SchoolImageCategory.LOGO);
+            const logo = logos[0];
+            if (!logo) return null;
+            return await this.storage.getFileUrl(logo.key, 3600);
+        } catch {
+            return null;
+        }
     }
 
     private ensureRequesterCanGenerate(

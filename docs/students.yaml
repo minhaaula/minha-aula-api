@@ -446,6 +446,11 @@ paths:
                         schoolName:
                           type: string
                           description: Nome da escola
+                        schoolLogo:
+                          type: string
+                          format: uri
+                          nullable: true
+                          description: URL do logo da escola
                         studentName:
                           type: string
                           description: Nome do aluno (usuário ou dependente)
@@ -487,7 +492,9 @@ paths:
                               - end
                       required:
                         - courseName
+                        - schoolId
                         - schoolName
+                        - schoolLogo
                         - studentName
                         - category
                         - subcategory
@@ -1014,17 +1021,34 @@ paths:
                   amountCents:
                     type: integer
                     format: int64
-                    description: Valor da mensalidade em centavos
+                    description: Valor da mensalidade em centavos (valor bruto)
+                  discountCents:
+                    type: integer
+                    format: int64
+                    nullable: true
+                    description: Valor do desconto em centavos, ou null se não houver
+                  netAmountCents:
+                    type: integer
+                    format: int64
+                    description: Valor líquido a pagar em centavos (já aplicando desconto)
                   courseName:
                     type: string
                     description: Nome do curso
+                  schoolLogo:
+                    type: string
+                    format: uri
+                    nullable: true
+                    description: URL do logo da escola
                 required:
                   - chargeId
                   - paymentProviderRef
                   - dueDate
                   - status
                   - amountCents
+                  - discountCents
+                  - netAmountCents
                   - courseName
+                  - schoolLogo
         '400':
           description: Erro na requisição. ID da mensalidade inválido, mensalidade não é do tipo TUITION ou status não permite geração de PIX.
           content:
