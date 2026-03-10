@@ -79,8 +79,8 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
     const getMyProfile = new GetMyProfile(deps.usersRepo, deps.dependentsRepo);
     const updateStudentProfile = new UpdateStudentProfile(deps.usersRepo);
     const deactivateStudentAccount = new DeactivateStudentAccount(deps.usersRepo);
-    const listMyCourses = new ListMyCourses(deps.enrollmentsRepo, deps.coursesRepo, deps.schoolsRepo, schoolImagesRepo, deps.storageProvider);
     const schoolImagesRepo = new SchoolImageRepositoryAdapter();
+    const listMyCourses = new ListMyCourses(deps.enrollmentsRepo, deps.coursesRepo, deps.schoolsRepo, schoolImagesRepo, deps.storageProvider);
     const listAllCourses = deps.categoriesRepo
         ? new ListAllCourses(deps.coursesRepo, deps.categoriesRepo, schoolImagesRepo, deps.storageProvider, deps.schoolReviewsRepo)
         : undefined;
