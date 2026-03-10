@@ -84,7 +84,7 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
     const listAllCourses = deps.categoriesRepo
         ? new ListAllCourses(deps.coursesRepo, deps.categoriesRepo, schoolImagesRepo, deps.storageProvider, deps.schoolReviewsRepo)
         : undefined;
-    const listStudentPayments = new ListStudentPayments(deps.financialChargesRepo);
+    const listStudentPayments = new ListStudentPayments(deps.financialChargesRepo, schoolImagesRepo, deps.storageProvider);
     const getStudentPaymentDetails = new GetStudentPaymentDetails(
         deps.financialChargesRepo,
         deps.usersRepo,

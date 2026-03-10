@@ -37,13 +37,19 @@ export class SchoolFinancialChargeRepositoryAdapter implements SchoolFinancialCh
             .where('charge.ownerUserId = :ownerUserId', { ownerUserId })
             .andWhere('charge.status != :cancelledStatus', { cancelledStatus: 'CANCELLED' })
             .select([
-                'charge.id AS chargeId',
-                'course.name AS courseName',
-                'COALESCE(studentUser.fullName, dependent.fullName) AS studentName',
-                'charge.netAmountCents AS amountCents',
-                'charge.dueDate AS dueDate',
-                'charge.status AS status'
-            ])
+            'charge.id AS chargeId',
+            'course.name AS courseName',
+            'COALESCE(studentUser.fullName, dependent.fullName) AS studentName',
+            'charge.amountCents AS amountCents',
+            'charge.discountCents AS discountCents',
+            'charge.netAmountCents AS netAmountCents',
+            'charge.dueDate AS dueDate',
+            'charge.status AS status',
+            'charge.chargeType AS chargeType',
+            'charge.schoolId AS schoolId',
+            'charge.paidAt AS paidAt',
+            'charge.paidObservation AS paidObservation'
+        ])
             .orderBy('charge.dueDate', 'DESC');
 
         // Filtro por isPaid (pagos ou em aberto) - tem prioridade sobre status específico
@@ -66,9 +72,15 @@ export class SchoolFinancialChargeRepositoryAdapter implements SchoolFinancialCh
             chargeId: row.chargeId,
             courseName: row.courseName,
             studentName: row.studentName,
-            amountCents: row.amountCents,
+            amountCents: row.amountCents ?? 0,
+            discountCents: row.discountCents ?? null,
+            netAmountCents: row.netAmountCents ?? row.amountCents ?? 0,
             dueDate: new Date(row.dueDate),
-            status: row.status as SchoolFinancialChargeStatus
+            status: row.status as SchoolFinancialChargeStatus,
+            chargeType: row.chargeType,
+            schoolId: row.schoolId,
+            paidAt: row.paidAt ? new Date(row.paidAt) : null,
+            paidObservation: row.paidObservation ?? null
         }));
     }
 

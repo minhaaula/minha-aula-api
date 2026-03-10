@@ -628,7 +628,7 @@ paths:
       tags:
         - Students
       summary: Listar pagamentos do estudante
-      description: Retorna os pagamentos (cobranças financeiras) do usuário logado e seus dependentes, incluindo informações do curso, aluno, valor, data de vencimento e status. Requer persona STUDENT.
+      description: Retorna os pagamentos (cobranças financeiras) do usuário logado e seus dependentes. Inclui tipo da transação (mensalidade/matrícula), data de pagamento, desconto, valor líquido, logo da escola e observação quando for pagamento manual. Requer persona STUDENT.
       security:
         - bearerAuth: []
       parameters:
@@ -661,7 +661,7 @@ paths:
                         chargeId:
                           type: string
                           format: uuid
-                          description: ID da mensalidade (cobrança)
+                          description: ID da cobrança
                         courseName:
                           type: string
                           description: Nome do curso
@@ -671,22 +671,55 @@ paths:
                         amountCents:
                           type: integer
                           format: int64
-                          description: Valor do pagamento em centavos
+                          description: Valor original em centavos (antes do desconto)
+                        discountCents:
+                          type: integer
+                          format: int64
+                          nullable: true
+                          description: Desconto em centavos, ou null se não houver
+                        netAmountCents:
+                          type: integer
+                          format: int64
+                          description: Valor líquido em centavos (já aplicando desconto)
                         dueDate:
                           type: string
                           format: date
-                          description: Data de vencimento do pagamento
+                          description: Data de vencimento
+                        paidAt:
+                          type: string
+                          format: date-time
+                          nullable: true
+                          description: Data do pagamento (quando pago)
                         status:
                           type: string
                           enum: [pendente, atrasado, pago, cancelado, falhou]
                           description: Status do pagamento
+                        type:
+                          type: string
+                          enum: [mensalidade, matricula, outros]
+                          description: Tipo da transação (mensalidade, matrícula ou outros)
+                        schoolLogo:
+                          type: string
+                          format: uri
+                          nullable: true
+                          description: URL do logo da escola
+                        paidObservation:
+                          type: string
+                          nullable: true
+                          description: Observação quando pagamento manual (baixa pela escola)
                       required:
                         - chargeId
                         - courseName
                         - studentName
                         - amountCents
+                        - discountCents
+                        - netAmountCents
                         - dueDate
+                        - paidAt
                         - status
+                        - type
+                        - schoolLogo
+                        - paidObservation
                 required:
                   - payments
         '401':

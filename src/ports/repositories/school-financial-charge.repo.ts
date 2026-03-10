@@ -1,12 +1,21 @@
-import { SchoolFinancialCharge, SchoolFinancialChargeStatus } from '../../domain/entities/school-financial-charge';
+import { SchoolFinancialCharge, SchoolFinancialChargeStatus, SchoolFinancialChargeType } from '../../domain/entities/school-financial-charge';
 
 export type StudentPaymentInfo = {
     chargeId: string;
     courseName: string;
     studentName: string;
+    /** Valor original em centavos (antes do desconto). */
     amountCents: number;
+    /** Desconto em centavos, ou null se não houver. */
+    discountCents: number | null;
+    /** Valor líquido em centavos (amountCents - discountCents). */
+    netAmountCents: number;
     dueDate: Date;
     status: SchoolFinancialChargeStatus;
+    chargeType: SchoolFinancialChargeType;
+    schoolId: string;
+    paidAt: Date | null;
+    paidObservation: string | null;
 };
 
 /** Item de cobrança para listagem admin (mensalidades do aluno em todas as escolas). */

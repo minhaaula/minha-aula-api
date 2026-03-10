@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { ListAllCourses } from '../../src/app/use-cases/list-all-courses';
 import { CourseRepository } from '../../src/ports/repositories/course.repo';
 import { CategoryRepository } from '../../src/ports/repositories/category.repo';
+import type { SchoolReviewRepository } from '../../src/ports/repositories/school-review.repo';
 
 class InMemoryCourseRepository implements CourseRepository {
     private readonly items = new Map<string, any>();
@@ -57,7 +58,8 @@ class InMemoryCourseRepository implements CourseRepository {
                     courseDescription: data.courseDescription,
                     schoolId: data.schoolId,
                     schoolName: data.schoolName,
-                    schoolCity: data.schoolCity
+                    schoolCity: data.schoolCity,
+                    schoolState: data.schoolState ?? null
                 });
             }
         }
@@ -83,6 +85,7 @@ class InMemoryCourseRepository implements CourseRepository {
         schoolId: string;
         schoolName: string;
         schoolCity: string | null;
+        schoolState?: string | null;
         categoryId?: string;
         subcategoryId?: string;
     }) {
@@ -92,6 +95,7 @@ class InMemoryCourseRepository implements CourseRepository {
             schoolId: data.schoolId,
             schoolName: data.schoolName,
             schoolCity: data.schoolCity,
+            schoolState: data.schoolState ?? null,
             categoryId: data.categoryId,
             subcategoryId: data.subcategoryId
         });
@@ -153,6 +157,9 @@ describe('ListAllCourses use case', () => {
         expect(result.courses[0].courseDescription).toBe('Curso de inglês para iniciantes');
         expect(result.courses[0].category).toBe('Category-cat-1');
         expect(result.courses[0].subcategory).toBe('Subcategory-sub-1');
+        expect(result.courses[0].schoolCity).toBe('São Paulo');
+        expect(result.courses[0].schoolState).toBeNull();
+        expect(result.courses[0].schoolRatingAverage).toBeNull();
     });
 
     it('filters courses by name', async () => {
@@ -299,6 +306,56 @@ describe('ListAllCourses use case', () => {
         expect(result.courses).toHaveLength(1);
         expect(result.courses[0].category).toBeNull();
         expect(result.courses[0].subcategory).toBeNull();
+    });
+
+    it('returns schoolCity, schoolState and schoolRatingAverage in each course', async () => {
+        const coursesRepo = new InMemoryCourseRepository();
+        const categoriesRepo = new InMemoryCategoryRepository();
+        const schoolReviewsRepo: SchoolReviewRepository = {
+            findMany: async () => [],
+            getAverageRatingBySchoolIds: async (schoolIds: string[]) =>
+                schoolIds.map((schoolId) => ({
+                    schoolId,
+                    averageRating: schoolId === 'school-1' ? 4.5 : 3.2,
+                    count: 10
+                })),
+            findByUserAndSchool: async () => null,
+            save: async () => {}
+        };
+
+        coursesRepo.seedCourse({
+            courseId: 'course-1',
+            courseName: 'Inglês',
+            courseDescription: null,
+            schoolId: 'school-1',
+            schoolName: 'Escola A',
+            schoolCity: 'Belo Horizonte',
+            schoolState: 'MG'
+        });
+        coursesRepo.seedCourse({
+            courseId: 'course-2',
+            courseName: 'Matemática',
+            courseDescription: null,
+            schoolId: 'school-2',
+            schoolName: 'Escola B',
+            schoolCity: 'Curitiba',
+            schoolState: 'PR'
+        });
+
+        const useCase = new ListAllCourses(coursesRepo, categoriesRepo, undefined, undefined, schoolReviewsRepo);
+        const result = await useCase.exec({});
+
+        expect(result.courses).toHaveLength(2);
+
+        const course1 = result.courses.find((c) => c.schoolId === 'school-1')!;
+        expect(course1.schoolCity).toBe('Belo Horizonte');
+        expect(course1.schoolState).toBe('MG');
+        expect(course1.schoolRatingAverage).toBe(4.5);
+
+        const course2 = result.courses.find((c) => c.schoolId === 'school-2')!;
+        expect(course2.schoolCity).toBe('Curitiba');
+        expect(course2.schoolState).toBe('PR');
+        expect(course2.schoolRatingAverage).toBe(3.2);
     });
 });
 
