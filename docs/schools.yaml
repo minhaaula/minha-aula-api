@@ -376,7 +376,7 @@ paths:
         - Dados do aluno (nome, email, telefone, CPF, data de nascimento)
         - Dados do responsável (se o aluno for um dependente)
         - Lista de cursos e turmas em que está matriculado na escola
-        - Histórico de mensalidades pagas na escola
+        - Cobranças (pendentes e pagas) do aluno na escola (paidCharges)
         
         **Importante:** A rota só retorna dados se o aluno estiver vinculado à escola através de matrículas ativas.
       security:

@@ -40,7 +40,9 @@ export interface GenerateTuitionPixOutput {
 
 export class GenerateTuitionPix {
     private readonly allowedStatuses = new Set<SchoolFinancialChargeStatus>(['PENDING_SYNC', 'FAILED', 'OPEN', 'OVERDUE']);
-    private readonly studentChargeTypes = new Set(['TUITION']);
+    /** Tipos de cobrança que o estudante pode gerar PIX: mensalidade e matrícula. */
+    private readonly allowedChargeTypes = new Set(['TUITION', 'ENROLLMENT']);
+    private readonly schoolAccountChargeTypes = new Set(['TUITION', 'ENROLLMENT']);
 
     constructor(
         private readonly charges: SchoolFinancialChargeRepository,
@@ -57,14 +59,14 @@ export class GenerateTuitionPix {
             throw new Error('Configured payment provider does not support PIX issuance');
         }
 
-        // Buscar a mensalidade específica
+        // Buscar a cobrança (mensalidade ou matrícula)
         const charge = await this.charges.findById(input.chargeId);
         if (!charge) {
             throw new Error('Charge not found');
         }
 
-        if (charge.chargeType !== 'TUITION') {
-            throw new Error('Charge type is not TUITION');
+        if (!this.allowedChargeTypes.has(charge.chargeType)) {
+            throw new Error(`Charge type ${charge.chargeType} does not allow PIX generation (allowed: TUITION, ENROLLMENT)`);
         }
 
         // Verificar se a mensalidade está em um status que permite gerar PIX
@@ -126,7 +128,7 @@ export class GenerateTuitionPix {
         const pix = await provider.createPixCharge({
             amount,
             dueDate,
-            description: charge.description ?? 'Mensalidade',
+            description: charge.description ?? (charge.chargeType === 'ENROLLMENT' ? 'Matrícula' : 'Mensalidade'),
             externalReference: charge.id,
             customer: {
                 name: owner.fullName,
@@ -212,12 +214,14 @@ export class GenerateTuitionPix {
         dependentId: string | null;
         courseId: string;
         courseClassId: string | null;
+        chargeType: string;
     }): Record<string, string> {
         const metadata: Record<string, string> = {
             chargeId: charge.id,
             schoolId: charge.schoolId,
             ownerUserId: charge.ownerUserId,
-            courseId: charge.courseId
+            courseId: charge.courseId,
+            type: charge.chargeType
         };
         if (charge.courseClassId) {
             metadata.courseClassId = charge.courseClassId;
@@ -225,7 +229,6 @@ export class GenerateTuitionPix {
         if (charge.dependentId) {
             metadata.dependentId = charge.dependentId;
         }
-        metadata.type = 'TUITION';
         return metadata;
     }
 
@@ -237,8 +240,8 @@ export class GenerateTuitionPix {
     private async resolvePaymentProvider(
         charge: import('../../domain/entities/school-financial-charge').SchoolFinancialCharge
     ): Promise<PaymentProviderPort> {
-        // Apenas para mensalidades
-        if (!this.studentChargeTypes.has(charge.chargeType)) {
+        // Apenas para mensalidade e matrícula: usar conta Asaas da escola se disponível
+        if (!this.schoolAccountChargeTypes.has(charge.chargeType)) {
             return this.paymentProvider;
         }
 

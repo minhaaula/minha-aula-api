@@ -1678,7 +1678,7 @@ components:
               - status
         paidCharges:
           type: array
-          description: Histórico de mensalidades pagas na escola (ordenado por data de pagamento, mais recentes primeiro)
+          description: Cobranças do aluno na escola (pendentes e pagas), ordenadas por data de pagamento (mais recentes primeiro) e depois por vencimento. Cobranças canceladas não são incluídas.
           items:
             type: object
             properties:
@@ -1719,7 +1719,12 @@ components:
               paidAt:
                 type: string
                 format: date-time
-                description: Data e hora do pagamento
+                nullable: true
+                description: Data e hora do pagamento (null quando cobrança pendente)
+              status:
+                type: string
+                enum: [PENDING_SYNC, OPEN, PAID, OVERDUE, CANCELLED, FAILED]
+                description: Status da cobrança
               course:
                 type: object
                 properties:
@@ -1750,6 +1755,7 @@ components:
               - netAmountCents
               - dueDate
               - paidAt
+              - status
               - course
               - class
       required:

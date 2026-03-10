@@ -53,7 +53,8 @@ export interface GetSchoolStudentDetailsOutput {
         netAmountCents: number;
         description: string | null;
         dueDate: Date;
-        paidAt: Date;
+        paidAt: Date | null;
+        status: string;
         course: {
             id: string;
             name: string;
@@ -253,15 +254,14 @@ export class GetSchoolStudentDetails {
 
     private async findPaidChargesForUser(schoolId: string, userId: string): Promise<GetSchoolStudentDetailsOutput['paidCharges']> {
         const chargeRepo = AppDataSource.getRepository(SchoolFinancialChargeOrm);
-        
+
         const charges = await chargeRepo
             .createQueryBuilder('charge')
             .innerJoin('charge.course', 'course')
             .innerJoin('charge.courseClass', 'class')
             .where('charge.schoolId = :schoolId', { schoolId })
             .andWhere('charge.studentUserId = :userId', { userId })
-            .andWhere('charge.status = :status', { status: 'PAID' })
-            .andWhere('charge.paidAt IS NOT NULL')
+            .andWhere('charge.status NOT IN (:...excludedStatuses)', { excludedStatuses: ['CANCELLED'] })
             .select([
                 'charge.id AS charge_id',
                 'charge.amountCents AS charge_amount_cents',
@@ -270,25 +270,28 @@ export class GetSchoolStudentDetails {
                 'charge.description AS charge_description',
                 'charge.dueDate AS charge_due_date',
                 'charge.paidAt AS charge_paid_at',
+                'charge.status AS charge_status',
                 'course.id AS course_id',
                 'course.name AS course_name',
                 'class.id AS class_id',
                 'class.label AS class_label'
             ])
             .orderBy('charge.paidAt', 'DESC')
+            .addOrderBy('charge.dueDate', 'DESC')
             .getRawMany();
 
         return charges.map((row: any) => ({
             id: row.charge_id,
             amount: row.charge_amount_cents / 100,
             amountCents: row.charge_amount_cents,
-            discount: row.charge_discount_cents ? row.charge_discount_cents / 100 : null,
+            discount: row.charge_discount_cents != null ? row.charge_discount_cents / 100 : null,
             discountCents: row.charge_discount_cents,
             netAmount: row.charge_net_amount_cents / 100,
             netAmountCents: row.charge_net_amount_cents,
             description: row.charge_description,
             dueDate: new Date(row.charge_due_date),
-            paidAt: new Date(row.charge_paid_at),
+            paidAt: row.charge_paid_at ? new Date(row.charge_paid_at) : null,
+            status: row.charge_status,
             course: {
                 id: row.course_id,
                 name: row.course_name
@@ -302,15 +305,14 @@ export class GetSchoolStudentDetails {
 
     private async findPaidChargesForDependent(schoolId: string, dependentId: string): Promise<GetSchoolStudentDetailsOutput['paidCharges']> {
         const chargeRepo = AppDataSource.getRepository(SchoolFinancialChargeOrm);
-        
+
         const charges = await chargeRepo
             .createQueryBuilder('charge')
             .innerJoin('charge.course', 'course')
             .innerJoin('charge.courseClass', 'class')
             .where('charge.schoolId = :schoolId', { schoolId })
             .andWhere('charge.dependentId = :dependentId', { dependentId })
-            .andWhere('charge.status = :status', { status: 'PAID' })
-            .andWhere('charge.paidAt IS NOT NULL')
+            .andWhere('charge.status NOT IN (:...excludedStatuses)', { excludedStatuses: ['CANCELLED'] })
             .select([
                 'charge.id AS charge_id',
                 'charge.amountCents AS charge_amount_cents',
@@ -319,25 +321,28 @@ export class GetSchoolStudentDetails {
                 'charge.description AS charge_description',
                 'charge.dueDate AS charge_due_date',
                 'charge.paidAt AS charge_paid_at',
+                'charge.status AS charge_status',
                 'course.id AS course_id',
                 'course.name AS course_name',
                 'class.id AS class_id',
                 'class.label AS class_label'
             ])
             .orderBy('charge.paidAt', 'DESC')
+            .addOrderBy('charge.dueDate', 'DESC')
             .getRawMany();
 
         return charges.map((row: any) => ({
             id: row.charge_id,
             amount: row.charge_amount_cents / 100,
             amountCents: row.charge_amount_cents,
-            discount: row.charge_discount_cents ? row.charge_discount_cents / 100 : null,
+            discount: row.charge_discount_cents != null ? row.charge_discount_cents / 100 : null,
             discountCents: row.charge_discount_cents,
             netAmount: row.charge_net_amount_cents / 100,
             netAmountCents: row.charge_net_amount_cents,
             description: row.charge_description,
             dueDate: new Date(row.charge_due_date),
-            paidAt: new Date(row.charge_paid_at),
+            paidAt: row.charge_paid_at ? new Date(row.charge_paid_at) : null,
+            status: row.charge_status,
             course: {
                 id: row.course_id,
                 name: row.course_name
