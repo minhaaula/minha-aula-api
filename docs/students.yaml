@@ -703,8 +703,8 @@ paths:
                           description: Status do pagamento
                         type:
                           type: string
-                          enum: [mensalidade, matricula, outros]
-                          description: Tipo da transação (mensalidade, matrícula ou outros)
+                          enum: ["Mensalidade", "Matrícula", "Outros"]
+                          description: Tipo da transação (Mensalidade, Matrícula ou Outros)
                         schoolLogo:
                           type: string
                           format: uri

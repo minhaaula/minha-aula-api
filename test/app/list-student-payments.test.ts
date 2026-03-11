@@ -94,7 +94,7 @@ describe('ListStudentPayments use case', () => {
         expect(result.payments[0].netAmountCents).toBe(50000);
         expect(result.payments[0].discountCents).toBeNull();
         expect(result.payments[0].status).toBe('pendente');
-        expect(result.payments[0].type).toBe('mensalidade');
+        expect(result.payments[0].type).toBe('Mensalidade');
         expect(result.payments[0].paidAt).toBeNull();
         expect(result.payments[0].schoolLogo).toBeNull();
         expect(result.payments[0].paidObservation).toBeNull();
@@ -102,7 +102,7 @@ describe('ListStudentPayments use case', () => {
         expect(result.payments[1].courseName).toBe('Matemática');
         expect(result.payments[1].netAmountCents).toBe(60000);
         expect(result.payments[1].status).toBe('pago');
-        expect(result.payments[1].type).toBe('mensalidade');
+        expect(result.payments[1].type).toBe('Mensalidade');
         expect(result.payments[1].paidAt).toEqual(new Date('2024-02-15'));
     });
 
@@ -287,7 +287,7 @@ describe('ListStudentPayments use case', () => {
         const result = await useCase.exec({ userId });
 
         expect(result.payments).toHaveLength(1);
-        expect(result.payments[0].type).toBe('matricula');
+        expect(result.payments[0].type).toBe('Matrícula');
         expect(result.payments[0].amountCents).toBe(30000);
         expect(result.payments[0].discountCents).toBe(5000);
         expect(result.payments[0].netAmountCents).toBe(25000);

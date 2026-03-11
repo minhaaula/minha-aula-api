@@ -10,8 +10,8 @@ export interface ListStudentPaymentsInput {
     isPaid?: boolean;
 }
 
-/** Tipo da transação para exibição no histórico. */
-export type PaymentTransactionType = 'mensalidade' | 'matricula' | 'outros';
+/** Tipo da transação para exibição (capitalizado para o cliente). */
+export type PaymentTransactionType = 'Mensalidade' | 'Matrícula' | 'Outros';
 
 export interface StudentPaymentRecord {
     chargeId: string;
@@ -107,13 +107,13 @@ export class ListStudentPayments {
 
     private mapChargeTypeToDisplay(chargeType: SchoolFinancialChargeType): PaymentTransactionType {
         const map: Record<SchoolFinancialChargeType, PaymentTransactionType> = {
-            TUITION: 'mensalidade',
-            ENROLLMENT: 'matricula',
-            MATERIALS: 'outros',
-            DAILY: 'outros',
-            OTHER: 'outros'
+            TUITION: 'Mensalidade',
+            ENROLLMENT: 'Matrícula',
+            MATERIALS: 'Outros',
+            DAILY: 'Outros',
+            OTHER: 'Outros'
         };
-        return map[chargeType] ?? 'outros';
+        return map[chargeType] ?? 'Outros';
     }
 
     private mapStatusToDisplay(status: SchoolFinancialChargeStatus): string {
