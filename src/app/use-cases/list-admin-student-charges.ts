@@ -44,7 +44,10 @@ export class ListAdminStudentCharges {
 
         const user = await this.users.findById(studentId);
         if (user) {
-            const items = await findCharges.call(this.financialCharges, studentId, 'USER');
+            const includeDependents = this.financialCharges.findChargesByOwnerIdIncludingDependentsForAdmin;
+            const items = includeDependents
+                ? await includeDependents.call(this.financialCharges, studentId)
+                : await findCharges.call(this.financialCharges, studentId, 'USER');
             return { charges: this.mapItems(items) };
         }
 

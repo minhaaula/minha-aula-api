@@ -16,6 +16,12 @@ export interface GetSchoolDashboardOutput {
     revenueForecastCents: number;
     revenueChangePercentage: number;
     recentEnrollments: EnrollmentWithDetails[];
+    /** Cobranças em aberto (pendentes + atrasadas): valor e quantidade a receber. */
+    pendingPayments: {
+        totalAmountCents: number;
+        count: number;
+    };
+    /** Cobranças em atraso (vencidas e não pagas): valor e quantidade. */
     overduePayments: {
         totalAmountCents: number;
         count: number;
@@ -71,10 +77,13 @@ export class GetSchoolDashboard {
         // 8. Últimos Alunos Matriculados (5)
         const recentEnrollments = await this.enrollments.findRecentBySchoolId!(schoolId, 5);
 
-        // 9. Pagamentos em Atraso
+        // 9. Pagamentos pendentes (todas as cobranças em aberto: PENDING_SYNC, OPEN, FAILED)
+        const pendingPayments = await this.charges.getPendingSummary!(schoolId);
+
+        // 10. Pagamentos em Atraso (OVERDUE ou abertas com dueDate < hoje)
         const overduePayments = await this.charges.getOverdueSummary!(schoolId);
 
-        // 10. Solicitações de Matrícula Pendentes
+        // 11. Solicitações de Matrícula Pendentes
         const pendingEnrollmentRequestsCount = await this.enrollmentRequests.countPendingBySchoolId!(schoolId);
 
         return {
@@ -85,6 +94,7 @@ export class GetSchoolDashboard {
             revenueForecastCents,
             revenueChangePercentage,
             recentEnrollments,
+            pendingPayments,
             overduePayments,
             monthlyRevenueHistory,
             pendingEnrollmentRequestsCount

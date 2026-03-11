@@ -65,6 +65,8 @@ export interface SchoolFinancialChargeRepository {
     countChargesWithDiscount?(courseClassId: string, ownerUserId: string, studentUserId: string | null, dependentId: string | null): Promise<number>;
     /** Lista todas as cobranças (mensalidades) do aluno em todas as escolas. studentType USER = studentUserId, DEPENDENT = dependentId. */
     findChargesByStudentIdForAdmin?(studentId: string, studentType: 'USER' | 'DEPENDENT'): Promise<AdminStudentChargeItem[]>;
+    /** Lista todas as cobranças do usuário em todas as escolas, incluindo cobranças dos dependentes desse usuário. */
+    findChargesByOwnerIdIncludingDependentsForAdmin?(ownerUserId: string): Promise<AdminStudentChargeItem[]>;
     /** Receita de mensalidades (charges PAID) por mês para dashboard. */
     getTuitionRevenueByMonthForDashboard?(monthsLimit: number): Promise<Array<{ year: number; month: number; valorCents: number }>>;
     /** Total de cobranças atrasadas (status OVERDUE) em centavos. */

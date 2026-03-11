@@ -193,18 +193,31 @@ export class SchoolFinancialChargeRepositoryAdapter implements SchoolFinancialCh
     }
 
     async getOverdueSummary(schoolId: string): Promise<{ totalAmountCents: number; count: number }> {
-        const result = await this.repo.createQueryBuilder('charge')
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const qb = this.repo
+            .createQueryBuilder('charge')
             .select([
                 'SUM(charge.netAmountCents) AS totalAmountCents',
                 'COUNT(charge.id) AS count'
             ])
             .where('charge.schoolId = :schoolId', { schoolId })
-            .andWhere('charge.status = :status', { status: 'OVERDUE' })
-            .getRawOne();
+            .andWhere('charge.status != :cancelled', { cancelled: 'CANCELLED' })
+            .andWhere(
+                '(charge.status = :overdueStatus OR (charge.status IN (:...openStatuses) AND charge.dueDate < :today))',
+                {
+                    overdueStatus: 'OVERDUE',
+                    openStatuses: ['PENDING_SYNC', 'OPEN'],
+                    today
+                }
+            );
+
+        const result = await qb.getRawOne();
 
         return {
-            totalAmountCents: Number(result.totalAmountCents || 0),
-            count: Number(result.count || 0)
+            totalAmountCents: Number(result?.totalAmountCents || 0),
+            count: Number(result?.count || 0)
         };
     }
 
@@ -215,12 +228,14 @@ export class SchoolFinancialChargeRepositoryAdapter implements SchoolFinancialCh
                 'COUNT(charge.id) AS count'
             ])
             .where('charge.schoolId = :schoolId', { schoolId })
-            .andWhere('charge.status IN (:...statuses)', { statuses: ['PENDING_SYNC', 'OPEN', 'FAILED'] })
+            .andWhere('charge.status IN (:...statuses)', {
+                statuses: ['PENDING_SYNC', 'OPEN', 'OVERDUE', 'FAILED']
+            })
             .getRawOne();
 
         return {
-            totalAmountCents: Number(result.totalAmountCents || 0),
-            count: Number(result.count || 0)
+            totalAmountCents: Number(result?.totalAmountCents || 0),
+            count: Number(result?.count || 0)
         };
     }
 
@@ -387,6 +402,53 @@ export class SchoolFinancialChargeRepositoryAdapter implements SchoolFinancialCh
         } else {
             qb.andWhere('charge.dependentId = :studentId', { studentId });
         }
+
+        const rows = await qb
+            .select([
+                'charge.id AS id',
+                'charge.amountCents AS amountCents',
+                'charge.discountCents AS discountCents',
+                'charge.netAmountCents AS netAmountCents',
+                'charge.description AS description',
+                'charge.dueDate AS dueDate',
+                'charge.status AS status',
+                'charge.paidAt AS paidAt',
+                'school.id AS schoolId',
+                'school.name AS schoolName',
+                'course.id AS courseId',
+                'course.name AS courseName',
+                'class.id AS classId',
+                'class.label AS classLabel'
+            ])
+            .orderBy('charge.dueDate', 'DESC')
+            .getRawMany();
+
+        return rows.map((row: any) => ({
+            id: row.id,
+            school: { id: row.schoolId, name: row.schoolName ?? '' },
+            course: { id: row.courseId, name: row.courseName ?? '' },
+            class: { id: row.classId, label: row.classLabel ?? '' },
+            amountCents: row.amountCents ?? 0,
+            discountCents: row.discountCents,
+            netAmountCents: row.netAmountCents ?? 0,
+            description: row.description,
+            dueDate: new Date(row.dueDate),
+            status: row.status as SchoolFinancialChargeStatus,
+            paidAt: row.paidAt ? new Date(row.paidAt) : null
+        }));
+    }
+
+    async findChargesByOwnerIdIncludingDependentsForAdmin(ownerUserId: string): Promise<AdminStudentChargeItem[]> {
+        const qb = this.repo
+            .createQueryBuilder('charge')
+            .innerJoin('charge.school', 'school')
+            .innerJoin('charge.course', 'course')
+            .innerJoin('charge.courseClass', 'class')
+            .where('charge.status != :cancelled', { cancelled: 'CANCELLED' })
+            .andWhere(
+                '(charge.studentUserId = :ownerUserId OR (charge.ownerUserId = :ownerUserId AND charge.dependentId IS NOT NULL))',
+                { ownerUserId }
+            );
 
         const rows = await qb
             .select([

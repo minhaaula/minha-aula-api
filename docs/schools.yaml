@@ -1999,8 +1999,30 @@ paths:
                       - revenueForecastCents
                       - revenueChangePercentage
                       - pendingEnrollmentRequests
+                  pendingPayments:
+                    type: object
+                    description: Pagamentos pendentes (todas as cobranças em aberto – a receber)
+                    properties:
+                      totalAmount:
+                        type: number
+                        format: double
+                        description: Valor total a receber em reais
+                        example: 3200.00
+                      totalAmountCents:
+                        type: integer
+                        description: Valor total a receber em centavos
+                        example: 320000
+                      count:
+                        type: integer
+                        description: Quantidade de cobranças pendentes (abertas + atrasadas)
+                        example: 8
+                    required:
+                      - totalAmount
+                      - totalAmountCents
+                      - count
                   overduePayments:
                     type: object
+                    description: Pagamentos em atraso (vencidos e não pagos – status OVERDUE ou cobrança aberta com data de vencimento no passado)
                     properties:
                       totalAmount:
                         type: number
@@ -2070,6 +2092,7 @@ paths:
                         - valueCents
                 required:
                   - summary
+                  - pendingPayments
                   - overduePayments
                   - recentEnrollments
                   - revenueHistory
@@ -2087,6 +2110,10 @@ paths:
                       revenueForecastCents: 300000
                       revenueChangePercentage: 8.2
                       pendingEnrollmentRequests: 2
+                    pendingPayments:
+                      totalAmount: 3200.00
+                      totalAmountCents: 320000
+                      count: 8
                     overduePayments:
                       totalAmount: 1450.00
                       totalAmountCents: 145000

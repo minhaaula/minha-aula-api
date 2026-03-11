@@ -61,6 +61,8 @@ export function enrollmentRequestsRouter(deps: {
                 classId: z.string().uuid().optional(),
                 courseId: z.string().uuid().optional(),
                 studentDocument: z.string().trim().min(1).optional(),
+                /** Filtro por status: OPEN = Em Aberto (PENDING), CANCELLED = Cancelado. Omitir = Em Aberto + Cancelado */
+                status: z.enum(['OPEN', 'CANCELLED']).optional(),
                 limit: z.coerce.number().int().positive().max(100).optional(),
                 offset: z.coerce.number().int().min(0).optional()
             });
@@ -70,6 +72,7 @@ export function enrollmentRequestsRouter(deps: {
                 classId: typeof req.query.classId === 'string' ? req.query.classId : undefined,
                 courseId: typeof req.query.courseId === 'string' ? req.query.courseId : undefined,
                 studentDocument: typeof req.query.studentDocument === 'string' ? req.query.studentDocument : undefined,
+                status: typeof req.query.status === 'string' ? req.query.status : undefined,
                 limit: typeof req.query.limit === 'string' ? req.query.limit : undefined,
                 offset: typeof req.query.offset === 'string' ? req.query.offset : undefined
             });
@@ -80,13 +83,13 @@ export function enrollmentRequestsRouter(deps: {
             if (persona === UserPersonaEnum.SCHOOL) {
                 const contextSchoolId = authReq.user?.schoolId;
                 if (!contextSchoolId) {
-                    return res.status(403).json({ 
+                    return res.status(403).json({
                         error: 'Contexto de escola não encontrado para o usuário',
                         code: 'SCHOOL_CONTEXT_NOT_FOUND'
                     });
                 }
                 if (schoolId && schoolId !== contextSchoolId) {
-                    return res.status(403).json({ 
+                    return res.status(403).json({
                         error: 'Não é possível acessar solicitações de matrícula de outra escola',
                         code: 'FORBIDDEN'
                     });
@@ -95,17 +98,23 @@ export function enrollmentRequestsRouter(deps: {
             }
 
             if (!schoolId) {
-                return res.status(400).json({ 
+                return res.status(400).json({
                     error: 'schoolId é obrigatório',
                     code: 'REQUIRED_FIELD'
                 });
             }
 
+            const statusFilter = query.status === 'OPEN'
+                ? { status: 'PENDING' as const }
+                : query.status === 'CANCELLED'
+                    ? { status: 'CANCELLED' as const }
+                    : { statusIn: ['PENDING', 'CANCELLED'] as const };
+
             const requests = await deps.listEnrollmentRequests.exec({
                 schoolId,
                 courseClassId: query.classId,
                 courseId: query.courseId,
-                status: 'PENDING',
+                ...statusFilter,
                 studentDocument: query.studentDocument,
                 limit: query.limit,
                 offset: query.offset

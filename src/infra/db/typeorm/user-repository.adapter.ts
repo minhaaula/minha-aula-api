@@ -3,7 +3,6 @@ import { User } from '../../../domain/entities/user';
 import { UserRepository } from '../../../ports/repositories/user.repo';
 import type { AdminStudentListFilters, AdminStudentListResult } from '../../../ports/repositories/enrollment.repo';
 import { UserOrm } from './entities/user.orm';
-import { EnrollmentOrm } from './entities/enrollment.orm';
 import { AppDataSource } from './datasource';
 import { PostalAddress } from '../../../domain/value-objects/postal-address';
 import { assertUserPersona } from '../../../domain/value-objects/user-persona';
@@ -108,67 +107,47 @@ export class UserRepositoryAdapter implements UserRepository {
         }
 
         const total = await qb.getCount();
-        const users = await qb
-            .select(['user.id', 'user.fullName', 'user.cpf'])
+        const rows = await qb
+            .select([
+                'user.id AS studentId',
+                'user.full_name AS studentName',
+                'user.cpf AS cpf',
+                'user.address_street AS addressStreet',
+                'user.address_number AS addressNumber',
+                'user.address_complement AS addressComplement',
+                'user.address_district AS addressDistrict',
+                'user.address_city AS addressCity',
+                'user.address_state AS addressState',
+                'user.address_zip_code AS addressZipCode',
+                'user.created_at AS createdAt'
+            ])
+            .addSelect(
+                `(SELECT COUNT(*) FROM enrollments e WHERE e.student_user_id = user.id AND e.status = 'ACTIVE')`,
+                'courseCount'
+            )
             .orderBy('user.full_name', 'ASC')
             .skip(safeOffset)
             .take(safeLimit)
-            .getMany();
+            .getRawMany();
 
-        const userIds = users.map((u) => u.id);
-        const latestByUser = new Map<string, { enrollmentId: string; schoolId: string; schoolName: string; courseName: string; className: string; enrolledAt: Date }>();
-        if (userIds.length > 0) {
-            const enrollmentRepo = AppDataSource.getRepository(EnrollmentOrm);
-            const latestEnrollments = await enrollmentRepo
-                .createQueryBuilder('e')
-                .innerJoin('e.courseClass', 'cc')
-                .innerJoin('cc.course', 'c')
-                .innerJoin('c.school', 's')
-                .select([
-                    'e.id AS enrollmentId',
-                    'e.studentUserId AS studentUserId',
-                    'e.enrolledAt AS enrolledAt',
-                    's.id AS schoolId',
-                    's.name AS schoolName',
-                    'c.name AS courseName',
-                    'cc.label AS className'
-                ])
-                .where('e.studentUserId IN (:...userIds)', { userIds })
-                .andWhere('e.status = :status', { status: 'ACTIVE' })
-                .andWhere('e.studentUserId IS NOT NULL')
-                .orderBy('e.enrolledAt', 'DESC')
-                .getRawMany();
-
-            for (const row of latestEnrollments as any[]) {
-                const uid = row.studentUserId;
-                if (uid && !latestByUser.has(uid)) {
-                    latestByUser.set(uid, {
-                        enrollmentId: row.enrollmentId,
-                        schoolId: row.schoolId,
-                        schoolName: row.schoolName,
-                        courseName: row.courseName,
-                        className: row.className,
-                        enrolledAt: new Date(row.enrolledAt)
-                    });
-                }
-            }
-        }
-
-        const items = users.map((u) => {
-            const en = latestByUser.get(u.id);
-            return {
-                enrollmentId: en?.enrollmentId ?? null,
-                schoolId: en?.schoolId ?? null,
-                schoolName: en?.schoolName ?? null,
-                studentName: u.fullName ?? '',
-                cpf: u.cpf ?? null,
-                courseName: en?.courseName ?? null,
-                className: en?.className ?? null,
-                enrolledAt: en?.enrolledAt ?? null,
-                studentType: 'USER' as const,
-                studentId: u.id
-            };
-        });
+        const items = (rows as any[]).map((row) => ({
+            cpf: row.cpf ?? null,
+            studentId: row.studentId,
+            studentName: row.studentName ?? '',
+            studentType: 'USER' as const,
+            endereco: {
+                street: row.addressStreet ?? '',
+                number: row.addressNumber ?? '',
+                complement: row.addressComplement ?? null,
+                district: row.addressDistrict ?? null,
+                city: row.addressCity ?? '',
+                state: row.addressState ?? '',
+                zipCode: row.addressZipCode ?? ''
+            },
+            createdAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : new Date(row.createdAt).toISOString(),
+            countCursos: Number(row.courseCount ?? 0),
+            dependentes: [] as import('../../../ports/repositories/enrollment.repo').AdminStudentListDependentItem[]
+        }));
 
         return {
             items,

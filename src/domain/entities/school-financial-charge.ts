@@ -66,7 +66,7 @@ export class SchoolFinancialCharge {
 
         const discountCents = params.discountCents ?? null;
         if (discountCents !== null) {
-            if (!Number.isInteger(discountCents) || discountCents < 0 || discountCents >= amountCents) {
+            if (!Number.isInteger(discountCents) || discountCents < 0 || discountCents > amountCents) {
                 throw new Error('Invalid charge discount');
             }
         }

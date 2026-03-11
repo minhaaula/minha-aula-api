@@ -18,7 +18,8 @@ export class EnrollmentRequestRepositoryAdapter implements EnrollmentRequestRepo
     async findByCourseClassAndTarget(params: { courseClassId: string; userId: string; dependentId: string | null; }): Promise<EnrollmentRequest | null> {
         const qb = this.repo.createQueryBuilder('request')
             .where('request.courseClassId = :courseClassId', { courseClassId: params.courseClassId })
-            .andWhere('request.requestedForUserId = :userId', { userId: params.userId });
+            .andWhere('request.requestedForUserId = :userId', { userId: params.userId })
+            .andWhere('request.status IN (:...statuses)', { statuses: ['PENDING', 'APPROVED'] });
 
         if (params.dependentId) {
             qb.andWhere('request.requestedForDependentId = :dependentId', { dependentId: params.dependentId });
@@ -35,6 +36,7 @@ export class EnrollmentRequestRepositoryAdapter implements EnrollmentRequestRepo
         courseClassId?: string;
         courseId?: string;
         status?: EnrollmentRequestStatus;
+        statusIn?: EnrollmentRequestStatus[];
         requestedForUserId?: string;
         requestedForDependentId?: string | null;
         studentDocument?: string;
@@ -57,7 +59,9 @@ export class EnrollmentRequestRepositoryAdapter implements EnrollmentRequestRepo
             qb.andWhere('request.courseClassId = :courseClassId', { courseClassId: params.courseClassId });
         }
 
-        if (params.status) {
+        if (params.statusIn?.length) {
+            qb.andWhere('request.status IN (:...statuses)', { statuses: params.statusIn });
+        } else if (params.status) {
             qb.andWhere('request.status = :status', { status: params.status });
         }
 

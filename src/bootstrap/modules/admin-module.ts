@@ -146,7 +146,7 @@ export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext)
         deps.dependentsRepo
     );
 
-    const listAllStudents = new ListAllStudents(deps.enrollmentsRepo, deps.usersRepo);
+    const listAllStudents = new ListAllStudents(deps.enrollmentsRepo, deps.usersRepo, deps.dependentsRepo);
 
     const listAdminStudentCourses = new ListAdminStudentCourses(deps.usersRepo, deps.dependentsRepo);
     const getAdminStudentDetails = new GetAdminStudentDetails(deps.usersRepo, deps.dependentsRepo);

@@ -26,6 +26,8 @@ export interface EnrollmentRequestRepository {
         courseClassId?: string;
         courseId?: string;
         status?: EnrollmentRequestStatus;
+        /** Filtro por múltiplos status (ex.: PENDING + CANCELLED). Se presente, ignora status. */
+        statusIn?: EnrollmentRequestStatus[];
         requestedForUserId?: string;
         requestedForDependentId?: string | null;
         studentDocument?: string;

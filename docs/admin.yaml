@@ -1236,8 +1236,10 @@ paths:
         - Admin
       summary: Listar todos os estudantes do sistema
       description: |
-        Retorna a lista de todos os estudantes (matrículas ativas) do sistema,
-        paginada e com filtros por nome, escola e CPF.
+        Retorna a lista de titulares (alunos USER) do sistema, paginada e com filtros por nome, escola e CPF.
+        Cada item traz apenas os campos cpf, studentId, studentName, studentType (USER), endereco, createdAt,
+        countCursos (quantidade de cursos/turmas vinculados) e um array dependentes (id, nome, cpf, dataNascimento, vinculo)
+        para exibir os dependentes na mesma linha do titular.
       security:
         - bearerAuth: []
       parameters:
@@ -1574,7 +1576,9 @@ paths:
       summary: Listar mensalidades do aluno (todas as escolas)
       description: |
         Retorna todas as cobranças (mensalidades) do aluno em todos os cursos e escolas.
-        Sem filtro por schoolId. O studentId pode ser o ID do titular (USER) ou do dependente (DEPENDENT).
+        Rota apenas por studentId (sem schoolId). Quando studentId é o titular (USER), inclui
+        as cobranças desse usuário e as cobranças de todos os seus dependentes. Quando studentId
+        é um dependente, retorna apenas as cobranças daquele dependente.
       security:
         - bearerAuth: []
       parameters:
@@ -2616,55 +2620,85 @@ components:
       properties:
         students:
           type: array
-          description: Lista de estudantes (uma entrada por matrícula ativa)
+          description: Lista de titulares (USER), cada um com array de dependentes para exibir na mesma linha
           items:
             type: object
             properties:
-              enrollmentId:
-                type: string
-                format: uuid
-                description: ID da matrícula
-              schoolId:
-                type: string
-                format: uuid
-                description: ID da escola
-              schoolName:
-                type: string
-                description: Nome da escola
-              studentName:
-                type: string
-                description: Nome do estudante (usuário ou dependente)
               cpf:
                 type: string
                 nullable: true
-                description: CPF do estudante
-              courseName:
-                type: string
-                description: Nome do curso
-              className:
-                type: string
-                description: Nome da turma
-              enrolledAt:
-                type: string
-                format: date-time
-                description: Data da matrícula
-              studentType:
-                type: string
-                enum: ['USER', 'DEPENDENT']
-                description: Tipo de estudante
+                description: CPF do titular
               studentId:
                 type: string
-                description: ID do usuário ou do dependente
+                format: uuid
+                description: ID do aluno (titular)
+              studentName:
+                type: string
+                description: Nome do titular
+              studentType:
+                type: string
+                enum: ['USER']
+                description: Sempre USER (titular)
+              endereco:
+                type: object
+                description: Endereço do titular
+                properties:
+                  street:
+                    type: string
+                  number:
+                    type: string
+                  complement:
+                    type: string
+                    nullable: true
+                  district:
+                    type: string
+                    nullable: true
+                  city:
+                    type: string
+                  state:
+                    type: string
+                  zipCode:
+                    type: string
+              createdAt:
+                type: string
+                format: date-time
+                description: Data de criação do usuário
+              countCursos:
+                type: integer
+                description: Quantidade de cursos/turmas vinculados (matrículas ativas)
+              dependentes:
+                type: array
+                description: Dependentes do titular (para exibir na mesma linha)
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                      description: ID do dependente
+                    nome:
+                      type: string
+                      description: Nome do dependente
+                    cpf:
+                      type: string
+                      nullable: true
+                    dataNascimento:
+                      type: string
+                      format: date
+                      nullable: true
+                    vinculo:
+                      type: string
+                      nullable: true
+                      description: Vínculo (ex. Filho(a), Cônjuge)
             required:
-              - enrollmentId
-              - schoolId
-              - schoolName
-              - studentName
-              - courseName
-              - className
-              - enrolledAt
-              - studentType
+              - cpf
               - studentId
+              - studentName
+              - studentType
+              - endereco
+              - createdAt
+              - countCursos
+              - dependentes
         pagination:
           type: object
           properties:

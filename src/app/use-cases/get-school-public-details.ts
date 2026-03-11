@@ -88,23 +88,20 @@ export class GetSchoolPublicDetails {
             );
         }
 
-        // Verificar se o aluno pode avaliar a escola
+        // canReview = true apenas quando: (1) aluno está matriculado na escola E (2) ainda não avaliou a escola
         let canReview = false;
         if (input.userId && this.enrollments && this.reviews) {
             const userId = input.userId.trim();
-            
-            // Verificar se está matriculado (ou algum dependente)
-            if (this.enrollments.hasActiveEnrollmentInSchool) {
-                const hasEnrollment = await this.enrollments.hasActiveEnrollmentInSchool(schoolId, userId);
-                
-                if (hasEnrollment) {
-                    // Verificar se já avaliou
-                    if (this.reviews.findByUserAndSchool) {
-                        const existingReview = await this.reviews.findByUserAndSchool(userId, schoolId);
-                        // Só pode avaliar se não tiver avaliado ainda
-                        canReview = !existingReview;
-                    }
-                }
+
+            const hasEnrollment =
+                this.enrollments.hasActiveEnrollmentInSchool &&
+                (await this.enrollments.hasActiveEnrollmentInSchool(schoolId, userId));
+
+            if (!hasEnrollment) {
+                canReview = false;
+            } else if (this.reviews.findByUserAndSchool) {
+                const existingReview = await this.reviews.findByUserAndSchool(userId, schoolId);
+                canReview = existingReview === null;
             }
         }
 

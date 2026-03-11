@@ -66,7 +66,7 @@ export class GetAdminDashboard {
             totalTurmas,
             schoolsList,
             matriculasNoMes,
-            inadimplenciaTotal,
+            paymentTotals,
             receitaPlataformaRaw,
             faturamentoEscolasRaw,
             topEscolas,
@@ -79,13 +79,15 @@ export class GetAdminDashboard {
             this.classes.countAll?.() ?? 0,
             this.listSchoolsWithPlans.exec({ limit: 1000 }).then((r) => r.schools),
             this.enrollments.countEnrollmentsInMonth?.(year, month) ?? 0,
-            this.financialCharges.getOverdueTotalCents?.() ?? 0,
+            this.planInvoices.getPaymentHistoryTotals?.() ?? Promise.resolve({ totalReceivedCents: 0, totalOverdueCents: 0 }),
             this.planInvoices.getRevenueByMonthForDashboard?.(monthsLimit) ?? Promise.resolve([]),
             this.financialCharges.getTuitionRevenueByMonthForDashboard?.(monthsLimit) ?? Promise.resolve([]),
             this.enrollments.getTopSchoolsByStudentCount?.(5) ?? Promise.resolve([]),
             this.planInvoices.getPaymentStatusSummaryForMonth?.(year, month) ?? Promise.resolve([]),
             this.schools.findLatestCreated?.(5) ?? Promise.resolve([])
         ]);
+
+        const inadimplenciaTotal = paymentTotals.totalOverdueCents ?? 0;
 
         const totalEscolas = allSchools.length;
         const escolasAtivas = schoolsList.filter((s) => s.schoolStatus === 'ACTIVE').length;

@@ -12,6 +12,7 @@ export class ListEnrollmentRequests {
         courseClassId?: string;
         courseId?: string;
         status?: EnrollmentRequestStatus;
+        statusIn?: EnrollmentRequestStatus[];
         requestedForUserId?: string;
         requestedForDependentId?: string | null;
         studentDocument?: string;
@@ -41,6 +42,7 @@ export class ListEnrollmentRequests {
             courseClassId,
             courseId,
             status: params.status,
+            statusIn: params.statusIn,
             requestedForUserId,
             requestedForDependentId,
             studentDocument,

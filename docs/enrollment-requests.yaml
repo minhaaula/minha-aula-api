@@ -35,6 +35,15 @@ paths:
             type: string
           description: Filtra solicitações pelo documento (CPF) do aluno.
         - in: query
+          name: status
+          required: false
+          schema:
+            type: string
+            enum: [OPEN, CANCELLED]
+          description: |
+            Filtro por status. OPEN = Em Aberto (PENDING), CANCELLED = Cancelado.
+            Omitir = retorna Em Aberto e Cancelado.
+        - in: query
           name: limit
           required: false
           schema:
@@ -51,7 +60,7 @@ paths:
           description: Quantidade de registros a pular para paginação.
       responses:
         '200':
-          description: Solicitações em aberto encontradas. Inclui identificadores, labels de curso/turma e nomes do aluno ou dependente.
+          description: Solicitações encontradas (em aberto e/ou canceladas conforme filtro). Inclui identificadores, labels de curso/turma e nomes do aluno ou dependente.
           content:
             application/json:
               schema:
