@@ -1150,6 +1150,19 @@ paths:
                           type: number
                           nullable: true
                           description: Desconto aplicado em reais (quando houver)
+                        monthlyTuitionNetAmount:
+                          type: number
+                          nullable: true
+                          description: Valor líquido da mensalidade a pagar em reais (já com desconto aplicado)
+                        discountMonths:
+                          type: integer
+                          nullable: true
+                          description: Quantidade de meses em que o desconto é válido (ex. 3 = desconto nos 3 primeiros meses)
+                        discountValidUntil:
+                          type: string
+                          format: date
+                          nullable: true
+                          description: Data até quando o desconto é válido (último dia do último mês com desconto)
                         schedule:
                           type: array
                           description: Horários da turma (dia, início, fim)
