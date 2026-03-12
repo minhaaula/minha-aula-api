@@ -8,7 +8,7 @@ import { IssueEnrollmentFeeBoleto } from '../../../app/use-cases/issue-enrollmen
 import { AuthenticatedRequest } from '../middlewares/auth';
 import { requirePersona } from '../middlewares/require-persona';
 import { UserPersonaEnum } from '../../../domain/value-objects/user-persona';
-import type { EnrollmentRequest } from '../../../domain/entities/enrollment-request';
+import type { EnrollmentRequest, EnrollmentRequestStatus } from '../../../domain/entities/enrollment-request';
 import type { EnrollmentRequestWithDetails } from '../../../ports/repositories/enrollment-request.repo';
 
 export function enrollmentRequestsRouter(deps: {
@@ -108,7 +108,7 @@ export function enrollmentRequestsRouter(deps: {
                 ? { status: 'PENDING' as const }
                 : query.status === 'CANCELLED'
                     ? { status: 'CANCELLED' as const }
-                    : { statusIn: ['PENDING', 'CANCELLED'] as const };
+                    : { statusIn: ['PENDING', 'CANCELLED'] as EnrollmentRequestStatus[] };
 
             const requests = await deps.listEnrollmentRequests.exec({
                 schoolId,
