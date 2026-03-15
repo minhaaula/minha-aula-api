@@ -204,12 +204,12 @@ export function enrollmentRequestsRouter(deps: {
             const persona = authReq.user?.persona;
             const loggedUserId = authReq.user?.sub;
 
-            // Para STUDENT, requestedForUserId é opcional e será preenchido automaticamente
+            // Para STUDENT, requestedForUserId é opcional (pode ser null quando for matrícula de dependente)
             const bodySchema = z.object({
                 requestedForUserId: persona === UserPersonaEnum.STUDENT 
-                    ? z.string().uuid().optional() 
+                    ? z.string().uuid().nullable().optional() 
                     : z.string().uuid(),
-                requestedForDependentId: z.string().uuid().optional(),
+                requestedForDependentId: z.string().uuid().nullable().optional(),
                 notes: z.string().max(255).optional(),
                 discont: z.coerce.number().min(0).optional(),
                 discountMonths: z.coerce.number().int().min(1).optional(),

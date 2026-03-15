@@ -1990,6 +1990,10 @@ components:
         status:
           type: string
           enum: [PENDING_SYNC, OPEN, PAID, OVERDUE, CANCELLED, FAILED]
+        statusDisplay:
+          type: string
+          enum: [Pendente, Atrasado, Pago, Cancelado, Falhou]
+          description: Status para exibição na UI (em aberto com vencimento passado = Atrasado).
         chargeType:
           type: string
           enum: [TUITION, ENROLLMENT, MATERIALS, DAILY, OTHER]
@@ -2010,6 +2014,11 @@ components:
           type: string
           format: date-time
           nullable: true
+        type:
+          type: string
+          enum: [PIX, BOLETO, MANUAL]
+          nullable: true
+          description: Tipo do pagamento quando pago; MANUAL quando a baixa foi feita pelo site (escola/admin).
         createdAt:
           type: string
           format: date-time

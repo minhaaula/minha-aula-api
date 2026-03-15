@@ -1,7 +1,7 @@
 import { Between } from 'typeorm';
 import { AppDataSource } from './datasource';
 import { SchoolFinancialChargeRepository, StudentPaymentInfo, PaidChargeSummary, AdminStudentChargeItem } from '../../../ports/repositories/school-financial-charge.repo';
-import { SchoolFinancialCharge, SchoolFinancialChargeStatus } from '../../../domain/entities/school-financial-charge';
+import { SchoolFinancialCharge, SchoolFinancialChargeStatus, SchoolFinancialChargeType } from '../../../domain/entities/school-financial-charge';
 import { SchoolFinancialChargeOrm } from './entities/school-financial-charge.orm';
 
 export class SchoolFinancialChargeRepositoryAdapter implements SchoolFinancialChargeRepository {
@@ -50,7 +50,7 @@ export class SchoolFinancialChargeRepositoryAdapter implements SchoolFinancialCh
             'charge.paidAt AS paidAt',
             'charge.paidObservation AS paidObservation'
         ])
-            .orderBy('charge.dueDate', 'DESC');
+            .orderBy('charge.dueDate', 'ASC');
 
         // Filtro por isPaid (pagos ou em aberto) - tem prioridade sobre status específico
         if (filters?.isPaid !== undefined) {
@@ -408,8 +408,10 @@ export class SchoolFinancialChargeRepositoryAdapter implements SchoolFinancialCh
                 'charge.id AS id',
                 'charge.amountCents AS amountCents',
                 'charge.discountCents AS discountCents',
+                'charge.discountReason AS discountReason',
                 'charge.netAmountCents AS netAmountCents',
                 'charge.description AS description',
+                'charge.chargeType AS chargeType',
                 'charge.dueDate AS dueDate',
                 'charge.status AS status',
                 'charge.paidAt AS paidAt',
@@ -429,9 +431,11 @@ export class SchoolFinancialChargeRepositoryAdapter implements SchoolFinancialCh
             course: { id: row.courseId, name: row.courseName ?? '' },
             class: { id: row.classId, label: row.classLabel ?? '' },
             amountCents: row.amountCents ?? 0,
-            discountCents: row.discountCents,
+            discountCents: row.discountCents ?? null,
+            discountReason: row.discountReason ?? null,
             netAmountCents: row.netAmountCents ?? 0,
-            description: row.description,
+            description: row.description ?? null,
+            chargeType: (row.chargeType ?? 'OTHER') as SchoolFinancialChargeType,
             dueDate: new Date(row.dueDate),
             status: row.status as SchoolFinancialChargeStatus,
             paidAt: row.paidAt ? new Date(row.paidAt) : null
@@ -455,8 +459,10 @@ export class SchoolFinancialChargeRepositoryAdapter implements SchoolFinancialCh
                 'charge.id AS id',
                 'charge.amountCents AS amountCents',
                 'charge.discountCents AS discountCents',
+                'charge.discountReason AS discountReason',
                 'charge.netAmountCents AS netAmountCents',
                 'charge.description AS description',
+                'charge.chargeType AS chargeType',
                 'charge.dueDate AS dueDate',
                 'charge.status AS status',
                 'charge.paidAt AS paidAt',
@@ -476,9 +482,11 @@ export class SchoolFinancialChargeRepositoryAdapter implements SchoolFinancialCh
             course: { id: row.courseId, name: row.courseName ?? '' },
             class: { id: row.classId, label: row.classLabel ?? '' },
             amountCents: row.amountCents ?? 0,
-            discountCents: row.discountCents,
+            discountCents: row.discountCents ?? null,
+            discountReason: row.discountReason ?? null,
             netAmountCents: row.netAmountCents ?? 0,
-            description: row.description,
+            description: row.description ?? null,
+            chargeType: (row.chargeType ?? 'OTHER') as SchoolFinancialChargeType,
             dueDate: new Date(row.dueDate),
             status: row.status as SchoolFinancialChargeStatus,
             paidAt: row.paidAt ? new Date(row.paidAt) : null
@@ -535,6 +543,7 @@ export class SchoolFinancialChargeRepositoryAdapter implements SchoolFinancialCh
             asaasInvoiceUrl: row.asaasInvoiceUrl,
             asaasPayload: row.asaasPayload,
             paidAt: row.paidAt,
+            paymentMethod: row.paymentMethod ?? null,
             paidObservation: row.paidObservation ?? null,
             cancelledAt: row.cancelledAt,
             createdAt: row.createdAt,
@@ -563,6 +572,7 @@ export class SchoolFinancialChargeRepositoryAdapter implements SchoolFinancialCh
             asaasInvoiceUrl: charge.asaasInvoiceUrl,
             asaasPayload: charge.asaasPayload,
             paidAt: charge.paidAt,
+            paymentMethod: charge.paymentMethod,
             paidObservation: charge.paidObservation,
             cancelledAt: charge.cancelledAt,
             createdAt: charge.createdAt,

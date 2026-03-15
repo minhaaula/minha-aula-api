@@ -87,6 +87,7 @@ export class AdminMarkChargePaid {
             asaasInvoiceUrl: charge.asaasInvoiceUrl,
             asaasPayload: charge.asaasPayload,
             paidAt,
+            paymentMethod: 'MANUAL',
             paidObservation: charge.paidObservation,
             cancelledAt: charge.cancelledAt,
             createdAt: charge.createdAt,

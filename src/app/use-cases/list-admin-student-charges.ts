@@ -16,8 +16,10 @@ export type ListAdminStudentChargesOutput = {
         class: { id: string; label: string };
         amountCents: number;
         discountCents: number | null;
+        discountReason: string | null;
         netAmountCents: number;
         description: string | null;
+        chargeType: string;
         dueDate: string;
         status: string;
         paidAt: string | null;
@@ -68,8 +70,10 @@ export class ListAdminStudentCharges {
             class: item.class,
             amountCents: item.amountCents,
             discountCents: item.discountCents,
+            discountReason: item.discountReason,
             netAmountCents: item.netAmountCents,
             description: item.description,
+            chargeType: item.chargeType,
             dueDate: item.dueDate.toISOString().slice(0, 10),
             status: item.status,
             paidAt: item.paidAt ? item.paidAt.toISOString() : null

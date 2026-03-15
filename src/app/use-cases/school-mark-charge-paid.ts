@@ -113,6 +113,7 @@ export class SchoolMarkChargePaid {
             asaasInvoiceUrl: charge.asaasInvoiceUrl,
             asaasPayload: charge.asaasPayload,
             paidAt,
+            paymentMethod: 'MANUAL',
             paidObservation: observacao,
             cancelledAt: charge.cancelledAt,
             createdAt: charge.createdAt,

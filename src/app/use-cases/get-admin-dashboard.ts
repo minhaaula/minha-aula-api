@@ -59,27 +59,30 @@ export class GetAdminDashboard {
         const prevMonth = lastDayPrevMonth.getMonth() + 1;
         const monthsLimit = 6;
 
+        const allSchools = await this.schools.findAll();
+        const schoolIds = allSchools.map((s) => s.id);
+
         const [
-            allSchools,
             totalEscolasMesAnterior,
             totalAlunos,
             totalTurmas,
             schoolsList,
             matriculasNoMes,
             paymentTotals,
+            schoolIdsWithOverdue,
             receitaPlataformaRaw,
             faturamentoEscolasRaw,
             topEscolas,
             statusPagamentos,
             ultimasEscolas
         ] = await Promise.all([
-            this.schools.findAll(),
-            this.schools.countCreatedBefore?.(lastDayPrevMonth) ?? this.schools.findAll().then((s) => s.length),
+            this.schools.countCreatedBefore?.(lastDayPrevMonth) ?? Promise.resolve(allSchools.length),
             this.enrollments.countTotalActiveStudents?.() ?? 0,
             this.classes.countAll?.() ?? 0,
             this.listSchoolsWithPlans.exec({ limit: 1000 }).then((r) => r.schools),
             this.enrollments.countEnrollmentsInMonth?.(year, month) ?? 0,
             this.planInvoices.getPaymentHistoryTotals?.() ?? Promise.resolve({ totalReceivedCents: 0, totalOverdueCents: 0 }),
+            this.planInvoices.getSchoolIdsWithOverdueInvoice?.(schoolIds) ?? Promise.resolve(new Set<string>()),
             this.planInvoices.getRevenueByMonthForDashboard?.(monthsLimit) ?? Promise.resolve([]),
             this.financialCharges.getTuitionRevenueByMonthForDashboard?.(monthsLimit) ?? Promise.resolve([]),
             this.enrollments.getTopSchoolsByStudentCount?.(5) ?? Promise.resolve([]),
@@ -91,7 +94,8 @@ export class GetAdminDashboard {
 
         const totalEscolas = allSchools.length;
         const escolasAtivas = schoolsList.filter((s) => s.schoolStatus === 'ACTIVE').length;
-        const escolasInadimplentes = schoolsList.filter((s) => s.paymentStatus === 'ATRASADO').length;
+        // Escolas inadimplentes = escolas com ao menos uma fatura de plano ISSUED e vencida (mesmo critério de inadimplenciaTotal)
+        const escolasInadimplentes = schoolIdsWithOverdue?.size ?? 0;
 
         const faturamentoEscolasMes =
             faturamentoEscolasRaw.find((r) => r.year === year && r.month === month)?.valorCents ?? 0;

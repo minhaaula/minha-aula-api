@@ -6,7 +6,7 @@ import { UserRepository } from '../../ports/repositories/user.repo';
 import { DependentRepository } from '../../ports/repositories/dependent.repo';
 import { equalUuid } from '../../shared/normalize-uuid';
 import { SchoolFinancialChargeStatus } from '../../domain/entities/school-financial-charge';
-import type { ListSchoolPaymentsInput, SchoolPaymentRecord } from '../types/payment.types';
+import type { ListSchoolPaymentsInput, SchoolPaymentRecord, SchoolPaymentStatusDisplay } from '../types/payment.types';
 
 export type { SchoolPaymentRecord };
 
@@ -70,6 +70,7 @@ export class ListSchoolPayments {
                 'charge.asaasInvoiceUrl AS charge_asaas_invoice_url',
                 'charge.asaasPayload AS charge_asaas_payload',
                 'charge.paidAt AS charge_paid_at',
+                'charge.paymentMethod AS charge_payment_method',
                 'charge.createdAt AS charge_created_at',
                 'charge.updatedAt AS charge_updated_at',
                 'charge.studentUserId AS charge_student_user_id',
@@ -171,11 +172,12 @@ export class ListSchoolPayments {
                 }
             }
 
-            // Determinar tipo de pagamento baseado no payload
+            // Determinar tipo de pagamento: usar valor persistido (baixa manual) ou inferir do payload
             const paymentType = this.determinePaymentType(
                 row.charge_asaas_payload,
                 row.charge_asaas_payment_id,
-                row.charge_status
+                row.charge_status,
+                row.charge_payment_method
             );
 
             // Converter datas para Date se forem strings
@@ -190,13 +192,15 @@ export class ListSchoolPayments {
             const createdAt = convertToDate(row.charge_created_at);
             const updatedAt = convertToDate(row.charge_updated_at);
 
+            const status = row.charge_status as SchoolFinancialChargeStatus;
             results.push({
                 id: row.charge_id,
                 amountCents: row.charge_amount_cents,
                 discountCents: row.charge_discount_cents,
                 discountReason: row.charge_discount_reason,
                 netAmountCents: row.charge_net_amount_cents,
-                status: row.charge_status as SchoolFinancialChargeStatus,
+                status,
+                statusDisplay: this.getStatusDisplay(status, dueDate),
                 chargeType: row.charge_charge_type,
                 description: row.charge_description,
                 dueDate,
@@ -260,11 +264,17 @@ export class ListSchoolPayments {
     private determinePaymentType(
         asaasPayload: any,
         asaasPaymentId: string | null,
-        status: string
+        status: string,
+        storedPaymentMethod: string | null | undefined
     ): 'PIX' | 'BOLETO' | 'MANUAL' | null {
         // Se não está pago, não tem tipo
         if (status !== 'PAID') {
             return null;
+        }
+
+        // Prioridade ao método persistido (ex.: baixa manual pelo site grava MANUAL)
+        if (storedPaymentMethod === 'MANUAL' || storedPaymentMethod === 'PIX' || storedPaymentMethod === 'BOLETO') {
+            return storedPaymentMethod;
         }
 
         // Se não tem paymentId, provavelmente foi pago manualmente
@@ -299,5 +309,26 @@ export class ListSchoolPayments {
         // Se tem paymentId mas não conseguimos determinar o tipo, assume manual
         // (pode ser que foi pago via outro método ou o payload não está completo)
         return 'MANUAL';
+    }
+
+    /** Status para exibição: Pendente, Atrasado, Pago, Cancelado, Falhou. */
+    private getStatusDisplay(status: SchoolFinancialChargeStatus, dueDate: Date): SchoolPaymentStatusDisplay {
+        if (status === 'OPEN' || status === 'PENDING_SYNC') {
+            const today = new Date();
+            const todayUtc = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
+            const d = new Date(dueDate);
+            const dueUtc = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+            if (dueUtc < todayUtc) return 'Atrasado';
+            return 'Pendente';
+        }
+        const map: Record<SchoolFinancialChargeStatus, SchoolPaymentStatusDisplay> = {
+            PENDING_SYNC: 'Pendente',
+            OPEN: 'Pendente',
+            OVERDUE: 'Atrasado',
+            PAID: 'Pago',
+            CANCELLED: 'Cancelado',
+            FAILED: 'Falhou'
+        };
+        return map[status] ?? 'Pendente';
     }
 }

@@ -26,8 +26,10 @@ export type AdminStudentChargeItem = {
     class: { id: string; label: string };
     amountCents: number;
     discountCents: number | null;
+    discountReason: string | null;
     netAmountCents: number;
     description: string | null;
+    chargeType: SchoolFinancialChargeType;
     dueDate: Date;
     status: SchoolFinancialChargeStatus;
     paidAt: Date | null;

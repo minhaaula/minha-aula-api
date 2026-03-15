@@ -495,6 +495,7 @@ describe('GenerateTuitionPix', () => {
             asaasInvoiceUrl: null,
             asaasPayload: null,
             paidAt: new Date(),
+            paidObservation: null,
             cancelledAt: null,
             createdAt: charge.createdAt,
             updatedAt: charge.updatedAt

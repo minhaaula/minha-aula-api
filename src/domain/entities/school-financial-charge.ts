@@ -1,5 +1,6 @@
 export type SchoolFinancialChargeType = 'TUITION' | 'ENROLLMENT' | 'MATERIALS' | 'DAILY' | 'OTHER';
 export type SchoolFinancialChargeStatus = 'PENDING_SYNC' | 'OPEN' | 'PAID' | 'OVERDUE' | 'CANCELLED' | 'FAILED';
+export type SchoolFinancialChargePaymentMethod = 'PIX' | 'BOLETO' | 'MANUAL';
 
 export class SchoolFinancialCharge {
     private constructor(
@@ -22,6 +23,7 @@ export class SchoolFinancialCharge {
         private _asaasInvoiceUrl: string | null,
         private _asaasPayload: Record<string, unknown> | null,
         private _paidAt: Date | null,
+        private _paymentMethod: SchoolFinancialChargePaymentMethod | null,
         private _paidObservation: string | null,
         private _cancelledAt: Date | null,
         private _createdAt: Date,
@@ -104,6 +106,7 @@ export class SchoolFinancialCharge {
             null,
             null,
             null,
+            null,
             new Date(),
             new Date()
         );
@@ -129,6 +132,7 @@ export class SchoolFinancialCharge {
         asaasInvoiceUrl: string | null;
         asaasPayload: Record<string, unknown> | null;
         paidAt: Date | null;
+        paymentMethod?: SchoolFinancialChargePaymentMethod | null;
         paidObservation: string | null;
         cancelledAt: Date | null;
         createdAt: Date;
@@ -154,6 +158,7 @@ export class SchoolFinancialCharge {
             params.asaasInvoiceUrl,
             params.asaasPayload,
             params.paidAt,
+            params.paymentMethod ?? null,
             params.paidObservation,
             params.cancelledAt,
             params.createdAt,
@@ -203,6 +208,10 @@ export class SchoolFinancialCharge {
 
     get paidAt() {
         return this._paidAt;
+    }
+
+    get paymentMethod() {
+        return this._paymentMethod;
     }
 
     get paidObservation() {

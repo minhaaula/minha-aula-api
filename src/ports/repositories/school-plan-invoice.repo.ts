@@ -58,6 +58,8 @@ export interface SchoolPlanInvoiceRepository {
     ): Promise<PaymentHistoryResult>;
     /** Totais de nossa empresa: total recebido (PAID) e total atrasado (ISSUED com dueDate &lt; hoje). */
     getPaymentHistoryTotals?(): Promise<PaymentHistoryTotals>;
+    /** schoolIds (do array informado) que possuem ao menos uma invoice ISSUED com dueDate < hoje. */
+    getSchoolIdsWithOverdueInvoice?(schoolIds: string[]): Promise<Set<string>>;
     /** Receita plataforma (invoices PAID) por mês para dashboard. */
     getRevenueByMonthForDashboard?(monthsLimit: number): Promise<Array<{ year: number; month: number; valorCents: number }>>;
     /** Resumo de status das invoices do mês (PAID, ISSUED, atrasadas). */

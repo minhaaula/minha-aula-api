@@ -55,6 +55,20 @@ export class SchoolPlanInvoiceRepositoryAdapter implements SchoolPlanInvoiceRepo
         return new Set(rows.map((r) => r.schoolId));
     }
 
+    async getSchoolIdsWithOverdueInvoice(schoolIds: string[]): Promise<Set<string>> {
+        const normalized = schoolIds.map((id) => id?.trim()).filter(Boolean);
+        if (normalized.length === 0) return new Set();
+        const today = new Date().toISOString().slice(0, 10);
+        const rows = await this.repo
+            .createQueryBuilder('inv')
+            .select('DISTINCT inv.schoolId', 'schoolId')
+            .where('inv.schoolId IN (:...ids)', { ids: normalized })
+            .andWhere("inv.status = 'ISSUED'")
+            .andWhere('inv.dueDate < :today', { today })
+            .getRawMany<{ schoolId: string }>();
+        return new Set(rows.map((r) => r.schoolId));
+    }
+
     async findByProviderRef(providerRef: string): Promise<SchoolPlanInvoice | null> {
         const normalized = providerRef.trim();
         if (!normalized) return null;
