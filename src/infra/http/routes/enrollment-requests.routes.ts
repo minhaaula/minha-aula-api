@@ -61,8 +61,8 @@ export function enrollmentRequestsRouter(deps: {
                 classId: z.string().uuid().optional(),
                 courseId: z.string().uuid().optional(),
                 studentDocument: z.string().trim().min(1).optional(),
-                /** Filtro por status: OPEN = Em Aberto (PENDING), CANCELLED = Cancelado. Omitir = Em Aberto + Cancelado */
-                status: z.enum(['OPEN', 'CANCELLED']).optional(),
+                /** Filtro por status: OPEN ou EM_ABERTO = Em Aberto (PENDING), CANCELLED ou CANCELADO = Cancelado. Omitir = retorna Em Aberto + Cancelado */
+                status: z.enum(['OPEN', 'CANCELLED', 'EM_ABERTO', 'CANCELADO']).optional(),
                 limit: z.coerce.number().int().positive().max(100).optional(),
                 offset: z.coerce.number().int().min(0).optional()
             });
@@ -104,9 +104,12 @@ export function enrollmentRequestsRouter(deps: {
                 });
             }
 
-            const statusFilter = query.status === 'OPEN'
+            // Em Aberto = PENDING, Cancelado = CANCELLED. Sem filtro = retorna os dois.
+            const isOpen = query.status === 'OPEN' || query.status === 'EM_ABERTO';
+            const isCancelled = query.status === 'CANCELLED' || query.status === 'CANCELADO';
+            const statusFilter = isOpen
                 ? { status: 'PENDING' as const }
-                : query.status === 'CANCELLED'
+                : isCancelled
                     ? { status: 'CANCELLED' as const }
                     : { statusIn: ['PENDING', 'CANCELLED'] as EnrollmentRequestStatus[] };
 

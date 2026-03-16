@@ -39,10 +39,10 @@ paths:
           required: false
           schema:
             type: string
-            enum: [OPEN, CANCELLED]
+            enum: [OPEN, CANCELLED, EM_ABERTO, CANCELADO]
           description: |
-            Filtro por status. OPEN = Em Aberto (PENDING), CANCELLED = Cancelado.
-            Omitir = retorna Em Aberto e Cancelado.
+            Filtro por status. Em Aberto = OPEN ou EM_ABERTO (PENDING). Cancelado = CANCELLED ou CANCELADO.
+            Omitir = retorna ambos (Em Aberto e Cancelado).
         - in: query
           name: limit
           required: false
