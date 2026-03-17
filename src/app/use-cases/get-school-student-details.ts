@@ -7,6 +7,8 @@ import { SchoolFinancialChargeRepository } from '../../ports/repositories/school
 import { AppDataSource } from '../../infra/db/typeorm/datasource';
 import { EnrollmentOrm } from '../../infra/db/typeorm/entities/enrollment.orm';
 import { SchoolFinancialChargeOrm } from '../../infra/db/typeorm/entities/school-financial-charge.orm';
+import { SchoolFinancialChargeStatus } from '../../domain/entities/school-financial-charge';
+import type { SchoolPaymentStatusDisplay } from '../types/payment.types';
 import { AppError, ErrorCode } from '../../shared/errors';
 
 export interface GetSchoolStudentDetailsInput {
@@ -55,6 +57,7 @@ export interface GetSchoolStudentDetailsOutput {
         dueDate: Date;
         paidAt: Date | null;
         status: string;
+        statusDisplay: SchoolPaymentStatusDisplay;
         course: {
             id: string;
             name: string;
@@ -292,6 +295,7 @@ export class GetSchoolStudentDetails {
             dueDate: new Date(row.charge_due_date),
             paidAt: row.charge_paid_at ? new Date(row.charge_paid_at) : null,
             status: row.charge_status,
+            statusDisplay: this.getStatusDisplay(row.charge_status as SchoolFinancialChargeStatus, new Date(row.charge_due_date)),
             course: {
                 id: row.course_id,
                 name: row.course_name
@@ -343,6 +347,7 @@ export class GetSchoolStudentDetails {
             dueDate: new Date(row.charge_due_date),
             paidAt: row.charge_paid_at ? new Date(row.charge_paid_at) : null,
             status: row.charge_status,
+            statusDisplay: this.getStatusDisplay(row.charge_status as SchoolFinancialChargeStatus, new Date(row.charge_due_date)),
             course: {
                 id: row.course_id,
                 name: row.course_name
@@ -352,6 +357,27 @@ export class GetSchoolStudentDetails {
                 label: row.class_label
             }
         }));
+    }
+
+    /** Status para exibição: Pendente, Atrasado, Pago, Cancelado, Falhou. */
+    private getStatusDisplay(status: SchoolFinancialChargeStatus, dueDate: Date): SchoolPaymentStatusDisplay {
+        if (status === 'OPEN' || status === 'PENDING_SYNC') {
+            const today = new Date();
+            const todayUtc = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
+            const d = new Date(dueDate);
+            const dueUtc = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+            if (dueUtc < todayUtc) return 'Atrasado';
+            return 'Pendente';
+        }
+        const map: Record<SchoolFinancialChargeStatus, SchoolPaymentStatusDisplay> = {
+            PENDING_SYNC: 'Pendente',
+            OPEN: 'Pendente',
+            OVERDUE: 'Atrasado',
+            PAID: 'Pago',
+            CANCELLED: 'Cancelado',
+            FAILED: 'Falhou'
+        };
+        return map[status] ?? 'Pendente';
     }
 }
 

@@ -1725,6 +1725,10 @@ components:
                 type: string
                 enum: [PENDING_SYNC, OPEN, PAID, OVERDUE, CANCELLED, FAILED]
                 description: Status da cobrança
+              statusDisplay:
+                type: string
+                enum: [Pendente, Atrasado, Pago, Cancelado, Falhou]
+                description: Status para exibição (derivado do status + vencimento)
               course:
                 type: object
                 properties:
@@ -1756,6 +1760,7 @@ components:
               - dueDate
               - paidAt
               - status
+              - statusDisplay
               - course
               - class
       required:

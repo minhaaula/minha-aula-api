@@ -196,7 +196,9 @@ export class EnrollmentRequestRepositoryAdapter implements EnrollmentRequestRepo
             firstMonthlyPaymentDate,
             createdAt: row.createdAt
         });
-        (entity as any)._status = row.status;
+        const rawStatus = (row.status as unknown as string) ?? 'PENDING';
+        // Compat: já existiram dados legados com "CANCELED" (1 L). Normaliza para "CANCELLED".
+        (entity as any)._status = rawStatus === 'CANCELED' ? 'CANCELLED' : rawStatus;
         (entity as any)._decidedAt = row.decidedAt;
         (entity as any)._decidedByUserId = row.decidedByUserId;
         (entity as any)._notes = row.notes;

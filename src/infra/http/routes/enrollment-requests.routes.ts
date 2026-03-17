@@ -61,8 +61,8 @@ export function enrollmentRequestsRouter(deps: {
                 classId: z.string().uuid().optional(),
                 courseId: z.string().uuid().optional(),
                 studentDocument: z.string().trim().min(1).optional(),
-                /** Filtro por status: OPEN ou EM_ABERTO = Em Aberto (PENDING), CANCELLED ou CANCELADO = Cancelado. Omitir = retorna Em Aberto + Cancelado */
-                status: z.enum(['OPEN', 'CANCELLED', 'EM_ABERTO', 'CANCELADO']).optional(),
+                /** Filtro por status: OPEN/EM_ABERTO=PENDING, CANCELLED/CANCELADO=CANCELLED, REJECTED/REJEITADO=REJECTED. Aceita também CANCELED (legado). Omitir = retorna PENDING + CANCELLED + REJECTED */
+                status: z.enum(['OPEN', 'CANCELLED', 'CANCELED', 'EM_ABERTO', 'CANCELADO', 'REJECTED', 'REJEITADO']).optional(),
                 limit: z.coerce.number().int().positive().max(100).optional(),
                 offset: z.coerce.number().int().min(0).optional()
             });
@@ -104,14 +104,17 @@ export function enrollmentRequestsRouter(deps: {
                 });
             }
 
-            // Em Aberto = PENDING, Cancelado = CANCELLED. Sem filtro = retorna os dois.
+            // Em Aberto = PENDING, Cancelado = CANCELLED, Rejeitado = REJECTED. Sem filtro = retorna os três.
             const isOpen = query.status === 'OPEN' || query.status === 'EM_ABERTO';
-            const isCancelled = query.status === 'CANCELLED' || query.status === 'CANCELADO';
+            const isCancelled = query.status === 'CANCELLED' || query.status === 'CANCELED' || query.status === 'CANCELADO';
+            const isRejected = query.status === 'REJECTED' || query.status === 'REJEITADO';
             const statusFilter = isOpen
                 ? { status: 'PENDING' as const }
                 : isCancelled
-                    ? { status: 'CANCELLED' as const }
-                    : { statusIn: ['PENDING', 'CANCELLED'] as EnrollmentRequestStatus[] };
+                    ? { statusIn: ['CANCELLED', 'CANCELED'] as unknown as EnrollmentRequestStatus[] }
+                    : isRejected
+                        ? { status: 'REJECTED' as const }
+                        : { statusIn: ['PENDING', 'CANCELLED', 'CANCELED', 'REJECTED'] as unknown as EnrollmentRequestStatus[] };
 
             const requests = await deps.listEnrollmentRequests.exec({
                 schoolId,

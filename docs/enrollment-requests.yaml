@@ -39,10 +39,10 @@ paths:
           required: false
           schema:
             type: string
-            enum: [OPEN, CANCELLED, EM_ABERTO, CANCELADO]
+            enum: [OPEN, CANCELLED, EM_ABERTO, CANCELADO, REJECTED, REJEITADO]
           description: |
-            Filtro por status. Em Aberto = OPEN ou EM_ABERTO (PENDING). Cancelado = CANCELLED ou CANCELADO.
-            Omitir = retorna ambos (Em Aberto e Cancelado).
+            Filtro por status. Em Aberto = OPEN ou EM_ABERTO (PENDING). Cancelado = CANCELLED ou CANCELADO. Rejeitado = REJECTED ou REJEITADO.
+            Omitir = retorna Em Aberto + Cancelado + Rejeitado.
         - in: query
           name: limit
           required: false
@@ -60,7 +60,7 @@ paths:
           description: Quantidade de registros a pular para paginação.
       responses:
         '200':
-          description: Solicitações encontradas (em aberto e/ou canceladas conforme filtro). Inclui identificadores, labels de curso/turma e nomes do aluno ou dependente.
+          description: Solicitações encontradas (em aberto, canceladas e/ou rejeitadas conforme filtro). Inclui identificadores, labels de curso/turma e nomes do aluno ou dependente.
           content:
             application/json:
               schema:

@@ -227,7 +227,22 @@ export class ListSchoolPayments {
             });
         }
 
-        return results.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+        const statusRank = (item: SchoolPaymentRecord): number => {
+            // Ordenação pedida: Atrasado primeiro, depois Pendente, depois os demais
+            if (item.statusDisplay === 'Atrasado') return 0;
+            if (item.statusDisplay === 'Pendente') return 1;
+            return 2;
+        };
+
+        return results.sort((a, b) => {
+            const byStatus = statusRank(a) - statusRank(b);
+            if (byStatus !== 0) return byStatus;
+
+            const byDueDate = a.dueDate.getTime() - b.dueDate.getTime();
+            if (byDueDate !== 0) return byDueDate;
+
+            return b.createdAt.getTime() - a.createdAt.getTime();
+        });
     }
 
     private async resolveCourses(
