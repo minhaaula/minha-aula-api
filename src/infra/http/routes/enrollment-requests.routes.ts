@@ -21,7 +21,8 @@ export function enrollmentRequestsRouter(deps: {
     const r = Router();
 
     const canManageRequests = requirePersona(UserPersonaEnum.ADMIN, UserPersonaEnum.SCHOOL);
-    const canCreateRequest = requirePersona(UserPersonaEnum.ADMIN, UserPersonaEnum.SCHOOL, UserPersonaEnum.STUDENT);
+    const canCreateStudentRequest = requirePersona(UserPersonaEnum.STUDENT);
+    const canCreateResponsibleRequest = requirePersona(UserPersonaEnum.ADMIN, UserPersonaEnum.SCHOOL);
     const canIssueEnrollmentFeeBoleto = requirePersona(UserPersonaEnum.ADMIN, UserPersonaEnum.SCHOOL, UserPersonaEnum.STUDENT);
 
     type SerializableRequest = EnrollmentRequest | EnrollmentRequestWithDetails;
@@ -200,21 +201,17 @@ export function enrollmentRequestsRouter(deps: {
         }
     });
 
-    r.post('/schools/classes/:classId/requests', canCreateRequest, async (req, res, next) => {
+    // STUDENT: não aceita requestedForUserId no payload (é inferido pelo ID do usuário logado).
+    r.post('/schools/classes/:classId/requests', canCreateStudentRequest, async (req, res, next) => {
         try {
             const paramsSchema = z.object({
                 classId: z.string().uuid()
             });
             const { classId } = paramsSchema.parse(req.params);
             const authReq = req as AuthenticatedRequest;
-            const persona = authReq.user?.persona;
             const loggedUserId = authReq.user?.sub;
 
-            // Para STUDENT, requestedForUserId é opcional (pode ser null quando for matrícula de dependente)
             const bodySchema = z.object({
-                requestedForUserId: persona === UserPersonaEnum.STUDENT 
-                    ? z.string().uuid().nullable().optional() 
-                    : z.string().uuid(),
                 requestedForDependentId: z.string().uuid().nullable().optional(),
                 notes: z.string().max(255).optional(),
                 discont: z.coerce.number().min(0).optional(),
@@ -239,15 +236,12 @@ export function enrollmentRequestsRouter(deps: {
 
             // Determinar schoolId
             let schoolId = data.schoolId;
-            if (persona === UserPersonaEnum.SCHOOL) {
-                const contextSchoolId = authReq.user?.schoolId;
-                if (!contextSchoolId) {
-                    return res.status(403).json({ 
-                        error: 'Contexto de escola não encontrado para o usuário',
-                        code: 'SCHOOL_CONTEXT_NOT_FOUND'
-                    });
+            if (!schoolId) {
+                // Alguns tokens podem carregar a escola no contexto (mesmo para STUDENT).
+                const contextSchoolId = typeof authReq.user?.schoolId === 'string' ? authReq.user?.schoolId : null;
+                if (contextSchoolId) {
+                    schoolId = contextSchoolId;
                 }
-                schoolId = contextSchoolId;
             }
 
             if (!schoolId) {
@@ -257,27 +251,13 @@ export function enrollmentRequestsRouter(deps: {
                 });
             }
 
-            // Para STUDENT, usar automaticamente o ID do usuário logado
-            let requestedForUserId: string;
-            if (persona === UserPersonaEnum.STUDENT) {
-                if (!loggedUserId) {
-                    return res.status(401).json({ 
-                        error: 'Usuário não autenticado',
-                        code: 'UNAUTHORIZED'
-                    });
-                }
-                // Para STUDENT, sempre usar o ID do usuário logado
-                requestedForUserId = loggedUserId;
-            } else {
-                // Para ADMIN e SCHOOL, usar o ID enviado (obrigatório)
-                if (!data.requestedForUserId) {
-                    return res.status(400).json({ 
-                        error: 'requestedForUserId é obrigatório',
-                        code: 'REQUIRED_FIELD'
-                    });
-                }
-                requestedForUserId = data.requestedForUserId;
+            if (!loggedUserId) {
+                return res.status(401).json({
+                    error: 'Usuário não autenticado',
+                    code: 'UNAUTHORIZED'
+                });
             }
+            const requestedForUserId = loggedUserId;
 
             const request = await deps.createEnrollmentRequest.exec({
                 schoolId,
@@ -291,6 +271,78 @@ export function enrollmentRequestsRouter(deps: {
                 enrollmentFeeDueDate: data.enrollmentFeeDueDate ?? null,
                 firstMonthlyPaymentDate: data.firstMonthlyPaymentDate
             });
+            res.status(201).json(serializeEnrollmentRequest(request));
+        } catch (err) {
+            next(err);
+        }
+    });
+
+    // ADMIN/SCHOOL: exige requestedForUserId no payload.
+    r.post('/schools/classes/:classId/responsible-requests', canCreateResponsibleRequest, async (req, res, next) => {
+        try {
+            const paramsSchema = z.object({
+                classId: z.string().uuid()
+            });
+            const { classId } = paramsSchema.parse(req.params);
+            const authReq = req as AuthenticatedRequest;
+            const persona = authReq.user?.persona;
+
+            const bodySchema = z.object({
+                requestedForUserId: z.string().uuid(),
+                requestedForDependentId: z.string().uuid().nullable().optional(),
+                notes: z.string().max(255).optional(),
+                discont: z.coerce.number().min(0).optional(),
+                discountMonths: z.coerce.number().int().min(1).optional(),
+                schoolId: z.string().uuid().optional(),
+                enrollmentFeeAmount: z.coerce.number().min(0).optional(),
+                enrollmentFeeDueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+                firstMonthlyPaymentDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
+            }).superRefine((data, ctx) => {
+                if (data.discont !== undefined && data.discont !== null && data.discont > 0) {
+                    if (!data.discountMonths || data.discountMonths < 1) {
+                        ctx.addIssue({
+                            code: z.ZodIssueCode.custom,
+                            path: ['discountMonths'],
+                            message: 'discountMonths é obrigatório quando há desconto (discont > 0)'
+                        });
+                    }
+                }
+            });
+
+            const data = bodySchema.parse(req.body);
+
+            let schoolId = data.schoolId;
+            if (persona === UserPersonaEnum.SCHOOL) {
+                const contextSchoolId = authReq.user?.schoolId;
+                if (!contextSchoolId) {
+                    return res.status(403).json({
+                        error: 'Contexto de escola não encontrado para o usuário',
+                        code: 'SCHOOL_CONTEXT_NOT_FOUND'
+                    });
+                }
+                schoolId = contextSchoolId;
+            }
+
+            if (!schoolId) {
+                return res.status(400).json({
+                    error: 'schoolId é obrigatório',
+                    code: 'REQUIRED_FIELD'
+                });
+            }
+
+            const request = await deps.createEnrollmentRequest.exec({
+                schoolId,
+                courseClassId: classId,
+                requestedForUserId: data.requestedForUserId,
+                requestedForDependentId: data.requestedForDependentId ?? null,
+                notes: data.notes ?? null,
+                discount: data.discont ?? null,
+                discountMonths: data.discountMonths ?? null,
+                enrollmentFeeAmount: data.enrollmentFeeAmount ?? null,
+                enrollmentFeeDueDate: data.enrollmentFeeDueDate ?? null,
+                firstMonthlyPaymentDate: data.firstMonthlyPaymentDate
+            });
+
             res.status(201).json(serializeEnrollmentRequest(request));
         } catch (err) {
             next(err);
