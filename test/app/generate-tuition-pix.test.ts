@@ -220,6 +220,64 @@ describe('GenerateTuitionPix', () => {
         expect(stored!.status).toBe('OPEN');
     });
 
+    it('returns amountCents (bruto) distinct from netAmountCents when there is discount', async () => {
+        const charges = new InMemoryCharges();
+        const users = new InMemoryUsers();
+        const schools = new InMemorySchools();
+        const courses = new InMemoryCourses();
+
+        const user = makeUser('user-discount');
+        users.seed(user);
+
+        const school = makeSchool('school-discount');
+        schools.seed(school);
+
+        const course = makeCourse('course-discount', school.id);
+        courses.seed(course);
+
+        const charge = SchoolFinancialCharge.create({
+            id: 'charge-discount',
+            schoolId: school.id,
+            ownerUserId: user.id,
+            studentUserId: user.id,
+            dependentId: null,
+            courseId: course.id,
+            courseClassId: 'class-d',
+            chargeType: 'TUITION',
+            amountCents: 100_000,
+            discountCents: 10_000,
+            discountReason: 'Bolsa',
+            dueDate: new Date('2024-03-10')
+        });
+        charges.seed(charge);
+
+        const provider = new FakePixProvider({
+            providerRef: 'asaas-pix-disc',
+            pixQrCode: 'qr',
+            pixCopiaECola: 'pix',
+            invoiceUrl: 'https://asaas.com/inv',
+            dueDate: new Date('2024-03-10')
+        });
+
+        const useCase = new GenerateTuitionPix(
+            charges,
+            users,
+            schools,
+            courses,
+            provider
+        );
+
+        const result = await useCase.exec({
+            chargeId: charge.id,
+            requester: { id: user.id, persona: UserPersonaEnum.STUDENT }
+        });
+
+        expect(result.amountCents).toBe(100_000);
+        expect(result.discountCents).toBe(10_000);
+        expect(result.netAmountCents).toBe(90_000);
+        expect(provider.lastInput?.amount.amount).toBe(90_000);
+    });
+
     it('returns existing PIX when already generated', async () => {
         const charges = new InMemoryCharges();
         const users = new InMemoryUsers();

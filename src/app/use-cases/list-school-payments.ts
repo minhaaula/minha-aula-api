@@ -238,7 +238,8 @@ export class ListSchoolPayments {
             const byStatus = statusRank(a) - statusRank(b);
             if (byStatus !== 0) return byStatus;
 
-            const byDueDate = a.dueDate.getTime() - b.dueDate.getTime();
+            // Mesmo grupo de status: vencimento mais recente (data mais “à frente”) primeiro
+            const byDueDate = b.dueDate.getTime() - a.dueDate.getTime();
             if (byDueDate !== 0) return byDueDate;
 
             return b.createdAt.getTime() - a.createdAt.getTime();

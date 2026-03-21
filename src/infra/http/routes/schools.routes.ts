@@ -111,6 +111,7 @@ export type SchoolsRouterDeps = {
     updateSchoolPassword?: UpdateSchoolPassword;
     getStudentDirectoryEntry?: GetStudentDirectoryEntry;
     getSchoolStudentDetails?: import('../../../app/use-cases/get-school-student-details').GetSchoolStudentDetails;
+    consolidateSchoolStudentFinancial?: import('../../../app/use-cases/consolidate-school-student-financial').ConsolidateSchoolStudentFinancial;
     getSchoolDashboard?: import('../../../app/use-cases/get-school-dashboard').GetSchoolDashboard;
     uploadSchoolImage?: import('../../../app/use-cases/upload-school-image').UploadSchoolImage;
     listSchoolImages?: import('../../../app/use-cases/list-school-images').ListSchoolImages;
@@ -184,7 +185,8 @@ export function schoolsRouter(deps: SchoolsRouterDeps) {
         router.use('/students', buildStudentsRoutes({
             listSchoolStudents: deps.listSchoolStudents,
             getStudentDirectoryEntry: deps.getStudentDirectoryEntry,
-            getSchoolStudentDetails: deps.getSchoolStudentDetails
+            getSchoolStudentDetails: deps.getSchoolStudentDetails,
+            consolidateSchoolStudentFinancial: deps.consolidateSchoolStudentFinancial
         }, guards));
     }
 

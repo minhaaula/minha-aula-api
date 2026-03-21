@@ -366,6 +366,48 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /schools/students/{studentId}/financial-summary:
+    get:
+      tags:
+        - Schools
+      summary: Consolidado financeiro do aluno na escola
+      description: |
+        Retorna totais em centavos (valor líquido das cobranças) para o aluno ou dependente informado,
+        apenas se houver matrícula ativa na escola logada.
+
+        - `pendingTotalCents`: cobranças em aberto com vencimento ainda não ultrapassado (e falhas não vencidas).
+        - `overdueTotalCents`: status OVERDUE ou em aberto com data de vencimento já passada.
+        - `paidTotalCents`: cobranças pagas.
+        - `grandTotalCents`: soma de todas as cobranças do aluno na escola, **incluindo canceladas**.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: studentId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID do usuário-aluno ou do dependente (mesmo identificador da listagem de alunos).
+      responses:
+        '200':
+          description: Totais calculados.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchoolStudentFinancialSummaryResponse'
+        '403':
+          description: Usuário não autorizado ou sem contexto de escola.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Aluno não encontrado ou não vinculado à escola.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /schools/students/{studentId}:
     get:
       tags:

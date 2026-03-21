@@ -1768,6 +1768,27 @@ components:
         - responsible
         - enrollments
         - paidCharges
+    SchoolStudentFinancialSummaryResponse:
+      type: object
+      description: Totais financeiros do aluno na escola (valores líquidos em centavos).
+      properties:
+        pendingTotalCents:
+          type: integer
+          description: Total pendente (em aberto, vencimento futuro ou hoje; falhas não vencidas).
+        paidTotalCents:
+          type: integer
+          description: Total já pago.
+        overdueTotalCents:
+          type: integer
+          description: Total em atraso (OVERDUE ou em aberto com vencimento passado).
+        grandTotalCents:
+          type: integer
+          description: Soma de todas as cobranças do aluno na escola, incluindo canceladas.
+      required:
+        - pendingTotalCents
+        - paidTotalCents
+        - overdueTotalCents
+        - grandTotalCents
     StudentDirectoryResponse:
       type: object
       properties:

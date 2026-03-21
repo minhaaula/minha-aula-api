@@ -28,6 +28,7 @@ export interface GenerateTuitionPixOutput {
     invoiceUrl?: string | null;
     dueDate: Date;
     status: SchoolFinancialChargeStatus;
+    /** Valor nominal (bruto) da cobrança em centavos, antes do desconto. */
     amountCents: number;
     /** Valor do desconto em centavos, ou null se não houver. */
     discountCents: number | null;
@@ -97,7 +98,7 @@ export class GenerateTuitionPix {
                 invoiceUrl: charge.asaasInvoiceUrl,
                 dueDate: charge.dueDate,
                 status: charge.status,
-                amountCents: charge.netAmountCents,
+                amountCents: charge.amountCents,
                 discountCents: charge.discountCents,
                 netAmountCents: charge.netAmountCents,
                 courseName: course.name,
@@ -164,7 +165,7 @@ export class GenerateTuitionPix {
             invoiceUrl: pix.invoiceUrl,
             dueDate: pix.dueDate,
             status: charge.status,
-            amountCents: charge.netAmountCents,
+            amountCents: charge.amountCents,
             discountCents: charge.discountCents,
             netAmountCents: charge.netAmountCents,
             courseName: course.name,

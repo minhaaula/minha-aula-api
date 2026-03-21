@@ -11,6 +11,13 @@ import { UserPersonaEnum } from '../../../domain/value-objects/user-persona';
 import type { EnrollmentRequest, EnrollmentRequestStatus } from '../../../domain/entities/enrollment-request';
 import type { EnrollmentRequestWithDetails } from '../../../ports/repositories/enrollment-request.repo';
 
+/** Express pode entregar o mesmo parâmetro como string ou string[] (ex.: cliente duplicando query). */
+function firstQueryString(value: unknown): string | undefined {
+    if (typeof value === 'string') return value;
+    if (Array.isArray(value) && typeof value[0] === 'string') return value[0];
+    return undefined;
+}
+
 export function enrollmentRequestsRouter(deps: {
     createEnrollmentRequest: CreateEnrollmentRequest;
     approveEnrollmentRequest: ApproveEnrollmentRequest;
@@ -69,13 +76,13 @@ export function enrollmentRequestsRouter(deps: {
             });
 
             const query = querySchema.parse({
-                schoolId: typeof req.query.schoolId === 'string' ? req.query.schoolId : undefined,
-                classId: typeof req.query.classId === 'string' ? req.query.classId : undefined,
-                courseId: typeof req.query.courseId === 'string' ? req.query.courseId : undefined,
-                studentDocument: typeof req.query.studentDocument === 'string' ? req.query.studentDocument : undefined,
-                status: typeof req.query.status === 'string' ? req.query.status : undefined,
-                limit: typeof req.query.limit === 'string' ? req.query.limit : undefined,
-                offset: typeof req.query.offset === 'string' ? req.query.offset : undefined
+                schoolId: firstQueryString(req.query.schoolId),
+                classId: firstQueryString(req.query.classId),
+                courseId: firstQueryString(req.query.courseId),
+                studentDocument: firstQueryString(req.query.studentDocument),
+                status: firstQueryString(req.query.status),
+                limit: firstQueryString(req.query.limit),
+                offset: firstQueryString(req.query.offset)
             });
 
             const persona = authReq.user?.persona;
@@ -106,16 +113,18 @@ export function enrollmentRequestsRouter(deps: {
             }
 
             // Em Aberto = PENDING, Cancelado = CANCELLED, Rejeitado = REJECTED. Sem filtro = retorna os três.
+            // Não usar 'CANCELED' no SQL: o ENUM do MySQL só tem CANCELLED; IN (..., 'CANCELED') pode zerar o resultado.
+            const defaultListStatuses: EnrollmentRequestStatus[] = ['PENDING', 'CANCELLED', 'REJECTED'];
             const isOpen = query.status === 'OPEN' || query.status === 'EM_ABERTO';
             const isCancelled = query.status === 'CANCELLED' || query.status === 'CANCELED' || query.status === 'CANCELADO';
             const isRejected = query.status === 'REJECTED' || query.status === 'REJEITADO';
             const statusFilter = isOpen
                 ? { status: 'PENDING' as const }
                 : isCancelled
-                    ? { statusIn: ['CANCELLED', 'CANCELED'] as unknown as EnrollmentRequestStatus[] }
+                    ? { status: 'CANCELLED' as const }
                     : isRejected
                         ? { status: 'REJECTED' as const }
-                        : { statusIn: ['PENDING', 'CANCELLED', 'CANCELED', 'REJECTED'] as unknown as EnrollmentRequestStatus[] };
+                        : { statusIn: defaultListStatuses };
 
             const requests = await deps.listEnrollmentRequests.exec({
                 schoolId,

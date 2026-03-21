@@ -7,11 +7,13 @@ import type { SchoolRouteGuards } from './guards';
 import type { SchoolContextRequest } from '../../middlewares/resolve-school-context';
 
 import type { GetSchoolStudentDetails } from '../../../../app/use-cases/get-school-student-details';
+import type { ConsolidateSchoolStudentFinancial } from '../../../../app/use-cases/consolidate-school-student-financial';
 
 type StudentsRoutesDeps = {
     listSchoolStudents: ListSchoolStudents;
     getStudentDirectoryEntry?: GetStudentDirectoryEntry;
     getSchoolStudentDetails?: GetSchoolStudentDetails;
+    consolidateSchoolStudentFinancial?: ConsolidateSchoolStudentFinancial;
 };
 
 export function buildStudentsRoutes(deps: StudentsRoutesDeps, guards: SchoolRouteGuards) {
@@ -22,9 +24,6 @@ export function buildStudentsRoutes(deps: StudentsRoutesDeps, guards: SchoolRout
         guards.requireSchoolPersona,
         guards.resolveSchoolContext
     ] as const;
-
-    // Debug: verificar se getStudentDirectoryEntry está presente
-    console.log('[DEBUG] buildStudentsRoutes - getStudentDirectoryEntry:', deps.getStudentDirectoryEntry ? 'PRESENTE' : 'AUSENTE');
 
     // Registrar rota /directory/:cpf ANTES da rota / para evitar conflitos
     if (deps.getStudentDirectoryEntry) {
@@ -105,6 +104,32 @@ export function buildStudentsRoutes(deps: StudentsRoutesDeps, guards: SchoolRout
             }
         });
     }));
+
+    if (deps.consolidateSchoolStudentFinancial) {
+        router.get(
+            '/:studentId/financial-summary',
+            ...protectedMiddleware,
+            asyncHandler(async (req, res) => {
+                const paramsSchema = z.object({ studentId: z.string().uuid() });
+                const { studentId } = paramsSchema.parse(req.params);
+                const schoolId = (req as SchoolContextRequest).schoolId as string;
+
+                const summary = await deps.consolidateSchoolStudentFinancial!.exec({
+                    schoolId,
+                    studentId
+                });
+
+                if (!summary) {
+                    return res.status(404).json({
+                        error: 'Aluno não encontrado ou não está vinculado a esta escola',
+                        code: 'STUDENT_NOT_FOUND'
+                    });
+                }
+
+                res.json(summary);
+            })
+        );
+    }
 
     // Rota de detalhes do aluno por ID
     if (deps.getSchoolStudentDetails) {
