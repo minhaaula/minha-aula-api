@@ -26,6 +26,8 @@ export interface CourseListItem {
     schoolState: string | null;
     /** Média geral de avaliação da escola (1 a 5), se houver avaliações. */
     schoolRatingAverage: number | null;
+    /** Quantidade total de avaliações da escola. */
+    schoolReviewsCount: number;
 }
 
 export class ListAllCourses {
@@ -83,13 +85,15 @@ export class ListAllCourses {
             );
         }
 
-        // Média de avaliação por escola (1 a 5)
+        // Média e quantidade de avaliações por escola
         const schoolIds = [...new Set(coursesData.map((d) => d.schoolId))];
         const ratingMap = new Map<string, number>();
+        const reviewCountMap = new Map<string, number>();
         if (this.schoolReviews?.getAverageRatingBySchoolIds && schoolIds.length > 0) {
             const ratings = await this.schoolReviews.getAverageRatingBySchoolIds(schoolIds);
             for (const r of ratings) {
                 ratingMap.set(r.schoolId, r.averageRating);
+                reviewCountMap.set(r.schoolId, r.count);
             }
         }
 
@@ -107,7 +111,8 @@ export class ListAllCourses {
                 subcategory: catInfo.subcategory,
                 schoolCity: data.schoolCity ?? null,
                 schoolState: data.schoolState ?? null,
-                schoolRatingAverage: ratingMap.get(data.schoolId) ?? null
+                schoolRatingAverage: ratingMap.get(data.schoolId) ?? null,
+                schoolReviewsCount: reviewCountMap.get(data.schoolId) ?? 0
             };
         });
 

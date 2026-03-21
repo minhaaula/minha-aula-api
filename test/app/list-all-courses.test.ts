@@ -356,6 +356,36 @@ describe('ListAllCourses use case', () => {
         expect(course2.schoolCity).toBe('Curitiba');
         expect(course2.schoolState).toBe('PR');
         expect(course2.schoolRatingAverage).toBe(3.2);
+
+        expect(course1.schoolReviewsCount).toBe(10);
+        expect(course2.schoolReviewsCount).toBe(10);
+    });
+
+    it('returns schoolReviewsCount 0 when school has no reviews', async () => {
+        const coursesRepo = new InMemoryCourseRepository();
+        const categoriesRepo = new InMemoryCategoryRepository();
+        const schoolReviewsRepo: SchoolReviewRepository = {
+            findMany: async () => [],
+            getAverageRatingBySchoolIds: async () => [],
+            findByUserAndSchool: async () => null,
+            save: async () => {}
+        };
+
+        coursesRepo.seedCourse({
+            courseId: 'course-x',
+            courseName: 'X',
+            courseDescription: null,
+            schoolId: 'school-no-reviews',
+            schoolName: 'Escola',
+            schoolCity: null,
+            schoolState: null
+        });
+
+        const useCase = new ListAllCourses(coursesRepo, categoriesRepo, undefined, undefined, schoolReviewsRepo);
+        const result = await useCase.exec({});
+
+        expect(result.courses[0].schoolReviewsCount).toBe(0);
+        expect(result.courses[0].schoolRatingAverage).toBeNull();
     });
 });
 
