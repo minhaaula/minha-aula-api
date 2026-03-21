@@ -2,11 +2,10 @@ import { SchoolWithdrawal } from '../../domain/entities/school-withdrawal';
 import { SchoolRepository } from '../../ports/repositories/school.repo';
 import { SchoolBankAccountRepository } from '../../ports/repositories/school-bank-account.repo';
 import { SchoolWithdrawalRepository } from '../../ports/repositories/school-withdrawal.repo';
-import { SchoolFinancialChargeRepository } from '../../ports/repositories/school-financial-charge.repo';
-import { AsaasProviderPort } from '../../ports/providers/asaas-port';
-import { AsaasProvider } from '../../infra/providers/asaas/asaas-provider';
 import { Money } from '../../domain/value-objects/money';
 import { Uuid } from '../../shared/uuid';
+import { AppError, ErrorCode } from '../../shared/errors';
+import { log } from '../../shared/logger';
 
 export interface RequestSchoolWithdrawalInput {
     schoolId: string;
@@ -25,75 +24,84 @@ export class RequestSchoolWithdrawal {
     constructor(
         private readonly schools: SchoolRepository,
         private readonly bankAccounts: SchoolBankAccountRepository,
-        private readonly withdrawals: SchoolWithdrawalRepository,
-        private readonly financialCharges: SchoolFinancialChargeRepository,
-        private readonly asaasProvider?: AsaasProviderPort
+        private readonly withdrawals: SchoolWithdrawalRepository
     ) {}
 
     async exec(input: RequestSchoolWithdrawalInput): Promise<RequestSchoolWithdrawalOutput> {
         const schoolId = input.schoolId?.trim();
         if (!schoolId) {
-            throw new Error('School id is required');
+            throw AppError.validation('Identificação da escola é obrigatória');
         }
 
         const amount = input.amount;
         if (!Number.isFinite(amount) || amount <= 0) {
-            throw new Error('Valor do saque deve ser maior que zero');
+            throw AppError.validation('Valor do saque deve ser maior que zero');
         }
 
         const amountCents = Math.round(amount * 100);
         if (amountCents <= 0) {
-            throw new Error('Valor do saque inválido');
+            throw AppError.validation('Valor do saque inválido');
         }
 
-        // Buscar escola
         const school = await this.schools.findById(schoolId);
         if (!school) {
-            throw new Error('Escola não encontrada');
+            throw AppError.fromCode(ErrorCode.SCHOOL_NOT_FOUND, { schoolId });
         }
 
-        // Verificar se a escola tem conta ASSAAS
-        if (!school.accountId) {
-            throw new Error('Escola não possui conta ASSAAS configurada');
+        if (!school.accountId?.trim()) {
+            throw AppError.fromCode(ErrorCode.INCOMPLETE_DATA, {
+                message: 'Escola não possui conta Asaas configurada'
+            });
         }
 
-        // Verificar se a escola tem API key da conta ASSAAS
-        if (!school.accountApiKey || !school.accountApiKey.trim()) {
-            throw new Error('Escola não possui API key da conta ASSAAS configurada');
+        if (!school.accountApiKey?.trim()) {
+            throw AppError.fromCode(ErrorCode.INCOMPLETE_DATA, {
+                message: 'Escola não possui API key da conta Asaas'
+            });
         }
 
-        // Buscar conta bancária
         const bankAccount = await this.bankAccounts.findById(input.bankAccountId);
         if (!bankAccount) {
-            throw new Error('Conta bancária não encontrada');
+            throw AppError.notFound('Conta bancária', { bankAccountId: input.bankAccountId });
         }
 
-        // Verificar se a conta bancária pertence à escola
         if (bankAccount.schoolId !== schoolId) {
-            throw new Error('Conta bancária não pertence à escola');
+            throw AppError.validation('Conta bancária não pertence à escola', {
+                bankAccountId: input.bankAccountId
+            });
         }
 
-        // Verificar se a conta bancária está ativa
         if (!bankAccount.isActive) {
-            throw new Error('Conta bancária não está ativa');
+            throw AppError.validation('Conta bancária não está ativa', { bankAccountId: input.bankAccountId });
         }
 
-        // Verificar saldo disponível
-        if (!this.financialCharges.findPaidChargesBySchoolId) {
-            throw new Error('Repositório de cobranças não suporta busca de pagamentos pagos');
+        const { AsaasProviderFactory } = await import('../../infra/providers/asaas/asaas-provider-factory.js');
+        const schoolAsaasProvider = AsaasProviderFactory.createSubAccountProvider(school.accountApiKey);
+        if (!schoolAsaasProvider?.getAccountBalance || !schoolAsaasProvider.createTransfer) {
+            throw AppError.fromCode(ErrorCode.CONFIGURATION_ERROR, {
+                message: 'Operação de saque não disponível (Asaas sem saldo/transferência)'
+            });
         }
 
-        const allPaidCharges = await this.financialCharges.findPaidChargesBySchoolId(schoolId);
-        const availableBalanceCents = allPaidCharges.reduce(
-            (sum, charge) => sum + charge.netAmountCents,
-            0
-        );
+        let availableBalanceCents: number;
+        try {
+            const balance = await schoolAsaasProvider.getAccountBalance(school.accountId);
+            availableBalanceCents = Math.round(balance.availableBalance * 100);
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : String(err);
+            log.error('[RequestSchoolWithdrawal] Falha ao consultar saldo Asaas', { schoolId, error: msg });
+            throw AppError.fromCode(ErrorCode.EXTERNAL_SERVICE_ERROR, {
+                message: `Não foi possível consultar o saldo na conta Asaas: ${msg}`
+            });
+        }
 
         if (amountCents > availableBalanceCents) {
-            throw new Error(`Saldo insuficiente. Saldo disponível: R$ ${(availableBalanceCents / 100).toFixed(2)}`);
+            throw AppError.fromCode(ErrorCode.BUSINESS_RULE_VIOLATION, {
+                message: `Saldo insuficiente na conta Asaas. Disponível: R$ ${(availableBalanceCents / 100).toFixed(2)}`,
+                availableBalanceCents
+            });
         }
 
-        // Criar registro de saque
         const withdrawalId = Uuid();
         const withdrawal = SchoolWithdrawal.create({
             id: withdrawalId,
@@ -106,20 +114,8 @@ export class RequestSchoolWithdrawal {
             status: 'PROCESSING'
         });
 
-        // Salvar saque no banco
         await this.withdrawals.save(withdrawal);
 
-        // Criar provider com a API key da subconta da escola
-        const { AsaasProviderFactory } = await import('../../infra/providers/asaas/asaas-provider-factory.js');
-        const schoolAsaasProvider = AsaasProviderFactory.createSubAccountProvider(school.accountApiKey);
-        if (!schoolAsaasProvider) {
-            throw new Error('Failed to create Asaas provider for school subaccount');
-        }
-
-        // Tentar criar transferência no ASSAAS usando a API key da escola
-        if (!schoolAsaasProvider.createTransfer) {
-            throw new Error('Asaas provider does not support createTransfer');
-        }
         try {
             const transferResult = await schoolAsaasProvider.createTransfer({
                 accountId: school.accountId,
@@ -134,7 +130,6 @@ export class RequestSchoolWithdrawal {
                 pixKey: bankAccount.pixKey ?? undefined
             });
 
-            // Se a transferência foi criada com sucesso, atualizar status
             if (transferResult.status === 'DONE' || transferResult.status === 'COMPLETED') {
                 withdrawal.markAsCompleted(transferResult.effectiveDate);
             } else if (transferResult.status === 'CANCELLED' || transferResult.status === 'FAILED') {
@@ -142,19 +137,35 @@ export class RequestSchoolWithdrawal {
             }
 
             await this.withdrawals.save(withdrawal);
-        } catch (error) {
-            // Se houver erro na transferência, manter como PROCESSING
-            // O erro será tratado posteriormente via webhook ou processo assíncrono
-            console.error('Erro ao criar transferência no ASSAAS:', error);
+
+            if (transferResult.status === 'CANCELLED' || transferResult.status === 'FAILED') {
+                throw AppError.fromCode(ErrorCode.EXTERNAL_SERVICE_ERROR, {
+                    message: 'Asaas recusou ou cancelou a transferência',
+                    transferStatus: transferResult.status
+                });
+            }
+        } catch (err: unknown) {
+            if (err instanceof AppError) {
+                throw err;
+            }
+            const msg = err instanceof Error ? err.message : String(err);
+            log.error('[RequestSchoolWithdrawal] Erro ao criar transferência no Asaas', { schoolId, withdrawalId, error: msg });
+            try {
+                withdrawal.markAsCancelled();
+                await this.withdrawals.save(withdrawal);
+            } catch {
+                // melhor esforço para persistir cancelamento
+            }
+            throw AppError.fromCode(ErrorCode.EXTERNAL_SERVICE_ERROR, {
+                message: `Falha ao solicitar saque no Asaas: ${msg}`
+            });
         }
 
         return {
             withdrawalId: withdrawal.id,
             status: withdrawal.status,
-            amount: amount,
+            amount,
             amountCents: withdrawal.amountCents
         };
     }
 }
-
-

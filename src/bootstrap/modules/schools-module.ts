@@ -301,14 +301,8 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
     const withdrawalsRepo = new SchoolWithdrawalRepositoryAdapter();
     const listSchoolWithdrawals = new ListSchoolWithdrawals(withdrawalsRepo);
     
-    const requestSchoolWithdrawal = deps.bankAccountsRepo && asaasProvider
-        ? new RequestSchoolWithdrawal(
-            deps.schoolsRepo,
-            deps.bankAccountsRepo,
-            withdrawalsRepo,
-            deps.financialChargesRepo,
-            asaasProvider
-        )
+    const requestSchoolWithdrawal = deps.bankAccountsRepo
+        ? new RequestSchoolWithdrawal(deps.schoolsRepo, deps.bankAccountsRepo, withdrawalsRepo)
         : undefined;
     const scheduleClassSession = new ScheduleClassSession(deps.classSessionsRepo, deps.classesRepo, deps.coursesRepo);
     const listClassSessions = new ListClassSessions(deps.classSessionsRepo, deps.classesRepo, deps.coursesRepo);
