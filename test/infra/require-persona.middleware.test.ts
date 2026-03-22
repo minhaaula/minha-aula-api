@@ -45,6 +45,15 @@ describe('requirePersona middleware', () => {
         middleware(req, res, noopNext);
 
         expect(res.status).toHaveBeenCalledWith(403);
-        expect(res.json).toHaveBeenCalledWith({ error: 'Forbidden' });
+        expect(res.json).toHaveBeenCalledWith({
+            error: 'Forbidden',
+            code: 'FORBIDDEN',
+            details: {
+                message:
+                    'Persona do token não tem permissão para esta rota. Verifique se está usando o login correto (ex.: aluno vs escola).',
+                currentPersona: 'STUDENT',
+                allowedPersonas: ['ADMIN']
+            }
+        });
     });
 });

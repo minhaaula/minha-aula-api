@@ -39,10 +39,23 @@ paths:
           required: false
           schema:
             type: string
-            enum: [OPEN, CANCELLED, EM_ABERTO, CANCELADO, REJECTED, REJEITADO]
+            enum:
+              [
+                OPEN,
+                CANCELLED,
+                CANCELED,
+                EM_ABERTO,
+                CANCELADO,
+                REJECTED,
+                REJEITADO,
+                CANCELLED_OR_REJECTED
+              ]
           description: |
-            Filtro por status. Em Aberto = OPEN ou EM_ABERTO (PENDING). Cancelado = CANCELLED ou CANCELADO. Rejeitado = REJECTED ou REJEITADO.
-            Omitir = retorna Em Aberto + Cancelado + Rejeitado.
+            Filtro por status. Em aberto = OPEN ou EM_ABERTO (PENDING).
+            Cancelado (somente cancelados pela API) = CANCELLED, CANCELED (legado), CANCELADO.
+            Recusado = REJECTED ou REJEITADO.
+            CANCELLED_OR_REJECTED = cancelados **ou** recusados (útil quando a lista sem filtro mostra os dois e só `CANCELLED` vinha vazio por confundir com REJECTED).
+            Omitir = retorna PENDING + CANCELLED + REJECTED.
         - in: query
           name: limit
           required: false

@@ -41,6 +41,7 @@
     "test:storage:access": "tsx scripts/test-file-access.ts",
     "test:flow": "tsx scripts/test-complete-flow.ts",
     "test:invites": "tsx scripts/test-enrollment-invite-flow.ts",
+    "test:enrollment-titular": "tsx scripts/test-enrollment-matricula-titular.ts",
     "test:directory": "tsx scripts/test-directory-route.ts",
     "test:schools-directory": "tsx scripts/test-schools-directory-route.ts",
     "hash:password": "tsx scripts/generate-password-hash.ts",

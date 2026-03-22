@@ -368,8 +368,10 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
   /schools/students/{studentId}/financial-summary:
     get:
+      operationId: getSchoolStudentFinancialSummary
       tags:
         - Schools
+        - Financeiro
       summary: Consolidado financeiro do aluno na escola
       description: |
         Retorna totais em centavos (valor líquido das cobranças) para o aluno ou dependente informado,

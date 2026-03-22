@@ -7,6 +7,18 @@ import {
 import { EnrollmentRequest, EnrollmentRequestStatus } from '../../../domain/entities/enrollment-request';
 import { EnrollmentRequestOrm } from './entities/enrollment-request.orm';
 
+/** Inclui variantes legadas (ex.: CANCELED) quando a lista pede CANCELLED. */
+function expandEnrollmentStatusIn(statuses: EnrollmentRequestStatus[]): string[] {
+    const out = new Set<string>();
+    for (const s of statuses) {
+        out.add(s);
+        if (s === 'CANCELLED') {
+            out.add('CANCELED');
+        }
+    }
+    return [...out];
+}
+
 export class EnrollmentRequestRepositoryAdapter implements EnrollmentRequestRepository {
     private readonly repo = AppDataSource.getRepository(EnrollmentRequestOrm);
 
@@ -60,9 +72,17 @@ export class EnrollmentRequestRepositoryAdapter implements EnrollmentRequestRepo
         }
 
         if (params.statusIn?.length) {
-            qb.andWhere('request.status IN (:...statuses)', { statuses: params.statusIn });
+            const statuses = expandEnrollmentStatusIn(params.statusIn);
+            qb.andWhere('request.status IN (:...statuses)', { statuses });
         } else if (params.status) {
-            qb.andWhere('request.status = :status', { status: params.status });
+            if (params.status === 'CANCELLED') {
+                // Legado: alguns registros usam "CANCELED" (1 L); o ENUM atual só tem CANCELLED.
+                qb.andWhere('request.status IN (:...cancelledStatuses)', {
+                    cancelledStatuses: ['CANCELLED', 'CANCELED']
+                });
+            } else {
+                qb.andWhere('request.status = :status', { status: params.status });
+            }
         }
 
         if (params.courseId) {

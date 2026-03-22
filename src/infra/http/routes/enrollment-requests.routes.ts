@@ -69,8 +69,19 @@ export function enrollmentRequestsRouter(deps: {
                 classId: z.string().uuid().optional(),
                 courseId: z.string().uuid().optional(),
                 studentDocument: z.string().trim().min(1).optional(),
-                /** Filtro por status: OPEN/EM_ABERTO=PENDING, CANCELLED/CANCELADO=CANCELLED, REJECTED/REJEITADO=REJECTED. Aceita também CANCELED (legado). Omitir = retorna PENDING + CANCELLED + REJECTED */
-                status: z.enum(['OPEN', 'CANCELLED', 'CANCELED', 'EM_ABERTO', 'CANCELADO', 'REJECTED', 'REJEITADO']).optional(),
+                /** Filtro por status: OPEN/EM_ABERTO=PENDING; CANCELLED/CANCELADO/CANCELED=cancelado pela API; REJECTED/REJEITADO=recusado; CANCELLED_OR_REJECTED=cancelados OU recusados (útil quando “cancelado” na UI mistura os dois). Omitir = PENDING + CANCELLED + REJECTED */
+                status: z
+                    .enum([
+                        'OPEN',
+                        'CANCELLED',
+                        'CANCELED',
+                        'EM_ABERTO',
+                        'CANCELADO',
+                        'REJECTED',
+                        'REJEITADO',
+                        'CANCELLED_OR_REJECTED'
+                    ])
+                    .optional(),
                 limit: z.coerce.number().int().positive().max(100).optional(),
                 offset: z.coerce.number().int().min(0).optional()
             });
@@ -116,15 +127,20 @@ export function enrollmentRequestsRouter(deps: {
             // Não usar 'CANCELED' no SQL: o ENUM do MySQL só tem CANCELLED; IN (..., 'CANCELED') pode zerar o resultado.
             const defaultListStatuses: EnrollmentRequestStatus[] = ['PENDING', 'CANCELLED', 'REJECTED'];
             const isOpen = query.status === 'OPEN' || query.status === 'EM_ABERTO';
-            const isCancelled = query.status === 'CANCELLED' || query.status === 'CANCELED' || query.status === 'CANCELADO';
+            const isCancelledOrRejected =
+                query.status === 'CANCELLED_OR_REJECTED';
+            const isCancelled =
+                query.status === 'CANCELLED' || query.status === 'CANCELED' || query.status === 'CANCELADO';
             const isRejected = query.status === 'REJECTED' || query.status === 'REJEITADO';
             const statusFilter = isOpen
                 ? { status: 'PENDING' as const }
-                : isCancelled
-                    ? { status: 'CANCELLED' as const }
-                    : isRejected
-                        ? { status: 'REJECTED' as const }
-                        : { statusIn: defaultListStatuses };
+                : isCancelledOrRejected
+                    ? { statusIn: (['CANCELLED', 'REJECTED'] as EnrollmentRequestStatus[]) }
+                    : isCancelled
+                        ? { status: 'CANCELLED' as const }
+                        : isRejected
+                            ? { status: 'REJECTED' as const }
+                            : { statusIn: defaultListStatuses };
 
             const requests = await deps.listEnrollmentRequests.exec({
                 schoolId,
@@ -210,7 +226,7 @@ export function enrollmentRequestsRouter(deps: {
         }
     });
 
-    // STUDENT: não aceita requestedForUserId no payload (é inferido pelo ID do usuário logado).
+    // STUDENT apenas. Escola/admin deve usar POST .../responsible-requests (token SCHOOL + requestedForUserId no body).
     r.post('/schools/classes/:classId/requests', canCreateStudentRequest, async (req, res, next) => {
         try {
             const paramsSchema = z.object({

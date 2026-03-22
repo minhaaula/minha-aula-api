@@ -6,6 +6,9 @@ info:
     API para gerenciamento de pagamentos, escolas, estudantes e matrículas.
     Pode ser implantada com módulos distintos (auth, admin, payments, schools, students).
     Quando apenas o módulo **students** está ativo, as rotas públicas em `/schools` (ex.: GET /schools/categories) continuam disponíveis para o app de estudantes.
+
+    **Escola (persona SCHOOL) — consolidado financeiro do aluno:** `GET /schools/students/{studentId}/financial-summary`
+    (totais líquidos em centavos: pendentes, em atraso, pagos; requer Bearer da escola).
 servers:
   - url: http://localhost:3000
     description: Ambiente local
@@ -24,6 +27,8 @@ tags:
     description: Monitoramento da saúde da aplicação.
   - name: Schools
     description: Gestão de escolas, cursos e turmas.
+  - name: Financeiro
+    description: Cobranças e totais consolidados (escola, alunos, pagamentos).
   - name: Dependents
     description: Cadastro de dependentes vinculados aos usuários.
   - name: Enrollment Requests
