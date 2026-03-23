@@ -1276,7 +1276,10 @@ paths:
       tags:
         - Students
       summary: Aceitar pedido de matrícula
-      description: Permite ao estudante aceitar um pedido de matrícula pendente que foi criado para ele ou para um de seus dependentes. Ao aceitar, a matrícula é criada automaticamente e uma cobrança de taxa de matrícula é gerada quando aplicável. Requer persona STUDENT e o pedido deve pertencer ao estudante autenticado.
+      description: |
+        Permite ao estudante aceitar um pedido de matrícula pendente criado para ele ou para um dependente. Ao aceitar, a matrícula é criada e cobranças são geradas quando aplicável (equivalente a `POST /enrollment-requests/{requestId}/approve`).
+
+        **Notificações:** email de confirmação de matrícula (fila) e notificação in-app (`metadata.kind` = `ENROLLMENT_CONFIRMED`). Requer persona STUDENT; o pedido deve pertencer ao usuário autenticado.
       security:
         - bearerAuth: []
       parameters:
@@ -1368,9 +1371,9 @@ paths:
         - Students
       summary: Rejeitar pedido de matrícula
       description: |
-        Permite ao estudante rejeitar um pedido de matrícula pendente que foi criado para ele ou para um de seus dependentes.
-        Ao rejeitar, o status do pedido é alterado para REJECTED e nenhuma matrícula é criada.
-        Requer persona STUDENT e o pedido deve pertencer ao estudante autenticado.
+        Permite ao estudante rejeitar um pedido de matrícula pendente criado para ele ou para um dependente. O status passa a REJECTED e nenhuma matrícula é criada.
+
+        **Notificações:** email informando a recusa (fila) e notificação in-app (`metadata.kind` = `ENROLLMENT_REQUEST_REJECTED`). Requer persona STUDENT e o pedido deve pertencer ao estudante autenticado.
       security:
         - bearerAuth: []
       parameters:
@@ -1995,9 +1998,9 @@ paths:
         - Students
       summary: Listar notificações do aluno
       description: >-
-        Retorna todas as notificações relacionadas ao aluno autenticado.
-        As notificações são ordenadas por data de envio (mais recentes primeiro).
-        Suporta paginação através dos parâmetros limit e offset.
+        Retorna notificações do aluno autenticado (incluindo `scope` USER para o “sino” do app: boas-vindas, pedidos de matrícula, confirmação/recusa, lembretes de mensalidade, além de notificações de turma quando existirem).
+        Itens incluem `title`, `message`, `metadata` (ex.: `kind`, ids de pedido/cobrança) e `readAt`.
+        Ordenação: data de envio, mais recentes primeiro. Paginação: `limit` e `offset`.
         Requer persona STUDENT.
       security:
         - bearerAuth: []
@@ -2036,11 +2039,11 @@ paths:
                         schoolId: null
                         userId: '789e4567-e89b-12d3-a456-426614174000'
                         courseClassId: null
-                        title: 'Pagamento pendente'
-                        message: 'Você tem um pagamento pendente que vence em 3 dias.'
+                        title: 'Mensalidade a vencer'
+                        message: 'Mensalidade — R$ 150,00 vence em 18/07/2024 (Escola Exemplo).'
                         metadata:
+                          kind: TUITION_DUE_REMINDER
                           chargeId: '123e4567-e89b-12d3-a456-426614174001'
-                          dueDate: '2024-07-18'
                         sentAt: '2024-07-15T10:30:00.000Z'
                         readAt: null
                       - id: '660e8400-e29b-41d4-a716-446655440001'
@@ -2108,8 +2111,8 @@ paths:
         - Students
       summary: Registrar token de Push (FCM)
       description: >-
-        Registra/atualiza o token FCM do dispositivo do aluno para receber push notifications.
-        Requer persona STUDENT.
+        Registra ou atualiza o token FCM do dispositivo para receber push (ex.: novo pedido de matrícula pela escola, lembrete de mensalidade a vencer), além das notificações in-app listadas em GET /students/notifications.
+        Requer persona STUDENT e integração Firebase/worker ativas no ambiente.
       security:
         - bearerAuth: []
       requestBody:

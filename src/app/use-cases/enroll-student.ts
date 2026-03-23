@@ -10,6 +10,7 @@ import { Uuid } from '../../shared/uuid';
 import { equalUuid } from '../../shared/normalize-uuid';
 import { AppError, ErrorCode } from '../../shared/errors';
 import type { EnrollStudentInput, EnrollStudentOutput } from '../types/enrollment.types';
+import type { NotifyStudentUser } from './notify-student-user';
 
 export class EnrollStudent {
     constructor(
@@ -20,7 +21,8 @@ export class EnrollStudent {
         private readonly enrollments: EnrollmentRepository,
         private readonly schools?: SchoolRepository,
         private readonly outbox?: OutboxRepository,
-        private readonly frontendBaseUrl?: string
+        private readonly frontendBaseUrl?: string,
+        private readonly notifyStudent?: NotifyStudentUser
     ) {}
 
     async exec(input: EnrollStudentInput): Promise<EnrollStudentOutput> {
@@ -71,6 +73,23 @@ export class EnrollStudent {
                         }
                     })
                     .catch(() => {});
+
+                if (this.notifyStudent) {
+                    this.notifyStudent
+                        .exec({
+                            userId: owner.id,
+                            schoolId: schoolId,
+                            title: 'Matrícula confirmada',
+                            message: `Sua matrícula em ${course.name} (${school.name}) foi confirmada.`,
+                            kind: 'ENROLLMENT_CONFIRMED',
+                            sendPush: false,
+                            extraMetadata: {
+                                enrollmentId: enrollment.id,
+                                courseClassId: enrollment.courseClassId
+                            }
+                        })
+                        .catch(() => {});
+                }
             }
         }
 

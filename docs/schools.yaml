@@ -1712,6 +1712,8 @@ paths:
         O sistema utiliza o valor do campo `monthlyPriceCents` da turma (se definido) ou do curso relacionado
         para preencher o campo `fullAmountCents` da matrícula. Este valor cheio pode ser usado posteriormente como
         base para cálculo de descontos.
+
+        **Notificações ao aluno:** enfileira email de confirmação de matrícula e grava notificação in-app (`metadata.kind` = `ENROLLMENT_CONFIRMED`).
       security:
         - bearerAuth: []
       parameters:

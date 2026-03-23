@@ -10,6 +10,8 @@ export * from './boleto-notification.template';
 export * from './welcome-school.template';
 export * from './welcome-student.template';
 export * from './enrollment-confirmation.template';
+export * from './enrollment-request-received.template';
+export * from './enrollment-request-rejected.template';
 export * from './charge-due-reminder.template';
 export * from './base-template';
 

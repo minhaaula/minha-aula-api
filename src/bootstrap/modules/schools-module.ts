@@ -95,6 +95,7 @@ import { buildNotificationsRoutes } from '../../infra/http/routes/schools/notifi
 import { GetSchoolBalance } from '../../app/use-cases/get-school-balance';
 import { OutboxRepository } from '../../ports/repositories/outbox.repo';
 import { SendClassPushNotification } from '../../app/use-cases/send-class-push-notification';
+import { NotifyStudentUser } from '../../app/use-cases/notify-student-user';
 
 export type SchoolsModuleDeps = {
     schoolsRepo: SchoolRepositoryAdapter;
@@ -123,6 +124,11 @@ export type SchoolsModuleDeps = {
 };
 
 export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupContext): ModuleBuildResult {
+    const notifyStudent =
+        deps.notificationsRepo && deps.outbox
+            ? new NotifyStudentUser(deps.notificationsRepo, deps.outbox)
+            : undefined;
+
     // Declarar asaasProvider antes de usar
     const asaasProvider = typeof deps.paymentProvider.createSubAccount === 'function'
         ? deps.paymentProvider as AsaasProviderPort
@@ -238,7 +244,8 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         deps.enrollmentsRepo,
         deps.schoolsRepo,
         deps.outbox,
-        deps.frontendBaseUrl
+        deps.frontendBaseUrl,
+        notifyStudent
     );
     const listEnrollmentRequests = new ListEnrollmentRequests(deps.enrollmentRequestsRepo);
     const createEnrollmentRequest = new CreateEnrollmentRequest(
@@ -248,7 +255,10 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         deps.usersRepo,
         deps.dependentsRepo,
         deps.enrollmentsRepo,
-        deps.enrollmentRequestsRepo
+        deps.enrollmentRequestsRepo,
+        notifyStudent,
+        deps.outbox,
+        deps.frontendBaseUrl
     );
     const issueEnrollmentFeeBoleto = new IssueEnrollmentFeeBoleto(
         deps.financialChargesRepo,
@@ -272,7 +282,13 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         deps.coursesRepo,
         deps.financialChargesRepo,
         issueEnrollmentFeeBoleto,
-        generateTuitionPix
+        generateTuitionPix,
+        deps.usersRepo,
+        deps.schoolsRepo,
+        deps.dependentsRepo,
+        deps.outbox,
+        notifyStudent,
+        deps.frontendBaseUrl
     );
     const getEnrollmentRequest = new GetEnrollmentRequest(deps.enrollmentRequestsRepo);
     const createSchoolCharge = new CreateSchoolCharge(

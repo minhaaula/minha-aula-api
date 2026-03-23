@@ -5,12 +5,14 @@ import { UserRepository } from '../../ports/repositories/user.repo';
 import { DependentRepository } from '../../ports/repositories/dependent.repo';
 import { EnrollmentRepository } from '../../ports/repositories/enrollment.repo';
 import { EnrollmentRequestRepository } from '../../ports/repositories/enrollment-request.repo';
+import { OutboxRepository } from '../../ports/repositories/outbox.repo';
 import { EnrollmentRequest } from '../../domain/entities/enrollment-request';
 import { Uuid } from '../../shared/uuid';
 import { equalUuid } from '../../shared/normalize-uuid';
 import { AppError, ErrorCode } from '../../shared/errors';
-import { normalizeDateString, normalizeOptionalDateString } from '../utils/date.utils';
+import { normalizeDateString } from '../utils/date.utils';
 import type { CreateEnrollmentRequestInput } from '../types/enrollment.types';
+import type { NotifyStudentUser } from './notify-student-user';
 
 export class CreateEnrollmentRequest {
     constructor(
@@ -20,7 +22,10 @@ export class CreateEnrollmentRequest {
         private readonly users: UserRepository,
         private readonly dependents: DependentRepository,
         private readonly enrollments: EnrollmentRepository,
-        private readonly requests: EnrollmentRequestRepository
+        private readonly requests: EnrollmentRequestRepository,
+        private readonly notifyStudent?: NotifyStudentUser,
+        private readonly outbox?: OutboxRepository,
+        private readonly frontendBaseUrl?: string
     ) {}
 
     async exec(input: CreateEnrollmentRequestInput): Promise<EnrollmentRequest> {
@@ -78,7 +83,58 @@ export class CreateEnrollmentRequest {
 
         await this.requests.save(request);
 
+        if (input.initiatedBySchool && this.notifyStudent && this.outbox) {
+            this.notifyEnrollmentRequestFromSchool(request).catch(() => {});
+        }
+
         return request;
+    }
+
+    private async notifyEnrollmentRequestFromSchool(request: EnrollmentRequest): Promise<void> {
+        if (!this.notifyStudent || !this.outbox) return;
+
+        const school = await this.schools.findById(request.schoolId);
+        const courseClass = await this.classes.findById(request.courseClassId);
+        if (!courseClass) return;
+        const course = await this.courses.findById(courseClass.courseId);
+        const user = await this.users.findById(request.requestedForUserId);
+        if (!school || !course || !user) return;
+
+        const dependent = request.requestedForDependentId
+            ? await this.dependents.findById(request.requestedForDependentId)
+            : null;
+        const studentName = dependent?.fullName ?? user.fullName;
+        const targetLabel = dependent ? ` (${dependent.fullName})` : '';
+
+        const title = 'Novo pedido de matrícula';
+        const message = `${school.name} enviou um pedido de matrícula em ${course.name} — ${courseClass.label}${targetLabel}.`;
+
+        await this.notifyStudent.exec({
+            userId: request.requestedForUserId,
+            schoolId: request.schoolId,
+            title,
+            message,
+            kind: 'ENROLLMENT_REQUEST_RECEIVED',
+            sendPush: true,
+            extraMetadata: {
+                enrollmentRequestId: request.id,
+                courseClassId: request.courseClassId
+            }
+        });
+
+        const loginUrl = this.frontendBaseUrl ? `${this.frontendBaseUrl}/login` : undefined;
+        await this.outbox.enqueue({
+            type: 'send_enrollment_request_received_email',
+            aggregateId: request.id,
+            payload: {
+                to: user.email.value,
+                studentName,
+                schoolName: school.name,
+                courseName: course.name,
+                className: courseClass.label,
+                loginUrl
+            }
+        });
     }
 
     private async validateAndLoadSchool(schoolId: string) {

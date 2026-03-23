@@ -48,6 +48,8 @@ import { UnregisterPushToken } from '../../app/use-cases/unregister-push-token';
 
 import { StorageProviderPort } from '../../ports/providers/storage-provider.port';
 import { SchoolImageRepositoryAdapter } from '../../infra/db/typeorm/school-image-repository.adapter';
+import { OutboxRepository } from '../../ports/repositories/outbox.repo';
+import { NotifyStudentUser } from '../../app/use-cases/notify-student-user';
 
 export type StudentsModuleDeps = {
     usersRepo: UserRepositoryAdapter;
@@ -64,9 +66,16 @@ export type StudentsModuleDeps = {
     storageProvider?: StorageProviderPort;
     notificationsRepo?: NotificationRepositoryAdapter;
     pushTokensRepo?: PushTokenRepositoryAdapter;
+    outbox?: OutboxRepository;
+    frontendBaseUrl?: string;
 };
 
 export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupContext): ModuleBuildResult {
+    const notifyStudent =
+        deps.notificationsRepo && deps.outbox
+            ? new NotifyStudentUser(deps.notificationsRepo, deps.outbox)
+            : undefined;
+
     const addDependent = new AddDependent(deps.usersRepo, deps.dependentsRepo);
     const listStudents = new ListStudents(
         deps.usersRepo,
@@ -100,7 +109,10 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
         deps.usersRepo,
         deps.dependentsRepo,
         deps.enrollmentsRepo,
-        deps.enrollmentRequestsRepo
+        deps.enrollmentRequestsRepo,
+        notifyStudent,
+        deps.outbox,
+        deps.frontendBaseUrl
     );
     const issueEnrollmentFeeBoleto = new IssueEnrollmentFeeBoleto(
         deps.financialChargesRepo,
@@ -124,9 +136,25 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
         deps.coursesRepo,
         deps.financialChargesRepo,
         issueEnrollmentFeeBoleto,
-        generateTuitionPix
+        generateTuitionPix,
+        deps.usersRepo,
+        deps.schoolsRepo,
+        deps.dependentsRepo,
+        deps.outbox,
+        notifyStudent,
+        deps.frontendBaseUrl
     );
-    const rejectEnrollmentRequest = new RejectEnrollmentRequest(deps.enrollmentRequestsRepo);
+    const rejectEnrollmentRequest = new RejectEnrollmentRequest(
+        deps.enrollmentRequestsRepo,
+        deps.usersRepo,
+        deps.schoolsRepo,
+        deps.coursesRepo,
+        deps.classesRepo,
+        deps.dependentsRepo,
+        deps.outbox,
+        notifyStudent,
+        deps.frontendBaseUrl
+    );
     const listEnrollmentRequests = new ListEnrollmentRequests(deps.enrollmentRequestsRepo);
     const getEnrollmentRequest = new GetEnrollmentRequest(deps.enrollmentRequestsRepo);
     const listMyEnrollmentRequests = new ListMyEnrollmentRequests(

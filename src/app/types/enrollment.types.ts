@@ -13,6 +13,8 @@ export interface CreateEnrollmentRequestInput {
     enrollmentFeeAmount?: number | null;
     enrollmentFeeDueDate?: string | null;
     firstMonthlyPaymentDate: string;
+    /** Quando a escola cria o pedido para o aluno (responsible-requests), dispara email, push e notificação in-app. */
+    initiatedBySchool?: boolean;
 }
 
 export interface ApproveEnrollmentRequestInput {

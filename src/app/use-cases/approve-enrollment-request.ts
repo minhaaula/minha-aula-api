@@ -3,16 +3,23 @@ import { EnrollmentRepository } from '../../ports/repositories/enrollment.repo';
 import { CourseClassRepository } from '../../ports/repositories/course-class.repo';
 import { CourseRepository } from '../../ports/repositories/course.repo';
 import { SchoolFinancialChargeRepository } from '../../ports/repositories/school-financial-charge.repo';
+import { UserRepository } from '../../ports/repositories/user.repo';
+import { SchoolRepository } from '../../ports/repositories/school.repo';
+import { DependentRepository } from '../../ports/repositories/dependent.repo';
+import { OutboxRepository } from '../../ports/repositories/outbox.repo';
 import { AppError, ErrorCode } from '../../shared/errors';
 import { Enrollment } from '../../domain/entities/enrollment';
 import { EnrollmentRequest } from '../../domain/entities/enrollment-request';
 import { SchoolFinancialCharge } from '../../domain/entities/school-financial-charge';
+import { Course } from '../../domain/entities/course';
+import { CourseClass } from '../../domain/entities/course-class';
 import { UserPersonaEnum } from '../../domain/value-objects/user-persona';
 import { Uuid } from '../../shared/uuid';
 import { getUtcDay, toUtcDateOnly } from '../../shared/date-utils';
 import type { ApproveEnrollmentRequestInput, ApproveEnrollmentRequestOutput } from '../types/enrollment.types';
 import type { IssueEnrollmentFeeBoleto } from './issue-enrollment-fee-boleto';
 import type { GenerateTuitionPix } from './generate-tuition-pix';
+import type { NotifyStudentUser } from './notify-student-user';
 
 export class ApproveEnrollmentRequest {
     constructor(
@@ -22,7 +29,13 @@ export class ApproveEnrollmentRequest {
         private readonly courses: CourseRepository,
         private readonly financialCharges: SchoolFinancialChargeRepository,
         private readonly issueEnrollmentFeeBoleto?: IssueEnrollmentFeeBoleto,
-        private readonly generateTuitionPix?: GenerateTuitionPix
+        private readonly generateTuitionPix?: GenerateTuitionPix,
+        private readonly users?: UserRepository,
+        private readonly schools?: SchoolRepository,
+        private readonly dependents?: DependentRepository,
+        private readonly outbox?: OutboxRepository,
+        private readonly notifyStudent?: NotifyStudentUser,
+        private readonly frontendBaseUrl?: string
     ) {}
 
     async exec(input: ApproveEnrollmentRequestInput): Promise<ApproveEnrollmentRequestOutput> {
@@ -77,6 +90,10 @@ export class ApproveEnrollmentRequest {
         });
 
         await this.requests.save(request);
+
+        if (this.notifyStudent && this.outbox && this.users && this.schools) {
+            this.sendEnrollmentApprovedNotifications(request, enrollment, course, courseClass).catch(() => {});
+        }
 
         // Gerar boleto de matrícula automaticamente (se houver cobrança)
         let enrollmentFeeBoletoGenerated = false;
@@ -143,6 +160,54 @@ export class ApproveEnrollmentRequest {
             enrollmentFeeBoletoGenerated,
             firstTuitionChargeId
         };
+    }
+
+    private async sendEnrollmentApprovedNotifications(
+        request: EnrollmentRequest,
+        enrollment: Enrollment,
+        course: Course,
+        courseClass: CourseClass
+    ): Promise<void> {
+        if (!this.notifyStudent || !this.outbox || !this.users || !this.schools) return;
+
+        const school = await this.schools.findById(request.schoolId);
+        const owner = await this.users.findById(request.requestedForUserId);
+        if (!school || !owner) return;
+
+        let studentName = owner.fullName;
+        if (request.requestedForDependentId && this.dependents) {
+            const dep = await this.dependents.findById(request.requestedForDependentId);
+            if (dep) studentName = dep.fullName;
+        }
+
+        const loginUrl = this.frontendBaseUrl ? `${this.frontendBaseUrl}/login` : undefined;
+
+        await this.outbox.enqueue({
+            type: 'send_enrollment_confirmation_email',
+            aggregateId: enrollment.id,
+            payload: {
+                to: owner.email.value,
+                studentName,
+                courseName: course.name,
+                schoolName: school.name,
+                className: courseClass.label,
+                loginUrl
+            }
+        });
+
+        await this.notifyStudent.exec({
+            userId: request.requestedForUserId,
+            schoolId: request.schoolId,
+            title: 'Matrícula confirmada',
+            message: `Sua matrícula em ${course.name} (${school.name}) foi confirmada.`,
+            kind: 'ENROLLMENT_CONFIRMED',
+            sendPush: false,
+            extraMetadata: {
+                enrollmentRequestId: request.id,
+                enrollmentId: enrollment.id,
+                courseClassId: request.courseClassId
+            }
+        });
     }
 
     private async validateAndLoadRequest(requestId: string) {

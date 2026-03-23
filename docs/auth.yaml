@@ -9,7 +9,10 @@ paths:
       tags:
         - Auth
       summary: Registrar um novo usuário
-      description: Cadastra um novo usuário no sistema (estudantes, administradores, etc.)
+      description: |
+        Cadastra um novo usuário no sistema (estudantes, administradores, etc.).
+
+        Para persona **STUDENT**, após o cadastro o sistema enfileira email de boas-vindas (fila/worker) e grava uma notificação in-app de boas-vindas (`GET /students/notifications`, `metadata.kind` = `WELCOME`).
       requestBody:
         required: true
         content:

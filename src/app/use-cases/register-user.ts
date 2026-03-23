@@ -8,13 +8,15 @@ import { UserPersona, assertUserPersona, UserPersonaEnum } from '../../domain/va
 import { OutboxRepository } from '../../ports/repositories/outbox.repo';
 import { AppError, ErrorCode } from '../../shared/errors';
 import type { RegisterUserInput, RegisterUserOutput } from '../types/auth.types';
+import type { NotifyStudentUser } from './notify-student-user';
 
 export class RegisterUser {
     constructor(
         private readonly users: UserRepository,
         private readonly hasher: PasswordHasherPort,
         private readonly outbox?: OutboxRepository,
-        private readonly frontendBaseUrl?: string
+        private readonly frontendBaseUrl?: string,
+        private readonly notifyStudent?: NotifyStudentUser
     ) {}
 
     async exec(input: RegisterUserInput): Promise<RegisterUserOutput> {
@@ -75,6 +77,19 @@ export class RegisterUser {
                         userEmail: user.email.value,
                         loginUrl: this.frontendBaseUrl ? `${this.frontendBaseUrl}/login` : undefined
                     }
+                })
+                .catch(() => {});
+        }
+
+        if (user.persona === UserPersonaEnum.STUDENT && this.notifyStudent) {
+            this.notifyStudent
+                .exec({
+                    userId: user.id,
+                    title: 'Bem-vindo ao Minha Aula',
+                    message: `Olá, ${user.fullName}! Sua conta de aluno foi criada. Explore cursos e turmas no app.`,
+                    kind: 'WELCOME',
+                    sendPush: false,
+                    extraMetadata: {}
                 })
                 .catch(() => {});
         }

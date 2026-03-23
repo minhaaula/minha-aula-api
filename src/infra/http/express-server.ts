@@ -178,6 +178,9 @@ export function makeServer(deps: AppDependencies & Record<string, any>) {
         console.warn('⚠ Rota /docs não foi montada (documentação OpenAPI não disponível)');
     }
 
+    // Portal Docusaurus desabilitado por padrão neste ambiente.
+    console.log('ℹ Rota /portal desabilitada');
+
     // Montar routers apenas se existirem (já prontos pelos módulos)
     if (deps.authRouter) {
         app.use('/auth', deps.authRouter);

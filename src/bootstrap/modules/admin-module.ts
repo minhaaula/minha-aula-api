@@ -22,6 +22,7 @@ import type { SchoolFinancialChargeRepository } from '../../ports/repositories/s
 import type { SchoolPlanInvoiceRepository } from '../../ports/repositories/school-plan-invoice.repo';
 import type { EnrollmentRequestRepository } from '../../ports/repositories/enrollment-request.repo';
 import type { ChargeDueReminderRepository } from '../../ports/repositories/charge-due-reminder.repo';
+import type { NotificationRepository } from '../../ports/repositories/notification.repo';
 import type { OutboxRepository } from '../../ports/repositories/outbox.repo';
 import type { PasswordHasherPort } from '../../ports/providers/password-hasher.port';
 import type { TokenProviderPort } from '../../ports/providers/token-provider.port';
@@ -49,6 +50,7 @@ import { GetAdminStudentDetails } from '../../app/use-cases/get-admin-student-de
 import { ListAdminSchoolCourses } from '../../app/use-cases/list-admin-school-courses';
 import { SchoolWithdrawalRepositoryAdapter } from '../../infra/db/typeorm/school-withdrawal-repository.adapter';
 import { ScheduleChargeDueReminders } from '../../app/use-cases/schedule-charge-due-reminders';
+import { NotifyStudentUser } from '../../app/use-cases/notify-student-user';
 import { AdminMarkInvoicePaid } from '../../app/use-cases/admin-mark-invoice-paid';
 import { AdminMarkChargePaid } from '../../app/use-cases/admin-mark-charge-paid';
 import { SyncSchoolOnboardingDocuments } from '../../app/use-cases/sync-school-onboarding-documents';
@@ -84,6 +86,7 @@ type AdminModuleDeps = {
     tokenProvider: TokenProviderPort;
     tokenTtl: number;
     asaasProvider?: AsaasProviderPort;
+    notificationsRepo?: NotificationRepository;
 };
 
 export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext): ModuleBuildResult {
@@ -203,6 +206,11 @@ export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext)
         ? new AdminUploadSchoolOnboardingDocument(deps.schoolsRepo, deps.asaasProvider)
         : undefined;
 
+    const notifyStudentForReminders =
+        deps.notificationsRepo && deps.outbox
+            ? new NotifyStudentUser(deps.notificationsRepo, deps.outbox)
+            : undefined;
+
     const scheduleChargeDueReminders = new ScheduleChargeDueReminders(
         deps.financialChargesRepo,
         deps.planInvoicesRepo,
@@ -210,7 +218,8 @@ export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext)
         deps.outbox,
         deps.usersRepo,
         deps.schoolsRepo,
-        deps.coursesRepo
+        deps.coursesRepo,
+        notifyStudentForReminders
     );
 
     // Use cases de cupons

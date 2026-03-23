@@ -294,7 +294,8 @@ export function enrollmentRequestsRouter(deps: {
                 discountMonths: data.discountMonths ?? null,
                 enrollmentFeeAmount: data.enrollmentFeeAmount ?? null,
                 enrollmentFeeDueDate: data.enrollmentFeeDueDate ?? null,
-                firstMonthlyPaymentDate: data.firstMonthlyPaymentDate
+                firstMonthlyPaymentDate: data.firstMonthlyPaymentDate,
+                initiatedBySchool: true
             });
             res.status(201).json(serializeEnrollmentRequest(request));
         } catch (err) {

@@ -32,6 +32,7 @@ import { buildSchoolsModule } from './modules/schools-module';
 import { buildStudentsModule } from './modules/students-module';
 import { ModuleSetupContext, ModuleBuildResult } from './modules/types';
 import { ListCategories } from '../app/use-cases/list-categories';
+import { NotifyStudentUser } from '../app/use-cases/notify-student-user';
 import { Router } from 'express';
 import { asyncHandler } from '../infra/http/utils/async-handler';
 import { AsaasProvider } from '../infra/providers/asaas/asaas-provider';
@@ -301,6 +302,8 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
     for (const moduleName of selected) {
         switch (moduleName) {
             case 'auth': {
+                const notifyStudentAuth =
+                    notificationsRepo && outbox ? new NotifyStudentUser(notificationsRepo, outbox) : undefined;
                 const result = buildAuthModule({
                     usersRepo,
                     passwordHasher,
@@ -310,7 +313,8 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
                     schoolsRepo,
                     emailProvider,
                     outbox,
-                    frontendBaseUrl
+                    frontendBaseUrl,
+                    notifyStudent: notifyStudentAuth
                 }, ctx);
                 mergeModuleResult(serverDeps, docFiles, result);
                 break;
@@ -343,7 +347,8 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
                     passwordHasher,
                     tokenProvider,
                     tokenTtl,
-                    asaasProvider: asaasProviderForAdmin
+                    asaasProvider: asaasProviderForAdmin,
+                    notificationsRepo
                 }, ctx);
                 mergeModuleResult(serverDeps, docFiles, result);
                 break;
@@ -409,9 +414,10 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
                     categoriesRepo,
                     schoolReviewsRepo,
                     storageProvider,
-                    notificationsRepo
-                    ,
-                    pushTokensRepo
+                    notificationsRepo,
+                    pushTokensRepo,
+                    outbox,
+                    frontendBaseUrl
                 }, ctx);
                 mergeModuleResult(serverDeps, docFiles, result);
                 break;

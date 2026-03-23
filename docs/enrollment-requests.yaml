@@ -309,6 +309,8 @@ paths:
         - `requestedForUserId` é obrigatório e deve ser o ID do responsável (pai/mãe).
         - Para matrícula de dependente, envie `requestedForDependentId`.
         - Para `SCHOOL`, `schoolId` é inferido do token. Para `ADMIN`, `schoolId` deve ser enviado no body.
+
+        **Notificações ao aluno (responsável):** após criar o pedido, o sistema enfileira email de aviso, envia push (FCM, se configurado) e grava notificação in-app (`GET /students/notifications`, `metadata.kind` = `ENROLLMENT_REQUEST_RECEIVED`).
       security:
         - bearerAuth: []
       parameters:
@@ -418,7 +420,10 @@ paths:
       tags:
         - Enrollment Requests
       summary: Aprovar uma solicitação de matrícula
-      description: Aprova a solicitação, cria a matrícula e gera uma cobrança de matrícula quando existe valor informado, sem emitir boleto automaticamente.
+      description: |
+        Aprova a solicitação pelo aluno/responsável (`requestedForUserId`), cria a matrícula e gera cobranças (taxa de matrícula e primeira mensalidade) quando aplicável, incluindo geração de boleto/PIX quando o serviço estiver configurado.
+
+        **Notificações ao aluno:** enfileira email de confirmação de matrícula e grava notificação in-app (`metadata.kind` = `ENROLLMENT_CONFIRMED`). Push não é enviado neste passo.
       security:
         - bearerAuth: []
       parameters:

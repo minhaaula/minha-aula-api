@@ -17,9 +17,27 @@ const REGISTRATION_MAX = 3;
 const WEBHOOK_WINDOW_MS = 1 * 60 * 1000; // 1 min
 const WEBHOOK_MAX = 100;
 
+function isSkippedFromDefaultRateLimit(req: { path?: string; originalUrl?: string }): boolean {
+    const path = req.path ?? '';
+    const base = (req.originalUrl ?? '').split('?')[0] ?? '';
+    // Webhooks têm limite próprio
+    if (path.startsWith('/integrations/asaas') || base.startsWith('/integrations/asaas')) {
+        return true;
+    }
+    // Portal Docusaurus e Swagger UI disparam muitos GETs estáticos (JS/CSS) — não contar no limite global
+    if (path.startsWith('/portal') || base.startsWith('/portal')) {
+        return true;
+    }
+    if (path.startsWith('/docs') || base.startsWith('/docs')) {
+        return true;
+    }
+    return false;
+}
+
 /**
  * Rate limiter padrão para endpoints gerais (anti-abuso e DDoS leve).
  * Não se aplica a /integrations/asaas (webhooks têm limite próprio).
+ * Não se aplica a /portal (site estático) nem a /docs (Swagger UI — muitos assets por página).
  * Configurável: RATE_LIMIT_WINDOW_MS, RATE_LIMIT_MAX
  */
 export const defaultRateLimiter = rateLimit({
@@ -28,7 +46,7 @@ export const defaultRateLimiter = rateLimit({
     message: 'Muitas requisições deste IP, tente novamente mais tarde.',
     standardHeaders: true,
     legacyHeaders: false,
-    skip: (req) => (req.path?.startsWith('/integrations/asaas') ?? false) || (req.originalUrl?.startsWith('/integrations/asaas') ?? false),
+    skip: (req) => isSkippedFromDefaultRateLimit(req),
     handler: (req: Request, res: Response) => {
         res.status(429).json({
             error: 'Muitas requisições',

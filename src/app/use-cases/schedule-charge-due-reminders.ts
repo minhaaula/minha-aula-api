@@ -5,6 +5,7 @@ import type { OutboxRepository } from '../../ports/repositories/outbox.repo';
 import type { UserRepository } from '../../ports/repositories/user.repo';
 import type { SchoolRepository } from '../../ports/repositories/school.repo';
 import type { CourseRepository } from '../../ports/repositories/course.repo';
+import type { NotifyStudentUser } from './notify-student-user';
 
 const OPEN_CHARGE_STATUSES = ['PENDING_SYNC', 'OPEN', 'OVERDUE'] as const;
 const DUE_REMINDER_DAYS = 10;
@@ -42,7 +43,8 @@ export class ScheduleChargeDueReminders {
         private readonly outbox: OutboxRepository,
         private readonly userRepo: UserRepository,
         private readonly schoolRepo: SchoolRepository,
-        private readonly courseRepo: CourseRepository
+        private readonly courseRepo: CourseRepository,
+        private readonly notifyStudent?: NotifyStudentUser
     ) {}
 
     async exec(_input: ScheduleChargeDueRemindersInput): Promise<ScheduleChargeDueRemindersOutput> {
@@ -98,6 +100,32 @@ export class ScheduleChargeDueReminders {
                             boletoUrl: charge.asaasInvoiceUrl ?? undefined
                         }
                     });
+
+                    if (charge.chargeType === 'TUITION' && this.notifyStudent) {
+                        const school = await this.schoolRepo.findById(charge.schoolId);
+                        const title = 'Mensalidade a vencer';
+                        const desc = charge.description || 'Mensalidade';
+                        const message = school
+                            ? `${desc} — ${formatCurrency(charge.netAmountCents, 'BRL')} vence em ${formatDate(charge.dueDate)} (${school.name}).`
+                            : `${desc} — ${formatCurrency(charge.netAmountCents, 'BRL')} vence em ${formatDate(charge.dueDate)}.`;
+                        try {
+                            await this.notifyStudent.exec({
+                                userId: charge.ownerUserId,
+                                schoolId: charge.schoolId,
+                                title,
+                                message,
+                                kind: 'TUITION_DUE_REMINDER',
+                                sendPush: true,
+                                extraMetadata: {
+                                    chargeId: charge.id,
+                                    courseId: charge.courseId
+                                }
+                            });
+                        } catch {
+                            errors++;
+                        }
+                    }
+
                     chargesEnqueued++;
                 } catch {
                     errors++;

@@ -15,6 +15,7 @@ import { ValidatePasswordResetToken } from '../../app/use-cases/validate-passwor
 import { PasswordResetTokenRepositoryAdapter } from '../../infra/db/typeorm/password-reset-token-repository.adapter';
 import { EmailProviderPort } from '../../ports/providers/email-provider.port';
 import type { OutboxRepository } from '../../ports/repositories/outbox.repo';
+import type { NotifyStudentUser } from '../../app/use-cases/notify-student-user';
 
 export type AuthModuleDeps = {
     usersRepo: UserRepositoryAdapter;
@@ -26,6 +27,8 @@ export type AuthModuleDeps = {
     emailProvider?: EmailProviderPort;
     outbox?: OutboxRepository;
     frontendBaseUrl?: string;
+    /** Notificação in-app + fila (quando repositório e outbox estão disponíveis). */
+    notifyStudent?: NotifyStudentUser;
 };
 
 export function buildAuthModule(deps: AuthModuleDeps, ctx: ModuleSetupContext): ModuleBuildResult {
@@ -33,7 +36,8 @@ export function buildAuthModule(deps: AuthModuleDeps, ctx: ModuleSetupContext): 
         deps.usersRepo,
         deps.passwordHasher,
         deps.outbox,
-        deps.frontendBaseUrl
+        deps.frontendBaseUrl,
+        deps.notifyStudent
     );
     const loginUser = new LoginUser(
         deps.usersRepo,
