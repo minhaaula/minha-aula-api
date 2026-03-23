@@ -28,7 +28,7 @@ export function enrollmentRequestsRouter(deps: {
     const r = Router();
 
     const canManageRequests = requirePersona(UserPersonaEnum.ADMIN, UserPersonaEnum.SCHOOL);
-    const canCreateStudentRequest = requirePersona(UserPersonaEnum.STUDENT);
+    const canCreateRequest = requirePersona(UserPersonaEnum.STUDENT, UserPersonaEnum.ADMIN, UserPersonaEnum.SCHOOL);
     const canCreateResponsibleRequest = requirePersona(UserPersonaEnum.ADMIN, UserPersonaEnum.SCHOOL);
     const canIssueEnrollmentFeeBoleto = requirePersona(UserPersonaEnum.ADMIN, UserPersonaEnum.SCHOOL, UserPersonaEnum.STUDENT);
 
@@ -226,8 +226,10 @@ export function enrollmentRequestsRouter(deps: {
         }
     });
 
-    // STUDENT apenas. Escola/admin deve usar POST .../responsible-requests (token SCHOOL + requestedForUserId no body).
-    r.post('/schools/classes/:classId/requests', canCreateStudentRequest, async (req, res, next) => {
+    // Compatível com STUDENT e também SCHOOL/ADMIN:
+    // - STUDENT usa o próprio usuário autenticado
+    // - SCHOOL/ADMIN deve informar requestedForUserId no payload
+    r.post('/schools/classes/:classId/requests', canCreateRequest, async (req, res, next) => {
         try {
             const paramsSchema = z.object({
                 classId: z.string().uuid()
@@ -235,8 +237,10 @@ export function enrollmentRequestsRouter(deps: {
             const { classId } = paramsSchema.parse(req.params);
             const authReq = req as AuthenticatedRequest;
             const loggedUserId = authReq.user?.sub;
+            const persona = authReq.user?.persona;
 
             const bodySchema = z.object({
+                requestedForUserId: z.string().uuid().optional(),
                 requestedForDependentId: z.string().uuid().nullable().optional(),
                 notes: z.string().max(255).optional(),
                 discont: z.coerce.number().min(0).optional(),
@@ -282,7 +286,16 @@ export function enrollmentRequestsRouter(deps: {
                     code: 'UNAUTHORIZED'
                 });
             }
-            const requestedForUserId = loggedUserId;
+            const requestedForUserId = persona === UserPersonaEnum.STUDENT
+                ? loggedUserId
+                : data.requestedForUserId;
+
+            if (!requestedForUserId) {
+                return res.status(400).json({
+                    error: 'requestedForUserId é obrigatório para esta persona',
+                    code: 'REQUIRED_FIELD'
+                });
+            }
 
             const request = await deps.createEnrollmentRequest.exec({
                 schoolId,
