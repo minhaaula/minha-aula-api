@@ -19,6 +19,7 @@ import { GetSchoolPublicDetails } from '../../../app/use-cases/get-school-public
 import { GenerateTuitionPix } from '../../../app/use-cases/generate-tuition-pix';
 import { ListStudentNotifications } from '../../../app/use-cases/list-student-notifications';
 import { ReadAllNotifications } from '../../../app/use-cases/read-all-notifications';
+import { ReadStudentNotification } from '../../../app/use-cases/read-student-notification';
 import type { RegisterPushToken } from '../../../app/use-cases/register-push-token';
 import type { UnregisterPushToken } from '../../../app/use-cases/unregister-push-token';
 import { requirePersona } from '../middlewares/require-persona';
@@ -47,6 +48,7 @@ export function studentsRouter(deps: {
     generateTuitionPix?: GenerateTuitionPix;
     listStudentNotifications?: ListStudentNotifications;
     readAllNotifications?: ReadAllNotifications;
+    readStudentNotification?: ReadStudentNotification;
     registerPushToken?: RegisterPushToken;
     unregisterPushToken?: UnregisterPushToken;
 }) {
@@ -549,6 +551,28 @@ export function studentsRouter(deps: {
 
             const result = await deps.readAllNotifications!.exec({
                 userId: authReq.user.sub
+            });
+
+            res.json(result);
+        }));
+    }
+
+    if (deps.readStudentNotification) {
+        r.put('/notifications/:notificationId/read', requireStudent, asyncHandler(async (req, res) => {
+            const authReq = req as AuthenticatedRequest;
+            if (!authReq.user?.sub) {
+                return res.status(401).json({
+                    error: 'Não autorizado',
+                    code: 'UNAUTHORIZED'
+                });
+            }
+
+            const paramsSchema = z.object({ notificationId: z.string().uuid() });
+            const { notificationId } = paramsSchema.parse(req.params);
+
+            const result = await deps.readStudentNotification!.exec({
+                userId: authReq.user.sub,
+                notificationId
             });
 
             res.json(result);

@@ -2105,6 +2105,57 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /students/notifications/{notificationId}/read:
+    put:
+      tags:
+        - Students
+      summary: Marcar uma notificação como lida
+      description: >-
+        Marca uma notificação do aluno autenticado como lida (in-app). Só aplica a notificações cujo `userId` é o próprio aluno (ex.: `scope` USER).
+        Se já estiver lida, retorna o mesmo `readAt` (idempotente). Se o ID não existir ou não pertencer ao aluno, retorna 404.
+        Requer persona STUDENT.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: notificationId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID da notificação (retornado em GET /students/notifications)
+      responses:
+        '200':
+          description: Notificação marcada como lida (ou já estava lida).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MarkNotificationAsReadResponse'
+              examples:
+                default:
+                  summary: Exemplo
+                  value:
+                    id: '550e8400-e29b-41d4-a716-446655440000'
+                    readAt: '2024-07-15T10:35:00.000Z'
+        '401':
+          description: Usuário não autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado. Requer persona STUDENT.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Notificação não encontrada ou não pertence ao aluno.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /students/push-tokens:
     post:
       tags:

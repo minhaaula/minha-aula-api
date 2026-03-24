@@ -7,7 +7,7 @@ info:
     Pode ser implantada com módulos distintos (auth, admin, payments, schools, students).
     Quando apenas o módulo **students** está ativo, as rotas públicas em `/schools` (ex.: GET /schools/categories) continuam disponíveis para o app de estudantes.
 
-    **Aluno — notificações in-app (sino):** `GET /students/notifications` lista notificações com `scope` `USER` (e outras quando aplicável). O campo `metadata` pode incluir `kind` (ex.: boas-vindas, pedido de matrícula, confirmação/recusa, lembrete de mensalidade). Push (FCM) depende de token em `POST /students/push-tokens` e fila/worker configurados.
+    **Aluno — notificações in-app (sino):** `GET /students/notifications` lista notificações com `scope` `USER` (e outras quando aplicável). O campo `metadata` pode incluir `kind` (ex.: boas-vindas, pedido de matrícula, confirmação/recusa, lembrete de mensalidade). Para marcar como lidas: `PUT /students/notifications/{notificationId}/read` (uma) ou `PUT /students/notifications/read-all` (todas). Push (FCM) depende de token em `POST /students/push-tokens` e fila/worker configurados.
 
     **Escola (persona SCHOOL) — consolidado financeiro do aluno:** `GET /schools/students/{studentId}/financial-summary`
     (totais líquidos em centavos: pendentes, em atraso, pagos; requer Bearer da escola).
@@ -1347,6 +1347,20 @@ components:
           description: Número de notificações marcadas como lidas
       required:
         - markedCount
+    MarkNotificationAsReadResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: ID da notificação
+        readAt:
+          type: string
+          format: date-time
+          description: Data e hora em que a notificação foi marcada como lida
+      required:
+        - id
+        - readAt
     ValidateSchoolCouponInput:
       type: object
       required:

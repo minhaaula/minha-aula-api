@@ -42,6 +42,7 @@ import { SchoolReviewRepositoryAdapter } from '../../infra/db/typeorm/school-rev
 import { NotificationRepositoryAdapter } from '../../infra/db/typeorm/notification-repository.adapter';
 import { ListStudentNotifications } from '../../app/use-cases/list-student-notifications';
 import { ReadAllNotifications } from '../../app/use-cases/read-all-notifications';
+import { ReadStudentNotification } from '../../app/use-cases/read-student-notification';
 import { PushTokenRepositoryAdapter } from '../../infra/db/typeorm/push-token-repository.adapter';
 import { RegisterPushToken } from '../../app/use-cases/register-push-token';
 import { UnregisterPushToken } from '../../app/use-cases/unregister-push-token';
@@ -185,6 +186,9 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
     const readAllNotifications = deps.notificationsRepo
         ? new ReadAllNotifications(deps.notificationsRepo)
         : undefined;
+    const readStudentNotification = deps.notificationsRepo
+        ? new ReadStudentNotification(deps.notificationsRepo)
+        : undefined;
     const registerPushToken = deps.pushTokensRepo
         ? new RegisterPushToken(deps.usersRepo, deps.pushTokensRepo)
         : undefined;
@@ -212,6 +216,7 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
         generateTuitionPix,
         listStudentNotifications,
         readAllNotifications,
+        readStudentNotification,
         registerPushToken,
         unregisterPushToken
     });
