@@ -82,6 +82,7 @@ import { PasswordResetTokenRepositoryAdapter } from '../../infra/db/typeorm/pass
 import { EmailProviderPort } from '../../ports/providers/email-provider.port';
 import { GetStudentDirectoryEntry } from '../../app/use-cases/get-student-directory-entry';
 import { GetSchoolStudentDetails } from '../../app/use-cases/get-school-student-details';
+import { ListSchoolStudentPaidCharges } from '../../app/use-cases/list-school-student-paid-charges';
 import { ConsolidateSchoolStudentFinancial } from '../../app/use-cases/consolidate-school-student-financial';
 import { StorageProviderPort } from '../../ports/providers/storage-provider.port';
 import { UploadSchoolImage } from '../../app/use-cases/upload-school-image';
@@ -212,6 +213,7 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
     );
     const getStudentDirectoryEntry = new GetStudentDirectoryEntry(deps.usersRepo, deps.dependentsRepo);
     const getSchoolStudentDetails = new GetSchoolStudentDetails(deps.usersRepo, deps.dependentsRepo);
+    const listSchoolStudentPaidCharges = new ListSchoolStudentPaidCharges(deps.usersRepo, deps.dependentsRepo);
     const consolidateSchoolStudentFinancial = new ConsolidateSchoolStudentFinancial();
     const listSchoolPayments = new ListSchoolPayments(
         deps.coursesRepo,
@@ -424,6 +426,7 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         updateSchoolPassword,
         getStudentDirectoryEntry,
         getSchoolStudentDetails,
+        listSchoolStudentPaidCharges,
         consolidateSchoolStudentFinancial,
         uploadSchoolImage,
         listSchoolImages,

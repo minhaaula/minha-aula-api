@@ -410,6 +410,79 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /schools/students/{studentId}/paid-charges:
+    get:
+      operationId: listSchoolStudentPaidCharges
+      tags:
+        - Schools
+        - Financeiro
+      summary: Listar cobranças do aluno na escola (paginado)
+      description: |
+        Retorna as cobranças financeiras do aluno na escola (pendentes e pagas), com paginação.
+        Cobranças canceladas não são incluídas. Ordenação: data de pagamento (mais recentes primeiro), depois vencimento.
+
+        Use os mesmos `studentId` e `dependentId` que em `GET /schools/students/{studentId}` (ficha do aluno).
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: studentId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: UUID do aluno matriculado ou do dependente (ou do responsável se usar `dependentId`).
+        - in: query
+          name: dependentId
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Opcional. Quando informado, `studentId` no path deve ser o UUID do responsável.
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Tamanho da página.
+        - in: query
+          name: offset
+          required: false
+          schema:
+            type: integer
+            format: int32
+            minimum: 0
+            default: 0
+          description: Deslocamento para paginação.
+      responses:
+        '200':
+          description: Lista paginada de cobranças.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchoolStudentPaidChargesListResponse'
+        '403':
+          description: Usuário não autorizado ou sem contexto de escola.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Aluno não encontrado ou não vinculado à escola.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '501':
+          description: Funcionalidade não configurada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /schools/students/{studentId}:
     get:
       tags:
@@ -420,7 +493,8 @@ paths:
         - Dados do aluno (nome, email, telefone, CPF, data de nascimento)
         - Dados do responsável (se o aluno for um dependente)
         - Lista de cursos e turmas em que está matriculado na escola
-        - Cobranças (pendentes e pagas) do aluno na escola (paidCharges)
+
+        As cobranças (pendentes e pagas) estão em `GET /schools/students/{studentId}/paid-charges` (paginado)
         
         **Importante:** A rota só retorna dados se o aluno estiver vinculado à escola através de matrículas ativas.
 

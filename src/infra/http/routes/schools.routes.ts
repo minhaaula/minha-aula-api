@@ -111,6 +111,7 @@ export type SchoolsRouterDeps = {
     updateSchoolPassword?: UpdateSchoolPassword;
     getStudentDirectoryEntry?: GetStudentDirectoryEntry;
     getSchoolStudentDetails?: import('../../../app/use-cases/get-school-student-details').GetSchoolStudentDetails;
+    listSchoolStudentPaidCharges?: import('../../../app/use-cases/list-school-student-paid-charges').ListSchoolStudentPaidCharges;
     consolidateSchoolStudentFinancial?: import('../../../app/use-cases/consolidate-school-student-financial').ConsolidateSchoolStudentFinancial;
     getSchoolDashboard?: import('../../../app/use-cases/get-school-dashboard').GetSchoolDashboard;
     uploadSchoolImage?: import('../../../app/use-cases/upload-school-image').UploadSchoolImage;
@@ -186,6 +187,7 @@ export function schoolsRouter(deps: SchoolsRouterDeps) {
             listSchoolStudents: deps.listSchoolStudents,
             getStudentDirectoryEntry: deps.getStudentDirectoryEntry,
             getSchoolStudentDetails: deps.getSchoolStudentDetails,
+            listSchoolStudentPaidCharges: deps.listSchoolStudentPaidCharges,
             consolidateSchoolStudentFinancial: deps.consolidateSchoolStudentFinancial
         }, guards));
     }
