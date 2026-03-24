@@ -640,7 +640,7 @@ paths:
       tags:
         - Students
       summary: Listar pagamentos do estudante
-      description: Retorna os pagamentos (cobranças financeiras) do usuário logado e seus dependentes. Inclui tipo da transação (mensalidade/matrícula), data de pagamento, desconto, valor líquido, logo da escola e observação quando for pagamento manual. Requer persona STUDENT.
+      description: Retorna os pagamentos (cobranças financeiras) do usuário logado e seus dependentes. Inclui tipo da transação (mensalidade/matrícula), campo `description` para exibição (ex.: "Mensalidade de Fevereiro de 2026"), data de pagamento, desconto, valor líquido, logo da escola e observação quando for pagamento manual. Requer persona STUDENT.
       security:
         - bearerAuth: []
       parameters:
@@ -680,6 +680,9 @@ paths:
                         studentName:
                           type: string
                           description: Nome do aluno (usuário ou dependente)
+                        description:
+                          type: string
+                          description: Texto para exibição (mensalidade com mês/ano; matrícula e outros usam descrição persistida quando houver)
                         amountCents:
                           type: integer
                           format: int64
@@ -723,6 +726,7 @@ paths:
                         - chargeId
                         - courseName
                         - studentName
+                        - description
                         - amountCents
                         - discountCents
                         - netAmountCents

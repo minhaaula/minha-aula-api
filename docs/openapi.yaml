@@ -1926,6 +1926,7 @@ components:
         - enrolledAt
         - updatedAt
         - student
+        - detailsStudentId
         - course
         - class
       properties:
@@ -1952,6 +1953,13 @@ components:
           format: date-time
         student:
           $ref: '#/components/schemas/StudentResponse'
+        detailsStudentId:
+          type: string
+          format: uuid
+          description: >-
+            ID a usar em GET /schools/students/{studentId} para abrir a ficha correta: UUID do dependente
+            quando studentType é DEPENDENT; caso contrário o UUID do aluno matriculado (titular).
+            O objeto `student` na listagem representa o titular/resumo; não use apenas student.id para matrículas de dependente.
         dependent:
           nullable: true
           allOf:

@@ -4,6 +4,8 @@ export type StudentPaymentInfo = {
     chargeId: string;
     courseName: string;
     studentName: string;
+    /** Texto persistido na cobrança (pode ser null em registros antigos). */
+    rawDescription: string | null;
     /** Valor original em centavos (antes do desconto). */
     amountCents: number;
     /** Desconto em centavos, ou null se não houver. */

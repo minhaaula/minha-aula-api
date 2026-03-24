@@ -52,6 +52,11 @@ export type SchoolStudentRecord = {
     updatedAt: Date;
     student: StudentSummary;
     dependent: DependentSummary | null;
+    /**
+     * ID a usar em `GET /schools/students/:studentId`: dependente quando a matrícula é DEPENDENT;
+     * caso contrário o usuário matriculado (titular/aluno).
+     */
+    detailsStudentId: string;
     course: { id: string; name: string };
     class: { id: string; label: string };
 };
@@ -235,6 +240,11 @@ export class ListSchoolStudents {
                 if (!ownerMatches && !dependentMatches) continue;
             }
 
+            const detailsStudentId =
+                enrollment.studentType === 'DEPENDENT' && enrollment.dependentId
+                    ? enrollment.dependentId
+                    : (enrollment.studentUserId ?? enrollment.ownerUserId);
+
             legacyResults.push({
                 enrollmentId: enrollment.id,
                 status: enrollment.status,
@@ -243,6 +253,7 @@ export class ListSchoolStudents {
                 updatedAt: enrollment.updatedAt,
                 student: studentSummary,
                 dependent: dependentSummary,
+                detailsStudentId,
                 course: { id: course.id, name: course.name },
                 class: { id: courseClass.id, label: courseClass.label }
             });

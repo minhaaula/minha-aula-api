@@ -232,7 +232,7 @@ const makeUser = (id: string) => User.create({
     passwordHash: 'hash'
 });
 
-const setupCourseStructure = () => {
+const setupCourseStructure = (options?: { monthlyPriceCents?: number | null }) => {
     const school = School.create({
         id: 'school-1',
         name: 'Escola 1',
@@ -249,7 +249,8 @@ const setupCourseStructure = () => {
         categoryId: 'infantil',
         subcategoryId: 'alfabetizacao',
         isActive: true,
-        createdAt: new Date('2024-01-02')
+        createdAt: new Date('2024-01-02'),
+        monthlyPriceCents: options?.monthlyPriceCents ?? undefined
     });
     const courseClass = CourseClass.create({
         id: 'class-1',
@@ -534,19 +535,19 @@ describe('ApproveEnrollmentRequest', () => {
         expect(savedCharges).toHaveLength(1);
         expect(savedCharges[0].chargeType).toBe('ENROLLMENT');
         expect(savedCharges[0].amountCents).toBe(18000);
-        expect(savedCharges[0].description).toBe('Enrollment fee');
+        expect(savedCharges[0].description).toBe('Matrícula curso Curso 1');
         expect(savedCharges[0].dueDate.toISOString().slice(0, 10)).toBe('2024-01-20');
         expect(savedCharges[0].asaasPaymentId).toBeNull();
         expect(savedCharges[0].status).toBe('PENDING_SYNC');
     });
 
-    it('applies discount to enrollment fee when request has discount', async () => {
+    it('applies request discount only to first tuition, not to enrollment fee', async () => {
         const enrollments = new InMemoryEnrollments();
         const requests = new InMemoryRequests();
         const classes = new InMemoryClasses();
         const courses = new InMemoryCourses();
         const charges = new InMemoryCharges();
-        const { course, courseClass } = setupCourseStructure();
+        const { course, courseClass } = setupCourseStructure({ monthlyPriceCents: 100_000 });
         classes.seed(courseClass);
         courses.seed(course);
         const request = EnrollmentRequest.create({
@@ -566,20 +567,26 @@ describe('ApproveEnrollmentRequest', () => {
         await useCase.exec({ requestId: request.id, approverUserId: 'user-1' });
 
         const savedCharges = charges.all();
+        expect(savedCharges.length).toBeGreaterThanOrEqual(2);
         const enrollmentCharge = savedCharges.find((c) => c.chargeType === 'ENROLLMENT');
         expect(enrollmentCharge).toBeDefined();
         expect(enrollmentCharge!.amountCents).toBe(20000);
-        expect(enrollmentCharge!.discountCents).toBe(5000);
-        expect(enrollmentCharge!.discountReason).toBe('Desconto aplicado na matrícula');
+        expect(enrollmentCharge!.discountCents).toBeNull();
+        expect(enrollmentCharge!.discountReason).toBeNull();
+
+        const tuitionCharge = savedCharges.find((c) => c.chargeType === 'TUITION');
+        expect(tuitionCharge).toBeDefined();
+        expect(tuitionCharge!.amountCents).toBe(100_000);
+        expect(tuitionCharge!.discountCents).toBe(5000);
     });
 
-    it('caps enrollment fee discount at fee amount when discount exceeds fee', async () => {
+    it('does not apply discount to enrollment fee even when discount exceeds fee amount', async () => {
         const enrollments = new InMemoryEnrollments();
         const requests = new InMemoryRequests();
         const classes = new InMemoryClasses();
         const courses = new InMemoryCourses();
         const charges = new InMemoryCharges();
-        const { course, courseClass } = setupCourseStructure();
+        const { course, courseClass } = setupCourseStructure({ monthlyPriceCents: 100_000 });
         classes.seed(courseClass);
         courses.seed(course);
         const request = EnrollmentRequest.create({
@@ -602,7 +609,11 @@ describe('ApproveEnrollmentRequest', () => {
         const enrollmentCharge = savedCharges.find((c) => c.chargeType === 'ENROLLMENT');
         expect(enrollmentCharge).toBeDefined();
         expect(enrollmentCharge!.amountCents).toBe(10000);
-        expect(enrollmentCharge!.discountCents).toBe(10000);
+        expect(enrollmentCharge!.discountCents).toBeNull();
+
+        const tuitionCharge = savedCharges.find((c) => c.chargeType === 'TUITION');
+        expect(tuitionCharge).toBeDefined();
+        expect(tuitionCharge!.discountCents).toBe(15000);
     });
 
     it('uses first monthly payment date when fee due date is missing', async () => {
@@ -631,6 +642,37 @@ describe('ApproveEnrollmentRequest', () => {
         expect(approval.enrollmentFeeChargeId).toBe(savedCharges[0].id);
         expect(savedCharges).toHaveLength(1);
         expect(savedCharges[0].dueDate.toISOString().slice(0, 10)).toBe('2024-03-10');
+    });
+
+    it('creates enrollment fee charge for dependent with dependentId and studentUserId null', async () => {
+        const enrollments = new InMemoryEnrollments();
+        const requests = new InMemoryRequests();
+        const classes = new InMemoryClasses();
+        const courses = new InMemoryCourses();
+        const charges = new InMemoryCharges();
+        const { course, courseClass } = setupCourseStructure();
+        classes.seed(courseClass);
+        courses.seed(course);
+        const request = EnrollmentRequest.create({
+            id: 'req-dep-fee',
+            schoolId: 'school-1',
+            courseClassId: courseClass.id,
+            requestedForUserId: 'user-owner',
+            requestedForDependentId: 'dep-child',
+            enrollmentFeeCents: 15000,
+            enrollmentFeeDueDate: new Date('2024-01-20'),
+            firstMonthlyPaymentDate: new Date('2024-02-05')
+        });
+        requests.seed(request);
+
+        const useCase = new ApproveEnrollmentRequest(requests, enrollments, classes, courses, charges);
+        await useCase.exec({ requestId: request.id, approverUserId: 'user-owner' });
+
+        const feeCharge = charges.all().find((c) => c.chargeType === 'ENROLLMENT');
+        expect(feeCharge).toBeDefined();
+        expect(feeCharge!.ownerUserId).toBe('user-owner');
+        expect(feeCharge!.studentUserId).toBeNull();
+        expect(feeCharge!.dependentId).toBe('dep-child');
     });
 });
 

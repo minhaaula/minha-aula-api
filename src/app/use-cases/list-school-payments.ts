@@ -202,7 +202,11 @@ export class ListSchoolPayments {
                 status,
                 statusDisplay: this.getStatusDisplay(status, dueDate),
                 chargeType: row.charge_charge_type,
-                description: row.charge_description,
+                description: this.formatSchoolPaymentDescription(
+                    row.charge_charge_type,
+                    row.charge_description,
+                    row.course_name
+                ),
                 dueDate,
                 asaasPaymentId: row.charge_asaas_payment_id,
                 asaasInvoiceUrl: row.charge_asaas_invoice_url,
@@ -325,6 +329,19 @@ export class ListSchoolPayments {
         // Se tem paymentId mas não conseguimos determinar o tipo, assume manual
         // (pode ser que foi pago via outro método ou o payload não está completo)
         return 'MANUAL';
+    }
+
+    /** Texto amigável para matrícula (alinha cobranças antigas “Enrollment fee” ao nome do curso). */
+    private formatSchoolPaymentDescription(
+        chargeType: string,
+        _storedDescription: string | null | undefined,
+        courseName: string | null | undefined
+    ): string {
+        if (chargeType === 'ENROLLMENT') {
+            const name = (courseName ?? '').trim() || 'Curso';
+            return `Matrícula curso ${name}`;
+        }
+        return _storedDescription ?? '';
     }
 
     /** Status para exibição: Pendente, Atrasado, Pago, Cancelado, Falhou. */

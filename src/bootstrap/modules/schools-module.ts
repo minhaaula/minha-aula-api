@@ -211,14 +211,7 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         deps.dependentsRepo
     );
     const getStudentDirectoryEntry = new GetStudentDirectoryEntry(deps.usersRepo, deps.dependentsRepo);
-    const getSchoolStudentDetails = new GetSchoolStudentDetails(
-        deps.usersRepo,
-        deps.dependentsRepo,
-        deps.enrollmentsRepo,
-        deps.coursesRepo,
-        deps.classesRepo,
-        deps.financialChargesRepo
-    );
+    const getSchoolStudentDetails = new GetSchoolStudentDetails(deps.usersRepo, deps.dependentsRepo);
     const consolidateSchoolStudentFinancial = new ConsolidateSchoolStudentFinancial();
     const listSchoolPayments = new ListSchoolPayments(
         deps.coursesRepo,

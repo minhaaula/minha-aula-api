@@ -137,10 +137,17 @@ export function buildStudentsRoutes(deps: StudentsRoutesDeps, guards: SchoolRout
             const paramsSchema = z.object({ studentId: z.string().uuid() });
             const { studentId } = paramsSchema.parse(req.params);
             const schoolId = (req as SchoolContextRequest).schoolId as string;
+            const querySchema = z.object({
+                dependentId: z.string().uuid().optional()
+            });
+            const query = querySchema.parse({
+                dependentId: typeof req.query.dependentId === 'string' ? req.query.dependentId : undefined
+            });
 
             const details = await deps.getSchoolStudentDetails!.exec({
                 schoolId,
-                studentId
+                studentId,
+                dependentId: query.dependentId
             });
 
             if (!details) {

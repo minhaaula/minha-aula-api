@@ -1,19 +1,23 @@
 import { UserRepository } from '../../ports/repositories/user.repo';
 import { DependentRepository } from '../../ports/repositories/dependent.repo';
-import { EnrollmentRepository } from '../../ports/repositories/enrollment.repo';
-import { CourseRepository } from '../../ports/repositories/course.repo';
-import { CourseClassRepository } from '../../ports/repositories/course-class.repo';
-import { SchoolFinancialChargeRepository } from '../../ports/repositories/school-financial-charge.repo';
 import { AppDataSource } from '../../infra/db/typeorm/datasource';
 import { EnrollmentOrm } from '../../infra/db/typeorm/entities/enrollment.orm';
 import { SchoolFinancialChargeOrm } from '../../infra/db/typeorm/entities/school-financial-charge.orm';
 import { SchoolFinancialChargeStatus } from '../../domain/entities/school-financial-charge';
+import type { Dependent } from '../../domain/entities/dependent';
+import type { User } from '../../domain/entities/user';
 import type { SchoolPaymentStatusDisplay } from '../types/payment.types';
 import { AppError, ErrorCode } from '../../shared/errors';
+import { equalUuid } from '../../shared/normalize-uuid';
 
 export interface GetSchoolStudentDetailsInput {
     schoolId: string;
     studentId: string;
+    /**
+     * Quando `studentId` é o ID do responsável (titular), informe o UUID do dependente
+     * para carregar os detalhes do dependente em vez do titular.
+     */
+    dependentId?: string | null;
 }
 
 export interface GetSchoolStudentDetailsOutput {
@@ -72,16 +76,13 @@ export interface GetSchoolStudentDetailsOutput {
 export class GetSchoolStudentDetails {
     constructor(
         private readonly users: UserRepository,
-        private readonly dependents: DependentRepository,
-        private readonly enrollments: EnrollmentRepository,
-        private readonly courses: CourseRepository,
-        private readonly classes: CourseClassRepository,
-        private readonly charges: SchoolFinancialChargeRepository
+        private readonly dependents: DependentRepository
     ) {}
 
     async exec(input: GetSchoolStudentDetailsInput): Promise<GetSchoolStudentDetailsOutput | null> {
         const schoolId = input.schoolId.trim();
         const studentId = input.studentId.trim();
+        const dependentIdParam = input.dependentId?.trim() || null;
 
         if (!schoolId || !studentId) {
             throw AppError.fromCode(ErrorCode.INVALID_IDENTIFIERS, {
@@ -89,67 +90,85 @@ export class GetSchoolStudentDetails {
             });
         }
 
-        // Verificar se o aluno tem matrícula na escola
+        // Titular + dependente na query (ex.: app usa student.id do titular na URL)
+        if (dependentIdParam) {
+            const dependent = await this.dependents.findById(dependentIdParam);
+            if (!dependent || !equalUuid(dependent.userId, studentId)) {
+                return null;
+            }
+            const hasEnrollment = await this.checkStudentEnrollmentInSchool(schoolId, dependent.id);
+            if (!hasEnrollment) {
+                return null;
+            }
+            return this.buildOutputForDependent(schoolId, dependent);
+        }
+
         const hasEnrollment = await this.checkStudentEnrollmentInSchool(schoolId, studentId);
         if (!hasEnrollment) {
-            return null; // Aluno não está vinculado à escola
+            return null;
         }
 
-        // Buscar dados do aluno (pode ser usuário ou dependente)
-        const student = await this.users.findById(studentId);
-        if (!student) {
-            // Se não encontrou como usuário, pode ser dependente
-            const dependent = await this.dependents.findById(studentId);
-            if (!dependent) {
-                throw AppError.fromCode(ErrorCode.STUDENT_NOT_FOUND, { studentId });
-            }
-
-            // Buscar responsável
-            const responsible = await this.users.findById(dependent.userId);
-            if (!responsible) {
-                throw AppError.fromCode(ErrorCode.USER_NOT_FOUND, { userId: dependent.userId });
-            }
-
-            // Buscar matrículas e cobranças do dependente
-            const enrollments = await this.findEnrollmentsForDependent(schoolId, dependent.id);
-            const paidCharges = await this.findPaidChargesForDependent(schoolId, dependent.id);
-
-            return {
-                student: {
-                    id: dependent.id,
-                    fullName: dependent.fullName,
-                    email: '', // Dependente não tem email próprio
-                    phone: '', // Dependente não tem telefone próprio
-                    cpf: dependent.cpf || '',
-                    birthDate: dependent.birthDate
-                },
-                responsible: {
-                    id: responsible.id,
-                    fullName: responsible.fullName,
-                    email: responsible.email.value,
-                    phone: responsible.phone,
-                    cpf: responsible.cpf
-                },
-                enrollments,
-                paidCharges
-            };
+        // Priorizar dependente: o UUID em `student` da listagem para matrícula DEPENDENT é o dependente
+        const dependent = await this.dependents.findById(studentId);
+        if (dependent) {
+            return this.buildOutputForDependent(schoolId, dependent);
         }
 
-        // Aluno é usuário direto
-        // Buscar matrículas e cobranças do aluno
-        const enrollments = await this.findEnrollmentsForUser(schoolId, student.id);
-        const paidCharges = await this.findPaidChargesForUser(schoolId, student.id);
+        const user = await this.users.findById(studentId);
+        if (!user) {
+            throw AppError.fromCode(ErrorCode.STUDENT_NOT_FOUND, { studentId });
+        }
+
+        return this.buildOutputForUser(schoolId, user);
+    }
+
+    private async buildOutputForDependent(
+        schoolId: string,
+        dependent: Dependent
+    ): Promise<GetSchoolStudentDetailsOutput> {
+        const responsible = await this.users.findById(dependent.userId);
+        if (!responsible) {
+            throw AppError.fromCode(ErrorCode.USER_NOT_FOUND, { userId: dependent.userId });
+        }
+
+        const enrollments = await this.findEnrollmentsForDependent(schoolId, dependent.id);
+        const paidCharges = await this.findPaidChargesForDependent(schoolId, dependent.id);
 
         return {
             student: {
-                id: student.id,
-                fullName: student.fullName,
-                email: student.email.value,
-                phone: student.phone,
-                cpf: student.cpf,
-                birthDate: student.birthDate
+                id: dependent.id,
+                fullName: dependent.fullName,
+                email: '',
+                phone: '',
+                cpf: dependent.cpf || '',
+                birthDate: dependent.birthDate
             },
-            responsible: null, // Aluno próprio não tem responsável
+            responsible: {
+                id: responsible.id,
+                fullName: responsible.fullName,
+                email: responsible.email.value,
+                phone: responsible.phone,
+                cpf: responsible.cpf
+            },
+            enrollments,
+            paidCharges
+        };
+    }
+
+    private async buildOutputForUser(schoolId: string, user: User): Promise<GetSchoolStudentDetailsOutput> {
+        const enrollments = await this.findEnrollmentsForUser(schoolId, user.id);
+        const paidCharges = await this.findPaidChargesForUser(schoolId, user.id);
+
+        return {
+            student: {
+                id: user.id,
+                fullName: user.fullName,
+                email: user.email.value,
+                phone: user.phone,
+                cpf: user.cpf,
+                birthDate: user.birthDate
+            },
+            responsible: null,
             enrollments,
             paidCharges
         };
@@ -157,8 +176,7 @@ export class GetSchoolStudentDetails {
 
     private async checkStudentEnrollmentInSchool(schoolId: string, studentId: string): Promise<boolean> {
         const enrollmentRepo = AppDataSource.getRepository(EnrollmentOrm);
-        
-        // Verificar se existe matrícula do aluno (como usuário) na escola
+
         const userEnrollment = await enrollmentRepo
             .createQueryBuilder('enrollment')
             .innerJoin('enrollment.courseClass', 'class')
@@ -172,7 +190,6 @@ export class GetSchoolStudentDetails {
             return true;
         }
 
-        // Verificar se existe matrícula do aluno (como dependente) na escola
         const dependentEnrollment = await enrollmentRepo
             .createQueryBuilder('enrollment')
             .innerJoin('enrollment.courseClass', 'class')
@@ -187,7 +204,7 @@ export class GetSchoolStudentDetails {
 
     private async findEnrollmentsForUser(schoolId: string, userId: string): Promise<GetSchoolStudentDetailsOutput['enrollments']> {
         const enrollmentRepo = AppDataSource.getRepository(EnrollmentOrm);
-        
+
         const enrollments = await enrollmentRepo
             .createQueryBuilder('enrollment')
             .innerJoin('enrollment.courseClass', 'class')
@@ -222,7 +239,7 @@ export class GetSchoolStudentDetails {
 
     private async findEnrollmentsForDependent(schoolId: string, dependentId: string): Promise<GetSchoolStudentDetailsOutput['enrollments']> {
         const enrollmentRepo = AppDataSource.getRepository(EnrollmentOrm);
-        
+
         const enrollments = await enrollmentRepo
             .createQueryBuilder('enrollment')
             .innerJoin('enrollment.courseClass', 'class')
@@ -380,4 +397,3 @@ export class GetSchoolStudentDetails {
         return map[status] ?? 'Pendente';
     }
 }
-

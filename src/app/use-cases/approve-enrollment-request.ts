@@ -304,30 +304,32 @@ export class ApproveEnrollmentRequest {
             });
         }
 
+        const course = await this.courses.findById(courseClass.courseId);
+        if (!course) {
+            throw AppError.fromCode(ErrorCode.COURSE_NOT_FOUND, {
+                courseId: courseClass.courseId,
+                requestId: request.id
+            });
+        }
+
         const dueDate = request.enrollmentFeeDueDate ?? request.firstMonthlyPaymentDate;
 
-        // Aplicar o mesmo desconto do pedido na taxa de matrícula (limitado ao valor da taxa)
-        const rawDiscountCents = request.discountCents ?? null;
-        const discountCents =
-            rawDiscountCents != null && rawDiscountCents > 0 && request.enrollmentFeeCents != null
-                ? Math.min(rawDiscountCents, request.enrollmentFeeCents)
-                : null;
-        const discountReason =
-            discountCents != null && discountCents > 0 ? 'Desconto aplicado na matrícula' : null;
+        // Desconto do pedido aplica-se apenas às mensalidades (createFirstTuitionCharge), não à taxa de matrícula.
+        const isDependentEnrollment = request.requestedForDependentId != null;
 
         return SchoolFinancialCharge.create({
             id: Uuid(),
             schoolId: request.schoolId,
             ownerUserId: request.requestedForUserId,
-            studentUserId: request.requestedForUserId,
+            studentUserId: isDependentEnrollment ? null : request.requestedForUserId,
             dependentId: request.requestedForDependentId,
             courseId: courseClass.courseId,
             courseClassId: courseClass.id,
             chargeType: 'ENROLLMENT',
-            description: 'Enrollment fee',
+            description: `Matrícula curso ${course.name.trim()}`,
             amountCents: request.enrollmentFeeCents,
-            discountCents,
-            discountReason,
+            discountCents: null,
+            discountReason: null,
             dueDate
         });
     }

@@ -423,6 +423,10 @@ paths:
         - Cobranças (pendentes e pagas) do aluno na escola (paidCharges)
         
         **Importante:** A rota só retorna dados se o aluno estiver vinculado à escola através de matrículas ativas.
+
+        Na listagem (`GET /schools/students`), use o campo **`detailsStudentId`** no path desta rota para abrir a ficha do aluno matriculado (para matrícula de dependente, é o UUID do dependente; `student.id` na listagem é sempre o titular).
+
+        Alternativa: `studentId` = UUID do responsável e query **`dependentId`** = UUID do dependente (mesmo efeito que usar só o UUID do dependente em `studentId`).
       security:
         - bearerAuth: []
       parameters:
@@ -432,7 +436,14 @@ paths:
           schema:
             type: string
             format: uuid
-          description: ID do aluno ou dependente
+          description: UUID do aluno matriculado ou do dependente (preferir `detailsStudentId` da listagem). Com `dependentId` na query, deve ser o UUID do responsável.
+        - in: query
+          name: dependentId
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Opcional. Quando informado, `studentId` no path deve ser o UUID do responsável e este parâmetro o UUID do dependente cujos detalhes se deseja.
       responses:
         '200':
           description: Detalhes do aluno encontrados.

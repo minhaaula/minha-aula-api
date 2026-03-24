@@ -46,6 +46,7 @@ export class SchoolFinancialChargeRepositoryAdapter implements SchoolFinancialCh
             'charge.dueDate AS dueDate',
             'charge.status AS status',
             'charge.chargeType AS chargeType',
+            'charge.description AS description',
             'charge.schoolId AS schoolId',
             'charge.paidAt AS paidAt',
             'charge.paidObservation AS paidObservation'
@@ -72,6 +73,7 @@ export class SchoolFinancialChargeRepositoryAdapter implements SchoolFinancialCh
             chargeId: row.chargeId,
             courseName: row.courseName,
             studentName: row.studentName,
+            rawDescription: row.description ?? null,
             amountCents: row.amountCents ?? 0,
             discountCents: row.discountCents ?? null,
             netAmountCents: row.netAmountCents ?? row.amountCents ?? 0,

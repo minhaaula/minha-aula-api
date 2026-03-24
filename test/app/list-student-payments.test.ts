@@ -19,6 +19,7 @@ function makePayment(
         chargeId,
         courseName,
         studentName,
+        rawDescription: overrides?.rawDescription ?? null,
         amountCents,
         discountCents: overrides?.discountCents ?? null,
         netAmountCents: overrides?.netAmountCents ?? netAmountCents,
@@ -89,6 +90,7 @@ describe('ListStudentPayments use case', () => {
 
         expect(result.payments).toHaveLength(2);
         expect(result.payments[0].courseName).toBe('Inglês Básico');
+        expect(result.payments[0].description).toMatch(/^Mensalidade de .+ de \d{4}$/);
         expect(result.payments[0].studentName).toBe('João Silva');
         expect(result.payments[0].amountCents).toBe(50000);
         expect(result.payments[0].netAmountCents).toBe(50000);
@@ -269,13 +271,29 @@ describe('ListStudentPayments use case', () => {
         expect(result.payments[1].studentName).toBe('Maria Silva (Dependente)');
     });
 
+    it('returns tuition description as "Mensalidade de {mês} de {ano}" from due date', async () => {
+        const repo = new InMemoryFinancialChargeRepository();
+        const userId = 'user-1';
+        const feb2026 = new Date(Date.UTC(2026, 1, 5));
+
+        repo.seedPayments(userId, [
+            makePayment('charge-1', 'Curso X', 'João', 50000, feb2026, 'OPEN')
+        ]);
+
+        const useCase = new ListStudentPayments(repo);
+        const result = await useCase.exec({ userId });
+
+        expect(result.payments[0].description).toBe('Mensalidade de Fevereiro de 2026');
+    });
+
     it('returns type matricula, discount, netAmountCents and paidObservation', async () => {
         const repo = new InMemoryFinancialChargeRepository();
         const userId = 'user-1';
 
         repo.seedPayments(userId, [
-            makePayment('charge-1', 'Matrícula', 'João Silva', 30000, new Date('2024-01-10'), 'PAID', {
+            makePayment('charge-1', 'Inglês', 'João Silva', 30000, new Date('2024-01-10'), 'PAID', {
                 chargeType: 'ENROLLMENT',
+                rawDescription: 'Matrícula curso Inglês',
                 discountCents: 5000,
                 netAmountCents: 25000,
                 paidAt: new Date('2024-01-09'),
@@ -288,6 +306,7 @@ describe('ListStudentPayments use case', () => {
 
         expect(result.payments).toHaveLength(1);
         expect(result.payments[0].type).toBe('Matrícula');
+        expect(result.payments[0].description).toBe('Matrícula curso Inglês');
         expect(result.payments[0].amountCents).toBe(30000);
         expect(result.payments[0].discountCents).toBe(5000);
         expect(result.payments[0].netAmountCents).toBe(25000);

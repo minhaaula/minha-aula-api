@@ -1,4 +1,4 @@
-import { SchoolFinancialChargeRepository } from '../../ports/repositories/school-financial-charge.repo';
+import { SchoolFinancialChargeRepository, StudentPaymentInfo } from '../../ports/repositories/school-financial-charge.repo';
 import { SchoolFinancialChargeStatus, SchoolFinancialChargeType } from '../../domain/entities/school-financial-charge';
 import { SchoolImageRepository } from '../../ports/repositories/school-image.repo';
 import { SchoolImageCategory } from '../../domain/value-objects/school-image-category';
@@ -17,6 +17,8 @@ export interface StudentPaymentRecord {
     chargeId: string;
     courseName: string;
     studentName: string;
+    /** Texto para exibição (ex.: "Mensalidade de Fevereiro de 2026"). */
+    description: string;
     amountCents: number;
     discountCents: number | null;
     netAmountCents: number;
@@ -91,6 +93,7 @@ export class ListStudentPayments {
             chargeId: data.chargeId,
             courseName: data.courseName,
             studentName: data.studentName,
+            description: this.buildPaymentDescription(data),
             amountCents: data.amountCents,
             discountCents: data.discountCents,
             netAmountCents: data.netAmountCents,
@@ -103,6 +106,45 @@ export class ListStudentPayments {
         }));
 
         return { payments };
+    }
+
+    private static readonly MONTH_NAMES_PT = [
+        'Janeiro',
+        'Fevereiro',
+        'Março',
+        'Abril',
+        'Maio',
+        'Junho',
+        'Julho',
+        'Agosto',
+        'Setembro',
+        'Outubro',
+        'Novembro',
+        'Dezembro'
+    ] as const;
+
+    /**
+     * Mensalidade: sempre a partir do vencimento (UTC) — "Mensalidade de {mês} de {ano}".
+     * Demais tipos: descrição persistida ou fallback pelo tipo/curso.
+     */
+    private buildPaymentDescription(data: StudentPaymentInfo): string {
+        if (data.chargeType === 'TUITION') {
+            const d = new Date(data.dueDate);
+            const monthName = ListStudentPayments.MONTH_NAMES_PT[d.getUTCMonth()];
+            const year = d.getUTCFullYear();
+            return `Mensalidade de ${monthName} de ${year}`;
+        }
+
+        const raw = data.rawDescription?.trim() ?? '';
+        if (raw) {
+            return raw;
+        }
+
+        if (data.chargeType === 'ENROLLMENT') {
+            return `Matrícula — ${data.courseName}`;
+        }
+
+        return 'Pagamento';
     }
 
     private mapChargeTypeToDisplay(chargeType: SchoolFinancialChargeType): PaymentTransactionType {
