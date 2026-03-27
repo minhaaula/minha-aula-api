@@ -66,6 +66,11 @@ export class ListPaidSchoolPayments {
             .where('charge.schoolId = :schoolId', { schoolId })
             .andWhere('charge.courseId IN (:...courseIds)', { courseIds })
             .andWhere('charge.status = :status', { status: 'PAID' })
+            // Não listar baixa manual (escola marcou como pago); manter PIX/BOLETO e legado com vínculo Asaas
+            .andWhere(
+                '(charge.paymentMethod IN (:...paidDigitalMethods) OR (charge.paymentMethod IS NULL AND charge.asaasPaymentId IS NOT NULL))',
+                { paidDigitalMethods: ['PIX', 'BOLETO'] }
+            )
             .select([
                 'charge.id AS charge_id',
                 'charge.amountCents AS charge_amount_cents',

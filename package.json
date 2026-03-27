@@ -49,6 +49,7 @@
     "test:directory": "tsx scripts/test-directory-route.ts",
     "test:schools-directory": "tsx scripts/test-schools-directory-route.ts",
     "hash:password": "tsx scripts/generate-password-hash.ts",
+    "admin:password": "tsx scripts/update-admin-password.ts",
     "cron:monthly-charges": "tsx src/infra/cron/generate-monthly-charges.ts",
     "cron:boleto-notifications": "tsx src/infra/cron/send-boleto-notifications.ts",
     "schedule:receipts": "tsx src/infra/messaging/bullmq/schedule-receipts-job.ts",

@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import path from 'path';
 import 'reflect-metadata';
 import { DataSource } from 'typeorm';
 import { PaymentOrm } from './entities/payment.orm';
@@ -70,6 +71,9 @@ export const AppDataSource = new DataSource({
         ChargeDueReminderOrm
     ],
     synchronize: false,
-    migrations: ['dist/infra/db/typeorm/migrations/*.js'],
+    // Em dev (`ts-node` em `src/...`) usa `*.ts`; após build (`node` em `dist/...`) usa `*.js`.
+    migrations: [
+        path.join(__dirname, 'migrations', __filename.endsWith('.ts') ? '*.ts' : '*.js')
+    ],
     extra: { decimalNumbers: true }
 });

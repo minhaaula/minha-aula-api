@@ -709,8 +709,10 @@ paths:
         - Schools
       summary: Listar pagamentos pagos dos alunos da escola
       description: |
-        Retorna apenas os pagamentos com status PAID de todos os alunos matriculados na escola.
-        Não requer filtro de mês e ano, permitindo buscar todos os pagamentos pagos.
+        Retorna apenas os pagamentos com status PAID de todos os alunos matriculados na escola,
+        excluindo pagamentos dados como baixa manual pela escola (marcados como MANUAL).
+        Inclui cobranças com método PIX ou BOLETO e registros antigos vinculados ao Asaas (asaasPaymentId).
+        Não requer filtro de mês e ano, permitindo buscar todos os pagamentos pagos elegíveis.
         Suporta paginação e filtro opcional por nome do aluno.
       security:
         - bearerAuth: []
