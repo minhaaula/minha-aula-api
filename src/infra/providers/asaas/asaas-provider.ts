@@ -3,7 +3,7 @@ import { PaymentProviderPort, CreateChargeInput, CreatePixChargeInput } from '..
 import { AsaasClient } from './asaas-client';
 import { AsaasChargeResponse, AsaasSubAccount, CreateAsaasSubAccountInput, CreateAsaasTransferInput, AsaasTransferResponse, AsaasAccountDetails, AsaasAccountBalance, AsaasPaymentDetails, ListAsaasPaymentsParams, ListAsaasPaymentsResponse, AsaasPendingDocumentsResult, AsaasPendingDocumentGroup, AsaasAccountStatus } from '../../../ports/providers/asaas-port';
 import { CreateBoletoChargeInput } from '../../../ports/providers/payment-provider.port';
-
+import { log } from '../../../shared/logger';
 
 export class AsaasProvider implements PaymentProviderPort {
     private client: AsaasClient;
@@ -13,14 +13,44 @@ export class AsaasProvider implements PaymentProviderPort {
     }
 
     /**
-     * Flags no payload do cliente (pagador) em POST /payments.
-     * Por padrão desativa notificações de cobrança do Asaas ao cliente; defina ASAAS_NOTIFY_CUSTOMER_ON_PAYMENT=true para manter o comportamento anterior.
+     * Por padrão o Asaas **não** deve enviar e-mail/SMS automáticos ao pagador nem à subconta (Minha Aula usa app/e-mail próprio e webhooks).
+     * `ASAAS_NOTIFY_CUSTOMER_ON_PAYMENT=true` reativa notificações nativas Asaas para pagadores e para criação de subconta.
+     */
+    private static asaasNotifyCustomerEnabled(): boolean {
+        return process.env.ASAAS_NOTIFY_CUSTOMER_ON_PAYMENT === 'true';
+    }
+
+    /**
+     * Flags no objeto `customer` em POST /payments (cliente embutido na cobrança).
      */
     private static asaasCustomerNotificationFlags(): { notificationDisabled?: boolean } {
-        if (process.env.ASAAS_NOTIFY_CUSTOMER_ON_PAYMENT === 'true') {
+        if (AsaasProvider.asaasNotifyCustomerEnabled()) {
             return {};
         }
         return { notificationDisabled: true };
+    }
+
+    /**
+     * Clientes já existentes no Asaas (mesmo CPF/CNPJ) podem manter notificações ativas mesmo com `notificationDisabled`
+     * no payload aninhado. Após criar a cobrança, forçamos PUT /customers/{id} quando aplicável.
+     */
+    private async ensurePayerCustomerNotificationsDisabled(customerId: unknown): Promise<void> {
+        if (AsaasProvider.asaasNotifyCustomerEnabled()) return;
+        const id =
+            typeof customerId === 'string'
+                ? customerId.trim()
+                : customerId && typeof customerId === 'object' && typeof (customerId as { id?: unknown }).id === 'string'
+                  ? String((customerId as { id: string }).id).trim()
+                  : '';
+        if (!id) return;
+        try {
+            await this.client.updateCustomer(id, { notificationDisabled: true });
+        } catch (e) {
+            log.warn('[Asaas] Falha ao desativar notificações do cliente (pagador); cobrança já foi criada', {
+                customerId: id,
+                error: e instanceof Error ? e.message : String(e)
+            });
+        }
     }
 
     /**
@@ -72,6 +102,7 @@ export class AsaasProvider implements PaymentProviderPort {
         };
 
         const response = await this.client.createBoletoCharge(payload);
+        await this.ensurePayerCustomerNotificationsDisabled(response.customer);
 
         return {
             providerRef: response.id,
@@ -103,6 +134,7 @@ export class AsaasProvider implements PaymentProviderPort {
         };
 
         const response = await this.client.createPixCharge(payload);
+        await this.ensurePayerCustomerNotificationsDisabled(response.customer);
 
         return {
             providerRef: response.id,
@@ -180,6 +212,11 @@ export class AsaasProvider implements PaymentProviderPort {
         if (input.complement) payload.complement = input.complement;
         if (input.municipalInscription) payload.municipalInscription = input.municipalInscription;
         if (input.stateInscription) payload.stateInscription = input.stateInscription;
+
+        // Mesma política dos pagadores: sem notificações automáticas (e-mail/SMS) do Asaas para a subconta
+        if (!AsaasProvider.asaasNotifyCustomerEnabled()) {
+            payload.notificationDisabled = true;
+        }
 
         // Webhooks sempre adicionar se configurado
         const webhooks = input.webhooks ?? this.resolveDefaultWebhooks(input.email);

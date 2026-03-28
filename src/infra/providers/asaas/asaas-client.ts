@@ -18,6 +18,20 @@ export class AsaasClient {
         });
     }
 
+    /**
+     * Atualiza cadastro do cliente (ex.: desativar todas as notificações automáticas do Asaas para o pagador).
+     * PUT /v3/customers/{id}
+     */
+    async updateCustomer(customerId: string, payload: { notificationDisabled: boolean }): Promise<void> {
+        const id = customerId?.trim();
+        if (!id) throw new Error('customerId is required');
+        try {
+            await this.http.put(`/customers/${encodeURIComponent(id)}`, payload);
+        } catch (error) {
+            throw this.toDomainError(error);
+        }
+    }
+
     async createBoletoCharge(payload: AsaasCreateBoletoPayload): Promise<AsaasCreateChargeResponse> {
         try {
             const { data } = await this.http.post<AsaasCreateChargeResponse>('/payments', payload);
