@@ -112,6 +112,122 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/QueueNotConfiguredResponse'
+  /admin/job-logs:
+    get:
+      tags:
+        - Admin
+      summary: Listar histórico de execução de jobs (worker)
+      description: |
+        Retorna registros persistidos quando jobs da fila **outbox** concluem com sucesso ou falham
+        (inclui push, emails, crons enfileirados, etc.). Complementa GET /admin/queue/jobs, que mostra
+        o estado **ao vivo** no Redis. Filtros opcionais por status, nome do job e intervalo de `finishedAt`.
+        A resposta inclui `summary` com totais de concluídos e falhas no mesmo recorte de datas (ignora o filtro `status`).
+        Requer persona ADMIN. É necessário ter executado a migração que cria `job_execution_logs`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: status
+          required: false
+          schema:
+            type: string
+            enum: [completed, failed]
+          description: Filtra por status do registro.
+        - in: query
+          name: jobName
+          required: false
+          schema:
+            type: string
+            maxLength: 128
+          description: Nome do job BullMQ (ex. push_notification, fetch_payment_receipts).
+        - in: query
+          name: from
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: Início do intervalo (finished_at), inclusive.
+        - in: query
+          name: to
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: Fim do intervalo (finished_at), inclusive.
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+        - in: query
+          name: offset
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Lista paginada e resumo de contagens.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobExecutionLogListResponse'
+        '401':
+          description: Usuário não autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado (requer persona ADMIN).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/job-logs/{id}:
+    get:
+      tags:
+        - Admin
+      summary: Detalhe de um registro de execução de job
+      description: Retorna um registro por UUID (inclui mensagem/stack em falhas e resumo em sucesso).
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Registro encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobExecutionLogEntry'
+        '401':
+          description: Usuário não autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado (requer persona ADMIN).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Registro não encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /admin/charge-due-reminders/trigger:
     post:
       tags:
@@ -1905,6 +2021,70 @@ components:
       required:
         - error
         - message
+    JobExecutionLogEntry:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [completed, failed]
+        jobName:
+          type: string
+        outboxType:
+          type: string
+          nullable: true
+        aggregateId:
+          type: string
+          nullable: true
+        bullmqJobId:
+          type: string
+          nullable: true
+        attemptsMade:
+          type: integer
+        processedAt:
+          type: string
+          format: date-time
+          nullable: true
+        finishedAt:
+          type: string
+          format: date-time
+        durationMs:
+          type: integer
+          nullable: true
+        errorMessage:
+          type: string
+          nullable: true
+        errorStack:
+          type: string
+          nullable: true
+        resultSummary:
+          type: object
+          nullable: true
+          additionalProperties: true
+    JobExecutionLogListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/JobExecutionLogEntry'
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+        summary:
+          type: object
+          properties:
+            completed:
+              type: integer
+              description: Total de jobs concluídos no mesmo recorte de filtros (sem filtrar por status).
+            failed:
+              type: integer
+              description: Total de falhas no mesmo recorte.
     QueueJobsResponse:
       type: object
       description: Status da fila de jobs (BullMQ outbox).

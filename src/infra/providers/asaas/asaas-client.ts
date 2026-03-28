@@ -198,7 +198,7 @@ export class AsaasClient {
         const body = {
             paymentDate: payload.paymentDate,
             value: payload.value,
-            ...(payload.notifyCustomer !== undefined && { notifyCustomer: payload.notifyCustomer })
+            notifyCustomer: payload.notifyCustomer ?? false
         };
         await this.http.post(`/payments/${paymentId}/receiveInCash`, body);
     }

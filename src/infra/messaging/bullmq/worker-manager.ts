@@ -8,6 +8,7 @@ import { AppDataSource } from '../../db/typeorm/datasource';
 import { PushTokenRepositoryAdapter } from '../../db/typeorm/push-token-repository.adapter';
 import { sendFcmMulticast } from '../../providers/firebase/fcm-provider';
 import { log } from '../../../shared/logger';
+import { persistCompletedJobLog, persistFailedJobLog } from './worker-job-log-persistence';
 
 const connection = {
     host: process.env.REDIS_HOST,
@@ -657,6 +658,7 @@ export function startWorker(): Worker {
 
     workerInstance.on('completed', (job) => {
         log.info('[Worker] Job completado', { name: job.name, id: job.id, data: job.data });
+        void persistCompletedJobLog(job);
     });
 
     workerInstance.on('failed', (job, err) => {
@@ -668,6 +670,7 @@ export function startWorker(): Worker {
             stack: err.stack,
             attemptsMade: job?.attemptsMade
         });
+        void persistFailedJobLog(job, err);
     });
 
     workerInstance.on('error', (err) => {

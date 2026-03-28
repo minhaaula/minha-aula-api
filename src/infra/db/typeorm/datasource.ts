@@ -31,6 +31,7 @@ import { SchoolImageOrm } from './entities/school-image.orm';
 import { DiscountCouponOrm } from './entities/discount-coupon.orm';
 import { UserPushTokenOrm } from './entities/user-push-token.orm';
 import { ChargeDueReminderOrm } from './entities/charge-due-reminder.orm';
+import { JobExecutionLogOrm } from './entities/job-execution-log.orm';
 
 export const AppDataSource = new DataSource({
     type: 'mysql',
@@ -68,7 +69,8 @@ export const AppDataSource = new DataSource({
         SchoolImageOrm,
         DiscountCouponOrm,
         UserPushTokenOrm,
-        ChargeDueReminderOrm
+        ChargeDueReminderOrm,
+        JobExecutionLogOrm
     ],
     synchronize: false,
     // Em dev (`ts-node` em `src/...`) usa `*.ts`; após build (`node` em `dist/...`) usa `*.js`.

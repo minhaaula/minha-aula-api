@@ -60,6 +60,9 @@ import { SyncSchoolSubaccountStatus } from '../../app/use-cases/sync-school-suba
 import { scheduleAllJobs } from '../../infra/messaging/bullmq/job-scheduler';
 import { startWorker } from '../../infra/messaging/bullmq/worker-manager';
 import { log } from '../../shared/logger';
+import { JobExecutionLogRepositoryAdapter } from '../../infra/db/typeorm/job-execution-log-repository.adapter';
+import { ListAdminJobLogs } from '../../app/use-cases/list-admin-job-logs';
+import { GetAdminJobLog } from '../../app/use-cases/get-admin-job-log';
 
 type AdminModuleDeps = {
     getActiveModules: () => readonly ModuleName[];
@@ -243,6 +246,10 @@ export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext)
         ? new SyncSchoolSubaccountStatus(deps.schoolsRepo, deps.asaasProvider)
         : undefined;
 
+    const jobExecutionLogsRepo = new JobExecutionLogRepositoryAdapter();
+    const listAdminJobLogs = new ListAdminJobLogs(jobExecutionLogsRepo);
+    const getAdminJobLog = new GetAdminJobLog(jobExecutionLogsRepo);
+
     // Montar router pronto
     const router = adminRouter({
         getAdminStatus,
@@ -280,6 +287,8 @@ export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext)
         getSchoolPendingDocuments,
         syncSchoolSubaccountStatus,
         scheduleChargeDueReminders,
+        listAdminJobLogs,
+        getAdminJobLog,
         authMiddleware: ctx.authMiddleware
     });
 

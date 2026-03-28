@@ -39,6 +39,8 @@ import type { SyncSchoolOnboardingDocuments } from '../../../app/use-cases/sync-
 import type { AdminUploadSchoolOnboardingDocument } from '../../../app/use-cases/admin-upload-school-onboarding-document';
 import type { GetSchoolPendingDocuments } from '../../../app/use-cases/get-school-pending-documents';
 import type { SyncSchoolSubaccountStatus } from '../../../app/use-cases/sync-school-subaccount-status';
+import type { ListAdminJobLogs } from '../../../app/use-cases/list-admin-job-logs';
+import type { GetAdminJobLog } from '../../../app/use-cases/get-admin-job-log';
 import { AppError, ErrorCode } from '../../../shared/errors';
 
 const documentUpload = multer({
@@ -90,6 +92,8 @@ type AdminRouterDeps = {
     getSchoolPendingDocuments?: GetSchoolPendingDocuments;
     syncSchoolSubaccountStatus?: SyncSchoolSubaccountStatus;
     scheduleChargeDueReminders?: ScheduleChargeDueReminders;
+    listAdminJobLogs?: ListAdminJobLogs;
+    getAdminJobLog?: GetAdminJobLog;
     authMiddleware?: RequestHandler;
 };
 
@@ -141,6 +145,8 @@ export function adminRouter({
     getSchoolPendingDocuments,
     syncSchoolSubaccountStatus,
     scheduleChargeDueReminders,
+    listAdminJobLogs,
+    getAdminJobLog,
     authMiddleware
 }: AdminRouterDeps) {
     const router = Router();
@@ -749,6 +755,37 @@ export function adminRouter({
             } else {
                 res.status(400).json(result);
             }
+        }));
+    }
+
+    // Histórico persistido de execuções de jobs (worker / fila outbox)
+    if (listAdminJobLogs && getAdminJobLog) {
+        router.get('/job-logs', requireAuth, requireAdminPersona, asyncHandler(async (req, res) => {
+            const querySchema = z.object({
+                status: z.enum(['completed', 'failed']).optional(),
+                jobName: z.string().min(1).max(128).optional(),
+                from: z.coerce.date().optional(),
+                to: z.coerce.date().optional(),
+                limit: z.coerce.number().int().min(1).max(100).optional(),
+                offset: z.coerce.number().int().min(0).optional()
+            });
+            const query = querySchema.parse(req.query);
+            const result = await listAdminJobLogs.exec({
+                status: query.status,
+                jobName: query.jobName ?? null,
+                from: query.from ?? null,
+                to: query.to ?? null,
+                limit: query.limit,
+                offset: query.offset
+            });
+            res.json(result);
+        }));
+
+        router.get('/job-logs/:id', requireAuth, requireAdminPersona, asyncHandler(async (req, res) => {
+            const paramsSchema = z.object({ id: z.string().uuid() });
+            const { id } = paramsSchema.parse(req.params);
+            const result = await getAdminJobLog.exec({ id });
+            res.json(result);
         }));
     }
 

@@ -13,6 +13,17 @@ export class AsaasProvider implements PaymentProviderPort {
     }
 
     /**
+     * Flags no payload do cliente (pagador) em POST /payments.
+     * Por padrão desativa notificações de cobrança do Asaas ao cliente; defina ASAAS_NOTIFY_CUSTOMER_ON_PAYMENT=true para manter o comportamento anterior.
+     */
+    private static asaasCustomerNotificationFlags(): { notificationDisabled?: boolean } {
+        if (process.env.ASAAS_NOTIFY_CUSTOMER_ON_PAYMENT === 'true') {
+            return {};
+        }
+        return { notificationDisabled: true };
+    }
+
+    /**
      * Normaliza telefone para formato de celular brasileiro (11 dígitos: DDD + 9 + 8 dígitos).
      * Asaas exige "número móvel válido".
      * - 10 dígitos (DDD + 8): insere 9 após o DDD.
@@ -49,7 +60,8 @@ export class AsaasProvider implements PaymentProviderPort {
                 postalCode: input.customer.postalCode,
                 addressNumber: input.customer.addressNumber,
                 addressComplement: input.customer.addressComplement ?? undefined,
-                phone: input.customer.phone ?? undefined
+                phone: input.customer.phone ?? undefined,
+                ...AsaasProvider.asaasCustomerNotificationFlags()
             },
             value: input.amount.amount / 100,
             dueDate: input.dueDate.toISOString().slice(0, 10),
@@ -79,7 +91,8 @@ export class AsaasProvider implements PaymentProviderPort {
                 postalCode: input.customer.postalCode,
                 addressNumber: input.customer.addressNumber,
                 addressComplement: input.customer.addressComplement ?? undefined,
-                phone: input.customer.phone ?? undefined
+                phone: input.customer.phone ?? undefined,
+                ...AsaasProvider.asaasCustomerNotificationFlags()
             },
             value: input.amount.amount / 100,
             dueDate: input.dueDate.toISOString().slice(0, 10),
@@ -167,7 +180,7 @@ export class AsaasProvider implements PaymentProviderPort {
         if (input.complement) payload.complement = input.complement;
         if (input.municipalInscription) payload.municipalInscription = input.municipalInscription;
         if (input.stateInscription) payload.stateInscription = input.stateInscription;
-        
+
         // Webhooks sempre adicionar se configurado
         const webhooks = input.webhooks ?? this.resolveDefaultWebhooks(input.email);
         if (webhooks) payload.webhooks = webhooks;
