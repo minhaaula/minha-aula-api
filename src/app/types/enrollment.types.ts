@@ -88,3 +88,15 @@ export interface EnrollStudentOutput {
     enrolledAt: Date;
     updatedAt: Date;
 }
+
+export interface UnenrollStudentFromClassInput {
+    schoolId: string;
+    courseId: string;
+    classId: string;
+    enrollmentId: string;
+}
+
+export interface UnenrollStudentFromClassOutput {
+    enrollmentId: string;
+    status: 'CANCELLED';
+}

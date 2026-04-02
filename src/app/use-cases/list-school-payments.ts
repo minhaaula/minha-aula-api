@@ -6,6 +6,7 @@ import { UserRepository } from '../../ports/repositories/user.repo';
 import { DependentRepository } from '../../ports/repositories/dependent.repo';
 import { equalUuid } from '../../shared/normalize-uuid';
 import { formatSchoolChargeDescriptionForSchoolUi } from '../../shared/format-school-charge-description';
+import { isOpenChargeCalendarOverdue } from '../../shared/billing-due-date';
 import { SchoolFinancialChargeStatus } from '../../domain/entities/school-financial-charge';
 import type { ListSchoolPaymentsInput, SchoolPaymentRecord, SchoolPaymentStatusDisplay } from '../types/payment.types';
 
@@ -335,11 +336,7 @@ export class ListSchoolPayments {
     /** Status para exibição: Pendente, Atrasado, Pago, Cancelado, Falhou. */
     private getStatusDisplay(status: SchoolFinancialChargeStatus, dueDate: Date): SchoolPaymentStatusDisplay {
         if (status === 'OPEN' || status === 'PENDING_SYNC') {
-            const today = new Date();
-            const todayUtc = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
-            const d = new Date(dueDate);
-            const dueUtc = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
-            if (dueUtc < todayUtc) return 'Atrasado';
+            if (isOpenChargeCalendarOverdue(new Date(dueDate))) return 'Atrasado';
             return 'Pendente';
         }
         const map: Record<SchoolFinancialChargeStatus, SchoolPaymentStatusDisplay> = {

@@ -293,7 +293,7 @@ describe('ListStudentPayments use case', () => {
         repo.seedPayments(userId, [
             makePayment('charge-1', 'Inglês', 'João Silva', 30000, new Date('2024-01-10'), 'PAID', {
                 chargeType: 'ENROLLMENT',
-                rawDescription: 'Matrícula curso Inglês',
+                rawDescription: 'Enrollment fee',
                 discountCents: 5000,
                 netAmountCents: 25000,
                 paidAt: new Date('2024-01-09'),
@@ -306,7 +306,7 @@ describe('ListStudentPayments use case', () => {
 
         expect(result.payments).toHaveLength(1);
         expect(result.payments[0].type).toBe('Matrícula');
-        expect(result.payments[0].description).toBe('Matrícula curso Inglês');
+        expect(result.payments[0].description).toBe('Matrícula do curso Inglês');
         expect(result.payments[0].amountCents).toBe(30000);
         expect(result.payments[0].discountCents).toBe(5000);
         expect(result.payments[0].netAmountCents).toBe(25000);

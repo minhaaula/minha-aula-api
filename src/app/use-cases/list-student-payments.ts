@@ -3,6 +3,8 @@ import { SchoolFinancialChargeStatus, SchoolFinancialChargeType } from '../../do
 import { SchoolImageRepository } from '../../ports/repositories/school-image.repo';
 import { SchoolImageCategory } from '../../domain/value-objects/school-image-category';
 import type { StorageProviderPort } from '../../ports/providers/storage-provider.port';
+import { formatEnrollmentChargeDescription } from '../../shared/format-school-charge-description';
+import { isOpenChargeCalendarOverdue } from '../../shared/billing-due-date';
 
 export interface ListStudentPaymentsInput {
     userId: string;
@@ -125,7 +127,8 @@ export class ListStudentPayments {
 
     /**
      * Mensalidade: sempre a partir do vencimento (UTC) — "Mensalidade de {mês} de {ano}".
-     * Demais tipos: descrição persistida ou fallback pelo tipo/curso.
+     * Matrícula: texto com nome do curso (ignora descrições antigas em inglês no banco).
+     * Demais tipos: descrição persistida ou "Pagamento".
      */
     private buildPaymentDescription(data: StudentPaymentInfo): string {
         if (data.chargeType === 'TUITION') {
@@ -135,13 +138,13 @@ export class ListStudentPayments {
             return `Mensalidade de ${monthName} de ${year}`;
         }
 
+        if (data.chargeType === 'ENROLLMENT') {
+            return formatEnrollmentChargeDescription(data.courseName);
+        }
+
         const raw = data.rawDescription?.trim() ?? '';
         if (raw) {
             return raw;
-        }
-
-        if (data.chargeType === 'ENROLLMENT') {
-            return `Matrícula — ${data.courseName}`;
         }
 
         return 'Pagamento';
@@ -171,17 +174,12 @@ export class ListStudentPayments {
     }
 
     /**
-     * Status para exibição. Cobranças em aberto (OPEN/PENDING_SYNC) com data de vencimento
-     * já passada são exibidas como "atrasado" em vez de "pendente".
-     * Comparação em UTC para não depender do fuso do servidor.
+     * Status para exibição. Cobranças em aberto (OPEN/PENDING_SYNC) com vencimento antes do dia civil
+     * atual no fuso do app (Brasil) são "atrasado"; não usar só UTC para evitar atraso falso após ~21h BR.
      */
     private getDisplayStatus(status: SchoolFinancialChargeStatus, dueDate: Date): string {
         if (status === 'OPEN' || status === 'PENDING_SYNC') {
-            const now = new Date();
-            const todayUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
-            const d = new Date(dueDate);
-            const dueUtc = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
-            if (dueUtc < todayUtc) {
+            if (isOpenChargeCalendarOverdue(new Date(dueDate))) {
                 return 'atrasado';
             }
         }

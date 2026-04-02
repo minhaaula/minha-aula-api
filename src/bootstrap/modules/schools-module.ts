@@ -49,6 +49,7 @@ import { EnrollmentRepositoryAdapter } from '../../infra/db/typeorm/enrollment-r
 import { EnrollmentRequestRepositoryAdapter } from '../../infra/db/typeorm/enrollment-request-repository.adapter';
 import { SchoolFinancialChargeRepositoryAdapter } from '../../infra/db/typeorm/school-financial-charge-repository.adapter';
 import { EnrollStudent } from '../../app/use-cases/enroll-student';
+import { UnenrollStudentFromClass } from '../../app/use-cases/unenroll-student-from-class';
 import { DeleteCourseClass } from '../../app/use-cases/delete-course-class';
 import { ListSchoolStudents } from '../../app/use-cases/list-school-students';
 import { ListSchoolPayments } from '../../app/use-cases/list-school-payments';
@@ -242,6 +243,11 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         deps.frontendBaseUrl,
         notifyStudent
     );
+    const unenrollStudentFromClass = new UnenrollStudentFromClass(
+        deps.coursesRepo,
+        deps.classesRepo,
+        deps.enrollmentsRepo
+    );
     const listEnrollmentRequests = new ListEnrollmentRequests(deps.enrollmentRequestsRepo);
     const createEnrollmentRequest = new CreateEnrollmentRequest(
         deps.schoolsRepo,
@@ -396,6 +402,7 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         listPaidSchoolPayments,
         consolidateSchoolPayments,
         enrollStudent,
+        unenrollStudentFromClass,
         listEnrollmentRequests,
         createSchoolCharge,
         getSchoolFinancialSummary,

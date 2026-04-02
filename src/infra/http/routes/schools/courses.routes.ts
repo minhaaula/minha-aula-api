@@ -12,12 +12,14 @@ import type { GetCourseClass } from '../../../../app/use-cases/get-course-class'
 import type { ScheduleClassSession } from '../../../../app/use-cases/schedule-class-session';
 import type { ListClassSessions } from '../../../../app/use-cases/list-class-sessions';
 import type { EnrollStudent } from '../../../../app/use-cases/enroll-student';
+import type { UnenrollStudentFromClass } from '../../../../app/use-cases/unenroll-student-from-class';
 import type { ListEnrollmentRequests } from '../../../../app/use-cases/list-enrollment-requests';
 import type { DeleteCourse } from '../../../../app/use-cases/delete-course';
 import type { DeleteCourseClass } from '../../../../app/use-cases/delete-course-class';
 import {
     classSessionsDateRangeSchema,
     courseClassParamsSchema,
+    courseClassEnrollmentParamsSchema,
     courseIdParamSchema,
     createCourseClassSchema,
     createCourseSchema,
@@ -43,6 +45,7 @@ type CoursesRoutesDeps = {
     scheduleClassSession: ScheduleClassSession;
     listClassSessions: ListClassSessions;
     enrollStudent?: EnrollStudent;
+    unenrollStudentFromClass?: UnenrollStudentFromClass;
     listEnrollmentRequests?: ListEnrollmentRequests;
     deleteCourse?: DeleteCourse;
     deleteCourseClass?: DeleteCourseClass;
@@ -304,6 +307,26 @@ export function buildCoursesRoutes(deps: CoursesRoutesDeps, guards: SchoolRouteG
 
             res.status(201).json(enrollment);
         }));
+    }
+
+    if (deps.unenrollStudentFromClass) {
+        router.delete(
+            '/:courseId/classes/:classId/enrollments/:enrollmentId',
+            ...protectedMiddleware,
+            asyncHandler(async (req, res) => {
+                const { courseId, classId, enrollmentId } = courseClassEnrollmentParamsSchema.parse(req.params);
+                const schoolId = (req as SchoolContextRequest).schoolId as string;
+
+                const result = await deps.unenrollStudentFromClass!.exec({
+                    schoolId,
+                    courseId,
+                    classId,
+                    enrollmentId
+                });
+
+                res.json(result);
+            })
+        );
     }
 
     router.post('/:courseId/classes/:classId/sessions', ...protectedMiddleware, asyncHandler(async (req, res) => {

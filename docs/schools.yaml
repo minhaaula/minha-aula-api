@@ -1859,6 +1859,70 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /schools/courses/{courseId}/classes/{classId}/enrollments/{enrollmentId}:
+    delete:
+      tags:
+        - Schools
+      summary: Desmatricular aluno da turma
+      description: |
+        Cancela a matrícula (status `CANCELLED`). As cobranças financeiras existentes
+        (boletos, PIX, mensalidades abertas ou atrasadas) **não são removidas nem alteradas**.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: courseId
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: path
+          name: classId
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: path
+          name: enrollmentId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Matrícula cancelada.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - enrollmentId
+                  - status
+                properties:
+                  enrollmentId:
+                    type: string
+                    format: uuid
+                  status:
+                    type: string
+                    enum: [CANCELLED]
+        '400':
+          description: Erro de validação ou matrícula já encerrada/cancelada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado ou sem contexto de escola.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Curso, turma ou matrícula não encontrada para este contexto.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /schools/courses/{courseId}/classes/{classId}/sessions:
     post:
       tags:

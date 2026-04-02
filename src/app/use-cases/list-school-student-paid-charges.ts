@@ -8,6 +8,7 @@ import type { SchoolPaymentStatusDisplay } from '../types/payment.types';
 import { AppError, ErrorCode } from '../../shared/errors';
 import { equalUuid } from '../../shared/normalize-uuid';
 import { formatSchoolChargeDescriptionForSchoolUi } from '../../shared/format-school-charge-description';
+import { isOpenChargeCalendarOverdue } from '../../shared/billing-due-date';
 
 export type SchoolStudentPaidChargeItem = {
     id: string;
@@ -247,11 +248,7 @@ export class ListSchoolStudentPaidCharges {
 
     private getStatusDisplay(status: SchoolFinancialChargeStatus, dueDate: Date): SchoolPaymentStatusDisplay {
         if (status === 'OPEN' || status === 'PENDING_SYNC') {
-            const today = new Date();
-            const todayUtc = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
-            const d = new Date(dueDate);
-            const dueUtc = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
-            if (dueUtc < todayUtc) return 'Atrasado';
+            if (isOpenChargeCalendarOverdue(new Date(dueDate))) return 'Atrasado';
             return 'Pendente';
         }
         const map: Record<SchoolFinancialChargeStatus, SchoolPaymentStatusDisplay> = {

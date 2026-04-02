@@ -25,6 +25,7 @@ import type { GetSchoolProfile } from '../../../app/use-cases/get-school-profile
 import type { UpdateSchool } from '../../../app/use-cases/update-school';
 import type { UpdateCourse } from '../../../app/use-cases/update-course';
 import type { EnrollStudent } from '../../../app/use-cases/enroll-student';
+import type { UnenrollStudentFromClass } from '../../../app/use-cases/unenroll-student-from-class';
 import type { ListEnrollmentRequests } from '../../../app/use-cases/list-enrollment-requests';
 import type { DeleteCourse } from '../../../app/use-cases/delete-course';
 import type { DeleteCourseClass } from '../../../app/use-cases/delete-course-class';
@@ -92,6 +93,7 @@ export type SchoolsRouterDeps = {
     getSchoolProfile?: GetSchoolProfile;
     updateSchool?: UpdateSchool;
     enrollStudent?: EnrollStudent;
+    unenrollStudentFromClass?: UnenrollStudentFromClass;
     listEnrollmentRequests?: ListEnrollmentRequests;
     authMiddleware?: RequestHandler;
     schoolsRepo?: SchoolRepository;
@@ -214,6 +216,7 @@ export function schoolsRouter(deps: SchoolsRouterDeps) {
         scheduleClassSession: deps.scheduleClassSession,
         listClassSessions: deps.listClassSessions,
         enrollStudent: deps.enrollStudent,
+        unenrollStudentFromClass: deps.unenrollStudentFromClass,
         listEnrollmentRequests: deps.listEnrollmentRequests
     }, guards));
 

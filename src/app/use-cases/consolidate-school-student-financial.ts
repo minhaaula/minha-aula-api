@@ -2,6 +2,7 @@ import { AppDataSource } from '../../infra/db/typeorm/datasource';
 import { EnrollmentOrm } from '../../infra/db/typeorm/entities/enrollment.orm';
 import { SchoolFinancialChargeOrm } from '../../infra/db/typeorm/entities/school-financial-charge.orm';
 import { SchoolFinancialChargeStatus } from '../../domain/entities/school-financial-charge';
+import { isOpenChargeCalendarOverdue } from '../../shared/billing-due-date';
 
 export interface ConsolidateSchoolStudentFinancialInput {
     schoolId: string;
@@ -15,14 +16,6 @@ export interface ConsolidateSchoolStudentFinancialOutput {
     overdueTotalCents: number;
     /** Soma de todas as cobranças do aluno na escola (inclui canceladas). */
     grandTotalCents: number;
-}
-
-function isDueDateOverdue(dueDate: Date): boolean {
-    const today = new Date();
-    const todayUtc = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
-    const d = new Date(dueDate);
-    const dueUtc = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
-    return dueUtc < todayUtc;
 }
 
 /**
@@ -55,7 +48,7 @@ export function aggregateStudentChargeAmounts(
 
         const openLikeOverdue =
             status === 'OVERDUE' ||
-            ((status === 'OPEN' || status === 'PENDING_SYNC' || status === 'FAILED') && isDueDateOverdue(dueDate));
+            ((status === 'OPEN' || status === 'PENDING_SYNC' || status === 'FAILED') && isOpenChargeCalendarOverdue(dueDate));
 
         if (openLikeOverdue) {
             overdueTotalCents += net;

@@ -406,7 +406,7 @@ export class EnrollmentRepositoryAdapter implements EnrollmentRepository {
         row.fullAmountCents = enrollment.fullAmountCents;
         row.paymentDueDay = enrollment.paymentDueDay;
         row.enrolledAt = enrollment.enrolledAt;
-        row.updatedAt = enrollment.updatedAt ?? new Date();
+        row.updatedAt = new Date();
         return row;
     }
 }
