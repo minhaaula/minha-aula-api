@@ -188,7 +188,8 @@ export function asaasWebhookRouter(deps: AsaasWebhookDeps) {
         const result = await deps.handleAsaasPaymentWebhook.exec({
             event: payload.event,
             payment: normalizedPayment,
-            eventId: payload.id // ID do evento do Asaas para idempotência
+            eventId: payload.id, // ID do evento do Asaas para idempotência
+            eventCreatedAt: payload.dateCreated ?? null // horário real do evento; paymentDate no Asaas é só data
         });
 
         res.status(200).json({ ok: true, handled: result.handled, reason: result.reason ?? null });

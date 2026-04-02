@@ -25,6 +25,8 @@ type HandleAsaasPaymentWebhookInput = {
     event: string;
     payment?: AsaasPaymentPayload | null;
     eventId?: string | null; // ID do evento do Asaas para idempotência
+    /** `dateCreated` do payload raiz do webhook — costuma incluir hora; `paymentDate` no Asaas é só data. */
+    eventCreatedAt?: string | null;
 };
 
 type HandleAsaasPaymentWebhookOutput = {
@@ -114,7 +116,7 @@ export class HandleAsaasPaymentWebhook {
             }
         }
 
-        const paidAt = outcome.status === 'PAID' ? this.resolvePaidAt(payment) : null;
+        const paidAt = outcome.status === 'PAID' ? this.resolvePaidAt(payment, input.eventCreatedAt) : null;
         const metadata: Record<string, string> = { ...invoice.metadata };
         if (eventName) metadata.lastWebhookEvent = eventName;
         if (status) metadata.lastWebhookStatus = status;
@@ -194,8 +196,29 @@ export class HandleAsaasPaymentWebhook {
         return null;
     }
 
-    private resolvePaidAt(payment: AsaasPaymentPayload): Date {
+    /**
+     * O Asaas documenta `paymentDate` / `confirmedDate` como data (sem hora). O horário do evento vem em
+     * `dateCreated` no nível raiz do webhook (`2024-06-12 16:45:03`). Quando só há data na cobrança,
+     * usamos `eventCreatedAt` para `paidAt`.
+     */
+    private resolvePaidAt(payment: AsaasPaymentPayload, eventCreatedAt?: string | null): Date {
         const candidates = [payment.paymentDate, payment.confirmedDate, payment.receivedDate];
+
+        for (const value of candidates) {
+            if (!value) continue;
+            if (hasTimeComponent(value)) {
+                const parsed = new Date(value);
+                if (!Number.isNaN(parsed.getTime())) {
+                    return parsed;
+                }
+            }
+        }
+
+        const fromEvent = eventCreatedAt?.trim() ? parseAsaasWebhookEventDateTime(eventCreatedAt.trim()) : null;
+        if (fromEvent) {
+            return fromEvent;
+        }
+
         for (const value of candidates) {
             if (!value) continue;
             const parsed = new Date(value);
@@ -203,6 +226,40 @@ export class HandleAsaasPaymentWebhook {
                 return parsed;
             }
         }
+
         return new Date();
     }
+}
+
+/** Data pura (YYYY-MM-DD ou DD/MM/AAAA) — sem componente de hora no payload do Asaas. */
+function hasTimeComponent(value: string): boolean {
+    const v = value.trim();
+    if (!v) return false;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return false;
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(v)) return false;
+    return /[T ]\d{1,2}:\d{2}/.test(v);
+}
+
+/**
+ * `dateCreated` do webhook Asaas: `"2024-06-12 16:45:03"` (documentação oficial).
+ * Interpretamos como horário de Brasília quando não há offset explícito.
+ */
+function parseAsaasWebhookEventDateTime(trimmed: string): Date | null {
+    const spaceOrT = trimmed.match(
+        /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})(\.\d+)?(Z|[+-]\d{2}:\d{2})?$/i
+    );
+    if (spaceOrT) {
+        const [, y, mo, d, h, mi, s, frac, offset] = spaceOrT;
+        if (offset) {
+            const iso = frac ? `${y}-${mo}-${d}T${h}:${mi}:${s}${frac}${offset}` : `${y}-${mo}-${d}T${h}:${mi}:${s}${offset}`;
+            const parsed = new Date(iso);
+            return Number.isNaN(parsed.getTime()) ? null : parsed;
+        }
+        const base = `${y}-${mo}-${d}T${h}:${mi}:${s}${frac ?? ''}-03:00`;
+        const parsed = new Date(base);
+        return Number.isNaN(parsed.getTime()) ? null : parsed;
+    }
+
+    const parsed = new Date(trimmed);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
 }

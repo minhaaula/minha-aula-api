@@ -16,6 +16,7 @@ import { CourseClass } from '../../domain/entities/course-class';
 import { UserPersonaEnum } from '../../domain/value-objects/user-persona';
 import { Uuid } from '../../shared/uuid';
 import { getUtcDay, toUtcDateOnly } from '../../shared/date-utils';
+import { formatEnrollmentChargeDescription } from '../../shared/format-school-charge-description';
 import type { ApproveEnrollmentRequestInput, ApproveEnrollmentRequestOutput } from '../types/enrollment.types';
 import type { IssueEnrollmentFeeBoleto } from './issue-enrollment-fee-boleto';
 import type { GenerateTuitionPix } from './generate-tuition-pix';
@@ -326,7 +327,7 @@ export class ApproveEnrollmentRequest {
             courseId: courseClass.courseId,
             courseClassId: courseClass.id,
             chargeType: 'ENROLLMENT',
-            description: `Matrícula curso ${course.name.trim()}`,
+            description: formatEnrollmentChargeDescription(course.name),
             amountCents: request.enrollmentFeeCents,
             discountCents: null,
             discountReason: null,

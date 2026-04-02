@@ -5,6 +5,7 @@ import { AppDataSource } from '../../infra/db/typeorm/datasource';
 import { EnrollmentOrm } from '../../infra/db/typeorm/entities/enrollment.orm';
 import { SchoolFinancialChargeOrm } from '../../infra/db/typeorm/entities/school-financial-charge.orm';
 import { AppError, ErrorCode } from '../../shared/errors';
+import { formatSchoolChargeDescriptionForSchoolUi } from '../../shared/format-school-charge-description';
 
 export interface GetAdminStudentDetailsInput {
     studentId: string;
@@ -237,6 +238,7 @@ export class GetAdminStudentDetails {
                 'charge.discountCents AS charge_discount_cents',
                 'charge.netAmountCents AS charge_net_amount_cents',
                 'charge.description AS charge_description',
+                'charge.chargeType AS charge_charge_type',
                 'charge.dueDate AS charge_due_date',
                 'charge.paidAt AS charge_paid_at',
                 'school.id AS school_id',
@@ -267,6 +269,7 @@ export class GetAdminStudentDetails {
                 'charge.discountCents AS charge_discount_cents',
                 'charge.netAmountCents AS charge_net_amount_cents',
                 'charge.description AS charge_description',
+                'charge.chargeType AS charge_charge_type',
                 'charge.dueDate AS charge_due_date',
                 'charge.paidAt AS charge_paid_at',
                 'school.id AS school_id',
@@ -291,7 +294,11 @@ export class GetAdminStudentDetails {
             discountCents: row.charge_discount_cents,
             netAmount: row.charge_net_amount_cents / 100,
             netAmountCents: row.charge_net_amount_cents,
-            description: row.charge_description,
+            description: formatSchoolChargeDescriptionForSchoolUi(
+                row.charge_charge_type,
+                row.charge_description,
+                row.course_name
+            ),
             dueDate: new Date(row.charge_due_date),
             paidAt: new Date(row.charge_paid_at),
             course: { id: row.course_id, name: row.course_name },

@@ -535,7 +535,7 @@ describe('ApproveEnrollmentRequest', () => {
         expect(savedCharges).toHaveLength(1);
         expect(savedCharges[0].chargeType).toBe('ENROLLMENT');
         expect(savedCharges[0].amountCents).toBe(18000);
-        expect(savedCharges[0].description).toBe('Matrícula curso Curso 1');
+        expect(savedCharges[0].description).toBe('Matrícula do curso Curso 1');
         expect(savedCharges[0].dueDate.toISOString().slice(0, 10)).toBe('2024-01-20');
         expect(savedCharges[0].asaasPaymentId).toBeNull();
         expect(savedCharges[0].status).toBe('PENDING_SYNC');

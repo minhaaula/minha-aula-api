@@ -117,5 +117,7 @@ export interface HandleAsaasPaymentWebhookInput {
         customer?: { id?: string | null } | null;
         value?: number | null;
     } | null;
+    /** `dateCreated` do payload raiz do webhook Asaas (inclui hora). */
+    eventCreatedAt?: string | null;
 }
 
