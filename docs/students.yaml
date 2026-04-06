@@ -446,6 +446,11 @@ paths:
                         schoolName:
                           type: string
                           description: Nome da escola
+                        schoolLogo:
+                          type: string
+                          format: uri
+                          nullable: true
+                          description: URL do logo da escola
                         studentName:
                           type: string
                           description: Nome do aluno (usuário ou dependente)
@@ -487,7 +492,9 @@ paths:
                               - end
                       required:
                         - courseName
+                        - schoolId
                         - schoolName
+                        - schoolLogo
                         - studentName
                         - category
                         - subcategory
@@ -518,7 +525,7 @@ paths:
       tags:
         - Students
       summary: Listar todos os cursos cadastrados no sistema
-      description: Retorna todos os cursos ativos cadastrados no sistema, com informações do curso, escola, categoria e subcategoria. Permite filtrar por nome do curso, categoria, subcategoria e cidade da escola. Esta rota é pública e não requer autenticação.
+      description: Retorna todos os cursos ativos cadastrados no sistema, com informações do curso, escola (incluindo cidade e estado), categoria, subcategoria, média de avaliação da escola (1 a 5, quando houver) e quantidade total de avaliações da escola. Permite filtrar por nome do curso, categoria, subcategoria e cidade da escola. Esta rota é pública e não requer autenticação.
       parameters:
         - in: query
           name: name
@@ -567,6 +574,11 @@ paths:
                           type: string
                           format: uuid
                           description: ID da escola
+                        schoolLogo:
+                          type: string
+                          format: uri
+                          nullable: true
+                          description: URL assinada do logo da escola (quando existir). Válida por 1 hora.
                         courseDescription:
                           type: string
                           nullable: true
@@ -579,13 +591,36 @@ paths:
                           type: string
                           nullable: true
                           description: Nome da subcategoria do curso
+                        schoolCity:
+                          type: string
+                          nullable: true
+                          description: Cidade da escola (primeiro endereço)
+                        schoolState:
+                          type: string
+                          nullable: true
+                          description: Estado da escola (primeiro endereço)
+                        schoolRatingAverage:
+                          type: number
+                          nullable: true
+                          minimum: 1
+                          maximum: 5
+                          description: Média geral de avaliação da escola (1 a 5), quando houver avaliações
+                        schoolReviewsCount:
+                          type: integer
+                          minimum: 0
+                          description: Quantidade total de avaliações cadastradas para a escola
                       required:
                         - courseName
                         - schoolName
                         - schoolId
+                        - schoolLogo
                         - courseDescription
                         - category
                         - subcategory
+                        - schoolCity
+                        - schoolState
+                        - schoolRatingAverage
+                        - schoolReviewsCount
                 required:
                   - courses
         '400':
@@ -605,7 +640,11 @@ paths:
       tags:
         - Students
       summary: Listar pagamentos do estudante
-      description: Retorna os pagamentos (cobranças financeiras) do usuário logado e seus dependentes, incluindo informações do curso, aluno, valor, data de vencimento e status. Requer persona STUDENT.
+      description: >
+        Retorna os pagamentos (cobranças financeiras) do usuário logado e seus dependentes.
+        Inclui tipo da transação (mensalidade/matrícula), campo `description` para exibição
+        (ex.: "Mensalidade de Fevereiro de 2026"), data de pagamento, desconto, valor líquido,
+        logo da escola e observação quando for pagamento manual. Requer persona STUDENT.
       security:
         - bearerAuth: []
       parameters:
@@ -638,32 +677,69 @@ paths:
                         chargeId:
                           type: string
                           format: uuid
-                          description: ID da mensalidade (cobrança)
+                          description: ID da cobrança
                         courseName:
                           type: string
                           description: Nome do curso
                         studentName:
                           type: string
                           description: Nome do aluno (usuário ou dependente)
+                        description:
+                          type: string
+                          description: Texto para exibição (mensalidade com mês/ano; matrícula e outros usam descrição persistida quando houver)
                         amountCents:
                           type: integer
                           format: int64
-                          description: Valor do pagamento em centavos
+                          description: Valor original em centavos (antes do desconto)
+                        discountCents:
+                          type: integer
+                          format: int64
+                          nullable: true
+                          description: Desconto em centavos, ou null se não houver
+                        netAmountCents:
+                          type: integer
+                          format: int64
+                          description: Valor líquido em centavos (já aplicando desconto)
                         dueDate:
                           type: string
                           format: date
-                          description: Data de vencimento do pagamento
+                          description: Data de vencimento
+                        paidAt:
+                          type: string
+                          format: date-time
+                          nullable: true
+                          description: Data do pagamento (quando pago)
                         status:
                           type: string
                           enum: [pendente, atrasado, pago, cancelado, falhou]
                           description: Status do pagamento
+                        type:
+                          type: string
+                          enum: ["Mensalidade", "Matrícula", "Outros"]
+                          description: Tipo da transação (Mensalidade, Matrícula ou Outros)
+                        schoolLogo:
+                          type: string
+                          format: uri
+                          nullable: true
+                          description: URL do logo da escola
+                        paidObservation:
+                          type: string
+                          nullable: true
+                          description: Observação quando pagamento manual (baixa pela escola)
                       required:
                         - chargeId
                         - courseName
                         - studentName
+                        - description
                         - amountCents
+                        - discountCents
+                        - netAmountCents
                         - dueDate
+                        - paidAt
                         - status
+                        - type
+                        - schoolLogo
+                        - paidObservation
                 required:
                   - payments
         '401':
@@ -958,17 +1034,34 @@ paths:
                   amountCents:
                     type: integer
                     format: int64
-                    description: Valor da mensalidade em centavos
+                    description: Valor da mensalidade em centavos (valor bruto)
+                  discountCents:
+                    type: integer
+                    format: int64
+                    nullable: true
+                    description: Valor do desconto em centavos, ou null se não houver
+                  netAmountCents:
+                    type: integer
+                    format: int64
+                    description: Valor líquido a pagar em centavos (já aplicando desconto)
                   courseName:
                     type: string
                     description: Nome do curso
+                  schoolLogo:
+                    type: string
+                    format: uri
+                    nullable: true
+                    description: URL do logo da escola
                 required:
                   - chargeId
                   - paymentProviderRef
                   - dueDate
                   - status
                   - amountCents
+                  - discountCents
+                  - netAmountCents
                   - courseName
+                  - schoolLogo
         '400':
           description: Erro na requisição. ID da mensalidade inválido, mensalidade não é do tipo TUITION ou status não permite geração de PIX.
           content:
@@ -1009,13 +1102,16 @@ paths:
     get:
       tags:
         - Students
-      summary: Listar meus pedidos de matrícula pendentes
-      description: Retorna todos os pedidos de matrícula com status PENDING do estudante logado, incluindo pedidos para o próprio estudante e para seus dependentes. Requer persona STUDENT.
+      summary: Listar meus pedidos de matrícula em aberto
+      description: |
+        Retorna apenas pedidos de matrícula **EM ABERTO** (status PENDING) do estudante logado e dos seus dependentes.
+        Inclui valor da mensalidade, desconto (quando houver), turma, horários, nome e logo da escola.
+        Requer persona STUDENT.
       security:
         - bearerAuth: []
       responses:
         '200':
-          description: Lista de pedidos de matrícula pendentes do estudante e seus dependentes.
+          description: Lista de pedidos de matrícula em aberto do estudante e seus dependentes.
           content:
             application/json:
               schema:
@@ -1033,15 +1129,68 @@ paths:
                         status:
                           type: string
                           enum: [PENDING]
-                          description: Status do pedido (sempre PENDING)
+                          description: Status do pedido (sempre PENDING - em aberto)
                         schoolId:
                           type: string
                           format: uuid
                           description: ID da escola
+                        schoolName:
+                          type: string
+                          nullable: true
+                          description: Nome da escola
+                        schoolLogo:
+                          type: string
+                          format: uri
+                          nullable: true
+                          description: URL da logo da escola (quando disponível)
                         courseClassId:
                           type: string
                           format: uuid
                           description: ID da turma
+                        courseClassLabel:
+                          type: string
+                          nullable: true
+                          description: Nome da turma
+                        courseLabel:
+                          type: string
+                          nullable: true
+                          description: Nome do curso
+                        monthlyTuitionAmount:
+                          type: number
+                          nullable: true
+                          description: Valor da mensalidade em reais
+                        discount:
+                          type: number
+                          nullable: true
+                          description: Desconto aplicado em reais (quando houver)
+                        monthlyTuitionNetAmount:
+                          type: number
+                          nullable: true
+                          description: Valor líquido da mensalidade a pagar em reais (já com desconto aplicado)
+                        discountMonths:
+                          type: integer
+                          nullable: true
+                          description: Quantidade de meses em que o desconto é válido (ex. 3 = desconto nos 3 primeiros meses)
+                        discountValidUntil:
+                          type: string
+                          format: date
+                          nullable: true
+                          description: Data até quando o desconto é válido (último dia do último mês com desconto)
+                        schedule:
+                          type: array
+                          description: Horários da turma (dia, início, fim)
+                          items:
+                            type: object
+                            properties:
+                              day:
+                                type: string
+                                description: Dia da semana (ex. MON, TUE)
+                              start:
+                                type: string
+                                description: Hora de início (ex. 09:00)
+                              end:
+                                type: string
+                                description: Hora de término (ex. 10:30)
                         requestedForUserId:
                           type: string
                           format: uuid
@@ -1055,76 +1204,59 @@ paths:
                           type: string
                           format: date-time
                           nullable: true
-                          description: Data da decisão do pedido
                         decidedByUserId:
                           type: string
                           format: uuid
                           nullable: true
-                          description: ID do usuário que decidiu o pedido
                         notes:
                           type: string
                           nullable: true
-                          description: Observações do pedido
-                        discount:
-                          type: number
-                          nullable: true
-                          description: Desconto aplicado (em reais)
                         enrollmentFeeAmount:
                           type: number
                           nullable: true
-                          description: Valor da taxa de matrícula (em reais)
+                          description: Valor da taxa de matrícula em reais
                         enrollmentFeeDueDate:
                           type: string
                           format: date
                           nullable: true
-                          description: Data de vencimento da taxa de matrícula
                         firstMonthlyPaymentDate:
                           type: string
                           format: date
-                          description: Data do primeiro pagamento mensal
                         enrollmentId:
                           type: string
                           format: uuid
                           nullable: true
-                          description: ID da matrícula criada (quando aprovado)
                         createdAt:
                           type: string
                           format: date-time
-                          description: Data de criação do pedido
-                        courseLabel:
-                          type: string
-                          nullable: true
-                          description: Nome do curso
-                        courseClassLabel:
-                          type: string
-                          nullable: true
-                          description: Nome da turma
                         studentName:
                           type: string
                           nullable: true
-                          description: Nome do aluno
                         dependentName:
                           type: string
                           nullable: true
-                          description: Nome do dependente (quando aplicável)
                       required:
                         - id
                         - status
                         - schoolId
+                        - schoolName
+                        - schoolLogo
                         - courseClassId
+                        - courseClassLabel
+                        - courseLabel
+                        - monthlyTuitionAmount
+                        - discount
+                        - schedule
                         - requestedForUserId
                         - requestedForDependentId
                         - decidedAt
                         - decidedByUserId
                         - notes
-                        - discount
                         - enrollmentFeeAmount
                         - enrollmentFeeDueDate
                         - firstMonthlyPaymentDate
                         - enrollmentId
                         - createdAt
-                        - courseLabel
-                        - courseClassLabel
                         - studentName
                         - dependentName
                 required:
@@ -1152,7 +1284,10 @@ paths:
       tags:
         - Students
       summary: Aceitar pedido de matrícula
-      description: Permite ao estudante aceitar um pedido de matrícula pendente que foi criado para ele ou para um de seus dependentes. Ao aceitar, a matrícula é criada automaticamente e uma cobrança de taxa de matrícula é gerada quando aplicável. Requer persona STUDENT e o pedido deve pertencer ao estudante autenticado.
+      description: |
+        Permite ao estudante aceitar um pedido de matrícula pendente criado para ele ou para um dependente. Ao aceitar, a matrícula é criada e cobranças são geradas quando aplicável (equivalente a `POST /enrollment-requests/{requestId}/approve`).
+
+        **Notificações:** email de confirmação de matrícula (fila) e notificação in-app (`metadata.kind` = `ENROLLMENT_CONFIRMED`). Requer persona STUDENT; o pedido deve pertencer ao usuário autenticado.
       security:
         - bearerAuth: []
       parameters:
@@ -1244,9 +1379,9 @@ paths:
         - Students
       summary: Rejeitar pedido de matrícula
       description: |
-        Permite ao estudante rejeitar um pedido de matrícula pendente que foi criado para ele ou para um de seus dependentes.
-        Ao rejeitar, o status do pedido é alterado para REJECTED e nenhuma matrícula é criada.
-        Requer persona STUDENT e o pedido deve pertencer ao estudante autenticado.
+        Permite ao estudante rejeitar um pedido de matrícula pendente criado para ele ou para um dependente. O status passa a REJECTED e nenhuma matrícula é criada.
+
+        **Notificações:** email informando a recusa (fila) e notificação in-app (`metadata.kind` = `ENROLLMENT_REQUEST_REJECTED`). Requer persona STUDENT e o pedido deve pertencer ao estudante autenticado.
       security:
         - bearerAuth: []
       parameters:
@@ -1871,9 +2006,9 @@ paths:
         - Students
       summary: Listar notificações do aluno
       description: >-
-        Retorna todas as notificações relacionadas ao aluno autenticado.
-        As notificações são ordenadas por data de envio (mais recentes primeiro).
-        Suporta paginação através dos parâmetros limit e offset.
+        Retorna notificações do aluno autenticado (incluindo `scope` USER para o “sino” do app: boas-vindas, pedidos de matrícula, confirmação/recusa, lembretes de mensalidade, além de notificações de turma quando existirem).
+        Itens incluem `title`, `message`, `metadata` (ex.: `kind`, ids de pedido/cobrança) e `readAt`.
+        Ordenação: data de envio, mais recentes primeiro. Paginação: `limit` e `offset`.
         Requer persona STUDENT.
       security:
         - bearerAuth: []
@@ -1912,11 +2047,11 @@ paths:
                         schoolId: null
                         userId: '789e4567-e89b-12d3-a456-426614174000'
                         courseClassId: null
-                        title: 'Pagamento pendente'
-                        message: 'Você tem um pagamento pendente que vence em 3 dias.'
+                        title: 'Mensalidade a vencer'
+                        message: 'Mensalidade — R$ 150,00 vence em 18/07/2024 (Escola Exemplo).'
                         metadata:
+                          kind: TUITION_DUE_REMINDER
                           chargeId: '123e4567-e89b-12d3-a456-426614174001'
-                          dueDate: '2024-07-18'
                         sentAt: '2024-07-15T10:30:00.000Z'
                         readAt: null
                       - id: '660e8400-e29b-41d4-a716-446655440001'
@@ -1978,14 +2113,65 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /students/notifications/{notificationId}/read:
+    put:
+      tags:
+        - Students
+      summary: Marcar uma notificação como lida
+      description: >-
+        Marca uma notificação do aluno autenticado como lida (in-app). Só aplica a notificações cujo `userId` é o próprio aluno (ex.: `scope` USER).
+        Se já estiver lida, retorna o mesmo `readAt` (idempotente). Se o ID não existir ou não pertencer ao aluno, retorna 404.
+        Requer persona STUDENT.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: notificationId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID da notificação (retornado em GET /students/notifications)
+      responses:
+        '200':
+          description: Notificação marcada como lida (ou já estava lida).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MarkNotificationAsReadResponse'
+              examples:
+                default:
+                  summary: Exemplo
+                  value:
+                    id: '550e8400-e29b-41d4-a716-446655440000'
+                    readAt: '2024-07-15T10:35:00.000Z'
+        '401':
+          description: Usuário não autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado. Requer persona STUDENT.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Notificação não encontrada ou não pertence ao aluno.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /students/push-tokens:
     post:
       tags:
         - Students
       summary: Registrar token de Push (FCM)
       description: >-
-        Registra/atualiza o token FCM do dispositivo do aluno para receber push notifications.
-        Requer persona STUDENT.
+        Registra ou atualiza o token FCM do dispositivo para receber push (ex.: novo pedido de matrícula pela escola, lembrete de mensalidade a vencer), além das notificações in-app listadas em GET /students/notifications.
+        Requer persona STUDENT e integração Firebase/worker ativas no ambiente.
       security:
         - bearerAuth: []
       requestBody:

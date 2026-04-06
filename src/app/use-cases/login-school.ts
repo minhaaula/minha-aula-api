@@ -28,6 +28,8 @@ export class LoginSchool {
         isOverdue?: boolean;
         onboardingCompleted: boolean;
         onboardingUrl?: string | null;
+        hasCompletedFirstPayment: boolean;
+        accountId: string | null;
         plan?: SchoolPlanFinanceView | null;
     }> {
         const email = this.normalizeEmail(input.email);
@@ -110,6 +112,10 @@ export class LoginSchool {
             }
         }
 
+        const hasCompletedFirstPayment = this.invoices
+            ? await this.invoices.hasSchoolAnyPaidInvoice(school.id)
+            : false;
+
         return {
             accessToken,
             schoolId: school.id,
@@ -120,6 +126,8 @@ export class LoginSchool {
             isOverdue,
             onboardingCompleted,
             onboardingUrl,
+            hasCompletedFirstPayment,
+            accountId: school.accountId,
             plan
         };
     }

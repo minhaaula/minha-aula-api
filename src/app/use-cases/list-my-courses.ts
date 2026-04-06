@@ -1,11 +1,15 @@
 import { EnrollmentRepository } from '../../ports/repositories/enrollment.repo';
 import { CourseRepository } from '../../ports/repositories/course.repo';
 import { SchoolRepository } from '../../ports/repositories/school.repo';
+import { SchoolImageRepository } from '../../ports/repositories/school-image.repo';
+import { SchoolImageCategory } from '../../domain/value-objects/school-image-category';
+import type { StorageProviderPort } from '../../ports/providers/storage-provider.port';
 
 export interface MyCourseRecord {
     courseName: string;
     schoolId: string;
     schoolName: string;
+    schoolLogo: string | null;
     studentName: string;
     category: string | null;
     subcategory: string | null;
@@ -17,7 +21,9 @@ export class ListMyCourses {
     constructor(
         private readonly enrollments: EnrollmentRepository,
         private readonly courses: CourseRepository,
-        private readonly schools: SchoolRepository
+        private readonly schools: SchoolRepository,
+        private readonly schoolImages?: SchoolImageRepository,
+        private readonly storage?: StorageProviderPort
     ) {}
 
     async exec(input: { userId: string }): Promise<{ courses: MyCourseRecord[] }> {
@@ -51,6 +57,27 @@ export class ListMyCourses {
             : [];
         const categoriesMap = new Map(categoriesData.map(c => [c.courseId, c]));
 
+        // Logos das escolas
+        const logoMap = new Map<string, string | null>();
+        if (this.schoolImages && this.storage && schoolIds.length > 0) {
+            await Promise.all(
+                schoolIds.map(async (schoolId) => {
+                    try {
+                        const logos = await this.schoolImages!.findBySchoolId(schoolId, SchoolImageCategory.LOGO);
+                        const logo = logos[0];
+                        if (logo) {
+                            const url = await this.storage!.getFileUrl(logo.key, 3600);
+                            logoMap.set(schoolId, url);
+                        } else {
+                            logoMap.set(schoolId, null);
+                        }
+                    } catch {
+                        logoMap.set(schoolId, null);
+                    }
+                })
+            );
+        }
+
         // Construir resultado final
         const courses: MyCourseRecord[] = myCoursesData.map((data) => {
             const catInfo = categoriesMap.get(data.courseId) || { category: null, subcategory: null };
@@ -60,6 +87,7 @@ export class ListMyCourses {
                 courseName: data.courseName,
                 schoolId: data.schoolId,
                 schoolName: data.schoolName,
+                schoolLogo: this.schoolImages && this.storage ? (logoMap.get(data.schoolId) ?? null) : null,
                 studentName: data.studentName,
                 category: catInfo.category,
                 subcategory: catInfo.subcategory,

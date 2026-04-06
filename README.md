@@ -120,6 +120,14 @@ CORS_ORIGIN=*
 # Exemplo para múltiplas origens: CORS_ORIGIN=https://app1.com,https://app2.com
 ```
 
+#### Proxy / IP real (produção)
+Se você roda a API atrás de proxy/load balancer (ex.: Railway/Nginx/Cloudflare) e ele envia o header `X-Forwarded-For`, habilite o `trust proxy` no Express para o rate limit e `req.ip` funcionarem corretamente:
+
+```env
+# true | false | número de hops (ex.: 1) | string do Express (ex.: loopback)
+TRUST_PROXY=1
+```
+
 #### Asaas (Pagamentos)
 ```env
 ASAAS_API_KEY=your_asaas_token_here
@@ -137,7 +145,7 @@ ASAAS_SUBACCOUNT_WEBHOOK_SEND_TYPE=SEQUENTIALLY
 ASAAS_SUBACCOUNT_WEBHOOK_API_VERSION=3
 ASAAS_SUBACCOUNT_WEBHOOK_EVENTS=PAYMENT_CREATED,PAYMENT_UPDATED,PAYMENT_CONFIRMED,PAYMENT_RECEIVED
 ASAAS_SUBACCOUNT_ACCOUNT_WEBHOOK_URL=https://your-api.com/integrations/asaas
-ASAAS_SUBACCOUNT_ACCOUNT_WEBHOOK_EVENTS=ACCOUNT_APPROVED,ACCOUNT_PENDING,ACCOUNT_REJECTED
+ASAAS_SUBACCOUNT_ACCOUNT_WEBHOOK_EVENTS=ACCOUNT_STATUS_GENERAL_APPROVAL_APPROVED,ACCOUNT_STATUS_GENERAL_APPROVAL_REJECTED,ACCOUNT_STATUS_GENERAL_APPROVAL_AWAITING_APPROVAL,ACCOUNT_STATUS_GENERAL_APPROVAL_PENDING
 ```
 
 #### Redis (Filas)
@@ -312,21 +320,25 @@ docker-compose down
 
 ## 🔄 Queues e Jobs
 
-O projeto utiliza **BullMQ** com **Redis** para processamento assíncrono de jobs.
+Todos os **crons e jobs agendados** do sistema rodam via **BullMQ** com **Redis**. Não é necessário configurar cron do sistema operacional.
 
 ### Inicialização Automática
 
-**Quando o módulo ADMIN está ativo**, os jobs e o worker são iniciados automaticamente:
+**Quando o módulo ADMIN está ativo**, os jobs são agendados e o worker é iniciado automaticamente:
 
-- ✅ **Jobs agendados automaticamente**:
+- ✅ **Jobs agendados** (persistem no Redis):
   - `fetch_payment_receipts` - A cada 30 minutos
   - `sync_payment_status` - A cada 15 minutos
-- ✅ **Worker iniciado automaticamente** para processar jobs da fila
+  - `fetch_school_onboarding_url` - A cada 2 minutos (escolas com conta Asaas e sem URL de onboarding)
+  - `schedule_charge_due_reminders` - A cada 6 horas (lembretes de cobrança a vencer)
+  - `generate_monthly_tuition_charges` - A cada 5 minutos (geração de mensalidades do próximo mês)
+  - `send_boleto_notifications` - Diariamente às 09:00 (e-mail de notificação de boletos criados nas últimas 24h)
+- ✅ **Worker** processa a fila `outbox` automaticamente
 
 **Requisitos**:
-- Módulo `admin` deve estar ativo (`APP_MODULES=admin` ou `APP_MODULES=all`)
+- Módulo `admin` ativo (`APP_MODULES=admin` ou `APP_MODULES=all`)
 - `REDIS_HOST` configurado
-- `ASAAS_API_KEY` configurado (para jobs de pagamento)
+- `ASAAS_API_KEY` (para jobs de pagamento)
 
 ### Configuração Manual (Opcional)
 
@@ -363,24 +375,36 @@ node dist/infra/messaging/bullmq/outbox-worker.js
 #### 4. Sincronização de Status (`sync_payment_status`)
 - **Descrição**: Sincroniza status de pagamentos do Asaas (prevenção de falhas de webhook)
 - **Frequência**: A cada 15 minutos (agendado automaticamente)
-- **Agendamento Manual**: `npm run schedule:payment-sync` (se não usar módulo ADMIN)
-- **Funcionalidades**:
-  - Verifica invoices emitidas que podem ter sido pagas
-  - Atualiza status e `paid_at` automaticamente
 
-### Agendar Jobs Manualmente (Opcional)
+#### 4. Onboarding de escolas (`fetch_school_onboarding_url`)
+- **Descrição**: Busca URL de onboarding no Asaas para escolas com conta criada e sem URL salva
+- **Frequência**: A cada 2 minutos
 
-Se não estiver usando o módulo ADMIN, você pode agendar os jobs manualmente:
+#### 5. Lembretes de vencimento (`schedule_charge_due_reminders`)
+- **Descrição**: Identifica cobranças que vencem em até 10 dias e enfileira e-mails de lembrete
+- **Frequência**: A cada 6 horas
+
+#### 6. Geração de mensalidades (`generate_monthly_tuition_charges`)
+- **Descrição**: Gera cobranças de mensalidade do próximo mês para matrículas ativas
+- **Frequência**: A cada 5 minutos
+
+#### 7. Notificações de boleto (`send_boleto_notifications`)
+- **Descrição**: Envia e-mail para escolas e alunos sobre boletos criados nas últimas 24 horas
+- **Frequência**: Diariamente às 09:00 (America/Sao_Paulo)
+
+### Scripts CLI (execução manual, opcional)
+
+Para rodar uma vez (teste ou fallback), os crons podem ser executados via CLI. Em produção o agendamento é feito pelo BullMQ.
 
 ```bash
-# Agendar job de busca de recibos
-npm run schedule:receipts
+# Geração de mensalidades (uma execução)
+npm run cron:monthly-charges
 
-# Agendar job de sincronização de pagamentos
-npm run schedule:payment-sync
+# Notificações de boleto (uma execução)
+npm run cron:boleto-notifications
 ```
 
-**Nota**: Os jobs precisam ser agendados apenas uma vez. O agendamento persiste no Redis. Se o módulo ADMIN estiver ativo, isso é feito automaticamente.
+Se não usar o módulo ADMIN, você pode agendar os jobs no Redis manualmente: `npm run schedule:receipts`, `npm run schedule:payment-sync`. O agendamento persiste no Redis.
 
 ### Verificar Status das Filas
 
@@ -407,8 +431,8 @@ payments-api/
 │   │   ├── http/         # Rotas Express
 │   │   ├── db/           # TypeORM (entities, migrations)
 │   │   ├── providers/    # Integrações externas
-│   │   ├── messaging/    # BullMQ workers
-│   │   └── cron/         # Jobs agendados
+│   │   ├── messaging/    # BullMQ (workers, scheduler, fila outbox)
+│   │   └── cron/         # Lógica de crons (usada pelo BullMQ e scripts CLI)
 │   ├── ports/            # Interfaces (Ports)
 │   │   ├── repositories/ # Interfaces de repositórios
 │   │   └── providers/    # Interfaces de provedores

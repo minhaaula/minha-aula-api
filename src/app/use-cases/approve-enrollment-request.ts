@@ -3,16 +3,24 @@ import { EnrollmentRepository } from '../../ports/repositories/enrollment.repo';
 import { CourseClassRepository } from '../../ports/repositories/course-class.repo';
 import { CourseRepository } from '../../ports/repositories/course.repo';
 import { SchoolFinancialChargeRepository } from '../../ports/repositories/school-financial-charge.repo';
+import { UserRepository } from '../../ports/repositories/user.repo';
+import { SchoolRepository } from '../../ports/repositories/school.repo';
+import { DependentRepository } from '../../ports/repositories/dependent.repo';
+import { OutboxRepository } from '../../ports/repositories/outbox.repo';
 import { AppError, ErrorCode } from '../../shared/errors';
 import { Enrollment } from '../../domain/entities/enrollment';
 import { EnrollmentRequest } from '../../domain/entities/enrollment-request';
 import { SchoolFinancialCharge } from '../../domain/entities/school-financial-charge';
+import { Course } from '../../domain/entities/course';
+import { CourseClass } from '../../domain/entities/course-class';
 import { UserPersonaEnum } from '../../domain/value-objects/user-persona';
 import { Uuid } from '../../shared/uuid';
-import { getUtcDay, toUtcDateOnly, getTodayUtc, isSameMonthYear } from '../../shared/date-utils';
+import { getUtcDay, toUtcDateOnly } from '../../shared/date-utils';
+import { formatEnrollmentChargeDescription } from '../../shared/format-school-charge-description';
 import type { ApproveEnrollmentRequestInput, ApproveEnrollmentRequestOutput } from '../types/enrollment.types';
 import type { IssueEnrollmentFeeBoleto } from './issue-enrollment-fee-boleto';
 import type { GenerateTuitionPix } from './generate-tuition-pix';
+import type { NotifyStudentUser } from './notify-student-user';
 
 export class ApproveEnrollmentRequest {
     constructor(
@@ -22,7 +30,13 @@ export class ApproveEnrollmentRequest {
         private readonly courses: CourseRepository,
         private readonly financialCharges: SchoolFinancialChargeRepository,
         private readonly issueEnrollmentFeeBoleto?: IssueEnrollmentFeeBoleto,
-        private readonly generateTuitionPix?: GenerateTuitionPix
+        private readonly generateTuitionPix?: GenerateTuitionPix,
+        private readonly users?: UserRepository,
+        private readonly schools?: SchoolRepository,
+        private readonly dependents?: DependentRepository,
+        private readonly outbox?: OutboxRepository,
+        private readonly notifyStudent?: NotifyStudentUser,
+        private readonly frontendBaseUrl?: string
     ) {}
 
     async exec(input: ApproveEnrollmentRequestInput): Promise<ApproveEnrollmentRequestOutput> {
@@ -39,7 +53,7 @@ export class ApproveEnrollmentRequest {
             request.requestedForDependentId
         );
 
-        // Buscar curso para obter o valor cheio
+        // Buscar curso para obter o valor cheio (curso ou turma)
         const courseClass = await this.classes.findById(request.courseClassId);
         if (!courseClass) {
             throw AppError.fromCode(ErrorCode.COURSE_CLASS_NOT_FOUND, {
@@ -54,9 +68,11 @@ export class ApproveEnrollmentRequest {
                 requestId: request.id
             });
         }
+        // Preço da mensalidade pode estar no curso ou na turma
+        const effectiveMonthlyPriceCents = course.monthlyPriceCents ?? courseClass.monthlyPriceCents;
 
-        // Criar matrícula com valor cheio do curso
-        const enrollment = this.createEnrollmentFromRequest(request, course.monthlyPriceCents);
+        // Criar matrícula com valor cheio (curso ou turma)
+        const enrollment = this.createEnrollmentFromRequest(request, effectiveMonthlyPriceCents);
 
         // Criar cobrança de taxa de matrícula se aplicável
         const pendingCharge = await this.buildEnrollmentCharge(request);
@@ -75,6 +91,10 @@ export class ApproveEnrollmentRequest {
         });
 
         await this.requests.save(request);
+
+        if (this.notifyStudent && this.outbox && this.users && this.schools) {
+            this.sendEnrollmentApprovedNotifications(request, enrollment, course, courseClass).catch(() => {});
+        }
 
         // Gerar boleto de matrícula automaticamente (se houver cobrança)
         let enrollmentFeeBoletoGenerated = false;
@@ -95,9 +115,9 @@ export class ApproveEnrollmentRequest {
             }
         }
 
-        // Gerar primeira mensalidade se a data de vencimento já passou ou está no mesmo mês
+        // Gerar primeira mensalidade sempre que houver valor (data do primeiro pagamento pode ser passada, atual ou futura)
         let firstTuitionChargeId: string | null = null;
-        if (course.monthlyPriceCents && course.monthlyPriceCents > 0) {
+        if (effectiveMonthlyPriceCents && effectiveMonthlyPriceCents > 0) {
             try {
                 const firstTuitionCharge = await this.createFirstTuitionCharge(
                     enrollment,
@@ -109,8 +129,8 @@ export class ApproveEnrollmentRequest {
                 );
                 if (firstTuitionCharge) {
                     firstTuitionChargeId = firstTuitionCharge.id;
-                    
-                    // Gerar PIX da mensalidade automaticamente
+
+                    // Gerar PIX da mensalidade automaticamente (quando disponível)
                     if (this.generateTuitionPix) {
                         try {
                             await this.generateTuitionPix.exec({
@@ -141,6 +161,54 @@ export class ApproveEnrollmentRequest {
             enrollmentFeeBoletoGenerated,
             firstTuitionChargeId
         };
+    }
+
+    private async sendEnrollmentApprovedNotifications(
+        request: EnrollmentRequest,
+        enrollment: Enrollment,
+        course: Course,
+        courseClass: CourseClass
+    ): Promise<void> {
+        if (!this.notifyStudent || !this.outbox || !this.users || !this.schools) return;
+
+        const school = await this.schools.findById(request.schoolId);
+        const owner = await this.users.findById(request.requestedForUserId);
+        if (!school || !owner) return;
+
+        let studentName = owner.fullName;
+        if (request.requestedForDependentId && this.dependents) {
+            const dep = await this.dependents.findById(request.requestedForDependentId);
+            if (dep) studentName = dep.fullName;
+        }
+
+        const loginUrl = this.frontendBaseUrl ? `${this.frontendBaseUrl}/login` : undefined;
+
+        await this.outbox.enqueue({
+            type: 'send_enrollment_confirmation_email',
+            aggregateId: enrollment.id,
+            payload: {
+                to: owner.email.value,
+                studentName,
+                courseName: course.name,
+                schoolName: school.name,
+                className: courseClass.label,
+                loginUrl
+            }
+        });
+
+        await this.notifyStudent.exec({
+            userId: request.requestedForUserId,
+            schoolId: request.schoolId,
+            title: 'Matrícula confirmada',
+            message: `Sua matrícula em ${course.name} (${school.name}) foi confirmada.`,
+            kind: 'ENROLLMENT_CONFIRMED',
+            sendPush: false,
+            extraMetadata: {
+                enrollmentRequestId: request.id,
+                enrollmentId: enrollment.id,
+                courseClassId: request.courseClassId
+            }
+        });
     }
 
     private async validateAndLoadRequest(requestId: string) {
@@ -237,27 +305,32 @@ export class ApproveEnrollmentRequest {
             });
         }
 
+        const course = await this.courses.findById(courseClass.courseId);
+        if (!course) {
+            throw AppError.fromCode(ErrorCode.COURSE_NOT_FOUND, {
+                courseId: courseClass.courseId,
+                requestId: request.id
+            });
+        }
+
         const dueDate = request.enrollmentFeeDueDate ?? request.firstMonthlyPaymentDate;
 
-        // Aplicar desconto do enrollment request se existir
-        const discountCents = request.discountCents ?? null;
-        const discountReason = discountCents && discountCents > 0 
-            ? 'Desconto aplicado na matrícula' 
-            : null;
+        // Desconto do pedido aplica-se apenas às mensalidades (createFirstTuitionCharge), não à taxa de matrícula.
+        const isDependentEnrollment = request.requestedForDependentId != null;
 
         return SchoolFinancialCharge.create({
             id: Uuid(),
             schoolId: request.schoolId,
             ownerUserId: request.requestedForUserId,
-            studentUserId: request.requestedForUserId,
+            studentUserId: isDependentEnrollment ? null : request.requestedForUserId,
             dependentId: request.requestedForDependentId,
             courseId: courseClass.courseId,
             courseClassId: courseClass.id,
             chargeType: 'ENROLLMENT',
-            description: 'Enrollment fee',
+            description: formatEnrollmentChargeDescription(course.name),
             amountCents: request.enrollmentFeeCents,
-            discountCents,
-            discountReason,
+            discountCents: null,
+            discountReason: null,
             dueDate
         });
     }
@@ -270,18 +343,9 @@ export class ApproveEnrollmentRequest {
         discountCents: number | null,
         discountMonths: number | null
     ): Promise<SchoolFinancialCharge | null> {
-        const now = getTodayUtc();
         const firstPaymentDate = toUtcDateOnly(new Date(firstMonthlyPaymentDate));
-        
-        // Só criar se a data de vencimento já passou ou está no mesmo mês
-        const isSameMonth = isSameMonthYear(firstPaymentDate, now);
-        const isPast = firstPaymentDate < now;
-        
-        if (!isSameMonth && !isPast) {
-            return null; // Ainda não é hora de gerar
-        }
 
-        // Verificar se já existe cobrança para este mês/ano
+        // Verificar se já existe cobrança para este mês/ano (evita duplicata)
         if (this.financialCharges.findTuitionChargesForMonth) {
             const existingCharges = await this.financialCharges.findTuitionChargesForMonth(
                 enrollment.courseClassId,
@@ -291,23 +355,16 @@ export class ApproveEnrollmentRequest {
                 firstPaymentDate.getFullYear(),
                 firstPaymentDate.getMonth() + 1
             );
-            
+
             if (existingCharges.length > 0) {
-                return null; // Já existe cobrança
+                return null; // Já existe cobrança para esta data
             }
         }
 
-        const monthNames = [
-            'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-            'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
-        ];
-        const monthName = monthNames[firstPaymentDate.getMonth()];
-        const year = firstPaymentDate.getFullYear();
-
-        // Garantir que amountCents seja um número válido
-        const monthlyPrice = enrollment.fullAmountCents ?? course.monthlyPriceCents;
+        // Valor: matrícula já tem fullAmountCents (curso ou turma); fallback para curso/turma
+        const monthlyPrice = enrollment.fullAmountCents ?? course.monthlyPriceCents ?? courseClass.monthlyPriceCents;
         if (!monthlyPrice || monthlyPrice <= 0) {
-            return null; // Não criar cobrança se não houver preço definido
+            return null;
         }
 
         // Aplicar desconto se houver e se ainda não atingiu o limite de meses
@@ -331,6 +388,13 @@ export class ApproveEnrollmentRequest {
                 chargeDiscountReason = `Desconto aplicado (${remainingMonths} de ${discountMonths} ${discountMonths === 1 ? 'mês' : 'meses'})`;
             }
         }
+
+        const monthNames = [
+            'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+            'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+        ];
+        const monthName = monthNames[firstPaymentDate.getMonth()];
+        const year = firstPaymentDate.getFullYear();
 
         const charge = SchoolFinancialCharge.create({
             id: Uuid(),

@@ -18,6 +18,20 @@ export class AsaasClient {
         });
     }
 
+    /**
+     * Atualiza cadastro do cliente (ex.: desativar todas as notificações automáticas do Asaas para o pagador).
+     * PUT /v3/customers/{id}
+     */
+    async updateCustomer(customerId: string, payload: { notificationDisabled: boolean }): Promise<void> {
+        const id = customerId?.trim();
+        if (!id) throw new Error('customerId is required');
+        try {
+            await this.http.put(`/customers/${encodeURIComponent(id)}`, payload);
+        } catch (error) {
+            throw this.toDomainError(error);
+        }
+    }
+
     async createBoletoCharge(payload: AsaasCreateBoletoPayload): Promise<AsaasCreateChargeResponse> {
         try {
             const { data } = await this.http.post<AsaasCreateChargeResponse>('/payments', payload);
@@ -171,6 +185,38 @@ export class AsaasClient {
         }
     }
 
+    /**
+     * Exclui uma cobrança no Asaas (DELETE /v3/payments/{id}).
+     * Só pode excluir cobranças pendentes; se já foi paga/cancelada, a API pode retornar erro.
+     */
+    async deletePayment(paymentId: string): Promise<{ deleted: boolean; id: string }> {
+        if (!paymentId?.trim()) {
+            throw new Error('paymentId is required');
+        }
+        const { data } = await this.http.delete<{ deleted?: boolean; id?: string }>(`/payments/${paymentId}`);
+        return {
+            deleted: data?.deleted === true,
+            id: data?.id ?? paymentId
+        };
+    }
+
+    /**
+     * Marca a cobrança como recebida em dinheiro no Asaas (POST /v3/payments/{id}/receiveInCash).
+     * Usado quando a escola dá baixa manual: o PIX/boleto fica marcado como pago no Asaas.
+     */
+    async receivePaymentInCash(
+        paymentId: string,
+        payload: { paymentDate: string; value: number; notifyCustomer?: boolean }
+    ): Promise<void> {
+        if (!paymentId?.trim()) throw new Error('paymentId is required');
+        const body = {
+            paymentDate: payload.paymentDate,
+            value: payload.value,
+            notifyCustomer: payload.notifyCustomer ?? false
+        };
+        await this.http.post(`/payments/${paymentId}/receiveInCash`, body);
+    }
+
     async listPayments(params?: {
         status?: string;
         externalReference?: string;
@@ -228,6 +274,18 @@ export class AsaasClient {
             }
 
             return { data: [], totalCount: 0 };
+        } catch (error) {
+            throw this.toDomainError(error);
+        }
+    }
+
+    /** Saldo da conta principal (API key usada no client). GET /finance/balance */
+    async getMainAccountBalance(): Promise<{ balance: number }> {
+        try {
+            const { data } = await this.http.get<{ balance: number }>('/finance/balance');
+            return {
+                balance: typeof data?.balance === 'number' ? data.balance : 0
+            };
         } catch (error) {
             throw this.toDomainError(error);
         }
@@ -349,6 +407,43 @@ export class AsaasClient {
             timeout: 30_000
         });
         await client.post(`/myAccount/documents/${documentGroupId}`, form);
+    }
+
+    /**
+     * Obtém o status cadastral da subconta (GET /v3/myAccount/status).
+     * Chamar com a API key da subconta (access_token).
+     * Retorna: id, commercialInfo, bankAccountInfo, documentation, general (ex.: APPROVED, AWAITING_APPROVAL).
+     */
+    async getMyAccountStatus(accountApiKey: string): Promise<{
+        id: string;
+        commercialInfo: string;
+        bankAccountInfo: string;
+        documentation: string;
+        general: string;
+    }> {
+        if (!accountApiKey?.trim()) {
+            throw new Error('accountApiKey is required');
+        }
+        const baseUrl = this.http.defaults.baseURL || process.env.ASAAS_BASE_URL || 'https://www.asaas.com/api/v3';
+        const client = axios.create({
+            baseURL: baseUrl,
+            headers: {
+                access_token: accountApiKey,
+                'Content-Type': 'application/json'
+            },
+            timeout: 15_000
+        });
+        const { data } = await client.get<{ id: string; commercialInfo: string; bankAccountInfo: string; documentation: string; general: string }>('/myAccount/status');
+        if (!data || typeof data !== 'object' || !data.id) {
+            throw new Error('Asaas API returned invalid account status response');
+        }
+        return {
+            id: data.id,
+            commercialInfo: data.commercialInfo ?? '',
+            bankAccountInfo: data.bankAccountInfo ?? '',
+            documentation: data.documentation ?? '',
+            general: data.general ?? ''
+        };
     }
 
     /**

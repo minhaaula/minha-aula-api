@@ -366,6 +366,123 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /schools/students/{studentId}/financial-summary:
+    get:
+      operationId: getSchoolStudentFinancialSummary
+      tags:
+        - Schools
+        - Financeiro
+      summary: Consolidado financeiro do aluno na escola
+      description: |
+        Retorna totais em centavos (valor líquido das cobranças) para o aluno ou dependente informado,
+        apenas se houver matrícula ativa na escola logada.
+
+        - `pendingTotalCents`: cobranças em aberto com vencimento ainda não ultrapassado (e falhas não vencidas).
+        - `overdueTotalCents`: status OVERDUE ou em aberto com data de vencimento já passada.
+        - `paidTotalCents`: cobranças pagas.
+        - `grandTotalCents`: soma de todas as cobranças do aluno na escola, **incluindo canceladas**.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: studentId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID do usuário-aluno ou do dependente (mesmo identificador da listagem de alunos).
+      responses:
+        '200':
+          description: Totais calculados.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchoolStudentFinancialSummaryResponse'
+        '403':
+          description: Usuário não autorizado ou sem contexto de escola.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Aluno não encontrado ou não vinculado à escola.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /schools/students/{studentId}/paid-charges:
+    get:
+      operationId: listSchoolStudentPaidCharges
+      tags:
+        - Schools
+        - Financeiro
+      summary: Listar cobranças do aluno na escola (paginado)
+      description: |
+        Retorna as cobranças financeiras do aluno na escola (pendentes e pagas), com paginação.
+        Cobranças canceladas não são incluídas. Ordenação: data de pagamento (mais recentes primeiro), depois vencimento.
+
+        Use os mesmos `studentId` e `dependentId` que em `GET /schools/students/{studentId}` (ficha do aluno).
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: studentId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: UUID do aluno matriculado ou do dependente (ou do responsável se usar `dependentId`).
+        - in: query
+          name: dependentId
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Opcional. Quando informado, `studentId` no path deve ser o UUID do responsável.
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Tamanho da página.
+        - in: query
+          name: offset
+          required: false
+          schema:
+            type: integer
+            format: int32
+            minimum: 0
+            default: 0
+          description: Deslocamento para paginação.
+      responses:
+        '200':
+          description: Lista paginada de cobranças.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchoolStudentPaidChargesListResponse'
+        '403':
+          description: Usuário não autorizado ou sem contexto de escola.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Aluno não encontrado ou não vinculado à escola.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '501':
+          description: Funcionalidade não configurada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /schools/students/{studentId}:
     get:
       tags:
@@ -376,9 +493,14 @@ paths:
         - Dados do aluno (nome, email, telefone, CPF, data de nascimento)
         - Dados do responsável (se o aluno for um dependente)
         - Lista de cursos e turmas em que está matriculado na escola
-        - Histórico de mensalidades pagas na escola
+
+        As cobranças (pendentes e pagas) estão em `GET /schools/students/{studentId}/paid-charges` (paginado)
         
         **Importante:** A rota só retorna dados se o aluno estiver vinculado à escola através de matrículas ativas.
+
+        Na listagem (`GET /schools/students`), use o campo **`detailsStudentId`** no path desta rota para abrir a ficha do aluno matriculado (para matrícula de dependente, é o UUID do dependente; `student.id` na listagem é sempre o titular).
+
+        Alternativa: `studentId` = UUID do responsável e query **`dependentId`** = UUID do dependente (mesmo efeito que usar só o UUID do dependente em `studentId`).
       security:
         - bearerAuth: []
       parameters:
@@ -388,7 +510,14 @@ paths:
           schema:
             type: string
             format: uuid
-          description: ID do aluno ou dependente
+          description: UUID do aluno matriculado ou do dependente (preferir `detailsStudentId` da listagem). Com `dependentId` na query, deve ser o UUID do responsável.
+        - in: query
+          name: dependentId
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Opcional. Quando informado, `studentId` no path deve ser o UUID do responsável e este parâmetro o UUID do dependente cujos detalhes se deseja.
       responses:
         '200':
           description: Detalhes do aluno encontrados.
@@ -580,8 +709,10 @@ paths:
         - Schools
       summary: Listar pagamentos pagos dos alunos da escola
       description: |
-        Retorna apenas os pagamentos com status PAID de todos os alunos matriculados na escola.
-        Não requer filtro de mês e ano, permitindo buscar todos os pagamentos pagos.
+        Retorna apenas os pagamentos com status PAID de todos os alunos matriculados na escola,
+        excluindo pagamentos dados como baixa manual pela escola (marcados como MANUAL).
+        Inclui cobranças com método PIX ou BOLETO e registros antigos vinculados ao Asaas (asaasPaymentId).
+        Não requer filtro de mês e ano, permitindo buscar todos os pagamentos pagos elegíveis.
         Suporta paginação e filtro opcional por nome do aluno.
       security:
         - bearerAuth: []
@@ -712,6 +843,93 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Aluno, dependente ou curso não encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /schools/finance/charges/{chargeId}/mark-paid:
+    post:
+      tags:
+        - Schools
+      summary: Dar baixa em pagamento (marcar cobrança como paga)
+      description: |
+        Permite à escola dar baixa manual em uma cobrança do aluno, marcando-a como paga.
+        A cobrança deve pertencer à escola do usuário autenticado.
+        Se a cobrança tiver PIX ou boleto no Asaas, o pagamento é marcado como recebido no Asaas (receiveInCash).
+        Payload: data (data do pagamento) e observacao (opcional).
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: chargeId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID da cobrança
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - data
+              properties:
+                data:
+                  type: string
+                  format: date
+                  description: Data do pagamento (baixa)
+                observacao:
+                  type: string
+                  maxLength: 500
+                  nullable: true
+                  description: Observação da baixa (opcional)
+      responses:
+        '200':
+          description: Cobrança marcada como paga.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  chargeId:
+                    type: string
+                    format: uuid
+                  status:
+                    type: string
+                    enum: [PAID]
+                  paidAt:
+                    type: string
+                    format: date-time
+                  observacao:
+                    type: string
+                    nullable: true
+                required:
+                  - chargeId
+                  - status
+                  - paidAt
+                  - observacao
+        '400':
+          description: Cobrança cancelada ou status não permite baixa.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Não autorizado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Cobrança não pertence a esta escola.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Cobrança não encontrada.
           content:
             application/json:
               schema:
@@ -1581,6 +1799,8 @@ paths:
         O sistema utiliza o valor do campo `monthlyPriceCents` da turma (se definido) ou do curso relacionado
         para preencher o campo `fullAmountCents` da matrícula. Este valor cheio pode ser usado posteriormente como
         base para cálculo de descontos.
+
+        **Notificações ao aluno:** enfileira email de confirmação de matrícula e grava notificação in-app (`metadata.kind` = `ENROLLMENT_CONFIRMED`).
       security:
         - bearerAuth: []
       parameters:
@@ -1635,6 +1855,70 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '501':
           description: Funcionalidade de matrícula de aluno não configurada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /schools/courses/{courseId}/classes/{classId}/enrollments/{enrollmentId}:
+    delete:
+      tags:
+        - Schools
+      summary: Desmatricular aluno da turma
+      description: |
+        Cancela a matrícula (status `CANCELLED`). As cobranças financeiras existentes
+        (boletos, PIX, mensalidades abertas ou atrasadas) **não são removidas nem alteradas**.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: courseId
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: path
+          name: classId
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: path
+          name: enrollmentId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Matrícula cancelada.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - enrollmentId
+                  - status
+                properties:
+                  enrollmentId:
+                    type: string
+                    format: uuid
+                  status:
+                    type: string
+                    enum: [CANCELLED]
+        '400':
+          description: Erro de validação ou matrícula já encerrada/cancelada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado ou sem contexto de escola.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Curso, turma ou matrícula não encontrada para este contexto.
           content:
             application/json:
               schema:
@@ -1912,8 +2196,30 @@ paths:
                       - revenueForecastCents
                       - revenueChangePercentage
                       - pendingEnrollmentRequests
+                  pendingPayments:
+                    type: object
+                    description: Pagamentos pendentes (todas as cobranças em aberto – a receber)
+                    properties:
+                      totalAmount:
+                        type: number
+                        format: double
+                        description: Valor total a receber em reais
+                        example: 3200.00
+                      totalAmountCents:
+                        type: integer
+                        description: Valor total a receber em centavos
+                        example: 320000
+                      count:
+                        type: integer
+                        description: Quantidade de cobranças pendentes (abertas + atrasadas)
+                        example: 8
+                    required:
+                      - totalAmount
+                      - totalAmountCents
+                      - count
                   overduePayments:
                     type: object
+                    description: Pagamentos em atraso (vencidos e não pagos – status OVERDUE ou cobrança aberta com data de vencimento no passado)
                     properties:
                       totalAmount:
                         type: number
@@ -1983,6 +2289,7 @@ paths:
                         - valueCents
                 required:
                   - summary
+                  - pendingPayments
                   - overduePayments
                   - recentEnrollments
                   - revenueHistory
@@ -2000,6 +2307,10 @@ paths:
                       revenueForecastCents: 300000
                       revenueChangePercentage: 8.2
                       pendingEnrollmentRequests: 2
+                    pendingPayments:
+                      totalAmount: 3200.00
+                      totalAmountCents: 320000
+                      count: 8
                     overduePayments:
                       totalAmount: 1450.00
                       totalAmountCents: 145000
@@ -2882,6 +3193,72 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '501':
           description: Funcionalidade de consulta de documentos KYC não configurada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /schools/kyc/sync-onboarding-documents:
+    post:
+      tags:
+        - Schools
+      summary: Sincronizar documentos de onboarding com o Asaas
+      description: |
+        Sincroniza os documentos pendentes da escola com o Asaas e atualiza a `onboardingUrl` na escola
+        quando um novo link for disponibilizado. Use para forçar atualização da lista de documentos e
+        do link de onboarding (onboarding manual). Requer autenticação com persona SCHOOL.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Documentos sincronizados com sucesso.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  schoolId:
+                    type: string
+                    format: uuid
+                  documents:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        type:
+                          type: string
+                        title:
+                          type: string
+                        description:
+                          type: string
+                        status:
+                          type: string
+                        onboardingUrl:
+                          type: string
+                          nullable: true
+                        onboardingUrlExpirationDate:
+                          type: string
+                          nullable: true
+                  onboardingUrl:
+                    type: string
+                    nullable: true
+                  onboardingUrlUpdated:
+                    type: boolean
+        '401':
+          description: Não autorizado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Requer persona SCHOOL.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Escola não encontrada.
           content:
             application/json:
               schema:

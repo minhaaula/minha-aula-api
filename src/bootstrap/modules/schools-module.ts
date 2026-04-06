@@ -33,6 +33,7 @@ import { GetCourseClass } from '../../app/use-cases/get-course-class';
 import { GetSchoolProfile } from '../../app/use-cases/get-school-profile';
 import { UpdateSchool } from '../../app/use-cases/update-school';
 import { GetSchoolPendingDocuments } from '../../app/use-cases/get-school-pending-documents';
+import { SyncSchoolOnboardingDocuments } from '../../app/use-cases/sync-school-onboarding-documents';
 import { AdminUploadSchoolOnboardingDocument } from '../../app/use-cases/admin-upload-school-onboarding-document';
 import { UpdateCourse } from '../../app/use-cases/update-course';
 import { DeleteCourse } from '../../app/use-cases/delete-course';
@@ -48,6 +49,7 @@ import { EnrollmentRepositoryAdapter } from '../../infra/db/typeorm/enrollment-r
 import { EnrollmentRequestRepositoryAdapter } from '../../infra/db/typeorm/enrollment-request-repository.adapter';
 import { SchoolFinancialChargeRepositoryAdapter } from '../../infra/db/typeorm/school-financial-charge-repository.adapter';
 import { EnrollStudent } from '../../app/use-cases/enroll-student';
+import { UnenrollStudentFromClass } from '../../app/use-cases/unenroll-student-from-class';
 import { DeleteCourseClass } from '../../app/use-cases/delete-course-class';
 import { ListSchoolStudents } from '../../app/use-cases/list-school-students';
 import { ListSchoolPayments } from '../../app/use-cases/list-school-payments';
@@ -62,6 +64,7 @@ import { GenerateTuitionPix } from '../../app/use-cases/generate-tuition-pix';
 import { GetEnrollmentRequest } from '../../app/use-cases/get-enrollment-request';
 import { CreateSchoolCharge } from '../../app/use-cases/create-school-charge';
 import { GetSchoolFinancialSummary } from '../../app/use-cases/get-school-financial-summary';
+import { SchoolMarkChargePaid } from '../../app/use-cases/school-mark-charge-paid';
 import { GetSchoolDashboard } from '../../app/use-cases/get-school-dashboard';
 import { ListSchoolWithdrawals } from '../../app/use-cases/list-school-withdrawals';
 import { RequestSchoolWithdrawal } from '../../app/use-cases/request-school-withdrawal';
@@ -80,6 +83,8 @@ import { PasswordResetTokenRepositoryAdapter } from '../../infra/db/typeorm/pass
 import { EmailProviderPort } from '../../ports/providers/email-provider.port';
 import { GetStudentDirectoryEntry } from '../../app/use-cases/get-student-directory-entry';
 import { GetSchoolStudentDetails } from '../../app/use-cases/get-school-student-details';
+import { ListSchoolStudentPaidCharges } from '../../app/use-cases/list-school-student-paid-charges';
+import { ConsolidateSchoolStudentFinancial } from '../../app/use-cases/consolidate-school-student-financial';
 import { StorageProviderPort } from '../../ports/providers/storage-provider.port';
 import { UploadSchoolImage } from '../../app/use-cases/upload-school-image';
 import { ListSchoolImages } from '../../app/use-cases/list-school-images';
@@ -92,6 +97,7 @@ import { buildNotificationsRoutes } from '../../infra/http/routes/schools/notifi
 import { GetSchoolBalance } from '../../app/use-cases/get-school-balance';
 import { OutboxRepository } from '../../ports/repositories/outbox.repo';
 import { SendClassPushNotification } from '../../app/use-cases/send-class-push-notification';
+import { NotifyStudentUser } from '../../app/use-cases/notify-student-user';
 
 export type SchoolsModuleDeps = {
     schoolsRepo: SchoolRepositoryAdapter;
@@ -120,6 +126,11 @@ export type SchoolsModuleDeps = {
 };
 
 export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupContext): ModuleBuildResult {
+    const notifyStudent =
+        deps.notificationsRepo && deps.outbox
+            ? new NotifyStudentUser(deps.notificationsRepo, deps.outbox)
+            : undefined;
+
     // Declarar asaasProvider antes de usar
     const asaasProvider = typeof deps.paymentProvider.createSubAccount === 'function'
         ? deps.paymentProvider as AsaasProviderPort
@@ -156,6 +167,9 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         ? new GetSchoolPendingDocuments(deps.schoolsRepo, asaasProvider)
         : undefined;
 
+    const syncSchoolOnboardingDocuments = asaasProvider
+        ? new SyncSchoolOnboardingDocuments(deps.schoolsRepo, asaasProvider)
+        : undefined;
     const uploadSchoolOnboardingDocument = asaasProvider
         ? new AdminUploadSchoolOnboardingDocument(deps.schoolsRepo, asaasProvider)
         : undefined;
@@ -199,14 +213,9 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         deps.dependentsRepo
     );
     const getStudentDirectoryEntry = new GetStudentDirectoryEntry(deps.usersRepo, deps.dependentsRepo);
-    const getSchoolStudentDetails = new GetSchoolStudentDetails(
-        deps.usersRepo,
-        deps.dependentsRepo,
-        deps.enrollmentsRepo,
-        deps.coursesRepo,
-        deps.classesRepo,
-        deps.financialChargesRepo
-    );
+    const getSchoolStudentDetails = new GetSchoolStudentDetails(deps.usersRepo, deps.dependentsRepo);
+    const listSchoolStudentPaidCharges = new ListSchoolStudentPaidCharges(deps.usersRepo, deps.dependentsRepo);
+    const consolidateSchoolStudentFinancial = new ConsolidateSchoolStudentFinancial();
     const listSchoolPayments = new ListSchoolPayments(
         deps.coursesRepo,
         deps.classesRepo,
@@ -231,7 +240,13 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         deps.enrollmentsRepo,
         deps.schoolsRepo,
         deps.outbox,
-        deps.frontendBaseUrl
+        deps.frontendBaseUrl,
+        notifyStudent
+    );
+    const unenrollStudentFromClass = new UnenrollStudentFromClass(
+        deps.coursesRepo,
+        deps.classesRepo,
+        deps.enrollmentsRepo
     );
     const listEnrollmentRequests = new ListEnrollmentRequests(deps.enrollmentRequestsRepo);
     const createEnrollmentRequest = new CreateEnrollmentRequest(
@@ -241,7 +256,10 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         deps.usersRepo,
         deps.dependentsRepo,
         deps.enrollmentsRepo,
-        deps.enrollmentRequestsRepo
+        deps.enrollmentRequestsRepo,
+        notifyStudent,
+        deps.outbox,
+        deps.frontendBaseUrl
     );
     const issueEnrollmentFeeBoleto = new IssueEnrollmentFeeBoleto(
         deps.financialChargesRepo,
@@ -254,7 +272,9 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         deps.usersRepo,
         deps.schoolsRepo,
         deps.coursesRepo,
-        deps.paymentProvider
+        deps.paymentProvider,
+        schoolImagesRepo,
+        deps.storageProvider
     );
     const approveEnrollmentRequest = new ApproveEnrollmentRequest(
         deps.enrollmentRequestsRepo,
@@ -263,7 +283,13 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         deps.coursesRepo,
         deps.financialChargesRepo,
         issueEnrollmentFeeBoleto,
-        generateTuitionPix
+        generateTuitionPix,
+        deps.usersRepo,
+        deps.schoolsRepo,
+        deps.dependentsRepo,
+        deps.outbox,
+        notifyStudent,
+        deps.frontendBaseUrl
     );
     const getEnrollmentRequest = new GetEnrollmentRequest(deps.enrollmentRequestsRepo);
     const createSchoolCharge = new CreateSchoolCharge(
@@ -272,6 +298,11 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         deps.classesRepo,
         deps.usersRepo,
         deps.dependentsRepo
+    );
+    const schoolMarkChargePaid = new SchoolMarkChargePaid(
+        deps.financialChargesRepo,
+        deps.schoolsRepo,
+        deps.paymentProvider
     );
     const getSchoolFinancialSummary = new GetSchoolFinancialSummary(deps.financialChargesRepo);
     const getSchoolBalance = asaasProvider
@@ -287,14 +318,8 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
     const withdrawalsRepo = new SchoolWithdrawalRepositoryAdapter();
     const listSchoolWithdrawals = new ListSchoolWithdrawals(withdrawalsRepo);
     
-    const requestSchoolWithdrawal = deps.bankAccountsRepo && asaasProvider
-        ? new RequestSchoolWithdrawal(
-            deps.schoolsRepo,
-            deps.bankAccountsRepo,
-            withdrawalsRepo,
-            deps.financialChargesRepo,
-            asaasProvider
-        )
+    const requestSchoolWithdrawal = deps.bankAccountsRepo
+        ? new RequestSchoolWithdrawal(deps.schoolsRepo, deps.bankAccountsRepo, withdrawalsRepo)
         : undefined;
     const scheduleClassSession = new ScheduleClassSession(deps.classSessionsRepo, deps.classesRepo, deps.coursesRepo);
     const listClassSessions = new ListClassSessions(deps.classSessionsRepo, deps.classesRepo, deps.coursesRepo);
@@ -377,6 +402,7 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         listPaidSchoolPayments,
         consolidateSchoolPayments,
         enrollStudent,
+        unenrollStudentFromClass,
         listEnrollmentRequests,
         createSchoolCharge,
         getSchoolFinancialSummary,
@@ -384,6 +410,7 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         getSchoolDashboard,
         listSchoolWithdrawals,
         requestSchoolWithdrawal,
+        schoolMarkChargePaid,
         scheduleClassSession,
         listClassSessions,
         cancelClassSession,
@@ -406,12 +433,15 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         updateSchoolPassword,
         getStudentDirectoryEntry,
         getSchoolStudentDetails,
+        listSchoolStudentPaidCharges,
+        consolidateSchoolStudentFinancial,
         uploadSchoolImage,
         listSchoolImages,
         validateSchoolCoupon,
         listSchoolNotifications,
         sendClassPushNotification,
         getSchoolPendingDocuments,
+        syncSchoolOnboardingDocuments,
         uploadSchoolOnboardingDocument
     });
 

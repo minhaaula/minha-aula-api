@@ -1,4 +1,5 @@
 import { SchoolRepository } from '../../ports/repositories/school.repo';
+import { log } from '../../shared/logger';
 
 type AsaasAccountPayload = {
     id?: string | null;
@@ -26,9 +27,12 @@ type HandleAsaasAccountWebhookOutput = {
     reason?: string;
 };
 
-// Eventos de aprovação de conta
+/** Evento que ativa a conta da escola: marca onboarding como completo e persiste apiKey/walletId se vier no payload. */
+const ACTIVATES_ACCOUNT_EVENT = 'ACCOUNT_STATUS_GENERAL_APPROVAL_APPROVED';
+
+// Eventos de aprovação de conta (o único enviado pelo Asaas ao aprovar KYC é ACCOUNT_STATUS_GENERAL_APPROVAL_APPROVED)
 const APPROVED_EVENTS = new Set([
-    'ACCOUNT_STATUS_GENERAL_APPROVAL_APPROVED',
+    ACTIVATES_ACCOUNT_EVENT,
     'ACCOUNT_CREATED',
     'ACCOUNT_APPROVED'
 ]);
@@ -72,19 +76,16 @@ export class HandleAsaasAccountWebhook {
         }
 
         if (!school) {
+            log.warn('[Asaas Webhook] Escola não encontrada para o webhook de conta', {
+                event: eventName,
+                externalReference: account.externalReference ?? null,
+                accountId: account.id ?? null
+            });
             return { handled: false, reason: 'School not found for account' };
         }
 
-        // Idempotência básica: verificar se o evento já foi processado
-        // (para webhooks de conta, a idempotência é menos crítica pois não alteram estado crítico)
-        // Mas ainda é útil para evitar logs duplicados
-        if (input.eventId) {
-            // Podemos armazenar eventos processados no metadata da escola se necessário
-            // Por enquanto, apenas processamos normalmente
-        }
-
-        // Processar evento de aprovação
-        if (APPROVED_EVENTS.has(eventName)) {
+        // Só ativa a conta (onboardingCompletedAt) quando o evento for aprovação geral
+        if (eventName === ACTIVATES_ACCOUNT_EVENT) {
             let needsUpdate = false;
             let updatedSchool = school;
             
@@ -114,6 +115,11 @@ export class HandleAsaasAccountWebhook {
             
             if (needsUpdate) {
                 await this.schools.save(updatedSchool);
+                log.info('[Asaas Webhook] Conta ativada: onboarding marcado como completo', {
+                    event: eventName,
+                    schoolId: updatedSchool.id,
+                    accountId: account.id ?? null
+                });
                 return { handled: true, reason: 'Account approved and saved' };
             }
             

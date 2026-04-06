@@ -116,6 +116,13 @@ export const courseClassParamsSchema = z.object({
     classId: z.string().uuid()
 });
 
+/** Curso + turma + matrícula (desmatrícula). */
+export const courseClassEnrollmentParamsSchema = z.object({
+    courseId: z.string().uuid(),
+    classId: z.string().uuid(),
+    enrollmentId: z.string().uuid()
+});
+
 export const classSessionsParamsSchema = z.object({
     courseId: z.string().uuid(),
     classId: z.string().uuid()

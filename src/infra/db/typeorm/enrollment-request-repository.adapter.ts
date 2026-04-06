@@ -1,10 +1,23 @@
 import { AppDataSource } from './datasource';
 import {
     EnrollmentRequestRepository,
-    EnrollmentRequestWithDetails
+    EnrollmentRequestWithDetails,
+    AdminEnrollmentRequestItem
 } from '../../../ports/repositories/enrollment-request.repo';
 import { EnrollmentRequest, EnrollmentRequestStatus } from '../../../domain/entities/enrollment-request';
 import { EnrollmentRequestOrm } from './entities/enrollment-request.orm';
+
+/** Inclui variantes legadas (ex.: CANCELED) quando a lista pede CANCELLED. */
+function expandEnrollmentStatusIn(statuses: EnrollmentRequestStatus[]): string[] {
+    const out = new Set<string>();
+    for (const s of statuses) {
+        out.add(s);
+        if (s === 'CANCELLED') {
+            out.add('CANCELED');
+        }
+    }
+    return [...out];
+}
 
 export class EnrollmentRequestRepositoryAdapter implements EnrollmentRequestRepository {
     private readonly repo = AppDataSource.getRepository(EnrollmentRequestOrm);
@@ -17,7 +30,8 @@ export class EnrollmentRequestRepositoryAdapter implements EnrollmentRequestRepo
     async findByCourseClassAndTarget(params: { courseClassId: string; userId: string; dependentId: string | null; }): Promise<EnrollmentRequest | null> {
         const qb = this.repo.createQueryBuilder('request')
             .where('request.courseClassId = :courseClassId', { courseClassId: params.courseClassId })
-            .andWhere('request.requestedForUserId = :userId', { userId: params.userId });
+            .andWhere('request.requestedForUserId = :userId', { userId: params.userId })
+            .andWhere('request.status IN (:...statuses)', { statuses: ['PENDING', 'APPROVED'] });
 
         if (params.dependentId) {
             qb.andWhere('request.requestedForDependentId = :dependentId', { dependentId: params.dependentId });
@@ -34,6 +48,7 @@ export class EnrollmentRequestRepositoryAdapter implements EnrollmentRequestRepo
         courseClassId?: string;
         courseId?: string;
         status?: EnrollmentRequestStatus;
+        statusIn?: EnrollmentRequestStatus[];
         requestedForUserId?: string;
         requestedForDependentId?: string | null;
         studentDocument?: string;
@@ -45,6 +60,7 @@ export class EnrollmentRequestRepositoryAdapter implements EnrollmentRequestRepo
             .innerJoinAndSelect('request.courseClass', 'courseClass')
             .innerJoinAndSelect('courseClass.course', 'course')
             .innerJoinAndSelect('request.requestedFor', 'student')
+            .innerJoinAndSelect('request.school', 'school')
             .leftJoinAndSelect('request.dependent', 'dependent');
 
         if (params.schoolId) {
@@ -55,8 +71,18 @@ export class EnrollmentRequestRepositoryAdapter implements EnrollmentRequestRepo
             qb.andWhere('request.courseClassId = :courseClassId', { courseClassId: params.courseClassId });
         }
 
-        if (params.status) {
-            qb.andWhere('request.status = :status', { status: params.status });
+        if (params.statusIn?.length) {
+            const statuses = expandEnrollmentStatusIn(params.statusIn);
+            qb.andWhere('request.status IN (:...statuses)', { statuses });
+        } else if (params.status) {
+            if (params.status === 'CANCELLED') {
+                // Legado: alguns registros usam "CANCELED" (1 L); o ENUM atual só tem CANCELLED.
+                qb.andWhere('request.status IN (:...cancelledStatuses)', {
+                    cancelledStatuses: ['CANCELLED', 'CANCELED']
+                });
+            } else {
+                qb.andWhere('request.status = :status', { status: params.status });
+            }
         }
 
         if (params.courseId) {
@@ -91,8 +117,71 @@ export class EnrollmentRequestRepositoryAdapter implements EnrollmentRequestRepo
             courseClassLabel: row.courseClass?.label ?? null,
             courseLabel: row.courseClass?.course?.name ?? null,
             studentName: row.requestedFor.fullName,
-            dependentName: row.dependent?.fullName ?? null
+            dependentName: row.dependent?.fullName ?? null,
+            schoolName: row.school?.name ?? null,
+            monthlyPriceCents: row.courseClass?.monthlyPriceCents ?? null,
+            schedule: Array.isArray(row.courseClass?.schedule) ? row.courseClass.schedule : null
         }));
+    }
+
+    async findManyForAdmin(params: {
+        studentName?: string | null;
+        studentCpf?: string | null;
+        schoolName?: string | null;
+        status?: EnrollmentRequestStatus | null;
+        limit?: number;
+        offset?: number;
+    }): Promise<{ items: AdminEnrollmentRequestItem[]; total: number }> {
+        const studentName = params.studentName?.trim() || null;
+        const studentCpf = params.studentCpf?.trim().replace(/\D/g, '') || null;
+        const schoolName = params.schoolName?.trim() || null;
+        const limit = Math.min(Math.max(params.limit ?? 50, 1), 100);
+        const offset = Math.max(0, params.offset ?? 0);
+
+        const qb = this.repo
+            .createQueryBuilder('request')
+            .innerJoinAndSelect('request.courseClass', 'courseClass')
+            .innerJoinAndSelect('courseClass.course', 'course')
+            .innerJoinAndSelect('request.requestedFor', 'student')
+            .innerJoinAndSelect('request.school', 'school')
+            .leftJoinAndSelect('request.dependent', 'dependent');
+
+        if (studentName) {
+            qb.andWhere(
+                '(LOWER(student.fullName) LIKE LOWER(:studentName) OR (dependent.id IS NOT NULL AND LOWER(dependent.fullName) LIKE LOWER(:studentName)))',
+                { studentName: `%${studentName}%` }
+            );
+        }
+        if (studentCpf) {
+            qb.andWhere(
+                '(student.cpf = :studentCpf OR (dependent.id IS NOT NULL AND dependent.cpf = :studentCpf))',
+                { studentCpf }
+            );
+        }
+        if (schoolName) {
+            qb.andWhere('LOWER(school.name) LIKE LOWER(:schoolName)', { schoolName: `%${schoolName}%` });
+        }
+        if (params.status) {
+            qb.andWhere('request.status = :status', { status: params.status });
+        }
+
+        qb.orderBy('request.createdAt', 'DESC');
+
+        const [rows, total] = await qb
+            .skip(offset)
+            .take(limit)
+            .getManyAndCount();
+
+        const items: AdminEnrollmentRequestItem[] = rows.map((row) => ({
+            request: this.toDomain(row),
+            courseClassLabel: row.courseClass?.label ?? null,
+            courseLabel: row.courseClass?.course?.name ?? null,
+            studentName: row.requestedFor.fullName,
+            dependentName: row.dependent?.fullName ?? null,
+            schoolName: row.school?.name ?? ''
+        }));
+
+        return { items, total };
     }
 
     async countPendingBySchoolId(schoolId: string): Promise<number> {
@@ -127,7 +216,9 @@ export class EnrollmentRequestRepositoryAdapter implements EnrollmentRequestRepo
             firstMonthlyPaymentDate,
             createdAt: row.createdAt
         });
-        (entity as any)._status = row.status;
+        const rawStatus = (row.status as unknown as string) ?? 'PENDING';
+        // Compat: já existiram dados legados com "CANCELED" (1 L). Normaliza para "CANCELLED".
+        (entity as any)._status = rawStatus === 'CANCELED' ? 'CANCELLED' : rawStatus;
         (entity as any)._decidedAt = row.decidedAt;
         (entity as any)._decidedByUserId = row.decidedByUserId;
         (entity as any)._notes = row.notes;

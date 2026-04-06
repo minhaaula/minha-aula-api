@@ -220,6 +220,64 @@ describe('GenerateTuitionPix', () => {
         expect(stored!.status).toBe('OPEN');
     });
 
+    it('returns amountCents (bruto) distinct from netAmountCents when there is discount', async () => {
+        const charges = new InMemoryCharges();
+        const users = new InMemoryUsers();
+        const schools = new InMemorySchools();
+        const courses = new InMemoryCourses();
+
+        const user = makeUser('user-discount');
+        users.seed(user);
+
+        const school = makeSchool('school-discount');
+        schools.seed(school);
+
+        const course = makeCourse('course-discount', school.id);
+        courses.seed(course);
+
+        const charge = SchoolFinancialCharge.create({
+            id: 'charge-discount',
+            schoolId: school.id,
+            ownerUserId: user.id,
+            studentUserId: user.id,
+            dependentId: null,
+            courseId: course.id,
+            courseClassId: 'class-d',
+            chargeType: 'TUITION',
+            amountCents: 100_000,
+            discountCents: 10_000,
+            discountReason: 'Bolsa',
+            dueDate: new Date('2024-03-10')
+        });
+        charges.seed(charge);
+
+        const provider = new FakePixProvider({
+            providerRef: 'asaas-pix-disc',
+            pixQrCode: 'qr',
+            pixCopiaECola: 'pix',
+            invoiceUrl: 'https://asaas.com/inv',
+            dueDate: new Date('2024-03-10')
+        });
+
+        const useCase = new GenerateTuitionPix(
+            charges,
+            users,
+            schools,
+            courses,
+            provider
+        );
+
+        const result = await useCase.exec({
+            chargeId: charge.id,
+            requester: { id: user.id, persona: UserPersonaEnum.STUDENT }
+        });
+
+        expect(result.amountCents).toBe(100_000);
+        expect(result.discountCents).toBe(10_000);
+        expect(result.netAmountCents).toBe(90_000);
+        expect(provider.lastInput?.amount.amount).toBe(90_000);
+    });
+
     it('returns existing PIX when already generated', async () => {
         const charges = new InMemoryCharges();
         const users = new InMemoryUsers();
@@ -363,7 +421,7 @@ describe('GenerateTuitionPix', () => {
             dependentId: null,
             courseId: course.id,
             courseClassId: 'class-4',
-            chargeType: 'ENROLLMENT', // Tipo errado
+            chargeType: 'MATERIALS', // Tipo não permitido para PIX (apenas TUITION e ENROLLMENT)
             amountCents: 15000,
             dueDate: new Date('2024-04-10')
         });
@@ -387,7 +445,63 @@ describe('GenerateTuitionPix', () => {
                 chargeId: charge.id,
                 requester: { id: user.id, persona: UserPersonaEnum.STUDENT }
             })
-        ).rejects.toThrow('Charge type is not TUITION');
+        ).rejects.toThrow(/Charge type MATERIALS does not allow PIX generation/);
+    });
+
+    it('generates PIX for ENROLLMENT charge (matrícula)', async () => {
+        const charges = new InMemoryCharges();
+        const users = new InMemoryUsers();
+        const schools = new InMemorySchools();
+        const courses = new InMemoryCourses();
+
+        const user = makeUser('user-enroll');
+        users.seed(user);
+
+        const school = makeSchool('school-enroll');
+        schools.seed(school);
+
+        const course = makeCourse('course-enroll', school.id);
+        courses.seed(course);
+
+        const charge = SchoolFinancialCharge.create({
+            id: 'charge-enroll',
+            schoolId: school.id,
+            ownerUserId: user.id,
+            studentUserId: user.id,
+            dependentId: null,
+            courseId: course.id,
+            courseClassId: null,
+            chargeType: 'ENROLLMENT',
+            amountCents: 20000,
+            dueDate: new Date('2024-05-15')
+        });
+        charges.seed(charge);
+
+        const provider = new FakePixProvider({
+            providerRef: 'asaas-pix-enroll',
+            pixQrCode: 'qr-enroll',
+            pixCopiaECola: 'pix-enroll',
+            dueDate: new Date('2024-05-15')
+        });
+
+        const useCase = new GenerateTuitionPix(
+            charges,
+            users,
+            schools,
+            courses,
+            provider
+        );
+
+        const result = await useCase.exec({
+            chargeId: charge.id,
+            requester: { id: user.id, persona: UserPersonaEnum.STUDENT }
+        });
+
+        expect(result.chargeId).toBe('charge-enroll');
+        expect(result.paymentProviderRef).toBe('asaas-pix-enroll');
+        expect(result.pixCopiaECola).toBe('pix-enroll');
+        expect(result.netAmountCents).toBe(20000);
+        expect(result.courseName).toBe('Curso de Inglês');
     });
 
     it('validates charge status allows PIX generation', async () => {
@@ -439,6 +553,7 @@ describe('GenerateTuitionPix', () => {
             asaasInvoiceUrl: null,
             asaasPayload: null,
             paidAt: new Date(),
+            paidObservation: null,
             cancelledAt: null,
             createdAt: charge.createdAt,
             updatedAt: charge.updatedAt

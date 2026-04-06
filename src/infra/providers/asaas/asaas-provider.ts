@@ -1,15 +1,56 @@
 import { Money } from '../../../domain/value-objects/money';
 import { PaymentProviderPort, CreateChargeInput, CreatePixChargeInput } from '../../../ports/providers/payment-provider.port';
 import { AsaasClient } from './asaas-client';
-import { AsaasChargeResponse, AsaasSubAccount, CreateAsaasSubAccountInput, CreateAsaasTransferInput, AsaasTransferResponse, AsaasAccountDetails, AsaasAccountBalance, AsaasPaymentDetails, ListAsaasPaymentsParams, ListAsaasPaymentsResponse, AsaasPendingDocumentsResult, AsaasPendingDocumentGroup } from '../../../ports/providers/asaas-port';
+import { AsaasChargeResponse, AsaasSubAccount, CreateAsaasSubAccountInput, CreateAsaasTransferInput, AsaasTransferResponse, AsaasAccountDetails, AsaasAccountBalance, AsaasPaymentDetails, ListAsaasPaymentsParams, ListAsaasPaymentsResponse, AsaasPendingDocumentsResult, AsaasPendingDocumentGroup, AsaasAccountStatus } from '../../../ports/providers/asaas-port';
 import { CreateBoletoChargeInput } from '../../../ports/providers/payment-provider.port';
-
+import { log } from '../../../shared/logger';
 
 export class AsaasProvider implements PaymentProviderPort {
     private client: AsaasClient;
 
     constructor({ apiKey, baseUrl }: { apiKey: string; baseUrl?: string }) {
         this.client = new AsaasClient(apiKey, baseUrl);
+    }
+
+    /**
+     * Por padrão o Asaas **não** deve enviar e-mail/SMS automáticos ao pagador nem à subconta (Minha Aula usa app/e-mail próprio e webhooks).
+     * `ASAAS_NOTIFY_CUSTOMER_ON_PAYMENT=true` reativa notificações nativas Asaas para pagadores e para criação de subconta.
+     */
+    private static asaasNotifyCustomerEnabled(): boolean {
+        return process.env.ASAAS_NOTIFY_CUSTOMER_ON_PAYMENT === 'true';
+    }
+
+    /**
+     * Flags no objeto `customer` em POST /payments (cliente embutido na cobrança).
+     */
+    private static asaasCustomerNotificationFlags(): { notificationDisabled?: boolean } {
+        if (AsaasProvider.asaasNotifyCustomerEnabled()) {
+            return {};
+        }
+        return { notificationDisabled: true };
+    }
+
+    /**
+     * Clientes já existentes no Asaas (mesmo CPF/CNPJ) podem manter notificações ativas mesmo com `notificationDisabled`
+     * no payload aninhado. Após criar a cobrança, forçamos PUT /customers/{id} quando aplicável.
+     */
+    private async ensurePayerCustomerNotificationsDisabled(customerId: unknown): Promise<void> {
+        if (AsaasProvider.asaasNotifyCustomerEnabled()) return;
+        const id =
+            typeof customerId === 'string'
+                ? customerId.trim()
+                : customerId && typeof customerId === 'object' && typeof (customerId as { id?: unknown }).id === 'string'
+                  ? String((customerId as { id: string }).id).trim()
+                  : '';
+        if (!id) return;
+        try {
+            await this.client.updateCustomer(id, { notificationDisabled: true });
+        } catch (e) {
+            log.warn('[Asaas] Falha ao desativar notificações do cliente (pagador); cobrança já foi criada', {
+                customerId: id,
+                error: e instanceof Error ? e.message : String(e)
+            });
+        }
     }
 
     /**
@@ -49,7 +90,8 @@ export class AsaasProvider implements PaymentProviderPort {
                 postalCode: input.customer.postalCode,
                 addressNumber: input.customer.addressNumber,
                 addressComplement: input.customer.addressComplement ?? undefined,
-                phone: input.customer.phone ?? undefined
+                phone: input.customer.phone ?? undefined,
+                ...AsaasProvider.asaasCustomerNotificationFlags()
             },
             value: input.amount.amount / 100,
             dueDate: input.dueDate.toISOString().slice(0, 10),
@@ -60,6 +102,7 @@ export class AsaasProvider implements PaymentProviderPort {
         };
 
         const response = await this.client.createBoletoCharge(payload);
+        await this.ensurePayerCustomerNotificationsDisabled(response.customer);
 
         return {
             providerRef: response.id,
@@ -79,7 +122,8 @@ export class AsaasProvider implements PaymentProviderPort {
                 postalCode: input.customer.postalCode,
                 addressNumber: input.customer.addressNumber,
                 addressComplement: input.customer.addressComplement ?? undefined,
-                phone: input.customer.phone ?? undefined
+                phone: input.customer.phone ?? undefined,
+                ...AsaasProvider.asaasCustomerNotificationFlags()
             },
             value: input.amount.amount / 100,
             dueDate: input.dueDate.toISOString().slice(0, 10),
@@ -90,6 +134,7 @@ export class AsaasProvider implements PaymentProviderPort {
         };
 
         const response = await this.client.createPixCharge(payload);
+        await this.ensurePayerCustomerNotificationsDisabled(response.customer);
 
         return {
             providerRef: response.id,
@@ -167,7 +212,12 @@ export class AsaasProvider implements PaymentProviderPort {
         if (input.complement) payload.complement = input.complement;
         if (input.municipalInscription) payload.municipalInscription = input.municipalInscription;
         if (input.stateInscription) payload.stateInscription = input.stateInscription;
-        
+
+        // Mesma política dos pagadores: sem notificações automáticas (e-mail/SMS) do Asaas para a subconta
+        if (!AsaasProvider.asaasNotifyCustomerEnabled()) {
+            payload.notificationDisabled = true;
+        }
+
         // Webhooks sempre adicionar se configurado
         const webhooks = input.webhooks ?? this.resolveDefaultWebhooks(input.email);
         if (webhooks) payload.webhooks = webhooks;
@@ -257,12 +307,31 @@ export class AsaasProvider implements PaymentProviderPort {
         return await this.client.getAccountBalance(accountId);
     }
 
+    async getMainAccountBalance(): Promise<{ balance: number }> {
+        return await this.client.getMainAccountBalance();
+    }
+
     async getPayment(paymentId: string): Promise<AsaasPaymentDetails> {
         if (!paymentId || !paymentId.trim()) {
             throw new Error('Payment ID is required');
         }
 
         return await this.client.getPayment(paymentId);
+    }
+
+    async deletePayment(paymentId: string): Promise<{ deleted: boolean; id: string }> {
+        if (!paymentId || !paymentId.trim()) {
+            throw new Error('Payment ID is required');
+        }
+        return await this.client.deletePayment(paymentId);
+    }
+
+    async receivePaymentInCash(
+        paymentId: string,
+        payload: { paymentDate: string; value: number; notifyCustomer?: boolean }
+    ): Promise<void> {
+        if (!paymentId || !paymentId.trim()) throw new Error('Payment ID is required');
+        await this.client.receivePaymentInCash(paymentId, payload);
     }
 
     async listPayments(params?: ListAsaasPaymentsParams): Promise<ListAsaasPaymentsResponse> {
@@ -302,6 +371,15 @@ export class AsaasProvider implements PaymentProviderPort {
         if (!documentGroupId?.trim()) throw new Error('documentGroupId is required');
         if (!type?.trim()) throw new Error('type is required');
         await this.client.uploadMyAccountDocument(accountApiKey, documentGroupId, fileBuffer, mimeType, type);
+    }
+
+    async getAccountStatus(accountApiKey: string): Promise<AsaasAccountStatus | null> {
+        if (!accountApiKey?.trim()) return null;
+        try {
+            return await this.client.getMyAccountStatus(accountApiKey);
+        } catch {
+            return null;
+        }
     }
 
     private resolveDefaultWebhooks(fallbackEmail: string): CreateAsaasSubAccountInput['webhooks'] | undefined {
@@ -345,8 +423,7 @@ export class AsaasProvider implements PaymentProviderPort {
                 'ACCOUNT_STATUS_GENERAL_APPROVAL_APPROVED',
                 'ACCOUNT_STATUS_GENERAL_APPROVAL_REJECTED',
                 'ACCOUNT_STATUS_GENERAL_APPROVAL_AWAITING_APPROVAL',
-                'ACCOUNT_STATUS_GENERAL_APPROVAL_PENDING',
-                'ACCOUNT_CREATED'
+                'ACCOUNT_STATUS_GENERAL_APPROVAL_PENDING'
             ];
 
         webhooks.push({

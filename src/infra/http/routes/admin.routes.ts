@@ -30,11 +30,17 @@ import type { GetAdminSchoolFinancial } from '../../../app/use-cases/get-admin-s
 import type { GetAdminSchoolBilling } from '../../../app/use-cases/get-admin-school-billing';
 import type { ListAdminSchoolInvoices } from '../../../app/use-cases/list-admin-school-invoices';
 import type { ListAdminPaymentHistory } from '../../../app/use-cases/list-admin-payment-history';
+import type { ListAdminEnrollmentRequests } from '../../../app/use-cases/list-admin-enrollment-requests';
+import type { ListAdminStudentCharges } from '../../../app/use-cases/list-admin-student-charges';
 import type { ScheduleChargeDueReminders } from '../../../app/use-cases/schedule-charge-due-reminders';
 import type { AdminMarkInvoicePaid } from '../../../app/use-cases/admin-mark-invoice-paid';
 import type { AdminMarkChargePaid } from '../../../app/use-cases/admin-mark-charge-paid';
 import type { SyncSchoolOnboardingDocuments } from '../../../app/use-cases/sync-school-onboarding-documents';
 import type { AdminUploadSchoolOnboardingDocument } from '../../../app/use-cases/admin-upload-school-onboarding-document';
+import type { GetSchoolPendingDocuments } from '../../../app/use-cases/get-school-pending-documents';
+import type { SyncSchoolSubaccountStatus } from '../../../app/use-cases/sync-school-subaccount-status';
+import type { ListAdminJobLogs } from '../../../app/use-cases/list-admin-job-logs';
+import type { GetAdminJobLog } from '../../../app/use-cases/get-admin-job-log';
 import { AppError, ErrorCode } from '../../../shared/errors';
 import { connection, getOutboxQueueName } from '../../messaging/bullmq/queue-config';
 
@@ -78,11 +84,17 @@ type AdminRouterDeps = {
     getAdminSchoolBilling?: GetAdminSchoolBilling;
     listAdminSchoolInvoices?: ListAdminSchoolInvoices;
     listAdminPaymentHistory?: ListAdminPaymentHistory;
+    listAdminEnrollmentRequests?: ListAdminEnrollmentRequests;
+    listAdminStudentCharges?: ListAdminStudentCharges;
     adminMarkInvoicePaid?: AdminMarkInvoicePaid;
     adminMarkChargePaid?: AdminMarkChargePaid;
     syncSchoolOnboardingDocuments?: SyncSchoolOnboardingDocuments;
     adminUploadSchoolOnboardingDocument?: AdminUploadSchoolOnboardingDocument;
+    getSchoolPendingDocuments?: GetSchoolPendingDocuments;
+    syncSchoolSubaccountStatus?: SyncSchoolSubaccountStatus;
     scheduleChargeDueReminders?: ScheduleChargeDueReminders;
+    listAdminJobLogs?: ListAdminJobLogs;
+    getAdminJobLog?: GetAdminJobLog;
     authMiddleware?: RequestHandler;
 };
 
@@ -125,11 +137,17 @@ export function adminRouter({
     getAdminSchoolBilling,
     listAdminSchoolInvoices,
     listAdminPaymentHistory,
+    listAdminEnrollmentRequests,
+    listAdminStudentCharges,
     adminMarkInvoicePaid,
     adminMarkChargePaid,
     syncSchoolOnboardingDocuments,
     adminUploadSchoolOnboardingDocument,
+    getSchoolPendingDocuments,
+    syncSchoolSubaccountStatus,
     scheduleChargeDueReminders,
+    listAdminJobLogs,
+    getAdminJobLog,
     authMiddleware
 }: AdminRouterDeps) {
     const router = Router();
@@ -243,6 +261,12 @@ export function adminRouter({
         name: z.string().trim().min(1).optional(),
         status: z.enum(['ACTIVE', 'INACTIVE']).optional(),
         paymentStatus: z.enum(['EM_DIA', 'ATRASADO']).optional(),
+        cnpj: z.string().trim().min(1).optional(),
+        ownerCpf: z.string().trim().min(1).optional(),
+        hasAsaasAccount: z.enum(['WITH', 'WITHOUT']).optional(),
+        hasOnboardingUrl: z.enum(['WITH', 'WITHOUT']).optional(),
+        firstPayment: z.enum(['YES', 'NO']).optional(),
+        onboarding: z.enum(['YES', 'NO']).optional(),
         limit: z.coerce.number().int().positive().max(500).optional(),
         offset: z.coerce.number().int().min(0).optional()
     });
@@ -251,6 +275,12 @@ export function adminRouter({
             name: typeof req.query.name === 'string' ? req.query.name : undefined,
             status: typeof req.query.status === 'string' ? req.query.status : undefined,
             paymentStatus: typeof req.query.paymentStatus === 'string' ? req.query.paymentStatus : undefined,
+            cnpj: typeof req.query.cnpj === 'string' ? req.query.cnpj : undefined,
+            ownerCpf: typeof req.query.ownerCpf === 'string' ? req.query.ownerCpf : undefined,
+            hasAsaasAccount: typeof req.query.hasAsaasAccount === 'string' ? req.query.hasAsaasAccount : undefined,
+            hasOnboardingUrl: typeof req.query.hasOnboardingUrl === 'string' ? req.query.hasOnboardingUrl : undefined,
+            firstPayment: typeof req.query.firstPayment === 'string' ? req.query.firstPayment : undefined,
+            onboarding: typeof req.query.onboarding === 'string' ? req.query.onboarding : undefined,
             limit: req.query.limit,
             offset: req.query.offset
         });
@@ -258,6 +288,12 @@ export function adminRouter({
             name: query.name,
             status: query.status,
             paymentStatus: query.paymentStatus,
+            cnpj: query.cnpj,
+            ownerCpf: query.ownerCpf,
+            hasAsaasAccount: query.hasAsaasAccount,
+            hasOnboardingUrl: query.hasOnboardingUrl,
+            firstPayment: query.firstPayment,
+            onboarding: query.onboarding,
             limit: query.limit,
             offset: query.offset
         });
@@ -334,6 +370,18 @@ export function adminRouter({
             if (result === null) {
                 return res.status(404).json({ error: 'Aluno não encontrado' });
             }
+            res.json(result);
+        }));
+    }
+
+    // Mensalidades do aluno em todas as escolas (sem filtro por schoolId)
+    if (listAdminStudentCharges) {
+        router.get('/students/:studentId/charges', requireAuth, requireAdminPersona, asyncHandler(async (req, res) => {
+            const paramsSchema = z.object({
+                studentId: z.string().uuid()
+            });
+            const { studentId } = paramsSchema.parse(req.params);
+            const result = await listAdminStudentCharges.exec({ studentId });
             res.json(result);
         }));
     }
@@ -421,7 +469,7 @@ export function adminRouter({
                 limit: query.limit,
                 offset: query.offset
             });
-            res.json({
+            const payload: Record<string, unknown> = {
                 payments: result.items,
                 pagination: {
                     total: result.total,
@@ -431,7 +479,46 @@ export function adminRouter({
                     currentPage: Math.floor(result.offset / result.limit) + 1,
                     hasMore: result.offset + result.limit < result.total
                 }
+            };
+            if (result.summary) {
+                payload.summary = {
+                    balanceAvailableReais: result.summary.balanceAvailableReais,
+                    totalReceivedCents: result.summary.totalReceivedCents,
+                    totalOverdueCents: result.summary.totalOverdueCents
+                };
+            }
+            res.json(payload);
+        }));
+    }
+
+    // Pedidos de matrícula de todas as escolas
+    if (listAdminEnrollmentRequests) {
+        const enrollmentRequestsQuerySchema = z.object({
+            studentName: z.string().trim().min(1).optional(),
+            studentCpf: z.string().trim().min(1).optional(),
+            schoolName: z.string().trim().min(1).optional(),
+            status: z.enum(['PENDING', 'APPROVED', 'REJECTED', 'CANCELLED']).optional(),
+            limit: z.coerce.number().int().positive().max(100).optional(),
+            offset: z.coerce.number().int().min(0).optional()
+        });
+        router.get('/enrollment-requests', requireAuth, requireAdminPersona, asyncHandler(async (req, res) => {
+            const query = enrollmentRequestsQuerySchema.parse({
+                studentName: typeof req.query.studentName === 'string' ? req.query.studentName : undefined,
+                studentCpf: typeof req.query.studentCpf === 'string' ? req.query.studentCpf : undefined,
+                schoolName: typeof req.query.schoolName === 'string' ? req.query.schoolName : undefined,
+                status: typeof req.query.status === 'string' ? req.query.status : undefined,
+                limit: req.query.limit,
+                offset: req.query.offset
             });
+            const result = await listAdminEnrollmentRequests.exec({
+                studentName: query.studentName,
+                studentCpf: query.studentCpf,
+                schoolName: query.schoolName,
+                status: query.status,
+                limit: query.limit,
+                offset: query.offset
+            });
+            res.json(result);
         }));
     }
 
@@ -595,11 +682,32 @@ export function adminRouter({
     }, authMiddleware));
 
     // Rotas para conta Asaas da escola (gerar ou reenviar quando falhar)
+    if (getSchoolPendingDocuments) {
+        router.get('/schools/:schoolId/kyc/documents', requireAuth, requireAdminPersona, asyncHandler(async (req, res) => {
+            const paramsSchema = z.object({ schoolId: z.string().uuid() });
+            const { schoolId } = paramsSchema.parse(req.params);
+            const result = await getSchoolPendingDocuments.exec({ schoolId });
+            res.json({
+                documents: result.documents,
+                onboardingUrl: result.onboardingUrl
+            });
+        }));
+    }
+
     if (syncSchoolOnboardingDocuments) {
         router.post('/schools/:schoolId/sync-onboarding-documents', requireAuth, requireAdminPersona, asyncHandler(async (req, res) => {
             const paramsSchema = z.object({ schoolId: z.string().uuid() });
             const { schoolId } = paramsSchema.parse(req.params);
             const result = await syncSchoolOnboardingDocuments.exec({ schoolId });
+            res.json(result);
+        }));
+    }
+
+    if (syncSchoolSubaccountStatus) {
+        router.post('/schools/:schoolId/sync-subaccount-status', requireAuth, requireAdminPersona, asyncHandler(async (req, res) => {
+            const paramsSchema = z.object({ schoolId: z.string().uuid() });
+            const { schoolId } = paramsSchema.parse(req.params);
+            const result = await syncSchoolSubaccountStatus.exec({ schoolId });
             res.json(result);
         }));
     }
@@ -648,6 +756,37 @@ export function adminRouter({
             } else {
                 res.status(400).json(result);
             }
+        }));
+    }
+
+    // Histórico persistido de execuções de jobs (worker / fila outbox)
+    if (listAdminJobLogs && getAdminJobLog) {
+        router.get('/job-logs', requireAuth, requireAdminPersona, asyncHandler(async (req, res) => {
+            const querySchema = z.object({
+                status: z.enum(['completed', 'failed']).optional(),
+                jobName: z.string().min(1).max(128).optional(),
+                from: z.coerce.date().optional(),
+                to: z.coerce.date().optional(),
+                limit: z.coerce.number().int().min(1).max(100).optional(),
+                offset: z.coerce.number().int().min(0).optional()
+            });
+            const query = querySchema.parse(req.query);
+            const result = await listAdminJobLogs.exec({
+                status: query.status,
+                jobName: query.jobName ?? null,
+                from: query.from ?? null,
+                to: query.to ?? null,
+                limit: query.limit,
+                offset: query.offset
+            });
+            res.json(result);
+        }));
+
+        router.get('/job-logs/:id', requireAuth, requireAdminPersona, asyncHandler(async (req, res) => {
+            const paramsSchema = z.object({ id: z.string().uuid() });
+            const { id } = paramsSchema.parse(req.params);
+            const result = await getAdminJobLog.exec({ id });
+            res.json(result);
         }));
     }
 

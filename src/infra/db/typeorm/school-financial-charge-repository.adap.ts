@@ -36,6 +36,8 @@ export class SchoolFinancialChargeRepositoryAdapter implements SchoolFinancialCh
             asaasInvoiceUrl: row.asaasInvoiceUrl,
             asaasPayload: row.asaasPayload,
             paidAt: row.paidAt,
+            paymentMethod: row.paymentMethod ?? null,
+            paidObservation: row.paidObservation ?? null,
             cancelledAt: row.cancelledAt,
             createdAt: row.createdAt,
             updatedAt: row.updatedAt
@@ -63,6 +65,8 @@ export class SchoolFinancialChargeRepositoryAdapter implements SchoolFinancialCh
             asaasInvoiceUrl: charge.asaasInvoiceUrl,
             asaasPayload: charge.asaasPayload,
             paidAt: charge.paidAt,
+            paymentMethod: charge.paymentMethod,
+            paidObservation: charge.paidObservation,
             cancelledAt: charge.cancelledAt,
             createdAt: charge.createdAt,
             updatedAt: charge.updatedAt

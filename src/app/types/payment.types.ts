@@ -50,6 +50,9 @@ export interface ListSchoolPaymentsInput {
     status?: string | null;
 }
 
+/** Status para exibição na UI: Pendente, Atrasado, Pago, Cancelado, Falhou. */
+export type SchoolPaymentStatusDisplay = 'Pendente' | 'Atrasado' | 'Pago' | 'Cancelado' | 'Falhou';
+
 export interface SchoolPaymentRecord {
     id: string;
     amountCents: number;
@@ -57,6 +60,8 @@ export interface SchoolPaymentRecord {
     discountReason: string | null;
     netAmountCents: number;
     status: string;
+    /** Status para exibição (Pendente, Atrasado, Pago, etc.). */
+    statusDisplay: SchoolPaymentStatusDisplay;
     chargeType: string;
     description: string | null;
     dueDate: Date;
@@ -112,5 +117,7 @@ export interface HandleAsaasPaymentWebhookInput {
         customer?: { id?: string | null } | null;
         value?: number | null;
     } | null;
+    /** `dateCreated` do payload raiz do webhook Asaas (inclui hora). */
+    eventCreatedAt?: string | null;
 }
 

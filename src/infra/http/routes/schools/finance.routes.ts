@@ -7,6 +7,7 @@ import type { ListSchoolWithdrawals } from '../../../../app/use-cases/list-schoo
 import type { RequestSchoolWithdrawal } from '../../../../app/use-cases/request-school-withdrawal';
 import type { GetSchoolBalance } from '../../../../app/use-cases/get-school-balance';
 import type { SchoolRouteGuards } from './guards';
+import type { SchoolMarkChargePaid } from '../../../../app/use-cases/school-mark-charge-paid';
 import type { SchoolContextRequest } from '../../middlewares/resolve-school-context';
 import type { SchoolFinancialCharge } from '../../../../domain/entities/school-financial-charge';
 
@@ -64,6 +65,7 @@ type FinanceRoutesDeps = {
     listSchoolWithdrawals?: ListSchoolWithdrawals;
     requestSchoolWithdrawal?: RequestSchoolWithdrawal;
     getSchoolBalance?: GetSchoolBalance;
+    schoolMarkChargePaid?: SchoolMarkChargePaid;
 };
 
 export function buildFinanceRoutes(deps: FinanceRoutesDeps, guards: SchoolRouteGuards) {
@@ -98,6 +100,28 @@ export function buildFinanceRoutes(deps: FinanceRoutesDeps, guards: SchoolRouteG
         });
 
             res.status(201).json({ charge: serializeCharge(charge) });
+        }));
+    }
+
+    const markChargePaidSchema = z.object({
+        data: z.coerce.date(),
+        observacao: z.string().trim().max(500).nullable().optional()
+    });
+
+    if (deps.schoolMarkChargePaid) {
+        router.post('/charges/:chargeId/mark-paid', ...protectedMiddleware, asyncHandler(async (req, res) => {
+            const schoolId = (req as SchoolContextRequest).schoolId as string;
+            const params = z.object({ chargeId: z.string().uuid() }).parse(req.params);
+            const body = markChargePaidSchema.parse(req.body ?? {});
+
+            const result = await deps.schoolMarkChargePaid!.exec({
+                schoolId,
+                chargeId: params.chargeId,
+                data: body.data,
+                observacao: body.observacao ?? null
+            });
+
+            res.json(result);
         }));
     }
 

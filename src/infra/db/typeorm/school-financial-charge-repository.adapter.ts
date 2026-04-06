@@ -1,7 +1,7 @@
 import { Between } from 'typeorm';
 import { AppDataSource } from './datasource';
-import { SchoolFinancialChargeRepository, StudentPaymentInfo, PaidChargeSummary } from '../../../ports/repositories/school-financial-charge.repo';
-import { SchoolFinancialCharge, SchoolFinancialChargeStatus } from '../../../domain/entities/school-financial-charge';
+import { SchoolFinancialChargeRepository, StudentPaymentInfo, PaidChargeSummary, AdminStudentChargeItem } from '../../../ports/repositories/school-financial-charge.repo';
+import { SchoolFinancialCharge, SchoolFinancialChargeStatus, SchoolFinancialChargeType } from '../../../domain/entities/school-financial-charge';
 import { SchoolFinancialChargeOrm } from './entities/school-financial-charge.orm';
 
 export class SchoolFinancialChargeRepositoryAdapter implements SchoolFinancialChargeRepository {
@@ -37,14 +37,21 @@ export class SchoolFinancialChargeRepositoryAdapter implements SchoolFinancialCh
             .where('charge.ownerUserId = :ownerUserId', { ownerUserId })
             .andWhere('charge.status != :cancelledStatus', { cancelledStatus: 'CANCELLED' })
             .select([
-                'charge.id AS chargeId',
-                'course.name AS courseName',
-                'COALESCE(studentUser.fullName, dependent.fullName) AS studentName',
-                'charge.netAmountCents AS amountCents',
-                'charge.dueDate AS dueDate',
-                'charge.status AS status'
-            ])
-            .orderBy('charge.dueDate', 'DESC');
+            'charge.id AS chargeId',
+            'course.name AS courseName',
+            'COALESCE(studentUser.fullName, dependent.fullName) AS studentName',
+            'charge.amountCents AS amountCents',
+            'charge.discountCents AS discountCents',
+            'charge.netAmountCents AS netAmountCents',
+            'charge.dueDate AS dueDate',
+            'charge.status AS status',
+            'charge.chargeType AS chargeType',
+            'charge.description AS description',
+            'charge.schoolId AS schoolId',
+            'charge.paidAt AS paidAt',
+            'charge.paidObservation AS paidObservation'
+        ])
+            .orderBy('charge.dueDate', 'ASC');
 
         // Filtro por isPaid (pagos ou em aberto) - tem prioridade sobre status específico
         if (filters?.isPaid !== undefined) {
@@ -66,9 +73,16 @@ export class SchoolFinancialChargeRepositoryAdapter implements SchoolFinancialCh
             chargeId: row.chargeId,
             courseName: row.courseName,
             studentName: row.studentName,
-            amountCents: row.amountCents,
+            rawDescription: row.description ?? null,
+            amountCents: row.amountCents ?? 0,
+            discountCents: row.discountCents ?? null,
+            netAmountCents: row.netAmountCents ?? row.amountCents ?? 0,
             dueDate: new Date(row.dueDate),
-            status: row.status as SchoolFinancialChargeStatus
+            status: row.status as SchoolFinancialChargeStatus,
+            chargeType: row.chargeType,
+            schoolId: row.schoolId,
+            paidAt: row.paidAt ? new Date(row.paidAt) : null,
+            paidObservation: row.paidObservation ?? null
         }));
     }
 
@@ -181,18 +195,31 @@ export class SchoolFinancialChargeRepositoryAdapter implements SchoolFinancialCh
     }
 
     async getOverdueSummary(schoolId: string): Promise<{ totalAmountCents: number; count: number }> {
-        const result = await this.repo.createQueryBuilder('charge')
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const qb = this.repo
+            .createQueryBuilder('charge')
             .select([
                 'SUM(charge.netAmountCents) AS totalAmountCents',
                 'COUNT(charge.id) AS count'
             ])
             .where('charge.schoolId = :schoolId', { schoolId })
-            .andWhere('charge.status = :status', { status: 'OVERDUE' })
-            .getRawOne();
+            .andWhere('charge.status != :cancelled', { cancelled: 'CANCELLED' })
+            .andWhere(
+                '(charge.status = :overdueStatus OR (charge.status IN (:...openStatuses) AND charge.dueDate < :today))',
+                {
+                    overdueStatus: 'OVERDUE',
+                    openStatuses: ['PENDING_SYNC', 'OPEN'],
+                    today
+                }
+            );
+
+        const result = await qb.getRawOne();
 
         return {
-            totalAmountCents: Number(result.totalAmountCents || 0),
-            count: Number(result.count || 0)
+            totalAmountCents: Number(result?.totalAmountCents || 0),
+            count: Number(result?.count || 0)
         };
     }
 
@@ -203,12 +230,14 @@ export class SchoolFinancialChargeRepositoryAdapter implements SchoolFinancialCh
                 'COUNT(charge.id) AS count'
             ])
             .where('charge.schoolId = :schoolId', { schoolId })
-            .andWhere('charge.status IN (:...statuses)', { statuses: ['PENDING_SYNC', 'OPEN', 'FAILED'] })
+            .andWhere('charge.status IN (:...statuses)', {
+                statuses: ['PENDING_SYNC', 'OPEN', 'OVERDUE', 'FAILED']
+            })
             .getRawOne();
 
         return {
-            totalAmountCents: Number(result.totalAmountCents || 0),
-            count: Number(result.count || 0)
+            totalAmountCents: Number(result?.totalAmountCents || 0),
+            count: Number(result?.count || 0)
         };
     }
 
@@ -333,6 +362,139 @@ export class SchoolFinancialChargeRepositoryAdapter implements SchoolFinancialCh
         }));
     }
 
+    async getTuitionRevenueByMonthForDashboard(monthsLimit: number): Promise<Array<{ year: number; month: number; valorCents: number }>> {
+        const limit = Math.min(Math.max(monthsLimit, 1), 24);
+        const rows = await this.repo
+            .createQueryBuilder('charge')
+            .select('YEAR(charge.paidAt) AS year, MONTH(charge.paidAt) AS month, SUM(charge.netAmountCents) AS valorCents')
+            .where("charge.status = 'PAID'")
+            .andWhere('charge.paidAt IS NOT NULL')
+            .groupBy('YEAR(charge.paidAt)')
+            .addGroupBy('MONTH(charge.paidAt)')
+            .orderBy('year', 'DESC')
+            .addOrderBy('month', 'DESC')
+            .limit(limit)
+            .getRawMany();
+        return (rows as any[]).map((r) => ({
+            year: Number(r.year),
+            month: Number(r.month),
+            valorCents: Math.floor(Number(r.valorCents) || 0)
+        })).reverse();
+    }
+
+    async getOverdueTotalCents(): Promise<number> {
+        const row = await this.repo
+            .createQueryBuilder('charge')
+            .select('COALESCE(SUM(charge.netAmountCents), 0)', 'total')
+            .where("charge.status = 'OVERDUE'")
+            .getRawOne<{ total: string }>();
+        return Math.floor(Number(row?.total ?? 0));
+    }
+
+    async findChargesByStudentIdForAdmin(studentId: string, studentType: 'USER' | 'DEPENDENT'): Promise<AdminStudentChargeItem[]> {
+        const qb = this.repo
+            .createQueryBuilder('charge')
+            .innerJoin('charge.school', 'school')
+            .innerJoin('charge.course', 'course')
+            .innerJoin('charge.courseClass', 'class')
+            .where('charge.status != :cancelled', { cancelled: 'CANCELLED' });
+
+        if (studentType === 'USER') {
+            qb.andWhere('charge.studentUserId = :studentId', { studentId });
+        } else {
+            qb.andWhere('charge.dependentId = :studentId', { studentId });
+        }
+
+        const rows = await qb
+            .select([
+                'charge.id AS id',
+                'charge.amountCents AS amountCents',
+                'charge.discountCents AS discountCents',
+                'charge.discountReason AS discountReason',
+                'charge.netAmountCents AS netAmountCents',
+                'charge.description AS description',
+                'charge.chargeType AS chargeType',
+                'charge.dueDate AS dueDate',
+                'charge.status AS status',
+                'charge.paidAt AS paidAt',
+                'school.id AS schoolId',
+                'school.name AS schoolName',
+                'course.id AS courseId',
+                'course.name AS courseName',
+                'class.id AS classId',
+                'class.label AS classLabel'
+            ])
+            .orderBy('charge.dueDate', 'DESC')
+            .getRawMany();
+
+        return rows.map((row: any) => ({
+            id: row.id,
+            school: { id: row.schoolId, name: row.schoolName ?? '' },
+            course: { id: row.courseId, name: row.courseName ?? '' },
+            class: { id: row.classId, label: row.classLabel ?? '' },
+            amountCents: row.amountCents ?? 0,
+            discountCents: row.discountCents ?? null,
+            discountReason: row.discountReason ?? null,
+            netAmountCents: row.netAmountCents ?? 0,
+            description: row.description ?? null,
+            chargeType: (row.chargeType ?? 'OTHER') as SchoolFinancialChargeType,
+            dueDate: new Date(row.dueDate),
+            status: row.status as SchoolFinancialChargeStatus,
+            paidAt: row.paidAt ? new Date(row.paidAt) : null
+        }));
+    }
+
+    async findChargesByOwnerIdIncludingDependentsForAdmin(ownerUserId: string): Promise<AdminStudentChargeItem[]> {
+        const qb = this.repo
+            .createQueryBuilder('charge')
+            .innerJoin('charge.school', 'school')
+            .innerJoin('charge.course', 'course')
+            .innerJoin('charge.courseClass', 'class')
+            .where('charge.status != :cancelled', { cancelled: 'CANCELLED' })
+            .andWhere(
+                '(charge.studentUserId = :ownerUserId OR (charge.ownerUserId = :ownerUserId AND charge.dependentId IS NOT NULL))',
+                { ownerUserId }
+            );
+
+        const rows = await qb
+            .select([
+                'charge.id AS id',
+                'charge.amountCents AS amountCents',
+                'charge.discountCents AS discountCents',
+                'charge.discountReason AS discountReason',
+                'charge.netAmountCents AS netAmountCents',
+                'charge.description AS description',
+                'charge.chargeType AS chargeType',
+                'charge.dueDate AS dueDate',
+                'charge.status AS status',
+                'charge.paidAt AS paidAt',
+                'school.id AS schoolId',
+                'school.name AS schoolName',
+                'course.id AS courseId',
+                'course.name AS courseName',
+                'class.id AS classId',
+                'class.label AS classLabel'
+            ])
+            .orderBy('charge.dueDate', 'DESC')
+            .getRawMany();
+
+        return rows.map((row: any) => ({
+            id: row.id,
+            school: { id: row.schoolId, name: row.schoolName ?? '' },
+            course: { id: row.courseId, name: row.courseName ?? '' },
+            class: { id: row.classId, label: row.classLabel ?? '' },
+            amountCents: row.amountCents ?? 0,
+            discountCents: row.discountCents ?? null,
+            discountReason: row.discountReason ?? null,
+            netAmountCents: row.netAmountCents ?? 0,
+            description: row.description ?? null,
+            chargeType: (row.chargeType ?? 'OTHER') as SchoolFinancialChargeType,
+            dueDate: new Date(row.dueDate),
+            status: row.status as SchoolFinancialChargeStatus,
+            paidAt: row.paidAt ? new Date(row.paidAt) : null
+        }));
+    }
+
     async countChargesWithDiscount(
         courseClassId: string,
         ownerUserId: string,
@@ -383,6 +545,8 @@ export class SchoolFinancialChargeRepositoryAdapter implements SchoolFinancialCh
             asaasInvoiceUrl: row.asaasInvoiceUrl,
             asaasPayload: row.asaasPayload,
             paidAt: row.paidAt,
+            paymentMethod: row.paymentMethod ?? null,
+            paidObservation: row.paidObservation ?? null,
             cancelledAt: row.cancelledAt,
             createdAt: row.createdAt,
             updatedAt: row.updatedAt
@@ -410,6 +574,8 @@ export class SchoolFinancialChargeRepositoryAdapter implements SchoolFinancialCh
             asaasInvoiceUrl: charge.asaasInvoiceUrl,
             asaasPayload: charge.asaasPayload,
             paidAt: charge.paidAt,
+            paymentMethod: charge.paymentMethod,
+            paidObservation: charge.paidObservation,
             cancelledAt: charge.cancelledAt,
             createdAt: charge.createdAt,
             updatedAt: charge.updatedAt

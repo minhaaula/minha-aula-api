@@ -140,8 +140,13 @@ export class GetStudentPaymentDetails {
             className = courseClass?.label || null;
         }
 
-        // Determinar tipo de pagamento
-        const paymentType = this.determinePaymentType(charge.asaasPayload, charge.asaasPaymentId, charge.status);
+        // Determinar tipo de pagamento: usar valor persistido (baixa manual) ou inferir do payload
+        const paymentType = this.determinePaymentType(
+            charge.asaasPayload,
+            charge.asaasPaymentId,
+            charge.status,
+            charge.paymentMethod
+        );
 
         // Extrair informações do payload
         const payload = charge.asaasPayload || {};
@@ -192,11 +197,17 @@ export class GetStudentPaymentDetails {
     private determinePaymentType(
         asaasPayload: Record<string, unknown> | null,
         asaasPaymentId: string | null,
-        status: string
+        status: string,
+        storedPaymentMethod: string | null | undefined
     ): 'PIX' | 'BOLETO' | 'MANUAL' | null {
         // Se não está pago, não tem tipo
         if (status !== 'PAID') {
             return null;
+        }
+
+        // Prioridade ao método persistido (ex.: baixa manual pelo site grava MANUAL)
+        if (storedPaymentMethod === 'MANUAL' || storedPaymentMethod === 'PIX' || storedPaymentMethod === 'BOLETO') {
+            return storedPaymentMethod;
         }
 
         // Se não tem paymentId, provavelmente foi pago manualmente

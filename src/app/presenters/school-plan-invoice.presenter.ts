@@ -1,4 +1,5 @@
 import { SchoolPlanInvoice } from '../../domain/entities/school-plan-invoice';
+import { isOpenChargeCalendarOverdue } from '../../shared/billing-due-date';
 
 export type SchoolPlanInvoiceView = {
     id: string;
@@ -34,14 +35,8 @@ function calculatePaymentStatus(invoice: SchoolPlanInvoice): 'pendente' | 'pago'
         return 'pendente';
     }
 
-    // Para status ISSUED ou FAILED, verificar se está atrasado
-    const now = new Date();
-    const dueDate = new Date(invoice.dueDate);
-    // Comparar apenas a data (sem hora) para determinar se está atrasado
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const due = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate());
-
-    if (today > due) {
+    // Para status ISSUED ou FAILED, verificar atraso com dia civil no fuso do app (Brasil), não só UTC/servidor
+    if (isOpenChargeCalendarOverdue(new Date(invoice.dueDate))) {
         return 'atrasado';
     }
 

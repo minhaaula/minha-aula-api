@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import path from 'path';
 import 'reflect-metadata';
 import { DataSource } from 'typeorm';
 import { PaymentOrm } from './entities/payment.orm';
@@ -30,6 +31,7 @@ import { SchoolImageOrm } from './entities/school-image.orm';
 import { DiscountCouponOrm } from './entities/discount-coupon.orm';
 import { UserPushTokenOrm } from './entities/user-push-token.orm';
 import { ChargeDueReminderOrm } from './entities/charge-due-reminder.orm';
+import { JobExecutionLogOrm } from './entities/job-execution-log.orm';
 
 export const AppDataSource = new DataSource({
     type: 'mysql',
@@ -67,9 +69,13 @@ export const AppDataSource = new DataSource({
         SchoolImageOrm,
         DiscountCouponOrm,
         UserPushTokenOrm,
-        ChargeDueReminderOrm
+        ChargeDueReminderOrm,
+        JobExecutionLogOrm
     ],
     synchronize: false,
-    migrations: ['dist/infra/db/typeorm/migrations/*.js'],
+    // Em dev (`ts-node` em `src/...`) usa `*.ts`; após build (`node` em `dist/...`) usa `*.js`.
+    migrations: [
+        path.join(__dirname, 'migrations', __filename.endsWith('.ts') ? '*.ts' : '*.js')
+    ],
     extra: { decimalNumbers: true }
 });

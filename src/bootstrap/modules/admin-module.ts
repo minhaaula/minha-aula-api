@@ -20,7 +20,9 @@ import type { EnrollmentRepository } from '../../ports/repositories/enrollment.r
 import type { DependentRepository } from '../../ports/repositories/dependent.repo';
 import type { SchoolFinancialChargeRepository } from '../../ports/repositories/school-financial-charge.repo';
 import type { SchoolPlanInvoiceRepository } from '../../ports/repositories/school-plan-invoice.repo';
+import type { EnrollmentRequestRepository } from '../../ports/repositories/enrollment-request.repo';
 import type { ChargeDueReminderRepository } from '../../ports/repositories/charge-due-reminder.repo';
+import type { NotificationRepository } from '../../ports/repositories/notification.repo';
 import type { OutboxRepository } from '../../ports/repositories/outbox.repo';
 import type { PasswordHasherPort } from '../../ports/providers/password-hasher.port';
 import type { TokenProviderPort } from '../../ports/providers/token-provider.port';
@@ -41,18 +43,26 @@ import { GetAdminSchoolFinancial } from '../../app/use-cases/get-admin-school-fi
 import { GetAdminSchoolBilling } from '../../app/use-cases/get-admin-school-billing';
 import { ListAdminSchoolInvoices } from '../../app/use-cases/list-admin-school-invoices';
 import { ListAdminPaymentHistory } from '../../app/use-cases/list-admin-payment-history';
+import { ListAdminEnrollmentRequests } from '../../app/use-cases/list-admin-enrollment-requests';
+import { ListAdminStudentCharges } from '../../app/use-cases/list-admin-student-charges';
 import { ListAdminStudentCourses } from '../../app/use-cases/list-admin-student-courses';
 import { GetAdminStudentDetails } from '../../app/use-cases/get-admin-student-details';
 import { ListAdminSchoolCourses } from '../../app/use-cases/list-admin-school-courses';
 import { SchoolWithdrawalRepositoryAdapter } from '../../infra/db/typeorm/school-withdrawal-repository.adapter';
 import { ScheduleChargeDueReminders } from '../../app/use-cases/schedule-charge-due-reminders';
+import { NotifyStudentUser } from '../../app/use-cases/notify-student-user';
 import { AdminMarkInvoicePaid } from '../../app/use-cases/admin-mark-invoice-paid';
 import { AdminMarkChargePaid } from '../../app/use-cases/admin-mark-charge-paid';
 import { SyncSchoolOnboardingDocuments } from '../../app/use-cases/sync-school-onboarding-documents';
 import { AdminUploadSchoolOnboardingDocument } from '../../app/use-cases/admin-upload-school-onboarding-document';
+import { GetSchoolPendingDocuments } from '../../app/use-cases/get-school-pending-documents';
+import { SyncSchoolSubaccountStatus } from '../../app/use-cases/sync-school-subaccount-status';
 import { scheduleAllJobs } from '../../infra/messaging/bullmq/job-scheduler';
 import { startWorker } from '../../infra/messaging/bullmq/worker-manager';
 import { log } from '../../shared/logger';
+import { JobExecutionLogRepositoryAdapter } from '../../infra/db/typeorm/job-execution-log-repository.adapter';
+import { ListAdminJobLogs } from '../../app/use-cases/list-admin-job-logs';
+import { GetAdminJobLog } from '../../app/use-cases/get-admin-job-log';
 
 type AdminModuleDeps = {
     getActiveModules: () => readonly ModuleName[];
@@ -72,12 +82,14 @@ type AdminModuleDeps = {
     dependentsRepo: DependentRepository;
     financialChargesRepo: SchoolFinancialChargeRepository;
     planInvoicesRepo: SchoolPlanInvoiceRepository;
+    enrollmentRequestsRepo: EnrollmentRequestRepository;
     outbox: OutboxRepository;
     chargeDueReminderRepo: ChargeDueReminderRepository;
     passwordHasher: PasswordHasherPort;
     tokenProvider: TokenProviderPort;
     tokenTtl: number;
     asaasProvider?: AsaasProviderPort;
+    notificationsRepo?: NotificationRepository;
 };
 
 export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext): ModuleBuildResult {
@@ -124,10 +136,12 @@ export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext)
     );
 
     const getAdminDashboard = new GetAdminDashboard(
-        deps.usersRepo,
+        deps.schoolsRepo,
         deps.classesRepo,
         deps.enrollmentsRepo,
-        deps.financialChargesRepo
+        deps.financialChargesRepo,
+        deps.planInvoicesRepo,
+        listSchoolsWithPlans
     );
 
     const listSchoolStudents = new ListSchoolStudents(
@@ -138,7 +152,7 @@ export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext)
         deps.dependentsRepo
     );
 
-    const listAllStudents = new ListAllStudents(deps.enrollmentsRepo, deps.usersRepo);
+    const listAllStudents = new ListAllStudents(deps.enrollmentsRepo, deps.usersRepo, deps.dependentsRepo);
 
     const listAdminStudentCourses = new ListAdminStudentCourses(deps.usersRepo, deps.dependentsRepo);
     const getAdminStudentDetails = new GetAdminStudentDetails(deps.usersRepo, deps.dependentsRepo);
@@ -166,13 +180,26 @@ export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext)
         : undefined;
 
     const listAdminPaymentHistory = deps.planInvoicesRepo
-        ? new ListAdminPaymentHistory(deps.planInvoicesRepo)
+        ? new ListAdminPaymentHistory(deps.planInvoicesRepo, deps.asaasProvider)
         : undefined;
+
+    const listAdminEnrollmentRequests = deps.enrollmentRequestsRepo?.findManyForAdmin
+        ? new ListAdminEnrollmentRequests(deps.enrollmentRequestsRepo)
+        : undefined;
+
+    const listAdminStudentCharges =
+        deps.financialChargesRepo?.findChargesByStudentIdForAdmin
+            ? new ListAdminStudentCharges(deps.usersRepo, deps.dependentsRepo, deps.financialChargesRepo)
+            : undefined;
 
     const adminMarkInvoicePaid = deps.planInvoicesRepo
         ? new AdminMarkInvoicePaid(deps.planInvoicesRepo)
         : undefined;
-    const adminMarkChargePaid = new AdminMarkChargePaid(deps.financialChargesRepo);
+    const adminMarkChargePaid = new AdminMarkChargePaid(
+        deps.financialChargesRepo,
+        deps.schoolsRepo,
+        deps.asaasProvider
+    );
 
     const syncSchoolOnboardingDocuments = deps.asaasProvider
         ? new SyncSchoolOnboardingDocuments(deps.schoolsRepo, deps.asaasProvider)
@@ -182,6 +209,11 @@ export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext)
         ? new AdminUploadSchoolOnboardingDocument(deps.schoolsRepo, deps.asaasProvider)
         : undefined;
 
+    const notifyStudentForReminders =
+        deps.notificationsRepo && deps.outbox
+            ? new NotifyStudentUser(deps.notificationsRepo, deps.outbox)
+            : undefined;
+
     const scheduleChargeDueReminders = new ScheduleChargeDueReminders(
         deps.financialChargesRepo,
         deps.planInvoicesRepo,
@@ -189,7 +221,8 @@ export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext)
         deps.outbox,
         deps.usersRepo,
         deps.schoolsRepo,
-        deps.coursesRepo
+        deps.coursesRepo,
+        notifyStudentForReminders
     );
 
     // Use cases de cupons
@@ -202,6 +235,20 @@ export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext)
     const resendSchoolAsaasAccount = deps.asaasProvider
         ? new ResendSchoolAsaasAccount(deps.schoolsRepo, deps.asaasProvider)
         : undefined;
+
+    // Listar documentos pendentes de KYC/onboarding da escola (admin)
+    const getSchoolPendingDocuments = deps.asaasProvider
+        ? new GetSchoolPendingDocuments(deps.schoolsRepo, deps.asaasProvider)
+        : undefined;
+
+    // Sincronizar status da subconta Asaas (GET myAccount/status) e atualizar onboarding
+    const syncSchoolSubaccountStatus = deps.asaasProvider
+        ? new SyncSchoolSubaccountStatus(deps.schoolsRepo, deps.asaasProvider)
+        : undefined;
+
+    const jobExecutionLogsRepo = new JobExecutionLogRepositoryAdapter();
+    const listAdminJobLogs = new ListAdminJobLogs(jobExecutionLogsRepo);
+    const getAdminJobLog = new GetAdminJobLog(jobExecutionLogsRepo);
 
     // Montar router pronto
     const router = adminRouter({
@@ -226,16 +273,22 @@ export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext)
         listAllStudents,
         listAdminStudentCourses,
         getAdminStudentDetails,
+        listAdminStudentCharges,
         listAdminSchoolCourses,
         getAdminSchoolFinancial,
         getAdminSchoolBilling,
         listAdminSchoolInvoices,
         listAdminPaymentHistory,
+        listAdminEnrollmentRequests,
         adminMarkInvoicePaid,
         adminMarkChargePaid,
         syncSchoolOnboardingDocuments,
         adminUploadSchoolOnboardingDocument,
+        getSchoolPendingDocuments,
+        syncSchoolSubaccountStatus,
         scheduleChargeDueReminders,
+        listAdminJobLogs,
+        getAdminJobLog,
         authMiddleware: ctx.authMiddleware
     });
 

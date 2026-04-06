@@ -140,8 +140,20 @@ export interface AsaasProviderPort {
     createTransfer?(input: CreateAsaasTransferInput): Promise<AsaasTransferResponse>;
     getAccount?(accountId: string): Promise<AsaasAccountDetails>;
     getAccountBalance?(accountId: string): Promise<AsaasAccountBalance>;
+    /** Saldo disponível da conta principal (nossa empresa). GET /finance/balance. */
+    getMainAccountBalance?(): Promise<{ balance: number }>;
     getPayment?(paymentId: string): Promise<AsaasPaymentDetails>;
     listPayments?(params?: ListAsaasPaymentsParams): Promise<ListAsaasPaymentsResponse>;
+    /**
+     * Exclui uma cobrança no Asaas (DELETE /v3/payments/{id}).
+     * Usar quando der baixa manual em cobrança que tem PIX/boleto para não deixar link ativo.
+     */
+    deletePayment?(paymentId: string): Promise<{ deleted: boolean; id: string }>;
+    /**
+     * Marca a cobrança como recebida em dinheiro no Asaas (POST /v3/payments/{id}/receiveInCash).
+     * Usado quando a escola/admin dá baixa manual: o PIX/boleto fica marcado como pago no Asaas.
+     */
+    receivePaymentInCash?(paymentId: string, payload: { paymentDate: string; value: number; notifyCustomer?: boolean }): Promise<void>;
     /** Obtém a URL de onboarding (documentos) usando a API key da subconta. Recomenda-se aguardar ~15s após criar a subconta. */
     getOnboardingUrl?(accountApiKey: string): Promise<string | null>;
     /**
@@ -156,6 +168,11 @@ export interface AsaasProviderPort {
      * O type deve ser o do grupo (ex.: IDENTIFICATION, IDENTIFICATION_SELFIE, MINUTES_OF_ELECTION).
      */
     uploadDocument?(accountApiKey: string, documentGroupId: string, fileBuffer: Buffer, mimeType: string, type: string): Promise<void>;
+    /**
+     * Obtém o status cadastral da subconta (GET /v3/myAccount/status).
+     * Deve ser chamado com a API key da subconta. Retorna commercialInfo, bankAccountInfo, documentation, general.
+     */
+    getAccountStatus?(accountApiKey: string): Promise<AsaasAccountStatus | null>;
 }
 
 /** Grupo de documentos pendentes (AccountDocumentGroupResponseDTO). */
@@ -175,3 +192,12 @@ export interface AsaasPendingDocumentsResult {
     rejectReasons: string | null;
     data: AsaasPendingDocumentGroup[];
 }
+
+/** Status cadastral da subconta (GET /v3/myAccount/status). */
+export type AsaasAccountStatus = {
+    id: string;
+    commercialInfo: string;
+    bankAccountInfo: string;
+    documentation: string;
+    general: string;
+};

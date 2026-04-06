@@ -127,10 +127,12 @@ class InMemoryRequests implements EnrollmentRequestRepository {
     private readonly studentDocuments = new Map<string, string>();
     async findById(id: string) { return this.items.get(id) ?? null; }
     async findByCourseClassAndTarget(params: { courseClassId: string; userId: string; dependentId: string | null; }) {
+        const blockingStatuses: EnrollmentRequestStatus[] = ['PENDING', 'APPROVED'];
         return Array.from(this.items.values()).find((request) =>
             request.courseClassId === params.courseClassId &&
             request.requestedForUserId === params.userId &&
-            request.requestedForDependentId === params.dependentId
+            request.requestedForDependentId === params.dependentId &&
+            blockingStatuses.includes(request.status)
         ) ?? null;
     }
     async findMany(params: {
@@ -138,6 +140,7 @@ class InMemoryRequests implements EnrollmentRequestRepository {
         courseClassId?: string;
         courseId?: string;
         status?: EnrollmentRequestStatus;
+        statusIn?: EnrollmentRequestStatus[];
         requestedForUserId?: string;
         requestedForDependentId?: string | null;
         studentDocument?: string;
@@ -151,7 +154,9 @@ class InMemoryRequests implements EnrollmentRequestRepository {
                 const courseId = this.classCourseLookup.get(request.courseClassId);
                 if (courseId !== params.courseId) return false;
             }
-            if (params.status && request.status !== params.status) return false;
+            if (params.statusIn?.length) {
+                if (!params.statusIn.includes(request.status)) return false;
+            } else if (params.status && request.status !== params.status) return false;
             if (params.requestedForUserId && request.requestedForUserId !== params.requestedForUserId) return false;
             if (params.requestedForDependentId === null && request.requestedForDependentId !== null) return false;
             if (params.requestedForDependentId && request.requestedForDependentId !== params.requestedForDependentId) return false;
@@ -227,7 +232,7 @@ const makeUser = (id: string) => User.create({
     passwordHash: 'hash'
 });
 
-const setupCourseStructure = () => {
+const setupCourseStructure = (options?: { monthlyPriceCents?: number | null }) => {
     const school = School.create({
         id: 'school-1',
         name: 'Escola 1',
@@ -244,7 +249,8 @@ const setupCourseStructure = () => {
         categoryId: 'infantil',
         subcategoryId: 'alfabetizacao',
         isActive: true,
-        createdAt: new Date('2024-01-02')
+        createdAt: new Date('2024-01-02'),
+        monthlyPriceCents: options?.monthlyPriceCents ?? undefined
     });
     const courseClass = CourseClass.create({
         id: 'class-1',
@@ -396,6 +402,44 @@ describe('CreateEnrollmentRequest', () => {
             firstMonthlyPaymentDate: '2024-02-01'
         })).rejects.toThrow('Já matriculado nesta turma');
     });
+
+    it('allows new request when previous request was cancelled', async () => {
+        const schools = new InMemorySchools();
+        const courses = new InMemoryCourses();
+        const classes = new InMemoryClasses();
+        const users = new InMemoryUsers();
+        const dependents = new InMemoryDependents();
+        const enrollments = new InMemoryEnrollments();
+        const requests = new InMemoryRequests();
+
+        const { school, course, courseClass } = setupCourseStructure();
+        schools.seed(school);
+        courses.seed(course);
+        classes.seed(courseClass);
+        const user = makeUser('user-3');
+        users.seed(user);
+
+        const cancelledRequest = EnrollmentRequest.create({
+            id: 'req-cancelled',
+            schoolId: school.id,
+            courseClassId: courseClass.id,
+            requestedForUserId: user.id,
+            firstMonthlyPaymentDate: new Date('2024-02-01')
+        });
+        (cancelledRequest as any)._status = 'CANCELLED';
+        requests.seed(cancelledRequest);
+
+        const useCase = new CreateEnrollmentRequest(schools, courses, classes, users, dependents, enrollments, requests);
+        const result = await useCase.exec({
+            schoolId: school.id,
+            courseClassId: courseClass.id,
+            requestedForUserId: user.id,
+            firstMonthlyPaymentDate: '2024-03-01'
+        });
+
+        expect(result.status).toBe('PENDING');
+        expect(result.id).not.toBe(cancelledRequest.id);
+    });
 });
 
 describe('ApproveEnrollmentRequest', () => {
@@ -491,10 +535,85 @@ describe('ApproveEnrollmentRequest', () => {
         expect(savedCharges).toHaveLength(1);
         expect(savedCharges[0].chargeType).toBe('ENROLLMENT');
         expect(savedCharges[0].amountCents).toBe(18000);
-        expect(savedCharges[0].description).toBe('Enrollment fee');
+        expect(savedCharges[0].description).toBe('Matrícula do curso Curso 1');
         expect(savedCharges[0].dueDate.toISOString().slice(0, 10)).toBe('2024-01-20');
         expect(savedCharges[0].asaasPaymentId).toBeNull();
         expect(savedCharges[0].status).toBe('PENDING_SYNC');
+    });
+
+    it('applies request discount only to first tuition, not to enrollment fee', async () => {
+        const enrollments = new InMemoryEnrollments();
+        const requests = new InMemoryRequests();
+        const classes = new InMemoryClasses();
+        const courses = new InMemoryCourses();
+        const charges = new InMemoryCharges();
+        const { course, courseClass } = setupCourseStructure({ monthlyPriceCents: 100_000 });
+        classes.seed(courseClass);
+        courses.seed(course);
+        const request = EnrollmentRequest.create({
+            id: 'req-discount-fee',
+            schoolId: 'school-1',
+            courseClassId: courseClass.id,
+            requestedForUserId: 'user-1',
+            enrollmentFeeCents: 20000,
+            enrollmentFeeDueDate: new Date('2024-01-20'),
+            discountCents: 5000,
+            discountMonths: 3,
+            firstMonthlyPaymentDate: new Date('2024-02-05')
+        });
+        requests.seed(request);
+
+        const useCase = new ApproveEnrollmentRequest(requests, enrollments, classes, courses, charges);
+        await useCase.exec({ requestId: request.id, approverUserId: 'user-1' });
+
+        const savedCharges = charges.all();
+        expect(savedCharges.length).toBeGreaterThanOrEqual(2);
+        const enrollmentCharge = savedCharges.find((c) => c.chargeType === 'ENROLLMENT');
+        expect(enrollmentCharge).toBeDefined();
+        expect(enrollmentCharge!.amountCents).toBe(20000);
+        expect(enrollmentCharge!.discountCents).toBeNull();
+        expect(enrollmentCharge!.discountReason).toBeNull();
+
+        const tuitionCharge = savedCharges.find((c) => c.chargeType === 'TUITION');
+        expect(tuitionCharge).toBeDefined();
+        expect(tuitionCharge!.amountCents).toBe(100_000);
+        expect(tuitionCharge!.discountCents).toBe(5000);
+    });
+
+    it('does not apply discount to enrollment fee even when discount exceeds fee amount', async () => {
+        const enrollments = new InMemoryEnrollments();
+        const requests = new InMemoryRequests();
+        const classes = new InMemoryClasses();
+        const courses = new InMemoryCourses();
+        const charges = new InMemoryCharges();
+        const { course, courseClass } = setupCourseStructure({ monthlyPriceCents: 100_000 });
+        classes.seed(courseClass);
+        courses.seed(course);
+        const request = EnrollmentRequest.create({
+            id: 'req-cap-discount',
+            schoolId: 'school-1',
+            courseClassId: courseClass.id,
+            requestedForUserId: 'user-1',
+            enrollmentFeeCents: 10000,
+            enrollmentFeeDueDate: new Date('2024-01-20'),
+            discountCents: 15000,
+            discountMonths: 2,
+            firstMonthlyPaymentDate: new Date('2024-02-05')
+        });
+        requests.seed(request);
+
+        const useCase = new ApproveEnrollmentRequest(requests, enrollments, classes, courses, charges);
+        await useCase.exec({ requestId: request.id, approverUserId: 'user-1' });
+
+        const savedCharges = charges.all();
+        const enrollmentCharge = savedCharges.find((c) => c.chargeType === 'ENROLLMENT');
+        expect(enrollmentCharge).toBeDefined();
+        expect(enrollmentCharge!.amountCents).toBe(10000);
+        expect(enrollmentCharge!.discountCents).toBeNull();
+
+        const tuitionCharge = savedCharges.find((c) => c.chargeType === 'TUITION');
+        expect(tuitionCharge).toBeDefined();
+        expect(tuitionCharge!.discountCents).toBe(15000);
     });
 
     it('uses first monthly payment date when fee due date is missing', async () => {
@@ -523,6 +642,37 @@ describe('ApproveEnrollmentRequest', () => {
         expect(approval.enrollmentFeeChargeId).toBe(savedCharges[0].id);
         expect(savedCharges).toHaveLength(1);
         expect(savedCharges[0].dueDate.toISOString().slice(0, 10)).toBe('2024-03-10');
+    });
+
+    it('creates enrollment fee charge for dependent with dependentId and studentUserId null', async () => {
+        const enrollments = new InMemoryEnrollments();
+        const requests = new InMemoryRequests();
+        const classes = new InMemoryClasses();
+        const courses = new InMemoryCourses();
+        const charges = new InMemoryCharges();
+        const { course, courseClass } = setupCourseStructure();
+        classes.seed(courseClass);
+        courses.seed(course);
+        const request = EnrollmentRequest.create({
+            id: 'req-dep-fee',
+            schoolId: 'school-1',
+            courseClassId: courseClass.id,
+            requestedForUserId: 'user-owner',
+            requestedForDependentId: 'dep-child',
+            enrollmentFeeCents: 15000,
+            enrollmentFeeDueDate: new Date('2024-01-20'),
+            firstMonthlyPaymentDate: new Date('2024-02-05')
+        });
+        requests.seed(request);
+
+        const useCase = new ApproveEnrollmentRequest(requests, enrollments, classes, courses, charges);
+        await useCase.exec({ requestId: request.id, approverUserId: 'user-owner' });
+
+        const feeCharge = charges.all().find((c) => c.chargeType === 'ENROLLMENT');
+        expect(feeCharge).toBeDefined();
+        expect(feeCharge!.ownerUserId).toBe('user-owner');
+        expect(feeCharge!.studentUserId).toBeNull();
+        expect(feeCharge!.dependentId).toBe('dep-child');
     });
 });
 

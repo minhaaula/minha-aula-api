@@ -3,6 +3,9 @@ import { UserRepository } from '../../ports/repositories/user.repo';
 import { SchoolRepository } from '../../ports/repositories/school.repo';
 import { CourseRepository } from '../../ports/repositories/course.repo';
 import { PaymentProviderPort } from '../../ports/providers/payment-provider.port';
+import { SchoolImageRepository } from '../../ports/repositories/school-image.repo';
+import { SchoolImageCategory } from '../../domain/value-objects/school-image-category';
+import type { StorageProviderPort } from '../../ports/providers/storage-provider.port';
 import { AsaasProvider } from '../../infra/providers/asaas/asaas-provider';
 import { Money } from '../../domain/value-objects/money';
 import { SchoolFinancialChargeStatus } from '../../domain/entities/school-financial-charge';
@@ -25,20 +28,31 @@ export interface GenerateTuitionPixOutput {
     invoiceUrl?: string | null;
     dueDate: Date;
     status: SchoolFinancialChargeStatus;
+    /** Valor nominal (bruto) da cobrança em centavos, antes do desconto. */
     amountCents: number;
+    /** Valor do desconto em centavos, ou null se não houver. */
+    discountCents: number | null;
+    /** Valor líquido a pagar em centavos (já aplicando desconto). */
+    netAmountCents: number;
     courseName: string;
+    /** URL do logo da escola, ou null. */
+    schoolLogo: string | null;
 }
 
 export class GenerateTuitionPix {
     private readonly allowedStatuses = new Set<SchoolFinancialChargeStatus>(['PENDING_SYNC', 'FAILED', 'OPEN', 'OVERDUE']);
-    private readonly studentChargeTypes = new Set(['TUITION']);
+    /** Tipos de cobrança que o estudante pode gerar PIX: mensalidade e matrícula. */
+    private readonly allowedChargeTypes = new Set(['TUITION', 'ENROLLMENT']);
+    private readonly schoolAccountChargeTypes = new Set(['TUITION', 'ENROLLMENT']);
 
     constructor(
         private readonly charges: SchoolFinancialChargeRepository,
         private readonly users: UserRepository,
         private readonly schools: SchoolRepository,
         private readonly courses: CourseRepository,
-        private readonly paymentProvider: PaymentProviderPort
+        private readonly paymentProvider: PaymentProviderPort,
+        private readonly schoolImages?: SchoolImageRepository,
+        private readonly storage?: StorageProviderPort
     ) {}
 
     async exec(input: GenerateTuitionPixInput): Promise<GenerateTuitionPixOutput> {
@@ -46,14 +60,14 @@ export class GenerateTuitionPix {
             throw new Error('Configured payment provider does not support PIX issuance');
         }
 
-        // Buscar a mensalidade específica
+        // Buscar a cobrança (mensalidade ou matrícula)
         const charge = await this.charges.findById(input.chargeId);
         if (!charge) {
             throw new Error('Charge not found');
         }
 
-        if (charge.chargeType !== 'TUITION') {
-            throw new Error('Charge type is not TUITION');
+        if (!this.allowedChargeTypes.has(charge.chargeType)) {
+            throw new Error(`Charge type ${charge.chargeType} does not allow PIX generation (allowed: TUITION, ENROLLMENT)`);
         }
 
         // Verificar se a mensalidade está em um status que permite gerar PIX
@@ -74,7 +88,8 @@ export class GenerateTuitionPix {
             const payload = charge.asaasPayload ?? {};
             const pixQrCode = typeof payload.pixQrCode === 'string' ? payload.pixQrCode : null;
             const pixCopiaECola = typeof payload.pixCopiaECola === 'string' ? payload.pixCopiaECola : null;
-            
+            const schoolLogo = await this.getSchoolLogoUrl(charge.schoolId);
+
             return {
                 chargeId: charge.id,
                 paymentProviderRef: charge.asaasPaymentId,
@@ -83,8 +98,11 @@ export class GenerateTuitionPix {
                 invoiceUrl: charge.asaasInvoiceUrl,
                 dueDate: charge.dueDate,
                 status: charge.status,
-                amountCents: charge.netAmountCents,
-                courseName: course.name
+                amountCents: charge.amountCents,
+                discountCents: charge.discountCents,
+                netAmountCents: charge.netAmountCents,
+                courseName: course.name,
+                schoolLogo
             };
         }
 
@@ -111,7 +129,7 @@ export class GenerateTuitionPix {
         const pix = await provider.createPixCharge({
             amount,
             dueDate,
-            description: charge.description ?? 'Mensalidade',
+            description: charge.description ?? (charge.chargeType === 'ENROLLMENT' ? 'Matrícula' : 'Mensalidade'),
             externalReference: charge.id,
             customer: {
                 name: owner.fullName,
@@ -137,6 +155,8 @@ export class GenerateTuitionPix {
 
         await this.charges.save(charge);
 
+        const schoolLogo = await this.getSchoolLogoUrl(charge.schoolId);
+
         return {
             chargeId: charge.id,
             paymentProviderRef: charge.asaasPaymentId!,
@@ -145,9 +165,24 @@ export class GenerateTuitionPix {
             invoiceUrl: pix.invoiceUrl,
             dueDate: pix.dueDate,
             status: charge.status,
-            amountCents: charge.netAmountCents,
-            courseName: course.name
+            amountCents: charge.amountCents,
+            discountCents: charge.discountCents,
+            netAmountCents: charge.netAmountCents,
+            courseName: course.name,
+            schoolLogo
         };
+    }
+
+    private async getSchoolLogoUrl(schoolId: string): Promise<string | null> {
+        if (!this.schoolImages || !this.storage) return null;
+        try {
+            const logos = await this.schoolImages.findBySchoolId(schoolId, SchoolImageCategory.LOGO);
+            const logo = logos[0];
+            if (!logo) return null;
+            return await this.storage.getFileUrl(logo.key, 3600);
+        } catch {
+            return null;
+        }
     }
 
     private ensureRequesterCanGenerate(
@@ -180,12 +215,14 @@ export class GenerateTuitionPix {
         dependentId: string | null;
         courseId: string;
         courseClassId: string | null;
+        chargeType: string;
     }): Record<string, string> {
         const metadata: Record<string, string> = {
             chargeId: charge.id,
             schoolId: charge.schoolId,
             ownerUserId: charge.ownerUserId,
-            courseId: charge.courseId
+            courseId: charge.courseId,
+            type: charge.chargeType
         };
         if (charge.courseClassId) {
             metadata.courseClassId = charge.courseClassId;
@@ -193,7 +230,6 @@ export class GenerateTuitionPix {
         if (charge.dependentId) {
             metadata.dependentId = charge.dependentId;
         }
-        metadata.type = 'TUITION';
         return metadata;
     }
 
@@ -205,8 +241,8 @@ export class GenerateTuitionPix {
     private async resolvePaymentProvider(
         charge: import('../../domain/entities/school-financial-charge').SchoolFinancialCharge
     ): Promise<PaymentProviderPort> {
-        // Apenas para mensalidades
-        if (!this.studentChargeTypes.has(charge.chargeType)) {
+        // Apenas para mensalidade e matrícula: usar conta Asaas da escola se disponível
+        if (!this.schoolAccountChargeTypes.has(charge.chargeType)) {
             return this.paymentProvider;
         }
 

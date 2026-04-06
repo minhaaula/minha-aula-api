@@ -88,10 +88,13 @@ const accountPayloadSchema = z.object({
             companyType: z.string().optional().nullable(),
             dateCreated: z.string().optional().nullable(),
             dateUpdated: z.string().optional().nullable(),
-            apiKey: z.string().optional().nullable() // API Key da conta
+            apiKey: z.string().optional().nullable(),
+            walletId: z.string().optional().nullable()
         })
         .optional()
-        .nullable()
+        .nullable(),
+    // Payload real do Asaas pode incluir accountStatus (documentação Asaas)
+    accountStatus: z.record(z.unknown()).optional().nullable()
 }).passthrough(); // Permite campos adicionais no nível raiz
 
 function normalizePaymentMetadata(metadata: unknown): Record<string, string> | null {
@@ -131,15 +134,21 @@ export function asaasWebhookRouter(deps: AsaasWebhookDeps) {
         if (webhookToken) {
             const providedToken = req.headers['asaas-access-token'] || req.headers['x-asaas-access-token'] || req.query.token;
             if (!providedToken || providedToken !== webhookToken) {
-                log.warn('[Asaas Webhook] Token de autenticação inválido ou ausente', {
+                log.warn('[Asaas Webhook] Token de autenticação inválido ou ausente', sanitizeForLogging({
+                    path: '/payments',
                     hasToken: !!providedToken,
-                    tokenLength: providedToken?.length
-                });
+                    tokenLength: typeof providedToken === 'string' ? providedToken.length : undefined,
+                    headers: req.headers,
+                    body: req.body
+                }) as object);
                 return res.status(401).json({ error: 'Unauthorized' });
             }
         } else if (isProduction) {
-            // Fallback de segurança: mesmo que não tenha token configurado, rejeitar em produção
-            log.error('[Asaas Webhook] Webhook recebido sem token em produção');
+            log.error('[Asaas Webhook] Webhook recebido sem token em produção', sanitizeForLogging({
+                path: '/payments',
+                headers: req.headers,
+                body: req.body
+            }) as object);
             return res.status(401).json({ error: 'Unauthorized' });
         }
 
@@ -179,7 +188,8 @@ export function asaasWebhookRouter(deps: AsaasWebhookDeps) {
         const result = await deps.handleAsaasPaymentWebhook.exec({
             event: payload.event,
             payment: normalizedPayment,
-            eventId: payload.id // ID do evento do Asaas para idempotência
+            eventId: payload.id, // ID do evento do Asaas para idempotência
+            eventCreatedAt: payload.dateCreated ?? null // horário real do evento; paymentDate no Asaas é só data
         });
 
         res.status(200).json({ ok: true, handled: result.handled, reason: result.reason ?? null });
@@ -207,15 +217,21 @@ export function asaasWebhookRouter(deps: AsaasWebhookDeps) {
         if (webhookToken) {
             const providedToken = req.headers['asaas-access-token'] || req.headers['x-asaas-access-token'] || req.query.token;
             if (!providedToken || providedToken !== webhookToken) {
-                log.warn('[Asaas Webhook] Token de autenticação inválido ou ausente', {
+                log.warn('[Asaas Webhook] Token de autenticação inválido ou ausente', sanitizeForLogging({
+                    path: '/accounts',
                     hasToken: !!providedToken,
-                    tokenLength: providedToken?.length
-                });
+                    tokenLength: typeof providedToken === 'string' ? providedToken.length : undefined,
+                    headers: req.headers,
+                    body: req.body
+                }) as object);
                 return res.status(401).json({ error: 'Unauthorized' });
             }
         } else if (isProduction) {
-            // Fallback de segurança: mesmo que não tenha token configurado, rejeitar em produção
-            log.error('[Asaas Webhook] Webhook recebido sem token em produção');
+            log.error('[Asaas Webhook] Webhook recebido sem token em produção', sanitizeForLogging({
+                path: '/accounts',
+                headers: req.headers,
+                body: req.body
+            }) as object);
             return res.status(401).json({ error: 'Unauthorized' });
         }
 

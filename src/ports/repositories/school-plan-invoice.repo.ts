@@ -29,6 +29,12 @@ export type PaymentHistoryResult = {
     offset: number;
 };
 
+/** Totais da nossa empresa: valor recebido (invoices PAID) e valor atrasado (invoices ISSUED com vencimento passado). */
+export type PaymentHistoryTotals = {
+    totalReceivedCents: number;
+    totalOverdueCents: number;
+};
+
 export interface SchoolPlanInvoiceRepository {
     findById(id: string): Promise<SchoolPlanInvoice | null>;
     /** Retorna true se a escola tiver ao menos uma invoice com status PAID (primeiro pagamento já realizado). */
@@ -50,4 +56,12 @@ export interface SchoolPlanInvoiceRepository {
         limit: number,
         offset: number
     ): Promise<PaymentHistoryResult>;
+    /** Totais de nossa empresa: total recebido (PAID) e total atrasado (ISSUED com dueDate &lt; hoje). */
+    getPaymentHistoryTotals?(): Promise<PaymentHistoryTotals>;
+    /** schoolIds (do array informado) que possuem ao menos uma invoice ISSUED com dueDate < hoje. */
+    getSchoolIdsWithOverdueInvoice?(schoolIds: string[]): Promise<Set<string>>;
+    /** Receita plataforma (invoices PAID) por mês para dashboard. */
+    getRevenueByMonthForDashboard?(monthsLimit: number): Promise<Array<{ year: number; month: number; valorCents: number }>>;
+    /** Resumo de status das invoices do mês (PAID, ISSUED, atrasadas). */
+    getPaymentStatusSummaryForMonth?(year: number, month: number): Promise<Array<{ status: string; count: number; valorCents: number }>>;
 }

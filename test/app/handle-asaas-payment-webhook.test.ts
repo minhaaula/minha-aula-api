@@ -8,7 +8,7 @@ import { SubscriptionPlan } from '../../src/domain/entities/subscription-plan';
 import { SchoolRepository } from '../../src/ports/repositories/school.repo';
 import { School } from '../../src/domain/entities/school';
 import { PostalAddress } from '../../src/domain/value-objects/postal-address';
-import { AsaasProviderPort, CreateAsaasSubAccountInput, AsaasSubAccount } from '../../src/ports/providers/asaas-port';
+import { OutboxRepository } from '../../src/ports/repositories/outbox.repo';
 
 class InMemoryInvoiceRepo implements SchoolPlanInvoiceRepository {
     private readonly items = new Map<string, SchoolPlanInvoice>();
@@ -79,30 +79,11 @@ class InMemorySchoolRepo implements SchoolRepository {
     }
 }
 
-class FakeAsaasProvider implements AsaasProviderPort {
-    public readonly payloads: CreateAsaasSubAccountInput[] = [];
+class CapturingOutbox implements OutboxRepository {
+    public readonly events: Array<{ type: string; payload: unknown; aggregateId: string }> = [];
 
-    createBoletoCharge(): Promise<any> {
-        throw new Error('Not implemented');
-    }
-
-    authorizeCharge(): Promise<{ providerRef: string; }> {
-        throw new Error('Not implemented');
-    }
-
-    captureCharge(): Promise<void> {
-        throw new Error('Not implemented');
-    }
-
-    async createSubAccount(input: CreateAsaasSubAccountInput): Promise<AsaasSubAccount> {
-        this.payloads.push(input);
-        return {
-            id: 'sub-123',
-            name: input.name,
-            email: input.email,
-            status: 'PENDING',
-            externalReference: input.externalReference ?? null
-        };
+    async enqueue(event: { type: string; payload: unknown; aggregateId: string }): Promise<void> {
+        this.events.push(event);
     }
 }
 
@@ -186,6 +167,68 @@ describe('HandleAsaasPaymentWebhook', () => {
         expect(updatedFinance?.lastPaymentAt?.toISOString()).toBe('2024-05-06T12:00:00.000Z');
     });
 
+    it('usa dateCreated do webhook quando paymentDate é só data (Asaas)', async () => {
+        const invoices = new InMemoryInvoiceRepo();
+        const finances = new InMemoryFinanceRepo();
+        const schools = new InMemorySchoolRepo();
+        const plan = makePlan();
+
+        const finance = SchoolPlanFinance.create({
+            id: 'finance-dateonly',
+            schoolId: 'school-dateonly',
+            plan,
+            status: 'ACTIVE',
+            isPaid: false,
+            nextDueAt: new Date('2024-06-05T00:00:00Z')
+        });
+        finances.seed(finance);
+
+        const invoice = SchoolPlanInvoice.create({
+            id: 'invoice-dateonly',
+            financeId: finance.id,
+            schoolId: finance.schoolId,
+            planId: plan.id,
+            amountCents: plan.amountCents,
+            currency: plan.currency,
+            dueDate: new Date('2024-05-05T00:00:00Z'),
+            providerRef: 'pay-dateonly',
+            externalReference: `${finance.id}:2024-05-05`
+        });
+        invoices.seed(invoice);
+
+        schools.seed(School.create({
+            id: finance.schoolId,
+            name: 'Escola Data',
+            email: 'data@example.com',
+            phone: '47999999997',
+            cnpj: '12345678000103',
+            addresses: [
+                PostalAddress.create({
+                    street: 'Rua A',
+                    number: '1',
+                    city: 'Joinville',
+                    state: 'SC',
+                    zipCode: '89200003'
+                })
+            ]
+        }));
+
+        const useCase = new HandleAsaasPaymentWebhook(invoices, finances, schools);
+        const result = await useCase.exec({
+            event: 'PAYMENT_RECEIVED',
+            eventCreatedAt: '2024-05-06 14:30:00',
+            payment: {
+                id: 'pay-dateonly',
+                status: 'RECEIVED',
+                paymentDate: '2024-05-06'
+            }
+        });
+
+        expect(result.handled).toBe(true);
+        const updatedInvoice = await invoices.findByProviderRef('pay-dateonly');
+        expect(updatedInvoice?.paidAt?.toISOString()).toBe('2024-05-06T17:30:00.000Z');
+    });
+
     it('marks invoice as cancelled when payment is deleted', async () => {
         const invoices = new InMemoryInvoiceRepo();
         const finances = new InMemoryFinanceRepo();
@@ -249,11 +292,11 @@ describe('HandleAsaasPaymentWebhook', () => {
         expect(updatedFinance?.isPaid).toBe(false);
     });
 
-    it('creates an Asaas subaccount when invoice is confirmed and none exists', async () => {
+    it('enfileira ensure_school_asaas_account quando pagamento confirmado (subconta é criada no worker)', async () => {
         const invoices = new InMemoryInvoiceRepo();
         const finances = new InMemoryFinanceRepo();
         const schools = new InMemorySchoolRepo();
-        const provider = new FakeAsaasProvider();
+        const outbox = new CapturingOutbox();
         const plan = makePlan();
 
         const finance = SchoolPlanFinance.create({
@@ -272,6 +315,7 @@ describe('HandleAsaasPaymentWebhook', () => {
             email: 'conta@example.com',
             phone: '47911110000',
             cnpj: '12345678000102',
+            incomeValue: 5000,
             addresses: [
                 PostalAddress.create({
                     street: 'Rua Mercado',
@@ -296,7 +340,7 @@ describe('HandleAsaasPaymentWebhook', () => {
         });
         invoices.seed(invoice);
 
-        const useCase = new HandleAsaasPaymentWebhook(invoices, finances, schools, provider);
+        const useCase = new HandleAsaasPaymentWebhook(invoices, finances, schools, undefined, outbox);
         const result = await useCase.exec({
             event: 'PAYMENT_CONFIRMED',
             payment: {
@@ -307,24 +351,13 @@ describe('HandleAsaasPaymentWebhook', () => {
         });
 
         expect(result.handled).toBe(true);
-        expect(provider.payloads).toHaveLength(1);
-        const payload = provider.payloads[0];
-        expect(payload?.externalReference).toBe(finance.schoolId);
-        expect(payload?.address).toBe('Rua Mercado');
-        expect(payload?.addressNumber).toBe('789');
-        expect(payload?.province).toBeNull();
-        expect(payload?.companyType).toBe('LIMITED');
-        expect(payload?.incomeValue).toBe(5000);
 
         const updatedInvoice = await invoices.findByProviderRef('pay-789');
-        expect(updatedInvoice?.metadata['accountId']).toBe('sub-123');
-        expect(updatedInvoice?.metadata['accountStatus']).toBe('PENDING');
-        expect(updatedInvoice?.metadata['accountLinkedAt']).toBeDefined();
-        expect(updatedInvoice?.metadata['accountCompanyType']).toBe('LIMITED');
-        expect(updatedInvoice?.metadata['accountIncomeValue']).toBe('5000');
+        expect(updatedInvoice?.status).toBe('PAID');
 
-        const storedSchool = await schools.findById(finance.schoolId);
-        expect(storedSchool?.accountId).toBe('sub-123');
-        expect(storedSchool?.incomeValue).toBe(5000);
+        const job = outbox.events.find((e) => e.type === 'ensure_school_asaas_account');
+        expect(job).toBeDefined();
+        expect((job!.payload as { invoiceId: string }).invoiceId).toBe(invoice.id);
+        expect(job!.aggregateId).toBe(finance.schoolId);
     });
 });

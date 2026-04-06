@@ -78,7 +78,9 @@ paths:
       tags:
         - Schools
       summary: Listar categorias e subcategorias disponíveis
-      description: Retorna as categorias de cursos e suas respectivas subcategorias.
+      description: |
+        Retorna as categorias de cursos e suas respectivas subcategorias.
+        **Disponível também quando a API está rodando apenas com o módulo students** (ex.: API de estudantes em produção). Não requer autenticação.
       responses:
         '200':
           description: Categorias encontradas.

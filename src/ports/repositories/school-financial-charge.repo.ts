@@ -1,12 +1,40 @@
-import { SchoolFinancialCharge, SchoolFinancialChargeStatus } from '../../domain/entities/school-financial-charge';
+import { SchoolFinancialCharge, SchoolFinancialChargeStatus, SchoolFinancialChargeType } from '../../domain/entities/school-financial-charge';
 
 export type StudentPaymentInfo = {
     chargeId: string;
     courseName: string;
     studentName: string;
+    /** Texto persistido na cobrança (pode ser null em registros antigos). */
+    rawDescription: string | null;
+    /** Valor original em centavos (antes do desconto). */
     amountCents: number;
+    /** Desconto em centavos, ou null se não houver. */
+    discountCents: number | null;
+    /** Valor líquido em centavos (amountCents - discountCents). */
+    netAmountCents: number;
     dueDate: Date;
     status: SchoolFinancialChargeStatus;
+    chargeType: SchoolFinancialChargeType;
+    schoolId: string;
+    paidAt: Date | null;
+    paidObservation: string | null;
+};
+
+/** Item de cobrança para listagem admin (mensalidades do aluno em todas as escolas). */
+export type AdminStudentChargeItem = {
+    id: string;
+    school: { id: string; name: string };
+    course: { id: string; name: string };
+    class: { id: string; label: string };
+    amountCents: number;
+    discountCents: number | null;
+    discountReason: string | null;
+    netAmountCents: number;
+    description: string | null;
+    chargeType: SchoolFinancialChargeType;
+    dueDate: Date;
+    status: SchoolFinancialChargeStatus;
+    paidAt: Date | null;
 };
 
 export type PaidChargeSummary = {
@@ -39,5 +67,13 @@ export interface SchoolFinancialChargeRepository {
     ): Promise<Array<{ year: number; month: number; ganhoCents: number; pendenteCents: number; atrasadoCents: number; totalCents: number }>>;
     getCurrentMonthRevenue?(schoolId: string, month: number, year: number): Promise<number>;
     countChargesWithDiscount?(courseClassId: string, ownerUserId: string, studentUserId: string | null, dependentId: string | null): Promise<number>;
+    /** Lista todas as cobranças (mensalidades) do aluno em todas as escolas. studentType USER = studentUserId, DEPENDENT = dependentId. */
+    findChargesByStudentIdForAdmin?(studentId: string, studentType: 'USER' | 'DEPENDENT'): Promise<AdminStudentChargeItem[]>;
+    /** Lista todas as cobranças do usuário em todas as escolas, incluindo cobranças dos dependentes desse usuário. */
+    findChargesByOwnerIdIncludingDependentsForAdmin?(ownerUserId: string): Promise<AdminStudentChargeItem[]>;
+    /** Receita de mensalidades (charges PAID) por mês para dashboard. */
+    getTuitionRevenueByMonthForDashboard?(monthsLimit: number): Promise<Array<{ year: number; month: number; valorCents: number }>>;
+    /** Total de cobranças atrasadas (status OVERDUE) em centavos. */
+    getOverdueTotalCents?(): Promise<number>;
 }
 

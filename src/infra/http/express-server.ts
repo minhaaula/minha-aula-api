@@ -8,6 +8,22 @@ import { AppError, ErrorCode } from '../../shared/errors';
 
 const SWAGGER_REALM = 'Swagger UI';
 
+function parseTrustProxyEnv(): boolean | number | string {
+    const raw = process.env.TRUST_PROXY?.trim();
+    if (!raw) {
+        return process.env.NODE_ENV === 'production' ? 1 : false;
+    }
+
+    const lowered = raw.toLowerCase();
+    if (lowered === 'true') return true;
+    if (lowered === 'false') return false;
+
+    const asNumber = Number.parseInt(raw, 10);
+    if (!Number.isNaN(asNumber)) return asNumber;
+
+    return raw;
+}
+
 const sendSwaggerUnauthorized = (res: express.Response) => {
     res.setHeader('WWW-Authenticate', `Basic realm="${SWAGGER_REALM}"`);
     res.status(401).send('Authentication required');
@@ -82,6 +98,7 @@ interface AppDependencies {
 
 export function makeServer(deps: AppDependencies & Record<string, any>) {
     const app = express();
+    app.set('trust proxy', parseTrustProxyEnv());
     
     // Helmet para headers de segurança HTTP
     const helmet = require('helmet');
@@ -160,6 +177,9 @@ export function makeServer(deps: AppDependencies & Record<string, any>) {
     } else {
         console.warn('⚠ Rota /docs não foi montada (documentação OpenAPI não disponível)');
     }
+
+    // Portal Docusaurus desabilitado por padrão neste ambiente.
+    console.log('ℹ Rota /portal desabilitada');
 
     // Montar routers apenas se existirem (já prontos pelos módulos)
     if (deps.authRouter) {

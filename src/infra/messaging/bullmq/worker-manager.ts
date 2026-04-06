@@ -9,6 +9,7 @@ import { PushTokenRepositoryAdapter } from '../../db/typeorm/push-token-reposito
 import { sendFcmMulticast } from '../../providers/firebase/fcm-provider';
 import { log } from '../../../shared/logger';
 import { connection, getOutboxQueueName } from './queue-config';
+import { persistCompletedJobLog, persistFailedJobLog } from './worker-job-log-persistence';
 
 type OutboxEvent = { type: string; payload: any; aggregateId: string };
 
@@ -494,6 +495,102 @@ export function startWorker(): Worker {
                 return;
             }
 
+            if (job.name === 'send_enrollment_request_received_email' || jobType === 'send_enrollment_request_received_email') {
+                log.info('[OUTBOX] Processando job de email: send_enrollment_request_received_email');
+                try {
+                    const { createEmailProviderFromEnv } = await import('../../email/create-email-provider.js');
+                    const { EmailService } = await import('../../email/email-service.js');
+                    const { getEnrollmentRequestReceivedTemplate } = await import(
+                        '../../email/templates/enrollment-request-received.template.js'
+                    );
+                    const provider = createEmailProviderFromEnv();
+                    if (!provider) {
+                        log.warn('[OUTBOX] send_enrollment_request_received_email: EmailProvider não configurado, job ignorado');
+                        return;
+                    }
+                    const p = event.payload as {
+                        to?: string;
+                        studentName?: string;
+                        schoolName?: string;
+                        courseName?: string;
+                        className?: string;
+                        loginUrl?: string;
+                    };
+                    if (!p?.to || !p?.studentName || !p?.schoolName || !p?.courseName) {
+                        log.warn('[OUTBOX] send_enrollment_request_received_email: payload inválido', p);
+                        return;
+                    }
+                    const template = getEnrollmentRequestReceivedTemplate({
+                        studentName: p.studentName,
+                        schoolName: p.schoolName,
+                        courseName: p.courseName,
+                        className: p.className,
+                        loginUrl: p.loginUrl
+                    });
+                    const emailService = new EmailService(provider);
+                    await emailService.sendCustomEmail({
+                        to: p.to,
+                        subject: template.subject,
+                        html: template.html,
+                        text: template.text
+                    });
+                    log.info('[OUTBOX] send_enrollment_request_received_email enviado', { to: p.to });
+                } catch (err) {
+                    log.error('[OUTBOX] send_enrollment_request_received_email falhou', { error: err instanceof Error ? err.message : String(err) });
+                    throw err;
+                }
+                return;
+            }
+
+            if (job.name === 'send_enrollment_request_rejected_email' || jobType === 'send_enrollment_request_rejected_email') {
+                log.info('[OUTBOX] Processando job de email: send_enrollment_request_rejected_email');
+                try {
+                    const { createEmailProviderFromEnv } = await import('../../email/create-email-provider.js');
+                    const { EmailService } = await import('../../email/email-service.js');
+                    const { getEnrollmentRequestRejectedTemplate } = await import(
+                        '../../email/templates/enrollment-request-rejected.template.js'
+                    );
+                    const provider = createEmailProviderFromEnv();
+                    if (!provider) {
+                        log.warn('[OUTBOX] send_enrollment_request_rejected_email: EmailProvider não configurado, job ignorado');
+                        return;
+                    }
+                    const p = event.payload as {
+                        to?: string;
+                        studentName?: string;
+                        schoolName?: string;
+                        courseName?: string;
+                        className?: string;
+                        loginUrl?: string;
+                        notes?: string | null;
+                    };
+                    if (!p?.to || !p?.studentName || !p?.schoolName || !p?.courseName) {
+                        log.warn('[OUTBOX] send_enrollment_request_rejected_email: payload inválido', p);
+                        return;
+                    }
+                    const template = getEnrollmentRequestRejectedTemplate({
+                        studentName: p.studentName,
+                        schoolName: p.schoolName,
+                        courseName: p.courseName,
+                        className: p.className,
+                        loginUrl: p.loginUrl,
+                        notes: p.notes ?? null
+                    });
+                    const emailService = new EmailService(provider);
+                    await emailService.sendCustomEmail({
+                        to: p.to,
+                        subject: template.subject,
+                        html: template.html,
+                        text: template.text
+                    });
+                    log.info('[OUTBOX] send_enrollment_request_rejected_email enviado', { to: p.to });
+                } catch (err) {
+                    log.error('[OUTBOX] send_enrollment_request_rejected_email falhou', { error: err instanceof Error ? err.message : String(err) });
+                    throw err;
+                }
+                return;
+            }
+
             if (job.name === 'schedule_charge_due_reminders' || jobType === 'schedule_charge_due_reminders') {
                 log.info('[OUTBOX] Processando job: schedule_charge_due_reminders');
                 await ensureDb();
@@ -506,6 +603,8 @@ export function startWorker(): Worker {
                     const { UserRepositoryAdapter } = await import('../../db/typeorm/user-repository.adapter.js');
                     const { SchoolRepositoryAdapter } = await import('../../db/typeorm/school-repository.js');
                     const { CourseRepositoryAdapter } = await import('../../db/typeorm/course-repository.js');
+                    const { NotificationRepositoryAdapter } = await import('../../db/typeorm/notification-repository.adapter.js');
+                    const { NotifyStudentUser } = await import('../../../app/use-cases/notify-student-user.js');
 
                     const chargeRepo = new SchoolFinancialChargeRepositoryAdapter();
                     const invoiceRepo = new SchoolPlanInvoiceRepositoryAdapter();
@@ -514,6 +613,8 @@ export function startWorker(): Worker {
                     const userRepo = new UserRepositoryAdapter();
                     const schoolRepo = new SchoolRepositoryAdapter();
                     const courseRepo = new CourseRepositoryAdapter();
+                    const notificationsRepo = new NotificationRepositoryAdapter();
+                    const notifyStudent = new NotifyStudentUser(notificationsRepo, outbox);
 
                     const useCase = new ScheduleChargeDueReminders(
                         chargeRepo,
@@ -522,7 +623,8 @@ export function startWorker(): Worker {
                         outbox,
                         userRepo,
                         schoolRepo,
-                        courseRepo
+                        courseRepo,
+                        notifyStudent
                     );
                     const result = await useCase.exec(undefined);
                     log.info('[OUTBOX] schedule_charge_due_reminders concluído', result);
@@ -582,6 +684,34 @@ export function startWorker(): Worker {
                 return;
             }
 
+            if (job.name === 'generate_monthly_tuition_charges' || jobType === 'generate_monthly_tuition_charges') {
+                log.info('[OUTBOX] Processando job: generate_monthly_tuition_charges');
+                await ensureDb();
+                try {
+                    const { runGenerateMonthlyCharges } = await import('../../cron/generate-monthly-charges.js');
+                    const result = await runGenerateMonthlyCharges();
+                    log.info('[OUTBOX] generate_monthly_tuition_charges concluído', result);
+                } catch (err) {
+                    log.error('[OUTBOX] generate_monthly_tuition_charges falhou', { error: err instanceof Error ? err.message : String(err) });
+                    throw err;
+                }
+                return;
+            }
+
+            if (job.name === 'send_boleto_notifications' || jobType === 'send_boleto_notifications') {
+                log.info('[OUTBOX] Processando job: send_boleto_notifications');
+                await ensureDb();
+                try {
+                    const { runSendBoletoNotifications } = await import('../../cron/send-boleto-notifications.js');
+                    const result = await runSendBoletoNotifications();
+                    log.info('[OUTBOX] send_boleto_notifications concluído', result);
+                } catch (err) {
+                    log.error('[OUTBOX] send_boleto_notifications falhou', { error: err instanceof Error ? err.message : String(err) });
+                    throw err;
+                }
+                return;
+            }
+
             // default: manter comportamento atual (log)
             log.warn('[OUTBOX] unhandled event', { name: job.name, payload: event.payload });
         },
@@ -597,6 +727,7 @@ export function startWorker(): Worker {
 
     workerInstance.on('completed', (job) => {
         log.info('[Worker] Job completado', { name: job.name, id: job.id, data: job.data });
+        void persistCompletedJobLog(job);
     });
 
     workerInstance.on('failed', (job, err) => {
@@ -608,6 +739,7 @@ export function startWorker(): Worker {
             stack: err.stack,
             attemptsMade: job?.attemptsMade
         });
+        void persistFailedJobLog(job, err);
     });
 
     workerInstance.on('error', (err) => {

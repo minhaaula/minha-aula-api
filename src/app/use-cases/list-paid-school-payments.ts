@@ -66,6 +66,11 @@ export class ListPaidSchoolPayments {
             .where('charge.schoolId = :schoolId', { schoolId })
             .andWhere('charge.courseId IN (:...courseIds)', { courseIds })
             .andWhere('charge.status = :status', { status: 'PAID' })
+            // Não listar baixa manual (escola marcou como pago); manter PIX/BOLETO e legado com vínculo Asaas
+            .andWhere(
+                '(charge.paymentMethod IN (:...paidDigitalMethods) OR (charge.paymentMethod IS NULL AND charge.asaasPaymentId IS NOT NULL))',
+                { paidDigitalMethods: ['PIX', 'BOLETO'] }
+            )
             .select([
                 'charge.id AS charge_id',
                 'charge.amountCents AS charge_amount_cents',
@@ -80,6 +85,7 @@ export class ListPaidSchoolPayments {
                 'charge.asaasInvoiceUrl AS charge_asaas_invoice_url',
                 'charge.asaasPayload AS charge_asaas_payload',
                 'charge.paidAt AS charge_paid_at',
+                'charge.paymentMethod AS charge_payment_method',
                 'charge.createdAt AS charge_created_at',
                 'charge.updatedAt AS charge_updated_at',
                 'charge.studentUserId AS charge_student_user_id',
@@ -184,11 +190,12 @@ export class ListPaidSchoolPayments {
                 }
             }
 
-            // Determinar tipo de pagamento baseado no payload
+            // Determinar tipo de pagamento: usar valor persistido (baixa manual) ou inferir do payload
             const paymentType = this.determinePaymentType(
                 row.charge_asaas_payload,
                 row.charge_asaas_payment_id,
-                row.charge_status
+                row.charge_status,
+                row.charge_payment_method
             );
 
             // Converter datas para Date se forem strings
@@ -210,6 +217,7 @@ export class ListPaidSchoolPayments {
                 discountReason: row.charge_discount_reason,
                 netAmountCents: row.charge_net_amount_cents,
                 status: row.charge_status as SchoolFinancialChargeStatus,
+                statusDisplay: 'Pago',
                 chargeType: row.charge_charge_type,
                 description: row.charge_description,
                 dueDate,
@@ -260,11 +268,17 @@ export class ListPaidSchoolPayments {
     private determinePaymentType(
         asaasPayload: any,
         asaasPaymentId: string | null,
-        status: string
+        status: string,
+        storedPaymentMethod: string | null | undefined
     ): 'PIX' | 'BOLETO' | 'MANUAL' | null {
         // Se não está pago, não tem tipo
         if (status !== 'PAID') {
             return null;
+        }
+
+        // Prioridade ao método persistido (ex.: baixa manual pelo site grava MANUAL)
+        if (storedPaymentMethod === 'MANUAL' || storedPaymentMethod === 'PIX' || storedPaymentMethod === 'BOLETO') {
+            return storedPaymentMethod;
         }
 
         // Se não tem paymentId, provavelmente foi pago manualmente

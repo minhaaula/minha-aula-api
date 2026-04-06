@@ -25,6 +25,7 @@ import type { GetSchoolProfile } from '../../../app/use-cases/get-school-profile
 import type { UpdateSchool } from '../../../app/use-cases/update-school';
 import type { UpdateCourse } from '../../../app/use-cases/update-course';
 import type { EnrollStudent } from '../../../app/use-cases/enroll-student';
+import type { UnenrollStudentFromClass } from '../../../app/use-cases/unenroll-student-from-class';
 import type { ListEnrollmentRequests } from '../../../app/use-cases/list-enrollment-requests';
 import type { DeleteCourse } from '../../../app/use-cases/delete-course';
 import type { DeleteCourseClass } from '../../../app/use-cases/delete-course-class';
@@ -92,6 +93,7 @@ export type SchoolsRouterDeps = {
     getSchoolProfile?: GetSchoolProfile;
     updateSchool?: UpdateSchool;
     enrollStudent?: EnrollStudent;
+    unenrollStudentFromClass?: UnenrollStudentFromClass;
     listEnrollmentRequests?: ListEnrollmentRequests;
     authMiddleware?: RequestHandler;
     schoolsRepo?: SchoolRepository;
@@ -100,6 +102,7 @@ export type SchoolsRouterDeps = {
     listSchoolWithdrawals?: import('../../../app/use-cases/list-school-withdrawals').ListSchoolWithdrawals;
     requestSchoolWithdrawal?: import('../../../app/use-cases/request-school-withdrawal').RequestSchoolWithdrawal;
     getSchoolBalance?: import('../../../app/use-cases/get-school-balance').GetSchoolBalance;
+    schoolMarkChargePaid?: import('../../../app/use-cases/school-mark-charge-paid').SchoolMarkChargePaid;
     listSchoolBankAccounts?: ListSchoolBankAccounts;
     createSchoolBankAccount?: CreateSchoolBankAccount;
     updateSchoolBankAccount?: UpdateSchoolBankAccount;
@@ -110,6 +113,8 @@ export type SchoolsRouterDeps = {
     updateSchoolPassword?: UpdateSchoolPassword;
     getStudentDirectoryEntry?: GetStudentDirectoryEntry;
     getSchoolStudentDetails?: import('../../../app/use-cases/get-school-student-details').GetSchoolStudentDetails;
+    listSchoolStudentPaidCharges?: import('../../../app/use-cases/list-school-student-paid-charges').ListSchoolStudentPaidCharges;
+    consolidateSchoolStudentFinancial?: import('../../../app/use-cases/consolidate-school-student-financial').ConsolidateSchoolStudentFinancial;
     getSchoolDashboard?: import('../../../app/use-cases/get-school-dashboard').GetSchoolDashboard;
     uploadSchoolImage?: import('../../../app/use-cases/upload-school-image').UploadSchoolImage;
     listSchoolImages?: import('../../../app/use-cases/list-school-images').ListSchoolImages;
@@ -117,6 +122,7 @@ export type SchoolsRouterDeps = {
     listSchoolNotifications?: ListSchoolNotifications;
     sendClassPushNotification?: SendClassPushNotification;
     getSchoolPendingDocuments?: import('../../../app/use-cases/get-school-pending-documents').GetSchoolPendingDocuments;
+    syncSchoolOnboardingDocuments?: import('../../../app/use-cases/sync-school-onboarding-documents').SyncSchoolOnboardingDocuments;
     uploadSchoolOnboardingDocument?: import('../../../app/use-cases/admin-upload-school-onboarding-document').AdminUploadSchoolOnboardingDocument;
 };
 
@@ -167,13 +173,14 @@ export function schoolsRouter(deps: SchoolsRouterDeps) {
         }, guards));
     }
 
-    if (deps.createSchoolCharge || deps.getSchoolFinancialSummary || deps.listSchoolWithdrawals || deps.requestSchoolWithdrawal || deps.getSchoolBalance) {
+    if (deps.createSchoolCharge || deps.getSchoolFinancialSummary || deps.listSchoolWithdrawals || deps.requestSchoolWithdrawal || deps.getSchoolBalance || deps.schoolMarkChargePaid) {
         router.use('/finance', buildFinanceRoutes({
             createSchoolCharge: deps.createSchoolCharge,
             getSchoolFinancialSummary: deps.getSchoolFinancialSummary,
             listSchoolWithdrawals: deps.listSchoolWithdrawals,
             requestSchoolWithdrawal: deps.requestSchoolWithdrawal,
-            getSchoolBalance: deps.getSchoolBalance
+            getSchoolBalance: deps.getSchoolBalance,
+            schoolMarkChargePaid: deps.schoolMarkChargePaid
         }, guards));
     }
 
@@ -181,7 +188,9 @@ export function schoolsRouter(deps: SchoolsRouterDeps) {
         router.use('/students', buildStudentsRoutes({
             listSchoolStudents: deps.listSchoolStudents,
             getStudentDirectoryEntry: deps.getStudentDirectoryEntry,
-            getSchoolStudentDetails: deps.getSchoolStudentDetails
+            getSchoolStudentDetails: deps.getSchoolStudentDetails,
+            listSchoolStudentPaidCharges: deps.listSchoolStudentPaidCharges,
+            consolidateSchoolStudentFinancial: deps.consolidateSchoolStudentFinancial
         }, guards));
     }
 
@@ -207,6 +216,7 @@ export function schoolsRouter(deps: SchoolsRouterDeps) {
         scheduleClassSession: deps.scheduleClassSession,
         listClassSessions: deps.listClassSessions,
         enrollStudent: deps.enrollStudent,
+        unenrollStudentFromClass: deps.unenrollStudentFromClass,
         listEnrollmentRequests: deps.listEnrollmentRequests
     }, guards));
 
@@ -225,6 +235,7 @@ export function schoolsRouter(deps: SchoolsRouterDeps) {
     if (deps.getSchoolPendingDocuments) {
         router.use('/kyc', buildKycRoutes({
             getSchoolPendingDocuments: deps.getSchoolPendingDocuments,
+            syncSchoolOnboardingDocuments: deps.syncSchoolOnboardingDocuments,
             uploadSchoolOnboardingDocument: deps.uploadSchoolOnboardingDocument
         }, guards));
     }

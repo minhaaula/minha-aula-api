@@ -47,6 +47,52 @@ export class EnrollmentRepositoryAdapter implements EnrollmentRepository {
         await this.repo.save(this.toOrm(enrollment));
     }
 
+    async countTotalActiveStudents(): Promise<number> {
+        const row = await this.repo
+            .createQueryBuilder('enrollment')
+            .select(
+                "COUNT(DISTINCT CONCAT(enrollment.studentType, '-', COALESCE(enrollment.studentUserId, enrollment.dependentId, '')))",
+                'count'
+            )
+            .where('enrollment.status = :status', { status: 'ACTIVE' })
+            .getRawOne<{ count: string }>();
+        return Number(row?.count ?? 0);
+    }
+
+    async countEnrollmentsInMonth(year: number, month: number): Promise<number> {
+        return this.repo
+            .createQueryBuilder('enrollment')
+            .where('YEAR(enrollment.enrolledAt) = :year', { year })
+            .andWhere('MONTH(enrollment.enrolledAt) = :month', { month })
+            .getCount();
+    }
+
+    async getTopSchoolsByStudentCount(limit: number): Promise<Array<{ schoolId: string; schoolName: string; city: string | null; count: number }>> {
+        const rows = await this.repo
+            .createQueryBuilder('enrollment')
+            .innerJoin('enrollment.courseClass', 'class')
+            .innerJoin('class.course', 'course')
+            .innerJoin('course.school', 'school')
+            .leftJoin('school.addresses', 'addr')
+            .where('enrollment.status = :status', { status: 'ACTIVE' })
+            .select('school.id AS schoolId')
+            .addSelect('school.name AS schoolName')
+            .addSelect('MAX(addr.city)', 'city')
+            .addSelect('COUNT(DISTINCT COALESCE(enrollment.studentUserId, enrollment.dependentId))', 'count')
+            .groupBy('school.id')
+            .addGroupBy('school.name')
+            .orderBy('count', 'DESC')
+            .limit(limit)
+            .getRawMany();
+
+        return (rows as any[]).map((r) => ({
+            schoolId: r.schoolId,
+            schoolName: r.schoolName ?? '',
+            city: r.city ?? null,
+            count: Number(r.count) || 0
+        }));
+    }
+
     async findRecent(limit: number): Promise<EnrollmentWithDetails[]> {
         const results = await this.repo
             .createQueryBuilder('enrollment')
@@ -214,9 +260,9 @@ export class EnrollmentRepositoryAdapter implements EnrollmentRepository {
             .innerJoin('enrollment.courseClass', 'class')
             .innerJoin('class.course', 'course')
             .innerJoin('course.school', 'school')
-            .leftJoin('enrollment.studentUser', 'studentUser')
-            .leftJoin('enrollment.dependent', 'dependent')
+            .innerJoin('enrollment.studentUser', 'studentUser')
             .where('enrollment.status = :status', { status: 'ACTIVE' })
+            .andWhere('enrollment.studentUserId IS NOT NULL')
             .andWhere('course.isActive = :courseActive', { courseActive: true })
             .andWhere('class.isActive = :classActive', { classActive: true });
 
@@ -224,73 +270,93 @@ export class EnrollmentRepositoryAdapter implements EnrollmentRepository {
             qb.andWhere('school.id = :schoolId', { schoolId });
         }
         if (name) {
-            qb.andWhere(
-                '(LOWER(COALESCE(studentUser.fullName, dependent.fullName)) LIKE LOWER(:namePattern))',
-                { namePattern: `%${name}%` }
-            );
+            qb.andWhere('LOWER(studentUser.fullName) LIKE LOWER(:namePattern)', { namePattern: `%${name}%` });
         }
         if (cpfDigits && cpfDigits.length === 11) {
             qb.andWhere(
-                'REPLACE(REPLACE(REPLACE(COALESCE(studentUser.cpf, dependent.cpf), \'.\', \'\'), \'-\', \'\'), \'/\', \'\') = :cpfDigits',
+                'REPLACE(REPLACE(REPLACE(studentUser.cpf, \'.\', \'\'), \'-\', \'\'), \'/\', \'\') = :cpfDigits',
                 { cpfDigits }
             );
         }
-
-        const rawRows = await qb
-            .select([
-                'enrollment.id AS enrollmentId',
-                'school.id AS schoolId',
-                'school.name AS schoolName',
-                'COALESCE(studentUser.fullName, dependent.fullName) AS studentName',
-                'COALESCE(studentUser.cpf, dependent.cpf) AS cpf',
-                'course.name AS courseName',
-                'class.label AS className',
-                'enrollment.enrolledAt AS enrolledAt',
-                'enrollment.studentType AS studentType',
-                'COALESCE(studentUser.id, dependent.id) AS studentId'
-            ])
-            .orderBy('enrollment.enrolledAt', 'DESC')
-            .skip(safeOffset)
-            .take(safeLimit)
-            .getRawMany();
 
         const countQb = this.repo
             .createQueryBuilder('enrollment')
             .innerJoin('enrollment.courseClass', 'class')
             .innerJoin('class.course', 'course')
             .innerJoin('course.school', 'school')
-            .leftJoin('enrollment.studentUser', 'studentUser')
-            .leftJoin('enrollment.dependent', 'dependent')
+            .innerJoin('enrollment.studentUser', 'studentUser')
             .where('enrollment.status = :status', { status: 'ACTIVE' })
+            .andWhere('enrollment.studentUserId IS NOT NULL')
             .andWhere('course.isActive = :courseActive', { courseActive: true })
             .andWhere('class.isActive = :classActive', { classActive: true });
 
         if (schoolId) countQb.andWhere('school.id = :schoolId', { schoolId });
         if (name) {
-            countQb.andWhere(
-                '(LOWER(COALESCE(studentUser.fullName, dependent.fullName)) LIKE LOWER(:namePattern))',
-                { namePattern: `%${name}%` }
-            );
+            countQb.andWhere('LOWER(studentUser.fullName) LIKE LOWER(:namePattern)', { namePattern: `%${name}%` });
         }
         if (cpfDigits && cpfDigits.length === 11) {
             countQb.andWhere(
-                'REPLACE(REPLACE(REPLACE(COALESCE(studentUser.cpf, dependent.cpf), \'.\', \'\'), \'-\', \'\'), \'/\', \'\') = :cpfDigits',
+                'REPLACE(REPLACE(REPLACE(studentUser.cpf, \'.\', \'\'), \'-\', \'\'), \'/\', \'\') = :cpfDigits',
                 { cpfDigits }
             );
         }
-        const totalCount = await countQb.getCount();
+
+        const totalCount = await countQb
+            .select('COUNT(DISTINCT enrollment.studentUserId)', 'cnt')
+            .getRawOne<{ cnt: string }>()
+            .then((r) => Number(r?.cnt ?? 0));
+
+        const rawRows = await qb
+            .select([
+                'studentUser.id AS studentId',
+                'studentUser.fullName AS studentName',
+                'studentUser.cpf AS cpf',
+                'studentUser.addressStreet AS addressStreet',
+                'studentUser.addressNumber AS addressNumber',
+                'studentUser.addressComplement AS addressComplement',
+                'studentUser.addressDistrict AS addressDistrict',
+                'studentUser.addressCity AS addressCity',
+                'studentUser.addressState AS addressState',
+                'studentUser.addressZipCode AS addressZipCode',
+                'studentUser.createdAt AS createdAt'
+            ])
+            .addSelect(
+                '(SELECT COUNT(*) FROM enrollments e2 WHERE e2.student_user_id = studentUser.id AND e2.status = \'ACTIVE\')',
+                'courseCount'
+            )
+            .groupBy('studentUser.id')
+            .addGroupBy('studentUser.fullName')
+            .addGroupBy('studentUser.cpf')
+            .addGroupBy('studentUser.addressStreet')
+            .addGroupBy('studentUser.addressNumber')
+            .addGroupBy('studentUser.addressComplement')
+            .addGroupBy('studentUser.addressDistrict')
+            .addGroupBy('studentUser.addressCity')
+            .addGroupBy('studentUser.addressState')
+            .addGroupBy('studentUser.addressZipCode')
+            .addGroupBy('studentUser.createdAt')
+            .orderBy('studentUser.fullName', 'ASC')
+            .skip(safeOffset)
+            .take(safeLimit)
+            .getRawMany();
 
         const items = (rawRows as any[]).map((row) => ({
-            enrollmentId: row.enrollmentId as string,
-            schoolId: row.schoolId as string,
-            schoolName: row.schoolName as string,
-            studentName: row.studentName ?? '',
             cpf: row.cpf ?? null,
-            courseName: row.courseName ?? '',
-            className: row.className ?? '',
-            enrolledAt: new Date(row.enrolledAt),
-            studentType: row.studentType as 'USER' | 'DEPENDENT',
-            studentId: row.studentId
+            studentId: row.studentId,
+            studentName: row.studentName ?? '',
+            studentType: 'USER' as const,
+            endereco: {
+                street: row.addressStreet ?? '',
+                number: row.addressNumber ?? '',
+                complement: row.addressComplement ?? null,
+                district: row.addressDistrict ?? null,
+                city: row.addressCity ?? '',
+                state: row.addressState ?? '',
+                zipCode: row.addressZipCode ?? ''
+            },
+            createdAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : new Date(row.createdAt).toISOString(),
+            countCursos: Number(row.courseCount ?? 0),
+            dependentes: [] as import('../../../ports/repositories/enrollment.repo').AdminStudentListDependentItem[]
         }));
 
         return {
@@ -340,7 +406,7 @@ export class EnrollmentRepositoryAdapter implements EnrollmentRepository {
         row.fullAmountCents = enrollment.fullAmountCents;
         row.paymentDueDay = enrollment.paymentDueDay;
         row.enrolledAt = enrollment.enrolledAt;
-        row.updatedAt = enrollment.updatedAt ?? new Date();
+        row.updatedAt = new Date();
         return row;
     }
 }

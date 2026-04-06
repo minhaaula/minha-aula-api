@@ -31,6 +31,10 @@ import { buildPaymentsModule } from './modules/payments-module';
 import { buildSchoolsModule } from './modules/schools-module';
 import { buildStudentsModule } from './modules/students-module';
 import { ModuleSetupContext, ModuleBuildResult } from './modules/types';
+import { ListCategories } from '../app/use-cases/list-categories';
+import { NotifyStudentUser } from '../app/use-cases/notify-student-user';
+import { Router } from 'express';
+import { asyncHandler } from '../infra/http/utils/async-handler';
 import { AsaasProvider } from '../infra/providers/asaas/asaas-provider';
 import { PaymentProviderPort } from '../ports/providers/payment-provider.port';
 import { AsaasProviderPort } from '../ports/providers/asaas-port';
@@ -285,12 +289,12 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
 
     const asaasApiKey = process.env.ASAAS_API_KEY ?? '';
     const asaasBaseUrl = process.env.ASAAS_BASE_URL;
-    const needsPaymentProvider = selected.includes('payments') || selected.includes('schools') || selected.includes('students');
+    const needsPaymentProvider = selected.includes('payments') || selected.includes('schools') || selected.includes('students') || selected.includes('admin');
 
     let paymentProvider: (PaymentProviderPort & Partial<AsaasProviderPort>) | undefined;
     if (needsPaymentProvider) {
         if (!asaasApiKey) {
-            throw new Error('ASAAS_API_KEY is required when payments, schools or students module is enabled');
+            throw new Error('ASAAS_API_KEY is required when payments, schools, students or admin module is enabled');
         }
         paymentProvider = new AsaasProvider({ apiKey: asaasApiKey, baseUrl: asaasBaseUrl });
     }
@@ -298,6 +302,8 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
     for (const moduleName of selected) {
         switch (moduleName) {
             case 'auth': {
+                const notifyStudentAuth =
+                    notificationsRepo && outbox ? new NotifyStudentUser(notificationsRepo, outbox) : undefined;
                 const result = buildAuthModule({
                     usersRepo,
                     passwordHasher,
@@ -307,7 +313,8 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
                     schoolsRepo,
                     emailProvider,
                     outbox,
-                    frontendBaseUrl
+                    frontendBaseUrl,
+                    notifyStudent: notifyStudentAuth
                 }, ctx);
                 mergeModuleResult(serverDeps, docFiles, result);
                 break;
@@ -326,6 +333,7 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
                     schoolsRepo,
                     planFinancesRepo: schoolPlanFinancesRepo,
                     planInvoicesRepo: schoolPlanInvoicesRepo,
+                    enrollmentRequestsRepo,
                     subscriptionPlansRepo,
                     categoriesRepo,
                     usersRepo,
@@ -339,7 +347,8 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
                     passwordHasher,
                     tokenProvider,
                     tokenTtl,
-                    asaasProvider: asaasProviderForAdmin
+                    asaasProvider: asaasProviderForAdmin,
+                    notificationsRepo
                 }, ctx);
                 mergeModuleResult(serverDeps, docFiles, result);
                 break;
@@ -405,9 +414,10 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
                     categoriesRepo,
                     schoolReviewsRepo,
                     storageProvider,
-                    notificationsRepo
-                    ,
-                    pushTokensRepo
+                    notificationsRepo,
+                    pushTokensRepo,
+                    outbox,
+                    frontendBaseUrl
                 }, ctx);
                 mergeModuleResult(serverDeps, docFiles, result);
                 break;
@@ -417,6 +427,18 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
 
     serverDeps.activeModules = selected;
     serverDeps.openapiFiles = Array.from(docFiles);
+
+    // Quando só o módulo students está ativo, montar rota pública GET /schools/categories
+    // para o app de estudantes (evita 404 em https://.../schools/categories)
+    if (selected.includes('students') && !selected.includes('schools')) {
+        const listCategories = new ListCategories(categoriesRepo);
+        const schoolsPublicRouter = Router();
+        schoolsPublicRouter.get('/categories', asyncHandler(async (_req, res) => {
+            const result = await listCategories.exec();
+            res.json(result);
+        }));
+        serverDeps.schoolsRouter = schoolsPublicRouter;
+    }
 
     return { app: makeServer(serverDeps), modules: selected };
 }

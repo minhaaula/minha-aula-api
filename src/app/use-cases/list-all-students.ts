@@ -1,6 +1,7 @@
 import type { EnrollmentRepository } from '../../ports/repositories/enrollment.repo';
 import type { UserRepository } from '../../ports/repositories/user.repo';
-import type { AdminStudentListFilters, AdminStudentListResult } from '../../ports/repositories/enrollment.repo';
+import type { DependentRepository } from '../../ports/repositories/dependent.repo';
+import type { AdminStudentListFilters, AdminStudentListResult, AdminStudentListDependentItem } from '../../ports/repositories/enrollment.repo';
 
 export type ListAllStudentsInput = {
     name?: string | null;
@@ -13,7 +14,8 @@ export type ListAllStudentsInput = {
 export class ListAllStudents {
     constructor(
         private readonly enrollments: EnrollmentRepository,
-        private readonly users?: UserRepository
+        private readonly users?: UserRepository,
+        private readonly dependents?: DependentRepository
     ) {}
 
     async exec(input: ListAllStudentsInput): Promise<AdminStudentListResult> {
@@ -25,16 +27,59 @@ export class ListAllStudents {
             cpf: input.cpf ?? null
         };
 
-        // Prioridade: listar por usuários (inclui alunos sem matrícula, ex.: criados pelo script)
         const findFromUsers = this.users?.findStudentsPaginatedForAdmin;
         if (findFromUsers) {
-            return findFromUsers.call(this.users, filters, limit, offset);
+            const result = await findFromUsers.call(this.users, filters, limit, offset);
+            if (this.dependents && result.items.length > 0) {
+                const userIds = result.items.map((i) => i.studentId);
+                const dependentsList = await this.dependents.findByUserIds(userIds);
+                const byOwner = new Map<string, AdminStudentListDependentItem[]>();
+                for (const dep of dependentsList) {
+                    const item: AdminStudentListDependentItem = {
+                        id: dep.id,
+                        nome: dep.fullName,
+                        cpf: dep.cpf,
+                        dataNascimento: dep.birthDate ? dep.birthDate.toISOString().slice(0, 10) : null,
+                        vinculo: dep.relationship
+                    };
+                    const arr = byOwner.get(dep.userId) ?? [];
+                    arr.push(item);
+                    byOwner.set(dep.userId, arr);
+                }
+                result.items = result.items.map((student) => ({
+                    ...student,
+                    dependentes: byOwner.get(student.studentId) ?? []
+                }));
+            }
+            return result;
         }
 
         if (!this.enrollments.findAllPaginatedForAdmin) {
             return { items: [], total: 0, limit, offset };
         }
 
-        return this.enrollments.findAllPaginatedForAdmin(filters, limit, offset);
+        const result = await this.enrollments.findAllPaginatedForAdmin(filters, limit, offset);
+        if (this.dependents && result.items.length > 0) {
+            const userIds = result.items.map((i) => i.studentId);
+            const dependentsList = await this.dependents.findByUserIds(userIds);
+            const byOwner = new Map<string, AdminStudentListDependentItem[]>();
+            for (const dep of dependentsList) {
+                const item: AdminStudentListDependentItem = {
+                    id: dep.id,
+                    nome: dep.fullName,
+                    cpf: dep.cpf,
+                    dataNascimento: dep.birthDate ? dep.birthDate.toISOString().slice(0, 10) : null,
+                    vinculo: dep.relationship
+                };
+                const arr = byOwner.get(dep.userId) ?? [];
+                arr.push(item);
+                byOwner.set(dep.userId, arr);
+            }
+            result.items = result.items.map((student) => ({
+                ...student,
+                dependentes: byOwner.get(student.studentId) ?? []
+            }));
+        }
+        return result;
     }
 }

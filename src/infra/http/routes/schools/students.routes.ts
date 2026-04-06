@@ -7,11 +7,15 @@ import type { SchoolRouteGuards } from './guards';
 import type { SchoolContextRequest } from '../../middlewares/resolve-school-context';
 
 import type { GetSchoolStudentDetails } from '../../../../app/use-cases/get-school-student-details';
+import type { ListSchoolStudentPaidCharges } from '../../../../app/use-cases/list-school-student-paid-charges';
+import type { ConsolidateSchoolStudentFinancial } from '../../../../app/use-cases/consolidate-school-student-financial';
 
 type StudentsRoutesDeps = {
     listSchoolStudents: ListSchoolStudents;
     getStudentDirectoryEntry?: GetStudentDirectoryEntry;
     getSchoolStudentDetails?: GetSchoolStudentDetails;
+    listSchoolStudentPaidCharges?: ListSchoolStudentPaidCharges;
+    consolidateSchoolStudentFinancial?: ConsolidateSchoolStudentFinancial;
 };
 
 export function buildStudentsRoutes(deps: StudentsRoutesDeps, guards: SchoolRouteGuards) {
@@ -23,12 +27,8 @@ export function buildStudentsRoutes(deps: StudentsRoutesDeps, guards: SchoolRout
         guards.resolveSchoolContext
     ] as const;
 
-    // Debug: verificar se getStudentDirectoryEntry está presente
-    console.log('[DEBUG] buildStudentsRoutes - getStudentDirectoryEntry:', deps.getStudentDirectoryEntry ? 'PRESENTE' : 'AUSENTE');
-
     // Registrar rota /directory/:cpf ANTES da rota / para evitar conflitos
     if (deps.getStudentDirectoryEntry) {
-        console.log('✓ Rota /schools/students/directory/:cpf registrada');
         router.get('/directory/:cpf', ...protectedMiddleware, asyncHandler(async (req, res) => {
             const paramsSchema = z.object({ cpf: z.string().trim().min(1) });
             const { cpf } = paramsSchema.parse(req.params);
@@ -107,16 +107,99 @@ export function buildStudentsRoutes(deps: StudentsRoutesDeps, guards: SchoolRout
         });
     }));
 
+    if (deps.consolidateSchoolStudentFinancial) {
+        router.get(
+            '/:studentId/financial-summary',
+            ...protectedMiddleware,
+            asyncHandler(async (req, res) => {
+                const paramsSchema = z.object({ studentId: z.string().uuid() });
+                const { studentId } = paramsSchema.parse(req.params);
+                const schoolId = (req as SchoolContextRequest).schoolId as string;
+
+                const summary = await deps.consolidateSchoolStudentFinancial!.exec({
+                    schoolId,
+                    studentId
+                });
+
+                if (!summary) {
+                    return res.status(404).json({
+                        error: 'Aluno não encontrado ou não está vinculado a esta escola',
+                        code: 'STUDENT_NOT_FOUND'
+                    });
+                }
+
+                res.json(summary);
+            })
+        );
+    }
+
+    if (deps.listSchoolStudentPaidCharges) {
+        router.get(
+            '/:studentId/paid-charges',
+            ...protectedMiddleware,
+            asyncHandler(async (req, res) => {
+                const paramsSchema = z.object({ studentId: z.string().uuid() });
+                const { studentId } = paramsSchema.parse(req.params);
+                const schoolId = (req as SchoolContextRequest).schoolId as string;
+                const querySchema = z.object({
+                    dependentId: z.string().uuid().optional(),
+                    limit: z.coerce.number().int().positive().max(100).optional(),
+                    offset: z.coerce.number().int().min(0).optional()
+                });
+                const query = querySchema.parse({
+                    dependentId: typeof req.query.dependentId === 'string' ? req.query.dependentId : undefined,
+                    limit: req.query.limit,
+                    offset: req.query.offset
+                });
+
+                const result = await deps.listSchoolStudentPaidCharges!.exec({
+                    schoolId,
+                    studentId,
+                    dependentId: query.dependentId,
+                    limit: query.limit ?? 20,
+                    offset: query.offset ?? 0
+                });
+
+                if (!result) {
+                    return res.status(404).json({
+                        error: 'Aluno não encontrado ou não está vinculado a esta escola',
+                        code: 'STUDENT_NOT_FOUND'
+                    });
+                }
+
+                const { total, limit, offset } = result;
+                res.json({
+                    paidCharges: result.paidCharges,
+                    pagination: {
+                        total,
+                        limit,
+                        offset,
+                        totalPage: Math.ceil(total / limit) || 1,
+                        currentPage: Math.floor(offset / limit) + 1,
+                        hasMore: offset + limit < total
+                    }
+                });
+            })
+        );
+    }
+
     // Rota de detalhes do aluno por ID
     if (deps.getSchoolStudentDetails) {
         router.get('/:studentId', ...protectedMiddleware, asyncHandler(async (req, res) => {
             const paramsSchema = z.object({ studentId: z.string().uuid() });
             const { studentId } = paramsSchema.parse(req.params);
             const schoolId = (req as SchoolContextRequest).schoolId as string;
+            const querySchema = z.object({
+                dependentId: z.string().uuid().optional()
+            });
+            const query = querySchema.parse({
+                dependentId: typeof req.query.dependentId === 'string' ? req.query.dependentId : undefined
+            });
 
             const details = await deps.getSchoolStudentDetails!.exec({
                 schoolId,
-                studentId
+                studentId,
+                dependentId: query.dependentId
             });
 
             if (!details) {

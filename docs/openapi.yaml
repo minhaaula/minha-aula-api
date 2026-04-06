@@ -2,12 +2,24 @@ openapi: 3.0.3
 info:
   title: Minha Aula API
   version: 1.0.0
-  description: API para gerenciamento de pagamentos, autenticação de usuários.
+  description: |
+    API para gerenciamento de pagamentos, escolas, estudantes e matrículas.
+    Pode ser implantada com módulos distintos (auth, admin, payments, schools, students).
+    Quando apenas o módulo **students** está ativo, as rotas públicas em `/schools` (ex.: GET /schools/categories) continuam disponíveis para o app de estudantes.
+
+    **Aluno — notificações in-app (sino):** `GET /students/notifications` lista notificações com `scope` `USER` (e outras quando aplicável). O campo `metadata` pode incluir `kind` (ex.: boas-vindas, pedido de matrícula, confirmação/recusa, lembrete de mensalidade). Para marcar como lidas: `PUT /students/notifications/{notificationId}/read` (uma) ou `PUT /students/notifications/read-all` (todas). Push (FCM) depende de token em `POST /students/push-tokens` e fila/worker configurados.
+
+    **Escola (persona SCHOOL) — consolidado financeiro do aluno:** `GET /schools/students/{studentId}/financial-summary`
+    (totais líquidos em centavos: pendentes, em atraso, pagos; requer Bearer da escola).
+
+    **Escola — cobranças do aluno (paginação):** `GET /schools/students/{studentId}/paid-charges` (query `limit`, `offset`, opcional `dependentId`; mesma semântica de `studentId` que em detalhes do aluno).
 servers:
   - url: http://localhost:3000
     description: Ambiente local
   - url: https://minha-aula-api-production.up.railway.app
-    description: Ambiente Prod
+    description: Ambiente Prod (API completa)
+  - url: https://minha-aula-students-api-production.up.railway.app
+    description: Ambiente Prod (API Estudantes)
 tags:
   - name: Auth
     description: Fluxo de cadastro e autenticação de usuários.
@@ -19,12 +31,14 @@ tags:
     description: Monitoramento da saúde da aplicação.
   - name: Schools
     description: Gestão de escolas, cursos e turmas.
+  - name: Financeiro
+    description: Cobranças e totais consolidados (escola, alunos, pagamentos).
   - name: Dependents
     description: Cadastro de dependentes vinculados aos usuários.
   - name: Enrollment Requests
-    description: Fluxo de solicitações e aprovações de matrícula.
+    description: Solicitações e decisões de matrícula; criação pelo aluno ou pela escola; efeitos de email/push/in-app documentados por rota.
   - name: Students
-    description: Consulta de alunos e seus dependentes.
+    description: App do aluno — perfil, cursos, pagamentos, pedidos de matrícula, notificações in-app (sino) e push (FCM).
   - name: Landing
     description: Rotas públicas para landpages e páginas de marketing.
   - name: Webhooks
@@ -1298,7 +1312,10 @@ components:
         metadata:
           type: object
           nullable: true
-          description: Dados adicionais em formato JSON
+          description: |
+            Dados adicionais (JSON). Para notificações do aluno (`scope` USER), costuma incluir:
+            - `kind`: tipo lógico — `WELCOME`, `ENROLLMENT_REQUEST_RECEIVED`, `ENROLLMENT_CONFIRMED`, `ENROLLMENT_REQUEST_REJECTED`, `TUITION_DUE_REMINDER`
+            - outros campos conforme o evento (ex.: `enrollmentRequestId`, `enrollmentId`, `chargeId`, `courseClassId`)
         sentAt:
           type: string
           format: date-time
@@ -1332,6 +1349,20 @@ components:
           description: Número de notificações marcadas como lidas
       required:
         - markedCount
+    MarkNotificationAsReadResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: ID da notificação
+        readAt:
+          type: string
+          format: date-time
+          description: Data e hora em que a notificação foi marcada como lida
+      required:
+        - id
+        - readAt
     ValidateSchoolCouponInput:
       type: object
       required:
@@ -1571,6 +1602,132 @@ components:
         - id
         - name
         - cpf
+    SchoolStudentPaidChargeItem:
+      type: object
+      description: Cobrança do aluno na escola (pendente ou paga). Cobranças canceladas não são incluídas nas listagens por aluno.
+      properties:
+        id:
+          type: string
+          format: uuid
+        amount:
+          type: number
+          format: double
+          description: Valor bruto em reais
+        amountCents:
+          type: integer
+          description: Valor bruto em centavos
+        discount:
+          type: number
+          format: double
+          nullable: true
+          description: Desconto aplicado em reais
+        discountCents:
+          type: integer
+          nullable: true
+          description: Desconto aplicado em centavos
+        netAmount:
+          type: number
+          format: double
+          description: Valor líquido (após desconto) em reais
+        netAmountCents:
+          type: integer
+          description: Valor líquido (após desconto) em centavos
+        description:
+          type: string
+          nullable: true
+          description: Descrição da cobrança
+        dueDate:
+          type: string
+          format: date
+          description: Data de vencimento
+        paidAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Data e hora do pagamento (null quando cobrança pendente)
+        status:
+          type: string
+          enum: [PENDING_SYNC, OPEN, PAID, OVERDUE, CANCELLED, FAILED]
+          description: Status da cobrança
+        statusDisplay:
+          type: string
+          enum: [Pendente, Atrasado, Pago, Cancelado, Falhou]
+          description: Status para exibição (derivado do status + vencimento)
+        course:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            name:
+              type: string
+          required:
+            - id
+            - name
+        class:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            label:
+              type: string
+          required:
+            - id
+            - label
+      required:
+        - id
+        - amount
+        - amountCents
+        - netAmount
+        - netAmountCents
+        - dueDate
+        - paidAt
+        - status
+        - statusDisplay
+        - course
+        - class
+    SchoolStudentPaidChargesListResponse:
+      type: object
+      required:
+        - paidCharges
+        - pagination
+      properties:
+        paidCharges:
+          type: array
+          description: >-
+            Cobranças do aluno na escola (pendentes e pagas), ordenadas por data de pagamento (mais recentes primeiro)
+            e depois por vencimento. Cobranças canceladas não são incluídas.
+          items:
+            $ref: '#/components/schemas/SchoolStudentPaidChargeItem'
+        pagination:
+          type: object
+          required:
+            - total
+            - limit
+            - offset
+            - totalPage
+            - currentPage
+            - hasMore
+          properties:
+            total:
+              type: integer
+              format: int32
+              description: Total de cobranças encontradas
+            limit:
+              type: integer
+              format: int32
+            offset:
+              type: integer
+              format: int32
+            totalPage:
+              type: integer
+              format: int32
+            currentPage:
+              type: integer
+              format: int32
+            hasMore:
+              type: boolean
     SchoolStudentDetailsResponse:
       type: object
       properties:
@@ -1671,87 +1828,31 @@ components:
               - class
               - enrolledAt
               - status
-        paidCharges:
-          type: array
-          description: Histórico de mensalidades pagas na escola (ordenado por data de pagamento, mais recentes primeiro)
-          items:
-            type: object
-            properties:
-              id:
-                type: string
-                format: uuid
-              amount:
-                type: number
-                format: double
-                description: Valor bruto em reais
-              amountCents:
-                type: integer
-                description: Valor bruto em centavos
-              discount:
-                type: number
-                format: double
-                nullable: true
-                description: Desconto aplicado em reais
-              discountCents:
-                type: integer
-                nullable: true
-                description: Desconto aplicado em centavos
-              netAmount:
-                type: number
-                format: double
-                description: Valor líquido (após desconto) em reais
-              netAmountCents:
-                type: integer
-                description: Valor líquido (após desconto) em centavos
-              description:
-                type: string
-                nullable: true
-                description: Descrição da cobrança
-              dueDate:
-                type: string
-                format: date
-                description: Data de vencimento
-              paidAt:
-                type: string
-                format: date-time
-                description: Data e hora do pagamento
-              course:
-                type: object
-                properties:
-                  id:
-                    type: string
-                    format: uuid
-                  name:
-                    type: string
-                required:
-                  - id
-                  - name
-              class:
-                type: object
-                properties:
-                  id:
-                    type: string
-                    format: uuid
-                  label:
-                    type: string
-                required:
-                  - id
-                  - label
-            required:
-              - id
-              - amount
-              - amountCents
-              - netAmount
-              - netAmountCents
-              - dueDate
-              - paidAt
-              - course
-              - class
       required:
         - student
         - responsible
         - enrollments
-        - paidCharges
+    SchoolStudentFinancialSummaryResponse:
+      type: object
+      description: Totais financeiros do aluno na escola (valores líquidos em centavos).
+      properties:
+        pendingTotalCents:
+          type: integer
+          description: Total pendente (em aberto, vencimento futuro ou hoje; falhas não vencidas).
+        paidTotalCents:
+          type: integer
+          description: Total já pago.
+        overdueTotalCents:
+          type: integer
+          description: Total em atraso (OVERDUE ou em aberto com vencimento passado).
+        grandTotalCents:
+          type: integer
+          description: Soma de todas as cobranças do aluno na escola, incluindo canceladas.
+      required:
+        - pendingTotalCents
+        - paidTotalCents
+        - overdueTotalCents
+        - grandTotalCents
     StudentDirectoryResponse:
       type: object
       properties:
@@ -1865,6 +1966,7 @@ components:
         - enrolledAt
         - updatedAt
         - student
+        - detailsStudentId
         - course
         - class
       properties:
@@ -1891,6 +1993,13 @@ components:
           format: date-time
         student:
           $ref: '#/components/schemas/StudentResponse'
+        detailsStudentId:
+          type: string
+          format: uuid
+          description: >-
+            ID a usar em GET /schools/students/{studentId} para abrir a ficha correta: UUID do dependente
+            quando studentType é DEPENDENT; caso contrário o UUID do aluno matriculado (titular).
+            O objeto `student` na listagem representa o titular/resumo; não use apenas student.id para matrículas de dependente.
         dependent:
           nullable: true
           allOf:
@@ -1979,6 +2088,10 @@ components:
         status:
           type: string
           enum: [PENDING_SYNC, OPEN, PAID, OVERDUE, CANCELLED, FAILED]
+        statusDisplay:
+          type: string
+          enum: [Pendente, Atrasado, Pago, Cancelado, Falhou]
+          description: Status para exibição na UI (em aberto com vencimento passado = Atrasado).
         chargeType:
           type: string
           enum: [TUITION, ENROLLMENT, MATERIALS, DAILY, OTHER]
@@ -1999,6 +2112,11 @@ components:
           type: string
           format: date-time
           nullable: true
+        type:
+          type: string
+          enum: [PIX, BOLETO, MANUAL]
+          nullable: true
+          description: Tipo do pagamento quando pago; MANUAL quando a baixa foi feita pelo site (escola/admin).
         createdAt:
           type: string
           format: date-time

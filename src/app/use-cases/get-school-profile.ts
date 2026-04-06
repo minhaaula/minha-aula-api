@@ -67,6 +67,7 @@ export class GetSchoolProfile {
         onboardingCompleted: boolean;
         onboardingUrl?: string | null;
         hasCompletedFirstPayment: boolean;
+        accountId: string | null;
         plan?: SchoolPlanFinanceView | null;
     } | null> {
         const schoolId = input.schoolId.trim();
@@ -202,6 +203,7 @@ export class GetSchoolProfile {
             onboardingCompleted,
             onboardingUrl: school.onboardingUrl,
             hasCompletedFirstPayment,
+            accountId: school.accountId,
             plan
         };
     }

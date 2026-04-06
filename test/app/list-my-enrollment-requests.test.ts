@@ -139,19 +139,21 @@ function makeRequestWithDetails(
     courseLabel: string = 'Curso Teste',
     courseClassLabel: string = 'Turma A',
     studentName: string = 'João Silva',
-    dependentName: string | null = null
+    dependentName: string | null = null,
+    extra?: { schoolName?: string | null; monthlyPriceCents?: number | null; schedule?: Array<{ day: string; start: string; end: string }> | null }
 ): EnrollmentRequestWithDetails {
     return {
         request,
         courseLabel,
         courseClassLabel,
         studentName,
-        dependentName
+        dependentName,
+        ...extra
     };
 }
 
 describe('ListMyEnrollmentRequests use case', () => {
-    it('returns all enrollment requests for a user', async () => {
+    it('returns only PENDING (EM ABERTO) enrollment requests for a user by default', async () => {
         const repo = new InMemoryEnrollmentRequestRepository();
         const dependents = new InMemoryDependentsRepository();
         const userId = 'user-test-1';
@@ -165,13 +167,9 @@ describe('ListMyEnrollmentRequests use case', () => {
         const useCase = new ListMyEnrollmentRequests(repo, dependents);
         const result = await useCase.exec({ userId });
 
-        expect(result.requests).toHaveLength(2);
-        // Ordenar por ID para garantir ordem consistente (já que a ordenação é por data)
-        const sorted = result.requests.sort((a, b) => a.id.localeCompare(b.id));
-        expect(sorted[0].id).toBe('req-test-1');
-        expect(sorted[0].status).toBe('PENDING');
-        expect(sorted[1].id).toBe('req-test-2');
-        expect(sorted[1].status).toBe('APPROVED');
+        expect(result.requests).toHaveLength(1);
+        expect(result.requests[0].id).toBe('req-test-1');
+        expect(result.requests[0].status).toBe('PENDING');
     });
 
     it('filters by status', async () => {
@@ -252,6 +250,9 @@ describe('ListMyEnrollmentRequests use case', () => {
         expect(result.requests[0].courseLabel).toBe('Curso de Música');
         expect(result.requests[0].courseClassLabel).toBe('Turma B');
         expect(result.requests[0].studentName).toBe('João Silva');
+        expect(result.requests[0].schoolName).toBeNull();
+        expect(result.requests[0].monthlyTuitionAmount).toBeNull();
+        expect(result.requests[0].schedule).toEqual([]);
     });
 
     it('handles requests with dependents', async () => {

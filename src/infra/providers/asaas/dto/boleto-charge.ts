@@ -6,6 +6,8 @@ export type AsaasBoletoCustomerPayload = {
     addressNumber: string;
     addressComplement?: string | null;
     phone?: string | null;
+    /** true desativa envio de notificações de cobrança (e-mail/SMS etc.) pelo Asaas para este cliente. */
+    notificationDisabled?: boolean;
 };
 
 export type AsaasCreateBoletoPayload = {

@@ -35,6 +35,28 @@ paths:
             type: string
           description: Filtra solicitações pelo documento (CPF) do aluno.
         - in: query
+          name: status
+          required: false
+          schema:
+            type: string
+            enum:
+              [
+                OPEN,
+                CANCELLED,
+                CANCELED,
+                EM_ABERTO,
+                CANCELADO,
+                REJECTED,
+                REJEITADO,
+                CANCELLED_OR_REJECTED
+              ]
+          description: |
+            Filtro por status. Em aberto = OPEN ou EM_ABERTO (PENDING).
+            Cancelado (somente cancelados pela API) = CANCELLED, CANCELED (legado), CANCELADO.
+            Recusado = REJECTED ou REJEITADO.
+            CANCELLED_OR_REJECTED = cancelados **ou** recusados (útil quando a lista sem filtro mostra os dois e só `CANCELLED` vinha vazio por confundir com REJECTED).
+            Omitir = retorna PENDING + CANCELLED + REJECTED.
+        - in: query
           name: limit
           required: false
           schema:
@@ -51,7 +73,7 @@ paths:
           description: Quantidade de registros a pular para paginação.
       responses:
         '200':
-          description: Solicitações em aberto encontradas. Inclui identificadores, labels de curso/turma e nomes do aluno ou dependente.
+          description: Solicitações encontradas (em aberto, canceladas e/ou rejeitadas conforme filtro). Inclui identificadores, labels de curso/turma e nomes do aluno ou dependente.
           content:
             application/json:
               schema:
@@ -143,17 +165,11 @@ paths:
       summary: Criar uma solicitação de matrícula
       description: |
         Cria uma solicitação de matrícula para um aluno ou dependente em uma turma específica.
-        
-        **Comportamento por persona:**
-        - **STUDENT**: O `requestedForUserId` é automaticamente preenchido com o ID do usuário logado. Não é necessário enviar este campo.
-        - **SCHOOL/ADMIN**: O `requestedForUserId` é obrigatório e deve ser enviado no body.
-        
-        **Importante ao matricular um dependente:**
-        - `requestedForUserId` deve ser o ID do **responsável** (pai/mãe), não do dependente
-        - `requestedForDependentId` deve ser o ID do **dependente** que será matriculado
-        - O dependente deve estar vinculado ao usuário informado em `requestedForUserId`
-        
-        O identificador da escola é inferido automaticamente do usuário autenticado quando a persona é SCHOOL.
+
+        Esta rota atende apenas `STUDENT`:
+        - O backend preenche automaticamente `requestedForUserId` com o ID do usuário logado (não enviar no payload).
+        - Para matrícula de dependente, envie `requestedForDependentId` com o ID do dependente.
+        - `schoolId` é obrigatório se não existir no contexto do token.
       security:
         - bearerAuth: []
       parameters:
@@ -169,51 +185,60 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CreateEnrollmentRequestInput'
+              type: object
+              required:
+                - firstMonthlyPaymentDate
+              properties:
+                requestedForDependentId:
+                  type: string
+                  format: uuid
+                  nullable: true
+                  description: ID do dependente que será matriculado. Use `null` (ou omita) para matrícula do próprio aluno.
+                notes:
+                  type: string
+                  nullable: true
+                  maxLength: 255
+                  description: Observações adicionais sobre a solicitação de matrícula
+                discont:
+                  type: number
+                  format: double
+                  minimum: 0
+                discountMonths:
+                  type: integer
+                  format: int32
+                  minimum: 1
+                schoolId:
+                  type: string
+                  format: uuid
+                  description: ID da escola. Obrigatório se não for inferível do token.
+                enrollmentFeeAmount:
+                  type: number
+                  format: double
+                  minimum: 0
+                enrollmentFeeDueDate:
+                  type: string
+                  format: date
+                firstMonthlyPaymentDate:
+                  type: string
+                  format: date
             examples:
               student_own:
-                summary: Matrícula de aluno próprio (STUDENT - requestedForUserId opcional)
-                description: Para persona STUDENT, o requestedForUserId é opcional e será preenchido automaticamente
+                summary: Matrícula de aluno próprio (STUDENT)
+                description: O backend preencherá requestedForUserId automaticamente.
                 value:
                   requestedForDependentId: null
                   notes: "Aluno interessado em iniciar o curso"
                   discont: 0
-                  discountMonths: null
                   enrollmentFeeAmount: 100.00
                   enrollmentFeeDueDate: "2024-12-15"
                   firstMonthlyPaymentDate: "2024-12-20"
               student_dependent:
-                summary: Matrícula de dependente (STUDENT - requestedForUserId opcional)
-                description: Para persona STUDENT, o requestedForUserId é opcional e será preenchido automaticamente
+                summary: Matrícula de dependente (STUDENT)
+                description: Para matrícula de dependente, envie requestedForDependentId.
                 value:
                   requestedForDependentId: "660e8400-e29b-41d4-a716-446655440001"
                   notes: "Matrícula para filho do responsável"
                   discont: 0
-                  discountMonths: null
-                  enrollmentFeeAmount: 100.00
-                  enrollmentFeeDueDate: "2024-12-15"
-                  firstMonthlyPaymentDate: "2024-12-20"
-              school_admin:
-                summary: Matrícula criada por SCHOOL/ADMIN (requestedForUserId obrigatório)
-                description: Para persona SCHOOL ou ADMIN, o requestedForUserId é obrigatório
-                value:
-                  requestedForUserId: "550e8400-e29b-41d4-a716-446655440000"
-                  requestedForDependentId: null
-                  notes: "Aluno interessado em iniciar o curso"
-                  discont: 0
-                  discountMonths: null
-                  enrollmentFeeAmount: 100.00
-                  enrollmentFeeDueDate: "2024-12-15"
-                  firstMonthlyPaymentDate: "2024-12-20"
-              school_admin_with_discount:
-                summary: Matrícula com desconto (SCHOOL/ADMIN)
-                description: Exemplo de matrícula com desconto aplicado por 3 meses
-                value:
-                  requestedForUserId: "550e8400-e29b-41d4-a716-446655440000"
-                  requestedForDependentId: null
-                  notes: "Aluno com desconto promocional"
-                  discont: 50.00
-                  discountMonths: 3
                   enrollmentFeeAmount: 100.00
                   enrollmentFeeDueDate: "2024-12-15"
                   firstMonthlyPaymentDate: "2024-12-20"
@@ -272,12 +297,133 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+
+  /enrollment-requests/schools/classes/{classId}/responsible-requests:
+    post:
+      tags:
+        - Enrollment Requests
+      summary: Criar solicitação de matrícula como responsável (ADMIN/SCHOOL)
+      description: |
+        Cria uma solicitação de matrícula para um aluno ou dependente como `ADMIN` ou `SCHOOL`.
+
+        - `requestedForUserId` é obrigatório e deve ser o ID do responsável (pai/mãe).
+        - Para matrícula de dependente, envie `requestedForDependentId`.
+        - Para `SCHOOL`, `schoolId` é inferido do token. Para `ADMIN`, `schoolId` deve ser enviado no body.
+
+        **Notificações ao aluno (responsável):** após criar o pedido, o sistema enfileira email de aviso, envia push (FCM, se configurado) e grava notificação in-app (`GET /students/notifications`, `metadata.kind` = `ENROLLMENT_REQUEST_RECEIVED`).
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: classId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Identificador da turma desejada.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - requestedForUserId
+                - firstMonthlyPaymentDate
+              properties:
+                requestedForUserId:
+                  type: string
+                  format: uuid
+                  description: ID do responsável (pai/mãe).
+                requestedForDependentId:
+                  type: string
+                  format: uuid
+                  nullable: true
+                  description: ID do dependente que será matriculado. Use `null` (ou omita) para matrícula do próprio usuário.
+                notes:
+                  type: string
+                  nullable: true
+                  maxLength: 255
+                discont:
+                  type: number
+                  format: double
+                  minimum: 0
+                discountMonths:
+                  type: integer
+                  format: int32
+                  minimum: 1
+                schoolId:
+                  type: string
+                  format: uuid
+                  description: ID da escola (obrigatório para ADMIN).
+                enrollmentFeeAmount:
+                  type: number
+                  format: double
+                  minimum: 0
+                enrollmentFeeDueDate:
+                  type: string
+                  format: date
+                firstMonthlyPaymentDate:
+                  type: string
+                  format: date
+            examples:
+              school_admin:
+                summary: Matrícula como responsável (sem desconto)
+                value:
+                  requestedForUserId: "550e8400-e29b-41d4-a716-446655440000"
+                  requestedForDependentId: null
+                  notes: "Aluno interessado em iniciar o curso"
+                  discont: 0
+                  schoolId: "85a1acc4-9445-4951-944e-4c0fa9e31af4"
+                  enrollmentFeeAmount: 100.00
+                  enrollmentFeeDueDate: "2024-12-15"
+                  firstMonthlyPaymentDate: "2024-12-20"
+              school_admin_with_discount:
+                summary: Matrícula com desconto aplicada por X meses
+                value:
+                  requestedForUserId: "550e8400-e29b-41d4-a716-446655440000"
+                  requestedForDependentId: null
+                  notes: "Aluno com desconto promocional"
+                  discont: 50.00
+                  discountMonths: 3
+                  schoolId: "85a1acc4-9445-4951-944e-4c0fa9e31af4"
+                  enrollmentFeeAmount: 100.00
+                  enrollmentFeeDueDate: "2024-12-15"
+                  firstMonthlyPaymentDate: "2024-12-20"
+      responses:
+        '201':
+          description: Solicitação criada com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnrollmentRequestResponse'
+        '400':
+          description: Erro de validação ou vínculos inválidos.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Sem permissão ou contexto de escola não encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Escola, curso ou turma não encontrados.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /enrollment-requests/{requestId}/approve:
     post:
       tags:
         - Enrollment Requests
       summary: Aprovar uma solicitação de matrícula
-      description: Aprova a solicitação, cria a matrícula e gera uma cobrança de matrícula quando existe valor informado, sem emitir boleto automaticamente.
+      description: |
+        Aprova a solicitação pelo aluno/responsável (`requestedForUserId`), cria a matrícula e gera cobranças (taxa de matrícula e primeira mensalidade) quando aplicável, incluindo geração de boleto/PIX quando o serviço estiver configurado.
+
+        **Notificações ao aluno:** enfileira email de confirmação de matrícula e grava notificação in-app (`metadata.kind` = `ENROLLMENT_CONFIRMED`). Push não é enviado neste passo.
       security:
         - bearerAuth: []
       parameters:

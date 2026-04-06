@@ -42,12 +42,15 @@ import { SchoolReviewRepositoryAdapter } from '../../infra/db/typeorm/school-rev
 import { NotificationRepositoryAdapter } from '../../infra/db/typeorm/notification-repository.adapter';
 import { ListStudentNotifications } from '../../app/use-cases/list-student-notifications';
 import { ReadAllNotifications } from '../../app/use-cases/read-all-notifications';
+import { ReadStudentNotification } from '../../app/use-cases/read-student-notification';
 import { PushTokenRepositoryAdapter } from '../../infra/db/typeorm/push-token-repository.adapter';
 import { RegisterPushToken } from '../../app/use-cases/register-push-token';
 import { UnregisterPushToken } from '../../app/use-cases/unregister-push-token';
 
 import { StorageProviderPort } from '../../ports/providers/storage-provider.port';
 import { SchoolImageRepositoryAdapter } from '../../infra/db/typeorm/school-image-repository.adapter';
+import { OutboxRepository } from '../../ports/repositories/outbox.repo';
+import { NotifyStudentUser } from '../../app/use-cases/notify-student-user';
 
 export type StudentsModuleDeps = {
     usersRepo: UserRepositoryAdapter;
@@ -64,9 +67,16 @@ export type StudentsModuleDeps = {
     storageProvider?: StorageProviderPort;
     notificationsRepo?: NotificationRepositoryAdapter;
     pushTokensRepo?: PushTokenRepositoryAdapter;
+    outbox?: OutboxRepository;
+    frontendBaseUrl?: string;
 };
 
 export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupContext): ModuleBuildResult {
+    const notifyStudent =
+        deps.notificationsRepo && deps.outbox
+            ? new NotifyStudentUser(deps.notificationsRepo, deps.outbox)
+            : undefined;
+
     const addDependent = new AddDependent(deps.usersRepo, deps.dependentsRepo);
     const listStudents = new ListStudents(
         deps.usersRepo,
@@ -79,11 +89,12 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
     const getMyProfile = new GetMyProfile(deps.usersRepo, deps.dependentsRepo);
     const updateStudentProfile = new UpdateStudentProfile(deps.usersRepo);
     const deactivateStudentAccount = new DeactivateStudentAccount(deps.usersRepo);
-    const listMyCourses = new ListMyCourses(deps.enrollmentsRepo, deps.coursesRepo, deps.schoolsRepo);
+    const schoolImagesRepo = new SchoolImageRepositoryAdapter();
+    const listMyCourses = new ListMyCourses(deps.enrollmentsRepo, deps.coursesRepo, deps.schoolsRepo, schoolImagesRepo, deps.storageProvider);
     const listAllCourses = deps.categoriesRepo
-        ? new ListAllCourses(deps.coursesRepo, deps.categoriesRepo)
+        ? new ListAllCourses(deps.coursesRepo, deps.categoriesRepo, schoolImagesRepo, deps.storageProvider, deps.schoolReviewsRepo)
         : undefined;
-    const listStudentPayments = new ListStudentPayments(deps.financialChargesRepo);
+    const listStudentPayments = new ListStudentPayments(deps.financialChargesRepo, schoolImagesRepo, deps.storageProvider);
     const getStudentPaymentDetails = new GetStudentPaymentDetails(
         deps.financialChargesRepo,
         deps.usersRepo,
@@ -99,7 +110,10 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
         deps.usersRepo,
         deps.dependentsRepo,
         deps.enrollmentsRepo,
-        deps.enrollmentRequestsRepo
+        deps.enrollmentRequestsRepo,
+        notifyStudent,
+        deps.outbox,
+        deps.frontendBaseUrl
     );
     const issueEnrollmentFeeBoleto = new IssueEnrollmentFeeBoleto(
         deps.financialChargesRepo,
@@ -112,7 +126,9 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
         deps.usersRepo,
         deps.schoolsRepo,
         deps.coursesRepo,
-        deps.paymentProvider
+        deps.paymentProvider,
+        schoolImagesRepo,
+        deps.storageProvider
     );
     const approveEnrollmentRequest = new ApproveEnrollmentRequest(
         deps.enrollmentRequestsRepo,
@@ -121,12 +137,33 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
         deps.coursesRepo,
         deps.financialChargesRepo,
         issueEnrollmentFeeBoleto,
-        generateTuitionPix
+        generateTuitionPix,
+        deps.usersRepo,
+        deps.schoolsRepo,
+        deps.dependentsRepo,
+        deps.outbox,
+        notifyStudent,
+        deps.frontendBaseUrl
     );
-    const rejectEnrollmentRequest = new RejectEnrollmentRequest(deps.enrollmentRequestsRepo);
+    const rejectEnrollmentRequest = new RejectEnrollmentRequest(
+        deps.enrollmentRequestsRepo,
+        deps.usersRepo,
+        deps.schoolsRepo,
+        deps.coursesRepo,
+        deps.classesRepo,
+        deps.dependentsRepo,
+        deps.outbox,
+        notifyStudent,
+        deps.frontendBaseUrl
+    );
     const listEnrollmentRequests = new ListEnrollmentRequests(deps.enrollmentRequestsRepo);
     const getEnrollmentRequest = new GetEnrollmentRequest(deps.enrollmentRequestsRepo);
-    const listMyEnrollmentRequests = new ListMyEnrollmentRequests(deps.enrollmentRequestsRepo, deps.dependentsRepo);
+    const listMyEnrollmentRequests = new ListMyEnrollmentRequests(
+        deps.enrollmentRequestsRepo,
+        deps.dependentsRepo,
+        schoolImagesRepo,
+        deps.storageProvider
+    );
     const listSchoolCourses = deps.categoriesRepo
         ? new ListSchoolCourses(deps.coursesRepo, deps.categoriesRepo)
         : undefined;
@@ -136,7 +173,6 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
     const createSchoolReview = deps.schoolReviewsRepo && deps.enrollmentsRepo
         ? new CreateSchoolReview(deps.schoolsRepo, deps.enrollmentsRepo, deps.schoolReviewsRepo)
         : undefined;
-    const schoolImagesRepo = new SchoolImageRepositoryAdapter();
     const getSchoolPublicDetails = new GetSchoolPublicDetails(
         deps.schoolsRepo,
         schoolImagesRepo,
@@ -149,6 +185,9 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
         : undefined;
     const readAllNotifications = deps.notificationsRepo
         ? new ReadAllNotifications(deps.notificationsRepo)
+        : undefined;
+    const readStudentNotification = deps.notificationsRepo
+        ? new ReadStudentNotification(deps.notificationsRepo)
         : undefined;
     const registerPushToken = deps.pushTokensRepo
         ? new RegisterPushToken(deps.usersRepo, deps.pushTokensRepo)
@@ -177,6 +216,7 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
         generateTuitionPix,
         listStudentNotifications,
         readAllNotifications,
+        readStudentNotification,
         registerPushToken,
         unregisterPushToken
     });

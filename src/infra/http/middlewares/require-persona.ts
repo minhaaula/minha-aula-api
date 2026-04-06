@@ -14,7 +14,16 @@ export function requirePersona(...allowed: UserPersona[]): RequestHandler {
         }
 
         if (whitelist && !whitelist.has(persona)) {
-            return res.status(403).json({ error: 'Forbidden' });
+            return res.status(403).json({
+                error: 'Forbidden',
+                code: 'FORBIDDEN',
+                details: {
+                    message:
+                        'Persona do token não tem permissão para esta rota. Verifique se está usando o login correto (ex.: aluno vs escola).',
+                    currentPersona: persona,
+                    allowedPersonas: [...allowed]
+                }
+            });
         }
 
         next();

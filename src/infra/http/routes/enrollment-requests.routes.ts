@@ -8,8 +8,15 @@ import { IssueEnrollmentFeeBoleto } from '../../../app/use-cases/issue-enrollmen
 import { AuthenticatedRequest } from '../middlewares/auth';
 import { requirePersona } from '../middlewares/require-persona';
 import { UserPersonaEnum } from '../../../domain/value-objects/user-persona';
-import type { EnrollmentRequest } from '../../../domain/entities/enrollment-request';
+import type { EnrollmentRequest, EnrollmentRequestStatus } from '../../../domain/entities/enrollment-request';
 import type { EnrollmentRequestWithDetails } from '../../../ports/repositories/enrollment-request.repo';
+
+/** Express pode entregar o mesmo parâmetro como string ou string[] (ex.: cliente duplicando query). */
+function firstQueryString(value: unknown): string | undefined {
+    if (typeof value === 'string') return value;
+    if (Array.isArray(value) && typeof value[0] === 'string') return value[0];
+    return undefined;
+}
 
 export function enrollmentRequestsRouter(deps: {
     createEnrollmentRequest: CreateEnrollmentRequest;
@@ -21,7 +28,8 @@ export function enrollmentRequestsRouter(deps: {
     const r = Router();
 
     const canManageRequests = requirePersona(UserPersonaEnum.ADMIN, UserPersonaEnum.SCHOOL);
-    const canCreateRequest = requirePersona(UserPersonaEnum.ADMIN, UserPersonaEnum.SCHOOL, UserPersonaEnum.STUDENT);
+    const canCreateRequest = requirePersona(UserPersonaEnum.STUDENT, UserPersonaEnum.ADMIN, UserPersonaEnum.SCHOOL);
+    const canCreateResponsibleRequest = requirePersona(UserPersonaEnum.ADMIN, UserPersonaEnum.SCHOOL);
     const canIssueEnrollmentFeeBoleto = requirePersona(UserPersonaEnum.ADMIN, UserPersonaEnum.SCHOOL, UserPersonaEnum.STUDENT);
 
     type SerializableRequest = EnrollmentRequest | EnrollmentRequestWithDetails;
@@ -61,17 +69,31 @@ export function enrollmentRequestsRouter(deps: {
                 classId: z.string().uuid().optional(),
                 courseId: z.string().uuid().optional(),
                 studentDocument: z.string().trim().min(1).optional(),
+                /** Filtro por status: OPEN/EM_ABERTO=PENDING; CANCELLED/CANCELADO/CANCELED=cancelado pela API; REJECTED/REJEITADO=recusado; CANCELLED_OR_REJECTED=cancelados OU recusados (útil quando “cancelado” na UI mistura os dois). Omitir = PENDING + CANCELLED + REJECTED */
+                status: z
+                    .enum([
+                        'OPEN',
+                        'CANCELLED',
+                        'CANCELED',
+                        'EM_ABERTO',
+                        'CANCELADO',
+                        'REJECTED',
+                        'REJEITADO',
+                        'CANCELLED_OR_REJECTED'
+                    ])
+                    .optional(),
                 limit: z.coerce.number().int().positive().max(100).optional(),
                 offset: z.coerce.number().int().min(0).optional()
             });
 
             const query = querySchema.parse({
-                schoolId: typeof req.query.schoolId === 'string' ? req.query.schoolId : undefined,
-                classId: typeof req.query.classId === 'string' ? req.query.classId : undefined,
-                courseId: typeof req.query.courseId === 'string' ? req.query.courseId : undefined,
-                studentDocument: typeof req.query.studentDocument === 'string' ? req.query.studentDocument : undefined,
-                limit: typeof req.query.limit === 'string' ? req.query.limit : undefined,
-                offset: typeof req.query.offset === 'string' ? req.query.offset : undefined
+                schoolId: firstQueryString(req.query.schoolId),
+                classId: firstQueryString(req.query.classId),
+                courseId: firstQueryString(req.query.courseId),
+                studentDocument: firstQueryString(req.query.studentDocument),
+                status: firstQueryString(req.query.status),
+                limit: firstQueryString(req.query.limit),
+                offset: firstQueryString(req.query.offset)
             });
 
             const persona = authReq.user?.persona;
@@ -80,13 +102,13 @@ export function enrollmentRequestsRouter(deps: {
             if (persona === UserPersonaEnum.SCHOOL) {
                 const contextSchoolId = authReq.user?.schoolId;
                 if (!contextSchoolId) {
-                    return res.status(403).json({ 
+                    return res.status(403).json({
                         error: 'Contexto de escola não encontrado para o usuário',
                         code: 'SCHOOL_CONTEXT_NOT_FOUND'
                     });
                 }
                 if (schoolId && schoolId !== contextSchoolId) {
-                    return res.status(403).json({ 
+                    return res.status(403).json({
                         error: 'Não é possível acessar solicitações de matrícula de outra escola',
                         code: 'FORBIDDEN'
                     });
@@ -95,17 +117,36 @@ export function enrollmentRequestsRouter(deps: {
             }
 
             if (!schoolId) {
-                return res.status(400).json({ 
+                return res.status(400).json({
                     error: 'schoolId é obrigatório',
                     code: 'REQUIRED_FIELD'
                 });
             }
 
+            // Em Aberto = PENDING, Cancelado = CANCELLED, Rejeitado = REJECTED. Sem filtro = retorna os três.
+            // Não usar 'CANCELED' no SQL: o ENUM do MySQL só tem CANCELLED; IN (..., 'CANCELED') pode zerar o resultado.
+            const defaultListStatuses: EnrollmentRequestStatus[] = ['PENDING', 'CANCELLED', 'REJECTED'];
+            const isOpen = query.status === 'OPEN' || query.status === 'EM_ABERTO';
+            const isCancelledOrRejected =
+                query.status === 'CANCELLED_OR_REJECTED';
+            const isCancelled =
+                query.status === 'CANCELLED' || query.status === 'CANCELED' || query.status === 'CANCELADO';
+            const isRejected = query.status === 'REJECTED' || query.status === 'REJEITADO';
+            const statusFilter = isOpen
+                ? { status: 'PENDING' as const }
+                : isCancelledOrRejected
+                    ? { statusIn: (['CANCELLED', 'REJECTED'] as EnrollmentRequestStatus[]) }
+                    : isCancelled
+                        ? { status: 'CANCELLED' as const }
+                        : isRejected
+                            ? { status: 'REJECTED' as const }
+                            : { statusIn: defaultListStatuses };
+
             const requests = await deps.listEnrollmentRequests.exec({
                 schoolId,
                 courseClassId: query.classId,
                 courseId: query.courseId,
-                status: 'PENDING',
+                ...statusFilter,
                 studentDocument: query.studentDocument,
                 limit: query.limit,
                 offset: query.offset
@@ -185,6 +226,9 @@ export function enrollmentRequestsRouter(deps: {
         }
     });
 
+    // Compatível com STUDENT e também SCHOOL/ADMIN:
+    // - STUDENT usa o próprio usuário autenticado
+    // - SCHOOL/ADMIN deve informar requestedForUserId no payload
     r.post('/schools/classes/:classId/requests', canCreateRequest, async (req, res, next) => {
         try {
             const paramsSchema = z.object({
@@ -192,15 +236,12 @@ export function enrollmentRequestsRouter(deps: {
             });
             const { classId } = paramsSchema.parse(req.params);
             const authReq = req as AuthenticatedRequest;
-            const persona = authReq.user?.persona;
             const loggedUserId = authReq.user?.sub;
+            const persona = authReq.user?.persona;
 
-            // Para STUDENT, requestedForUserId é opcional e será preenchido automaticamente
             const bodySchema = z.object({
-                requestedForUserId: persona === UserPersonaEnum.STUDENT 
-                    ? z.string().uuid().optional() 
-                    : z.string().uuid(),
-                requestedForDependentId: z.string().uuid().optional(),
+                requestedForUserId: z.string().uuid().optional(),
+                requestedForDependentId: z.string().uuid().nullable().optional(),
                 notes: z.string().max(255).optional(),
                 discont: z.coerce.number().min(0).optional(),
                 discountMonths: z.coerce.number().int().min(1).optional(),
@@ -224,15 +265,12 @@ export function enrollmentRequestsRouter(deps: {
 
             // Determinar schoolId
             let schoolId = data.schoolId;
-            if (persona === UserPersonaEnum.SCHOOL) {
-                const contextSchoolId = authReq.user?.schoolId;
-                if (!contextSchoolId) {
-                    return res.status(403).json({ 
-                        error: 'Contexto de escola não encontrado para o usuário',
-                        code: 'SCHOOL_CONTEXT_NOT_FOUND'
-                    });
+            if (!schoolId) {
+                // Alguns tokens podem carregar a escola no contexto (mesmo para STUDENT).
+                const contextSchoolId = typeof authReq.user?.schoolId === 'string' ? authReq.user?.schoolId : null;
+                if (contextSchoolId) {
+                    schoolId = contextSchoolId;
                 }
-                schoolId = contextSchoolId;
             }
 
             if (!schoolId) {
@@ -242,26 +280,21 @@ export function enrollmentRequestsRouter(deps: {
                 });
             }
 
-            // Para STUDENT, usar automaticamente o ID do usuário logado
-            let requestedForUserId: string;
-            if (persona === UserPersonaEnum.STUDENT) {
-                if (!loggedUserId) {
-                    return res.status(401).json({ 
-                        error: 'Usuário não autenticado',
-                        code: 'UNAUTHORIZED'
-                    });
-                }
-                // Para STUDENT, sempre usar o ID do usuário logado
-                requestedForUserId = loggedUserId;
-            } else {
-                // Para ADMIN e SCHOOL, usar o ID enviado (obrigatório)
-                if (!data.requestedForUserId) {
-                    return res.status(400).json({ 
-                        error: 'requestedForUserId é obrigatório',
-                        code: 'REQUIRED_FIELD'
-                    });
-                }
-                requestedForUserId = data.requestedForUserId;
+            if (!loggedUserId) {
+                return res.status(401).json({
+                    error: 'Usuário não autenticado',
+                    code: 'UNAUTHORIZED'
+                });
+            }
+            const requestedForUserId = persona === UserPersonaEnum.STUDENT
+                ? loggedUserId
+                : data.requestedForUserId;
+
+            if (!requestedForUserId) {
+                return res.status(400).json({
+                    error: 'requestedForUserId é obrigatório para esta persona',
+                    code: 'REQUIRED_FIELD'
+                });
             }
 
             const request = await deps.createEnrollmentRequest.exec({
@@ -274,8 +307,81 @@ export function enrollmentRequestsRouter(deps: {
                 discountMonths: data.discountMonths ?? null,
                 enrollmentFeeAmount: data.enrollmentFeeAmount ?? null,
                 enrollmentFeeDueDate: data.enrollmentFeeDueDate ?? null,
+                firstMonthlyPaymentDate: data.firstMonthlyPaymentDate,
+                initiatedBySchool: true
+            });
+            res.status(201).json(serializeEnrollmentRequest(request));
+        } catch (err) {
+            next(err);
+        }
+    });
+
+    // ADMIN/SCHOOL: exige requestedForUserId no payload.
+    r.post('/schools/classes/:classId/responsible-requests', canCreateResponsibleRequest, async (req, res, next) => {
+        try {
+            const paramsSchema = z.object({
+                classId: z.string().uuid()
+            });
+            const { classId } = paramsSchema.parse(req.params);
+            const authReq = req as AuthenticatedRequest;
+            const persona = authReq.user?.persona;
+
+            const bodySchema = z.object({
+                requestedForUserId: z.string().uuid(),
+                requestedForDependentId: z.string().uuid().nullable().optional(),
+                notes: z.string().max(255).optional(),
+                discont: z.coerce.number().min(0).optional(),
+                discountMonths: z.coerce.number().int().min(1).optional(),
+                schoolId: z.string().uuid().optional(),
+                enrollmentFeeAmount: z.coerce.number().min(0).optional(),
+                enrollmentFeeDueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+                firstMonthlyPaymentDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
+            }).superRefine((data, ctx) => {
+                if (data.discont !== undefined && data.discont !== null && data.discont > 0) {
+                    if (!data.discountMonths || data.discountMonths < 1) {
+                        ctx.addIssue({
+                            code: z.ZodIssueCode.custom,
+                            path: ['discountMonths'],
+                            message: 'discountMonths é obrigatório quando há desconto (discont > 0)'
+                        });
+                    }
+                }
+            });
+
+            const data = bodySchema.parse(req.body);
+
+            let schoolId = data.schoolId;
+            if (persona === UserPersonaEnum.SCHOOL) {
+                const contextSchoolId = authReq.user?.schoolId;
+                if (!contextSchoolId) {
+                    return res.status(403).json({
+                        error: 'Contexto de escola não encontrado para o usuário',
+                        code: 'SCHOOL_CONTEXT_NOT_FOUND'
+                    });
+                }
+                schoolId = contextSchoolId;
+            }
+
+            if (!schoolId) {
+                return res.status(400).json({
+                    error: 'schoolId é obrigatório',
+                    code: 'REQUIRED_FIELD'
+                });
+            }
+
+            const request = await deps.createEnrollmentRequest.exec({
+                schoolId,
+                courseClassId: classId,
+                requestedForUserId: data.requestedForUserId,
+                requestedForDependentId: data.requestedForDependentId ?? null,
+                notes: data.notes ?? null,
+                discount: data.discont ?? null,
+                discountMonths: data.discountMonths ?? null,
+                enrollmentFeeAmount: data.enrollmentFeeAmount ?? null,
+                enrollmentFeeDueDate: data.enrollmentFeeDueDate ?? null,
                 firstMonthlyPaymentDate: data.firstMonthlyPaymentDate
             });
+
             res.status(201).json(serializeEnrollmentRequest(request));
         } catch (err) {
             next(err);

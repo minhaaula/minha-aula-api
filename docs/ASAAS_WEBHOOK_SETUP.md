@@ -119,8 +119,9 @@ ASAAS_SUBACCOUNT_WEBHOOK_AUTH_TOKEN=seu-token-secreto
 ASAAS_SUBACCOUNT_WEBHOOK_EVENTS=PAYMENT_CREATED,PAYMENT_UPDATED,PAYMENT_CONFIRMED,PAYMENT_RECEIVED,PAYMENT_OVERDUE
 
 # Eventos de conta a serem monitorados (opcional, separados por vírgula)
-# Padrão: ACCOUNT_STATUS_GENERAL_APPROVAL_APPROVED,ACCOUNT_STATUS_GENERAL_APPROVAL_REJECTED,ACCOUNT_STATUS_GENERAL_APPROVAL_AWAITING_APPROVAL,ACCOUNT_STATUS_GENERAL_APPROVAL_PENDING,ACCOUNT_CREATED
-ASAAS_SUBACCOUNT_ACCOUNT_WEBHOOK_EVENTS=ACCOUNT_STATUS_GENERAL_APPROVAL_APPROVED,ACCOUNT_STATUS_GENERAL_APPROVAL_REJECTED,ACCOUNT_STATUS_GENERAL_APPROVAL_AWAITING_APPROVAL,ACCOUNT_STATUS_GENERAL_APPROVAL_PENDING,ACCOUNT_CREATED
+# Padrão: ACCOUNT_STATUS_GENERAL_APPROVAL_APPROVED,ACCOUNT_STATUS_GENERAL_APPROVAL_REJECTED,ACCOUNT_STATUS_GENERAL_APPROVAL_AWAITING_APPROVAL,ACCOUNT_STATUS_GENERAL_APPROVAL_PENDING
+# Nota: ACCOUNT_CREATED não é um evento válido na API Asaas para cadastro de webhooks.
+ASAAS_SUBACCOUNT_ACCOUNT_WEBHOOK_EVENTS=ACCOUNT_STATUS_GENERAL_APPROVAL_APPROVED,ACCOUNT_STATUS_GENERAL_APPROVAL_REJECTED,ACCOUNT_STATUS_GENERAL_APPROVAL_AWAITING_APPROVAL,ACCOUNT_STATUS_GENERAL_APPROVAL_PENDING
 
 # Versão da API (opcional, padrão: 3)
 ASAAS_SUBACCOUNT_WEBHOOK_API_VERSION=3
@@ -149,19 +150,16 @@ POST /integrations/asaas/accounts
 O sistema processa os seguintes eventos de conta:
 
 **Eventos de Aprovação:**
-- `ACCOUNT_STATUS_GENERAL_APPROVAL_APPROVED` - Conta aprovada
-- `ACCOUNT_CREATED` - Conta criada
-- `ACCOUNT_APPROVED` - Conta aprovada (alternativo)
+- `ACCOUNT_STATUS_GENERAL_APPROVAL_APPROVED` - Conta aprovada (evento oficial Asaas)
 
 **Eventos de Rejeição:**
 - `ACCOUNT_STATUS_GENERAL_APPROVAL_REJECTED` - Conta rejeitada
-- `ACCOUNT_REJECTED` - Conta rejeitada (alternativo)
 
 **Eventos de Análise/Pendente:**
-- `ACCOUNT_STATUS_GENERAL_APPROVAL_AWAITING_APPROVAL` - Conta aguardando aprovação
+- `ACCOUNT_STATUS_GENERAL_APPROVAL_AWAITING_APPROVAL` - Conta em análise
 - `ACCOUNT_STATUS_GENERAL_APPROVAL_PENDING` - Conta pendente
-- `ACCOUNT_PENDING` - Conta pendente (alternativo)
-- `ACCOUNT_AWAITING_APPROVAL` - Conta aguardando aprovação (alternativo)
+
+> **Nota:** A API Asaas não aceita o evento `ACCOUNT_CREATED` no cadastro de webhooks. Use apenas os eventos `ACCOUNT_STATUS_*` listados na [documentação oficial](https://docs.asaas.com/docs/webhook-para-verificar-situacao-da-conta).
 
 ### Formato do Payload
 
@@ -201,12 +199,11 @@ Para receber notificações de contas na conta principal:
 3. Clique em **Criar Webhook**
 4. Configure:
    - **URL**: `https://seu-dominio.com/integrations/asaas/accounts`
-   - **Eventos**: Selecione os eventos de conta:
+   - **Eventos**: Selecione os eventos de conta (conforme [documentação Asaas](https://docs.asaas.com/docs/webhook-para-verificar-situacao-da-conta)):
      - `ACCOUNT_STATUS_GENERAL_APPROVAL_APPROVED`
      - `ACCOUNT_STATUS_GENERAL_APPROVAL_REJECTED`
      - `ACCOUNT_STATUS_GENERAL_APPROVAL_AWAITING_APPROVAL`
      - `ACCOUNT_STATUS_GENERAL_APPROVAL_PENDING`
-     - `ACCOUNT_CREATED`
    - **Token de Autenticação** (opcional): Configure um token para validação
    - **Versão da API**: 3
 

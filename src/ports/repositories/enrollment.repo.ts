@@ -25,17 +25,32 @@ export type AdminStudentListFilters = {
     cpf?: string | null;
 };
 
-export type AdminStudentListItem = {
-    enrollmentId: string | null;
-    schoolId: string | null;
-    schoolName: string | null;
-    studentName: string;
+/** Item de dependente na listagem admin (dentro do titular). */
+export type AdminStudentListDependentItem = {
+    id: string;
+    nome: string;
     cpf: string | null;
-    courseName: string | null;
-    className: string | null;
-    enrolledAt: Date | null;
-    studentType: 'USER' | 'DEPENDENT';
+    dataNascimento: string | null;
+    vinculo: string | null;
+};
+
+export type AdminStudentListItem = {
+    cpf: string | null;
     studentId: string;
+    studentName: string;
+    studentType: 'USER';
+    endereco: {
+        street: string;
+        number: string;
+        complement: string | null;
+        district: string | null;
+        city: string;
+        state: string;
+        zipCode: string;
+    };
+    createdAt: string;
+    countCursos: number;
+    dependentes: AdminStudentListDependentItem[];
 };
 
 export type AdminStudentListResult = {
@@ -62,4 +77,10 @@ export interface EnrollmentRepository {
         limit: number,
         offset: number
     ): Promise<AdminStudentListResult>;
+    /** Conta matrículas criadas no mês/ano. */
+    countEnrollmentsInMonth?(year: number, month: number): Promise<number>;
+    /** Conta alunos únicos com matrícula ativa (usuários + dependentes). */
+    countTotalActiveStudents?(): Promise<number>;
+    /** Top escolas por quantidade de alunos (matrículas ativas). */
+    getTopSchoolsByStudentCount?(limit: number): Promise<Array<{ schoolId: string; schoolName: string; city: string | null; count: number }>>;
 }

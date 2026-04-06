@@ -112,9 +112,10 @@ export class IssueSchoolPlanInvoice {
             throw new Error('School must have at least one address to issue invoices');
         }
 
-        const customerName = school.ownerName ?? school.name;
-        const customerEmail = school.ownerEmail ?? school.email;
-        const customerTaxId = school.ownerCpf ?? school.cnpj;
+        // Usar dados da escola (não do owner) para cobrança na Asaas — nome, CNPJ, email e telefone da escola
+        const customerName = school.name;
+        const customerEmail = school.email;
+        const customerTaxId = school.cnpj;
         const metadata = {
             schoolId,
             planId: plan.id,

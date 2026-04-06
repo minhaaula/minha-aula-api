@@ -112,6 +112,122 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/QueueNotConfiguredResponse'
+  /admin/job-logs:
+    get:
+      tags:
+        - Admin
+      summary: Listar histórico de execução de jobs (worker)
+      description: |
+        Retorna registros persistidos quando jobs da fila **outbox** concluem com sucesso ou falham
+        (inclui push, emails, crons enfileirados, etc.). Complementa GET /admin/queue/jobs, que mostra
+        o estado **ao vivo** no Redis. Filtros opcionais por status, nome do job e intervalo de `finishedAt`.
+        A resposta inclui `summary` com totais de concluídos e falhas no mesmo recorte de datas (ignora o filtro `status`).
+        Requer persona ADMIN. É necessário ter executado a migração que cria `job_execution_logs`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: status
+          required: false
+          schema:
+            type: string
+            enum: [completed, failed]
+          description: Filtra por status do registro.
+        - in: query
+          name: jobName
+          required: false
+          schema:
+            type: string
+            maxLength: 128
+          description: Nome do job BullMQ (ex. push_notification, fetch_payment_receipts).
+        - in: query
+          name: from
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: Início do intervalo (finished_at), inclusive.
+        - in: query
+          name: to
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: Fim do intervalo (finished_at), inclusive.
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+        - in: query
+          name: offset
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Lista paginada e resumo de contagens.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobExecutionLogListResponse'
+        '401':
+          description: Usuário não autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado (requer persona ADMIN).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/job-logs/{id}:
+    get:
+      tags:
+        - Admin
+      summary: Detalhe de um registro de execução de job
+      description: Retorna um registro por UUID (inclui mensagem/stack em falhas e resumo em sucesso).
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Registro encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobExecutionLogEntry'
+        '401':
+          description: Usuário não autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado (requer persona ADMIN).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Registro não encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /admin/charge-due-reminders/trigger:
     post:
       tags:
@@ -212,6 +328,7 @@ paths:
       summary: Dar baixa em cobrança (aluno)
       description: |
         Marca uma cobrança de aluno (mensalidade, taxa de matrícula, etc.) como paga manualmente (dar baixa).
+        Se a cobrança tiver PIX ou boleto no Asaas, o pagamento é marcado como recebido no Asaas (receiveInCash).
         Use quando o pagamento foi confirmado fora do sistema ou para corrigir status.
         Só é possível dar baixa em cobranças com status OPEN, PENDING_SYNC, OVERDUE ou FAILED. Não permite cobrança cancelada.
         Requer autenticação com persona ADMIN.
@@ -274,8 +391,8 @@ paths:
       summary: Listar escolas com planos e status
       description: |
         Retorna as escolas cadastradas com informações do plano de assinatura atual e seu status.
-        Suporta filtros por nome, status (ativo/inativo) e mensalidade (em dia/atrasado), e paginação.
-        Requer autenticação com persona ADMIN.
+        Suporta filtros por nome, status, mensalidade, CNPJ, CPF do titular, conta Asaas, onboardingUrl,
+        primeiro pagamento e onboarding concluído. Requer autenticação com persona ADMIN.
       security:
         - bearerAuth: []
       parameters:
@@ -299,6 +416,46 @@ paths:
             type: string
             enum: ['EM_DIA', 'ATRASADO']
           description: Filtrar por status da mensalidade (em dia ou atrasado).
+        - in: query
+          name: cnpj
+          required: false
+          schema:
+            type: string
+          description: Busca parcial por CNPJ (ignora formatação).
+        - in: query
+          name: ownerCpf
+          required: false
+          schema:
+            type: string
+          description: Busca parcial por CPF do titular (ignora formatação).
+        - in: query
+          name: hasAsaasAccount
+          required: false
+          schema:
+            type: string
+            enum: ['WITH', 'WITHOUT']
+          description: Filtrar por conta Asaas (WITH = tem conta, WITHOUT = sem conta).
+        - in: query
+          name: hasOnboardingUrl
+          required: false
+          schema:
+            type: string
+            enum: ['WITH', 'WITHOUT']
+          description: Filtrar por presença de onboardingUrl (WITH = tem, WITHOUT = não tem).
+        - in: query
+          name: firstPayment
+          required: false
+          schema:
+            type: string
+            enum: ['YES', 'NO']
+          description: Filtrar por primeiro pagamento concluído (YES = já fez, NO = ainda não).
+        - in: query
+          name: onboarding
+          required: false
+          schema:
+            type: string
+            enum: ['YES', 'NO']
+          description: Filtrar por onboarding concluído (YES = concluído, NO = pendente).
         - in: query
           name: limit
           required: false
@@ -930,6 +1087,64 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /admin/schools/{schoolId}/sync-subaccount-status:
+    post:
+      tags:
+        - Admin
+      summary: Consultar status da subconta Asaas
+      description: |
+        Consulta no Asaas o status cadastral da subconta da escola (GET /v3/myAccount/status)
+        e retorna os dados. Não persiste o status; a informação vem direto da API.
+        Quando commercialInfo, bankAccountInfo, documentation e general estiverem todos APPROVED,
+        marca o onboarding como concluído (onboardingCompletedAt) no nosso lado.
+        Requer autenticação com persona ADMIN.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: schoolId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Identificador da escola
+      responses:
+        '200':
+          description: Status da subconta obtido do Asaas.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncSubaccountStatusResponse'
+        '400':
+          description: Escola sem API key da subconta ou provedor não configurado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Usuário não autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado (requer persona ADMIN).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Escola não encontrada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '502':
+          description: Erro ao comunicar com o Asaas (não foi possível obter o status).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /admin/schools/{schoolId}/documents/{documentGroupId}/upload:
     post:
       tags:
@@ -1137,8 +1352,10 @@ paths:
         - Admin
       summary: Listar todos os estudantes do sistema
       description: |
-        Retorna a lista de todos os estudantes (matrículas ativas) do sistema,
-        paginada e com filtros por nome, escola e CPF.
+        Retorna a lista de titulares (alunos USER) do sistema, paginada e com filtros por nome, escola e CPF.
+        Cada item traz apenas os campos cpf, studentId, studentName, studentType (USER), endereco, createdAt,
+        countCursos (quantidade de cursos/turmas vinculados) e um array dependentes (id, nome, cpf, dataNascimento, vinculo)
+        para exibir os dependentes na mesma linha do titular.
       security:
         - bearerAuth: []
       parameters:
@@ -1273,6 +1490,78 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /admin/enrollment-requests:
+    get:
+      tags:
+        - Admin
+      summary: Listar pedidos de matrícula de todas as escolas
+      description: |
+        Retorna pedidos de matrícula de todas as escolas, paginado e com filtros por
+        nome do aluno, CPF do aluno e nome da escola.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: studentName
+          required: false
+          schema:
+            type: string
+          description: Filtrar por nome do aluno (titular ou dependente, contém, case-insensitive).
+        - in: query
+          name: studentCpf
+          required: false
+          schema:
+            type: string
+          description: Filtrar por CPF do aluno (apenas dígitos).
+        - in: query
+          name: schoolName
+          required: false
+          schema:
+            type: string
+          description: Filtrar por nome da escola (contém, case-insensitive).
+        - in: query
+          name: status
+          required: false
+          schema:
+            type: string
+            enum: ['PENDING', 'APPROVED', 'REJECTED', 'CANCELLED']
+          description: Filtrar por status do pedido.
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+          description: Quantidade máxima de registros por página.
+        - in: query
+          name: offset
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+          description: Quantidade de registros a pular (paginação).
+      responses:
+        '200':
+          description: Lista de pedidos de matrícula retornada com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminEnrollmentRequestsListResponse'
+        '401':
+          description: Usuário não autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado (requer persona ADMIN).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /admin/schools/{schoolId}/students:
     get:
       tags:
@@ -1378,6 +1667,51 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AdminSchoolStudentCoursesResponse'
+        '401':
+          description: Usuário não autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado (requer persona ADMIN).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Aluno não encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/students/{studentId}/charges:
+    get:
+      tags:
+        - Admin
+      summary: Listar mensalidades do aluno (todas as escolas)
+      description: |
+        Retorna todas as cobranças (mensalidades) do aluno em todos os cursos e escolas.
+        Rota apenas por studentId (sem schoolId). Quando studentId é o titular (USER), inclui
+        as cobranças desse usuário e as cobranças de todos os seus dependentes. Quando studentId
+        é um dependente, retorna apenas as cobranças daquele dependente.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: studentId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID do aluno (usuário titular ou dependente)
+      responses:
+        '200':
+          description: Lista de mensalidades retornada com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminStudentChargesListResponse'
         '401':
           description: Usuário não autenticado.
           content:
@@ -1642,10 +1976,12 @@ paths:
       summary: Obter dados consolidados do dashboard
       description: |
         Retorna informações consolidadas para o dashboard administrativo:
-        - Total de alunos cadastrados
-        - Total de turmas ativas
-        - Previsão de receita do mês atual
-        - Últimos 5 alunos matriculados
+        - KPIs: total de escolas, alunos, turmas, escolas ativas/inadimplentes,
+          matrículas no mês, faturamento escolas/plataforma, inadimplência total
+        - Receita plataforma e faturamento escolas por mês (últimos 6 meses)
+        - Top escolas por quantidade de alunos
+        - Status dos pagamentos do mês (Pago, Emitido, Atrasado)
+        - Últimas escolas cadastradas
         
         Requer autenticação com persona ADMIN.
       security:
@@ -1685,6 +2021,70 @@ components:
       required:
         - error
         - message
+    JobExecutionLogEntry:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [completed, failed]
+        jobName:
+          type: string
+        outboxType:
+          type: string
+          nullable: true
+        aggregateId:
+          type: string
+          nullable: true
+        bullmqJobId:
+          type: string
+          nullable: true
+        attemptsMade:
+          type: integer
+        processedAt:
+          type: string
+          format: date-time
+          nullable: true
+        finishedAt:
+          type: string
+          format: date-time
+        durationMs:
+          type: integer
+          nullable: true
+        errorMessage:
+          type: string
+          nullable: true
+        errorStack:
+          type: string
+          nullable: true
+        resultSummary:
+          type: object
+          nullable: true
+          additionalProperties: true
+    JobExecutionLogListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/JobExecutionLogEntry'
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+        summary:
+          type: object
+          properties:
+            completed:
+              type: integer
+              description: Total de jobs concluídos no mesmo recorte de filtros (sem filtrar por status).
+            failed:
+              type: integer
+              description: Total de falhas no mesmo recorte.
     QueueJobsResponse:
       type: object
       description: Status da fila de jobs (BullMQ outbox).
@@ -2263,6 +2663,13 @@ components:
         hasCompletedFirstPayment:
           type: boolean
           description: True se a escola já tiver ao menos um pagamento concluído (invoice PAID)
+        onboardingCompleted:
+          type: boolean
+          description: Indica se o onboarding/KYC foi concluído
+        accountId:
+          type: string
+          nullable: true
+          description: ID da conta no Asaas associada à escola (null se não houver conta)
       required:
         - id
         - name
@@ -2278,6 +2685,8 @@ components:
         - paymentStatus
         - plan
         - hasCompletedFirstPayment
+        - onboardingCompleted
+        - accountId
     AdminSchoolDetailsResponse:
       allOf:
         - $ref: '#/components/schemas/SchoolWithPlanItem'
@@ -2391,55 +2800,85 @@ components:
       properties:
         students:
           type: array
-          description: Lista de estudantes (uma entrada por matrícula ativa)
+          description: Lista de titulares (USER), cada um com array de dependentes para exibir na mesma linha
           items:
             type: object
             properties:
-              enrollmentId:
-                type: string
-                format: uuid
-                description: ID da matrícula
-              schoolId:
-                type: string
-                format: uuid
-                description: ID da escola
-              schoolName:
-                type: string
-                description: Nome da escola
-              studentName:
-                type: string
-                description: Nome do estudante (usuário ou dependente)
               cpf:
                 type: string
                 nullable: true
-                description: CPF do estudante
-              courseName:
-                type: string
-                description: Nome do curso
-              className:
-                type: string
-                description: Nome da turma
-              enrolledAt:
-                type: string
-                format: date-time
-                description: Data da matrícula
-              studentType:
-                type: string
-                enum: ['USER', 'DEPENDENT']
-                description: Tipo de estudante
+                description: CPF do titular
               studentId:
                 type: string
-                description: ID do usuário ou do dependente
+                format: uuid
+                description: ID do aluno (titular)
+              studentName:
+                type: string
+                description: Nome do titular
+              studentType:
+                type: string
+                enum: ['USER']
+                description: Sempre USER (titular)
+              endereco:
+                type: object
+                description: Endereço do titular
+                properties:
+                  street:
+                    type: string
+                  number:
+                    type: string
+                  complement:
+                    type: string
+                    nullable: true
+                  district:
+                    type: string
+                    nullable: true
+                  city:
+                    type: string
+                  state:
+                    type: string
+                  zipCode:
+                    type: string
+              createdAt:
+                type: string
+                format: date-time
+                description: Data de criação do usuário
+              countCursos:
+                type: integer
+                description: Quantidade de cursos/turmas vinculados (matrículas ativas)
+              dependentes:
+                type: array
+                description: Dependentes do titular (para exibir na mesma linha)
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                      description: ID do dependente
+                    nome:
+                      type: string
+                      description: Nome do dependente
+                    cpf:
+                      type: string
+                      nullable: true
+                    dataNascimento:
+                      type: string
+                      format: date
+                      nullable: true
+                    vinculo:
+                      type: string
+                      nullable: true
+                      description: Vínculo (ex. Filho(a), Cônjuge)
             required:
-              - enrollmentId
-              - schoolId
-              - schoolName
-              - studentName
-              - courseName
-              - className
-              - enrolledAt
-              - studentType
+              - cpf
               - studentId
+              - studentName
+              - studentType
+              - endereco
+              - createdAt
+              - countCursos
+              - dependentes
         pagination:
           type: object
           properties:
@@ -2551,6 +2990,104 @@ components:
       required:
         - schoolId
         - invoices
+    AdminEnrollmentRequestItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: ID do pedido
+        status:
+          type: string
+          enum: ['PENDING', 'APPROVED', 'REJECTED', 'CANCELLED']
+        schoolId:
+          type: string
+          format: uuid
+        schoolName:
+          type: string
+          description: Nome da escola
+        courseClassId:
+          type: string
+          format: uuid
+        courseLabel:
+          type: string
+          nullable: true
+        courseClassLabel:
+          type: string
+          nullable: true
+        requestedForUserId:
+          type: string
+          format: uuid
+        requestedForDependentId:
+          type: string
+          format: uuid
+          nullable: true
+        studentName:
+          type: string
+        dependentName:
+          type: string
+          nullable: true
+        decidedAt:
+          type: string
+          format: date-time
+          nullable: true
+        decidedByUserId:
+          type: string
+          format: uuid
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        enrollmentFeeAmount:
+          type: number
+          nullable: true
+          description: Valor da taxa de matrícula em reais
+        enrollmentFeeDueDate:
+          type: string
+          format: date
+          nullable: true
+        firstMonthlyPaymentDate:
+          type: string
+          format: date
+        enrollmentId:
+          type: string
+          format: uuid
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+    AdminEnrollmentRequestsListResponse:
+      type: object
+      properties:
+        requests:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminEnrollmentRequestItem'
+        pagination:
+          type: object
+          properties:
+            total:
+              type: integer
+            limit:
+              type: integer
+            offset:
+              type: integer
+            totalPage:
+              type: integer
+            currentPage:
+              type: integer
+            hasMore:
+              type: boolean
+          required:
+            - total
+            - limit
+            - offset
+            - totalPage
+            - currentPage
+            - hasMore
+      required:
+        - requests
+        - pagination
     AdminPaymentHistoryItem:
       type: object
       description: Item do histórico de pagamento (fatura escola x Minha Aula)
@@ -2629,6 +3166,24 @@ components:
             - totalPage
             - currentPage
             - hasMore
+        summary:
+          type: object
+          description: Totais da nossa empresa (opcional, presente quando disponível)
+          properties:
+            balanceAvailableReais:
+              type: number
+              nullable: true
+              description: Saldo disponível na Asaas (conta principal), em reais. null se indisponível.
+            totalReceivedCents:
+              type: integer
+              description: Valor total recebido (nossa empresa), em centavos
+            totalOverdueCents:
+              type: integer
+              description: Valor total atrasado (nossa empresa), em centavos
+          required:
+            - balanceAvailableReais
+            - totalReceivedCents
+            - totalOverdueCents
       required:
         - payments
         - pagination
@@ -2753,6 +3308,9 @@ components:
                 type: string
                 format: date-time
                 description: Data de criação do cadastro
+              countCursosVinculados:
+                type: integer
+                description: Quantidade de cursos distintos em que o titular (ou dependentes) está matriculado na escola
               dependentes:
                 type: array
                 description: Dependentes vinculados ao titular (nome, cpf, data nascimento, vínculo)
@@ -2780,6 +3338,7 @@ components:
               - studentType
               - endereco
               - createdAt
+              - countCursosVinculados
               - dependentes
         pagination:
           type: object
@@ -2929,6 +3488,26 @@ components:
               type: string
               enum: ['USER', 'DEPENDENT']
               description: USER = titular, DEPENDENT = dependente
+            endereco:
+              type: object
+              description: Endereço do aluno (ou do responsável quando dependente)
+              properties:
+                street:
+                  type: string
+                number:
+                  type: string
+                complement:
+                  type: string
+                  nullable: true
+                district:
+                  type: string
+                  nullable: true
+                city:
+                  type: string
+                state:
+                  type: string
+                zipCode:
+                  type: string
           required:
             - id
             - fullName
@@ -2936,6 +3515,7 @@ components:
             - phone
             - cpf
             - studentType
+            - endereco
         responsible:
           type: object
           nullable: true
@@ -3071,6 +3651,74 @@ components:
         - enrollments
         - paidCharges
         - dependents
+    AdminStudentChargesListResponse:
+      type: object
+      description: Lista de mensalidades do aluno em todas as escolas
+      properties:
+        charges:
+          type: array
+          description: Cobranças (mensalidades) do aluno em todos os cursos e escolas
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+              school:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  name:
+                    type: string
+              course:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  name:
+                    type: string
+              class:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  label:
+                    type: string
+              amountCents:
+                type: integer
+              discountCents:
+                type: integer
+                nullable: true
+              netAmountCents:
+                type: integer
+              description:
+                type: string
+                nullable: true
+              dueDate:
+                type: string
+                format: date
+              status:
+                type: string
+                description: PENDING_SYNC, OPEN, OVERDUE, PAID, CANCELLED, FAILED
+              paidAt:
+                type: string
+                format: date-time
+                nullable: true
+            required:
+              - id
+              - school
+              - course
+              - class
+              - amountCents
+              - netAmountCents
+              - dueDate
+              - status
+      required:
+        - charges
     AdminSchoolStudentPaymentsResponse:
       type: object
       properties:
@@ -3284,28 +3932,90 @@ components:
     AdminDashboardResponse:
       type: object
       properties:
-        totalStudents:
-          type: integer
-          description: Total de alunos cadastrados no sistema (persona STUDENT)
-          example: 1247
-        totalClasses:
-          type: integer
-          description: Total de turmas ativas no sistema
-          example: 85
-        currentMonthRevenueExpectation:
-          type: integer
-          description: Previsão de receita para o mês atual em centavos (soma dos boletos do mês)
-          example: 125000
-        recentEnrollments:
+        kpis:
+          type: object
+          description: Indicadores principais
+          properties:
+            totalEscolas:
+              type: integer
+              example: 24
+            totalAlunos:
+              type: integer
+              example: 1847
+            totalEscolasMesAnterior:
+              type: integer
+              example: 22
+            totalAlunosMesAnterior:
+              type: integer
+              example: 1782
+            totalTurmas:
+              type: integer
+              example: 156
+            escolasAtivas:
+              type: integer
+              example: 22
+            escolasInadimplentes:
+              type: integer
+              example: 2
+            matriculasNoMes:
+              type: integer
+              example: 89
+            faturamentoEscolasMes:
+              type: integer
+              description: Receita das escolas (mensalidades) no mês em centavos
+              example: 387420
+            faturamentoMinhaAulaMes:
+              type: integer
+              description: Receita plataforma no mês em centavos
+              example: 72000
+            faturamentoMinhaAulaMesAnterior:
+              type: integer
+              example: 68100
+            inadimplenciaTotal:
+              type: integer
+              description: Total de cobranças atrasadas em centavos
+              example: 12400
+        receitaPlataformaPorMes:
           type: array
-          description: Últimos 5 alunos matriculados
           items:
-            $ref: '#/components/schemas/RecentStudentEnrollment'
-      required:
-        - totalStudents
-        - totalClasses
-        - currentMonthRevenueExpectation
-        - recentEnrollments
+            type: object
+            properties:
+              mes: { type: string }
+              valor: { type: number }
+              ano: { type: integer }
+        faturamentoEscolasPorMes:
+          type: array
+          items:
+            type: object
+            properties:
+              mes: { type: string }
+              valor: { type: number }
+              ano: { type: integer }
+        topEscolasPorAlunos:
+          type: array
+          items:
+            type: object
+            properties:
+              nome: { type: string }
+              alunos: { type: integer }
+              cidade: { type: string, nullable: true }
+        statusPagamentosMes:
+          type: array
+          items:
+            type: object
+            properties:
+              status: { type: string }
+              quantidade: { type: integer }
+              valor: { type: number }
+        ultimasEscolasCadastradas:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string }
+              nome: { type: string }
+              cidade: { type: string, nullable: true }
+              data: { type: string, format: date-time }
     RecentStudentEnrollment:
       type: object
       properties:
@@ -3388,6 +4098,47 @@ components:
         - documents
         - onboardingUrl
         - onboardingUrlUpdated
+    AsaasAccountStatus:
+      type: object
+      description: Status cadastral da subconta retornado pelo Asaas (GET /v3/myAccount/status).
+      properties:
+        id:
+          type: string
+          description: ID da conta no Asaas
+        commercialInfo:
+          type: string
+          description: Ex. APPROVED, AWAITING_APPROVAL
+        bankAccountInfo:
+          type: string
+        documentation:
+          type: string
+        general:
+          type: string
+          description: Status geral; quando APPROVED o onboarding pode ser marcado como concluído
+      required:
+        - id
+        - commercialInfo
+        - bankAccountInfo
+        - documentation
+        - general
+    SyncSubaccountStatusResponse:
+      type: object
+      description: Resposta ao consultar status da subconta Asaas (GET myAccount/status). Dados vindos direto da API; não persistidos.
+      properties:
+        schoolId:
+          type: string
+          format: uuid
+        status:
+          $ref: '#/components/schemas/AsaasAccountStatus'
+        onboardingCompletedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Se o onboarding foi marcado como concluído (todos os status Asaas APPROVED)
+      required:
+        - schoolId
+        - status
+        - onboardingCompletedAt
     UploadOnboardingDocumentResponse:
       type: object
       description: Resposta ao enviar documento de onboarding para o Asaas (envio manual).

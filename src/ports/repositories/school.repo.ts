@@ -17,4 +17,8 @@ export interface SchoolRepository {
     findCitiesBySchoolIds?(schoolIds: string[]): Promise<SchoolCityInfo[]>;
     /** Escolas com conta Asaas (account_api_key) mas ainda sem URL de onboarding. */
     findWithAccountKeyWithoutOnboardingUrl?(limit?: number): Promise<School[]>;
+    /** Conta escolas criadas antes da data (para comparativo mês anterior). */
+    countCreatedBefore?(date: Date): Promise<number>;
+    /** Últimas escolas cadastradas (ordenadas por createdAt DESC). */
+    findLatestCreated?(limit: number): Promise<Array<{ id: string; name: string; city: string | null; createdAt: Date }>>;
 }

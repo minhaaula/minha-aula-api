@@ -34,6 +34,11 @@ export function buildDashboardRoutes(deps: DashboardRoutesDeps, guards: SchoolRo
                 revenueChangePercentage: result.revenueChangePercentage,
                 pendingEnrollmentRequests: result.pendingEnrollmentRequestsCount
             },
+            pendingPayments: {
+                totalAmount: result.pendingPayments.totalAmountCents / 100,
+                totalAmountCents: result.pendingPayments.totalAmountCents,
+                count: result.pendingPayments.count
+            },
             overduePayments: {
                 totalAmount: result.overduePayments.totalAmountCents / 100,
                 totalAmountCents: result.overduePayments.totalAmountCents,
