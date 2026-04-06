@@ -5,13 +5,7 @@
 
 import { Queue } from 'bullmq';
 import { log } from '../../../shared/logger';
-
-const connection = {
-    host: process.env.REDIS_HOST,
-    port: +(process.env.REDIS_PORT ?? 6379),
-    ...(process.env.REDIS_USER ? { username: process.env.REDIS_USER } : {}),
-    ...(process.env.REDIS_PASSWORD ? { password: process.env.REDIS_PASSWORD } : {}),
-};
+import { connection, getOutboxQueueName } from './queue-config';
 
 /**
  * Agenda o job de busca de recibos de pagamento
@@ -23,7 +17,7 @@ export async function scheduleReceiptsJob(): Promise<void> {
     }
 
     try {
-        const queue = new Queue('outbox', { connection });
+        const queue = new Queue(getOutboxQueueName(), { connection });
 
         // Verificar se já existe um job agendado
         const repeatableJobs = await queue.getRepeatableJobs();
@@ -96,7 +90,7 @@ export async function schedulePaymentSyncJob(): Promise<void> {
     }
 
     try {
-        const queue = new Queue('outbox', { connection });
+        const queue = new Queue(getOutboxQueueName(), { connection });
 
         // Verificar se já existe um job agendado
         const repeatableJobs = await queue.getRepeatableJobs();
@@ -165,7 +159,7 @@ export async function scheduleFetchSchoolOnboardingJob(): Promise<void> {
     }
 
     try {
-        const queue = new Queue('outbox', { connection });
+        const queue = new Queue(getOutboxQueueName(), { connection });
         const desiredPattern = '*/2 * * * *';
         const repeatableJobs = await queue.getRepeatableJobs();
         const existingJob = repeatableJobs.find((job) => job.name === 'fetch_school_onboarding_url');
@@ -225,7 +219,7 @@ export async function scheduleChargeDueRemindersJob(): Promise<void> {
     }
 
     try {
-        const queue = new Queue('outbox', { connection });
+        const queue = new Queue(getOutboxQueueName(), { connection });
         const repeatableJobs = await queue.getRepeatableJobs();
         const existingJob = repeatableJobs.find((job) => job.name === CHARGE_DUE_REMINDER_JOB_NAME);
 
