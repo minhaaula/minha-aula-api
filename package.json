@@ -61,6 +61,7 @@
     "test:fetch-receipts": "tsx scripts/test-fetch-payment-receipts.ts",
     "test:webhooks": "tsx scripts/test-asaas-webhooks.ts",
     "check:jobs": "tsx scripts/check-jobs-status.ts",
+    "linear:tasks": "tsx scripts/linear-task-runner.ts",
     "trigger:jobs": "tsx scripts/trigger-jobs-now.ts",
     "deploy:railway": "npm install && npm run test && npm run build && npm run migrate:run:prod && npm run start"
   },
