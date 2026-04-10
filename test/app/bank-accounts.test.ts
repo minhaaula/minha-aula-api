@@ -98,7 +98,8 @@ describe('Bank Accounts - Novos campos (banco, dígito agência, dígito conta, 
             bankAccountDigit: '9',
             bankAccountType: 'CORRENTE',
             bankAccountHolderDocument: '12345678000190',
-            pixKey: 'teste@escola.com'
+            pixKey: 'teste@escola.com',
+            otpChallengeId: Uuid()
         });
 
         expect(result.id).toBeTruthy();
@@ -140,7 +141,8 @@ describe('Bank Accounts - Novos campos (banco, dígito agência, dígito conta, 
             bankAgency: '5678',
             bankAccount: '87654321',
             bankAccountType: 'POUPANCA',
-            bankAccountHolderDocument: '12345678000191'
+            bankAccountHolderDocument: '12345678000191',
+            otpChallengeId: Uuid()
         });
 
         expect(result.id).toBeTruthy();
@@ -173,7 +175,8 @@ describe('Bank Accounts - Novos campos (banco, dígito agência, dígito conta, 
             bankAgency: '1111',
             bankAccount: '22222222',
             bankAccountType: 'CORRENTE',
-            bankAccountHolderDocument: '12345678000192'
+            bankAccountHolderDocument: '12345678000192',
+            otpChallengeId: Uuid()
         });
 
         const updateAccount = new UpdateSchoolBankAccount(bankAccountsRepo);
@@ -184,7 +187,8 @@ describe('Bank Accounts - Novos campos (banco, dígito agência, dígito conta, 
             bankCode: 237,
             bankAgencyDigit: 'X',
             bankAccountDigit: 'Y',
-            pixKey: '12345678000192'
+            pixKey: '12345678000192',
+            otpChallengeId: Uuid()
         });
 
         expect(updated.bankCode).toBe(237);
@@ -226,7 +230,8 @@ describe('Bank Accounts - Novos campos (banco, dígito agência, dígito conta, 
             bankAccountDigit: 'B',
             bankAccountType: 'CORRENTE',
             bankAccountHolderDocument: '12345678000193',
-            pixKey: 'pix-original@teste.com'
+            pixKey: 'pix-original@teste.com',
+            otpChallengeId: Uuid()
         });
 
         const updateAccount = new UpdateSchoolBankAccount(bankAccountsRepo);
@@ -235,7 +240,8 @@ describe('Bank Accounts - Novos campos (banco, dígito agência, dígito conta, 
             accountId: created.id,
             schoolId: school.id,
             bankCode: 341, // Atualiza código do banco
-            pixKey: 'pix-novo@teste.com' // Atualiza PIX
+            pixKey: 'pix-novo@teste.com', // Atualiza PIX
+            otpChallengeId: Uuid()
             // Não atualiza dígitos, devem ser mantidos
         });
 
@@ -270,7 +276,8 @@ describe('Bank Accounts - Novos campos (banco, dígito agência, dígito conta, 
             bankAccountDigit: '2',
             bankAccountType: 'CORRENTE',
             bankAccountHolderDocument: '12345678000194',
-            pixKey: 'pix1@teste.com'
+            pixKey: 'pix1@teste.com',
+            otpChallengeId: Uuid()
         });
 
         const account2 = await createAccount.exec({
@@ -283,7 +290,8 @@ describe('Bank Accounts - Novos campos (banco, dígito agência, dígito conta, 
             bankAccountDigit: '4',
             bankAccountType: 'POUPANCA',
             bankAccountHolderDocument: '12345678000194',
-            pixKey: 'pix2@teste.com'
+            pixKey: 'pix2@teste.com',
+            otpChallengeId: Uuid()
         });
 
         const listAccounts = new ListSchoolBankAccounts(bankAccountsRepo);
@@ -330,7 +338,8 @@ describe('Bank Accounts - Novos campos (banco, dígito agência, dígito conta, 
                 bankAgency: '6666',
                 bankAccount: '66666666',
                 bankAccountType: 'CORRENTE',
-                bankAccountHolderDocument: '12345678000195'
+                bankAccountHolderDocument: '12345678000195',
+                otpChallengeId: Uuid()
             })
         ).rejects.toThrow();
     });
@@ -359,9 +368,9 @@ describe('Bank Accounts - Novos campos (banco, dígito agência, dígito conta, 
                 bankAgencyDigit: 'ABC', // Mais de 2 caracteres
                 bankAccount: '77777777',
                 bankAccountType: 'CORRENTE',
-                bankAccountHolderDocument: '12345678000196'
+                bankAccountHolderDocument: '12345678000196',
+                otpChallengeId: Uuid()
             })
         ).rejects.toThrow();
     });
 });
-

@@ -7,6 +7,7 @@ import type { DeleteSchoolBankAccount } from '../../../../app/use-cases/delete-s
 import { createBankAccountSchema, updateBankAccountSchema } from '../../validators/bank-account-schemas';
 import type { SchoolRouteGuards } from './guards';
 import type { SchoolContextRequest } from '../../middlewares/resolve-school-context';
+import { z } from 'zod';
 
 type BankAccountsRoutesDeps = {
     listSchoolBankAccounts?: ListSchoolBankAccounts;
@@ -41,7 +42,8 @@ export function buildBankAccountsRoutes(deps: BankAccountsRoutesDeps, guards: Sc
                 bankAccountDigit: data.digitoConta,
                 bankAccountType: data.bankAccountType,
                 bankAccountHolderDocument: data.bankAccountHolderDocument,
-                pixKey: data.PIX
+                pixKey: data.PIX,
+                otpChallengeId: data.otpChallengeId
             });
             res.status(201).json(result);
         }));
@@ -64,7 +66,8 @@ export function buildBankAccountsRoutes(deps: BankAccountsRoutesDeps, guards: Sc
                 bankAccountType: data.bankAccountType,
                 bankAccountHolderDocument: data.bankAccountHolderDocument,
                 pixKey: data.PIX,
-                isActive: data.isActive
+                isActive: data.isActive,
+                otpChallengeId: data.otpChallengeId
             });
             res.json(result);
         }));
@@ -74,11 +77,11 @@ export function buildBankAccountsRoutes(deps: BankAccountsRoutesDeps, guards: Sc
         router.delete('/:accountId', guards.requireAuth, guards.requireSchoolPersona, guards.resolveSchoolContext, asyncHandler(async (req, res) => {
             const schoolId = (req as SchoolContextRequest).schoolId as string;
             const accountId = req.params.accountId;
-            await deps.deleteSchoolBankAccount!.exec({ accountId, schoolId });
+            const body = z.object({ otpChallengeId: z.string().uuid() }).parse(req.body ?? {});
+            await deps.deleteSchoolBankAccount!.exec({ accountId, schoolId, otpChallengeId: body.otpChallengeId });
             res.status(204).send();
         }));
     }
 
     return router;
 }
-
