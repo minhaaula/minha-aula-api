@@ -108,28 +108,90 @@ export function startWorker(): Worker {
                     ? event.payload.mediaUrls.filter((u: unknown) => typeof u === 'string' && (u as string).trim())
                     : [];
                 const cobranca = event.payload?.cobranca && typeof event.payload.cobranca === 'object' ? event.payload.cobranca as Record<string, unknown> : null;
+                const smRaw = event.payload?.solicitacaoMatricula;
 
-                let body: string;
+                let body = '';
+                let twilioContentSid: string | undefined;
+                let twilioContentVars: Record<string, string> | undefined;
+                let fromSolicitacaoMatricula = false;
+
                 if (cobranca && typeof cobranca.pixCopiaECola === 'string' && cobranca.pixCopiaECola.trim()) {
-                    const { getCobrancaWhatsAppBody } = await import('../../whatsapp/templates/cobranca.template.js');
-                    body = getCobrancaWhatsAppBody({
+                    const { getCobrancaWhatsAppBody, getCobrancaTwilioContentVariables } = await import('../../whatsapp/templates/cobranca.template.js');
+                    const { loadTwilioContentSidsFromEnv, resolveMensalidadeContentSid } = await import('../../whatsapp/twilio-content-config.js');
+                    const { inferMensalidadeReminderKindFromCobrancaPayload } = await import('../../../shared/mensalidade-reminder-kind.js');
+
+                    const rawType = cobranca.type;
+                    const cobrancaType: 'tuition' | 'enrollment' | 'plan' =
+                        rawType === 'tuition' || rawType === 'enrollment' || rawType === 'plan' ? rawType : 'tuition';
+
+                    const cobrancaData = {
                         studentName: typeof cobranca.studentName === 'string' ? cobranca.studentName : '',
                         amount: typeof cobranca.amount === 'string' ? cobranca.amount : '',
                         dueDate: typeof cobranca.dueDate === 'string' ? cobranca.dueDate : '',
                         description: typeof cobranca.description === 'string' ? cobranca.description : '',
-                        type: (['tuition', 'enrollment', 'plan'] as const).includes(cobranca.type as any) ? cobranca.type as 'tuition' | 'enrollment' | 'plan' : 'tuition',
+                        type: cobrancaType,
                         courseName: typeof cobranca.courseName === 'string' ? cobranca.courseName : undefined,
                         pixCopiaECola: String(cobranca.pixCopiaECola).trim(),
                         boletoUrl: typeof cobranca.boletoUrl === 'string' ? cobranca.boletoUrl : cobranca.boletoUrl === null ? null : undefined
+                    };
+                    body = getCobrancaWhatsAppBody(cobrancaData);
+                    const sids = loadTwilioContentSidsFromEnv();
+                    const reminderKind = inferMensalidadeReminderKindFromCobrancaPayload(cobranca, new Date());
+                    twilioContentSid = resolveMensalidadeContentSid(reminderKind, sids);
+                    const useFullBody =
+                        process.env.TWILIO_COBRANCA_CONTENT_USE_FULL_BODY === '1' ||
+                        process.env.TWILIO_COBRANCA_CONTENT_USE_FULL_BODY === 'true';
+                    twilioContentVars = useFullBody ? { '1': body } : getCobrancaTwilioContentVariables(cobrancaData);
+                } else if (
+                    smRaw &&
+                    typeof smRaw === 'object' &&
+                    smRaw !== null &&
+                    typeof (smRaw as Record<string, unknown>).nome === 'string' &&
+                    typeof (smRaw as Record<string, unknown>).escola === 'string' &&
+                    typeof (smRaw as Record<string, unknown>).curso === 'string' &&
+                    typeof (smRaw as Record<string, unknown>).aluno === 'string'
+                ) {
+                    fromSolicitacaoMatricula = true;
+                    const { loadTwilioContentSidsFromEnv } = await import('../../whatsapp/twilio-content-config.js');
+                    const { getSolicitacaoMatriculaTwilioContentVariables } = await import('../../whatsapp/templates/solicitacao-matricula.template.js');
+                    const sm = smRaw as { nome: string; escola: string; curso: string; aluno: string };
+                    twilioContentSid = loadTwilioContentSidsFromEnv().solicitacaoMatricula?.trim();
+                    if (!twilioContentSid) {
+                        log.warn(
+                            '[OUTBOX] whatsapp_notification: solicitacaoMatricula no payload mas TWILIO_CONTENT_SID_SOLICITACAO_MATRICULA não está definido; envio ignorado.'
+                        );
+                        return;
+                    }
+                    const useNumbered =
+                        process.env.TWILIO_SOLICITACAO_MATRICULA_USE_NUMBERED_VARS === '1' ||
+                        process.env.TWILIO_SOLICITACAO_MATRICULA_USE_NUMBERED_VARS === 'true';
+                    twilioContentVars = getSolicitacaoMatriculaTwilioContentVariables(sm, useNumbered ? 'numbered' : 'named');
+                    log.info('[OUTBOX] whatsapp_notification: fila processando template solicitacao_matricula', {
+                        aggregateId: event.aggregateId,
+                        userIdsCount: userIds.length,
+                        hasDirectTo: !!to
                     });
                 } else {
                     body = message || ' ';
                 }
 
-                log.info('[OUTBOX] whatsapp_notification processando', { hasTo: !!to, userIdsCount: userIds.length, fromCobranca: !!cobranca });
-                if (!body.trim() && mediaUrls.length === 0) {
+                const useContentTemplate = Boolean(
+                    twilioContentSid && twilioContentVars && Object.keys(twilioContentVars).length > 0
+                );
+
+                log.info('[OUTBOX] whatsapp_notification processando', {
+                    hasTo: !!to,
+                    userIdsCount: userIds.length,
+                    fromCobranca: !!(cobranca && typeof cobranca.pixCopiaECola === 'string' && cobranca.pixCopiaECola.trim()),
+                    fromSolicitacaoMatricula,
+                    twilioTemplateSid: useContentTemplate ? twilioContentSid : undefined
+                });
+                if (!useContentTemplate && !body.trim() && mediaUrls.length === 0) {
                     log.warn('[OUTBOX] whatsapp_notification payload inválido: sem mensagem nem mídia');
                     return;
+                }
+                if (useContentTemplate && mediaUrls.length > 0) {
+                    log.warn('[OUTBOX] whatsapp_notification: mídia ignorada ao enviar template Twilio Content');
                 }
                 const whatsappProvider = (await import('../../providers/twilio/create-whatsapp-provider.js')).createWhatsAppProviderFromEnv();
                 if (!whatsappProvider) {
@@ -137,11 +199,24 @@ export function startWorker(): Worker {
                     return;
                 }
 
-                const media = mediaUrls.length > 0 ? mediaUrls : undefined;
+                const twilioClient = whatsappProvider;
+                const media = !useContentTemplate && mediaUrls.length > 0 ? mediaUrls : undefined;
+
+                async function sendOne(targetPhone: string) {
+                    if (useContentTemplate && twilioContentSid && twilioContentVars) {
+                        await twilioClient.sendContentTemplate({
+                            to: targetPhone,
+                            contentSid: twilioContentSid,
+                            contentVariables: twilioContentVars
+                        });
+                    } else {
+                        await twilioClient.sendMessage({ to: targetPhone, body, mediaUrls: media });
+                    }
+                }
 
                 if (to) {
                     try {
-                        await whatsappProvider.sendMessage({ to, body, mediaUrls: media });
+                        await sendOne(to);
                         log.info('[OUTBOX] whatsapp_notification sent (single)', { to: to.replace(/\d(?=\d{4})/g, '*') });
                     } catch (err) {
                         log.error('[OUTBOX] whatsapp_notification falha (single)', { err });
@@ -163,13 +238,22 @@ export function startWorker(): Worker {
                             continue;
                         }
                         try {
-                            await whatsappProvider.sendMessage({ to: user.phone, body, mediaUrls: media });
+                            await sendOne(user.phone);
                             sent++;
                         } catch (err) {
                             log.warn('[OUTBOX] whatsapp_notification falha para userId', { userId, err });
                         }
                     }
-                    log.info('[OUTBOX] whatsapp_notification sent', { sent, skipped, total: userIds.length });
+                    log.info('[OUTBOX] whatsapp_notification sent', {
+                        sent,
+                        skipped,
+                        total: userIds.length,
+                        templateKind: fromSolicitacaoMatricula ? 'solicitacao_matricula' : undefined
+                    });
+                } else if (useContentTemplate && !to) {
+                    log.warn(
+                        '[OUTBOX] whatsapp_notification: template Twilio sem destinatário (`to` ausente e `userIds` vazio); envio ignorado.'
+                    );
                 }
                 return;
             }

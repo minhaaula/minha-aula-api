@@ -4,7 +4,11 @@ import { VerifySchoolActionOtp } from '../../src/app/use-cases/verify-school-act
 import { ConsumeSchoolActionOtp } from '../../src/app/use-cases/consume-school-action-otp';
 import { SchoolActionOtp } from '../../src/domain/entities/school-action-otp';
 import { School } from '../../src/domain/entities/school';
-import type { WhatsAppProviderPort } from '../../src/ports/providers/whatsapp-provider.port';
+import type {
+    SendWhatsAppContentTemplateInput,
+    SendWhatsAppInput,
+    WhatsAppProviderPort
+} from '../../src/ports/providers/whatsapp-provider.port';
 import type { SchoolActionOtpRepository } from '../../src/ports/repositories/school-action-otp.repo';
 import type { SchoolRepository } from '../../src/ports/repositories/school.repo';
 import { Uuid } from '../../src/shared/uuid';
@@ -48,10 +52,15 @@ class InMemorySchoolActionOtpRepository implements SchoolActionOtpRepository {
 }
 
 class FakeWhatsAppProvider implements WhatsAppProviderPort {
-    readonly messages: Array<{ to: string; body: string }> = [];
+    readonly messages: SendWhatsAppInput[] = [];
+    readonly contentTemplates: SendWhatsAppContentTemplateInput[] = [];
 
-    async sendMessage(input: { to: string; body: string }): Promise<void> {
+    async sendMessage(input: SendWhatsAppInput): Promise<void> {
         this.messages.push(input);
+    }
+
+    async sendContentTemplate(input: SendWhatsAppContentTemplateInput): Promise<void> {
+        this.contentTemplates.push(input);
     }
 }
 
@@ -69,13 +78,19 @@ describe('School action OTP', () => {
         });
         schools.seed(school);
 
-        const useCase = new RequestSchoolActionOtp(schools, otps, whatsapp);
+        const useCase = new RequestSchoolActionOtp(schools, otps, whatsapp, {
+            contentSid: 'HX00000000000000000000000000000001'
+        });
         const result = await useCase.exec({ schoolId: school.id, purpose: 'WITHDRAWAL' });
 
         expect(result.challengeId).toBeTruthy();
         expect(result.purpose).toBe('WITHDRAWAL');
-        expect(whatsapp.messages).toHaveLength(1);
-        expect(whatsapp.messages[0]?.to).toBe('11999999999');
+        expect(whatsapp.contentTemplates).toHaveLength(1);
+        expect(whatsapp.contentTemplates[0]?.to).toBe('11999999999');
+        expect(whatsapp.contentTemplates[0]?.contentSid).toBe('HX00000000000000000000000000000001');
+        expect(whatsapp.contentTemplates[0]?.contentVariables['1']).toMatch(
+            /^Seu codigo OTP para confirmar o saque e \d{6}\. Ele expira em 10 minutos\.$/
+        );
     });
 
     it('verifies and consumes an OTP for a sensitive action', async () => {

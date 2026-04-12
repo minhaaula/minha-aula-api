@@ -79,7 +79,7 @@ describe('enrollment-requests routes (HTTP)', () => {
             .post('/enrollment-requests/schools/classes/2c91252e-6ac3-4080-b89f-28e71fa3bd5a/requests')
             .send({
                 schoolId: '85a1acc4-9445-4951-944e-4c0fa9e31af4',
-                requestedForUserId: null, // deve ser ignorado porque esta rota é STUDENT
+                // requestedForUserId omitido: rota STUDENT usa o sub do token (Zod optional não aceita null)
                 requestedForDependentId: 'ef73b4e3-d93a-4731-b19e-4cb7a8c8cee2',
                 discont: 20,
                 discountMonths: 3,
@@ -96,7 +96,8 @@ describe('enrollment-requests routes (HTTP)', () => {
             courseClassId: '2c91252e-6ac3-4080-b89f-28e71fa3bd5a',
             requestedForUserId: 'a1c3aed9-2a7d-45ea-aa35-d03305b1c693',
             requestedForDependentId: 'ef73b4e3-d93a-4731-b19e-4cb7a8c8cee2',
-            notes: 'Dependente'
+            notes: 'Dependente',
+            initiatedBySchool: false
         });
     });
 
@@ -124,7 +125,8 @@ describe('enrollment-requests routes (HTTP)', () => {
         expect(exec).toHaveBeenCalledTimes(1);
         expect(exec.mock.calls[0][0]).toMatchObject({
             requestedForUserId: 'a1c3aed9-2a7d-45ea-aa35-d03305b1c693',
-            requestedForDependentId: 'ef73b4e3-d93a-4731-b19e-4cb7a8c8cee2'
+            requestedForDependentId: 'ef73b4e3-d93a-4731-b19e-4cb7a8c8cee2',
+            initiatedBySchool: false
         });
     });
 
@@ -180,7 +182,8 @@ describe('enrollment-requests routes (HTTP)', () => {
             courseClassId: '2c91252e-6ac3-4080-b89f-28e71fa3bd5a',
             requestedForUserId: '550e8400-e29b-41d4-a716-446655440000',
             requestedForDependentId: 'ef73b4e3-d93a-4731-b19e-4cb7a8c8cee2',
-            notes: 'Dependente'
+            notes: 'Dependente',
+            initiatedBySchool: true
         });
     });
 });

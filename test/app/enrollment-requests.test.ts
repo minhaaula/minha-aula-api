@@ -24,6 +24,8 @@ import { SchoolFinancialChargeRepository } from '../../src/ports/repositories/sc
 import { SchoolFinancialCharge } from '../../src/domain/entities/school-financial-charge';
 import { PaymentProviderPort, CreateBoletoChargeInput } from '../../src/ports/providers/payment-provider.port';
 import { UserPersonaEnum } from '../../src/domain/value-objects/user-persona';
+import type { NotifyStudentUser } from '../../src/app/use-cases/notify-student-user';
+import type { OutboxRepository } from '../../src/ports/repositories/outbox.repo';
 
 class InMemorySchools implements SchoolRepository {
     private readonly items = new Map<string, School>();
@@ -184,6 +186,14 @@ class InMemoryCharges implements SchoolFinancialChargeRepository {
     all() { return Array.from(this.items.values()); }
 }
 
+class CapturingOutbox implements OutboxRepository {
+    public readonly events: Array<{ type: string; payload: unknown; aggregateId: string }> = [];
+
+    async enqueue(event: { type: string; payload: unknown; aggregateId: string }): Promise<void> {
+        this.events.push(event);
+    }
+}
+
 class FakePaymentProvider implements PaymentProviderPort {
     callCount = 0;
     lastInput: CreateBoletoChargeInput | null = null;
@@ -290,6 +300,113 @@ describe('CreateEnrollmentRequest', () => {
 
         expect(result.status).toBe('PENDING');
         expect(result.requestedForDependentId).toBeNull();
+    });
+
+    it('when school initiates, enqueues enrollment email and WhatsApp solicitacao_matricula job', async () => {
+        const schools = new InMemorySchools();
+        const courses = new InMemoryCourses();
+        const classes = new InMemoryClasses();
+        const users = new InMemoryUsers();
+        const dependents = new InMemoryDependents();
+        const enrollments = new InMemoryEnrollments();
+        const requests = new InMemoryRequests();
+        const outbox = new CapturingOutbox();
+        const notifyStudent = {
+            async exec() {
+                return { notificationId: 'notif-1' };
+            }
+        } as unknown as NotifyStudentUser;
+
+        const { school, course, courseClass } = setupCourseStructure();
+        schools.seed(school);
+        courses.seed(course);
+        classes.seed(courseClass);
+        const user = makeUser('user-school-init');
+        users.seed(user);
+
+        const useCase = new CreateEnrollmentRequest(
+            schools,
+            courses,
+            classes,
+            users,
+            dependents,
+            enrollments,
+            requests,
+            notifyStudent,
+            outbox,
+            'https://app.example.com'
+        );
+        await useCase.exec({
+            schoolId: school.id,
+            courseClassId: courseClass.id,
+            requestedForUserId: user.id,
+            initiatedBySchool: true,
+            firstMonthlyPaymentDate: '2024-02-01'
+        });
+
+        const emailJob = outbox.events.find((e) => e.type === 'send_enrollment_request_received_email');
+        expect(emailJob).toBeDefined();
+
+        const wa = outbox.events.find((e) => e.type === 'whatsapp_notification');
+        expect(wa).toBeDefined();
+        const p = wa!.payload as { userIds: string[]; solicitacaoMatricula: Record<string, string> };
+        expect(p.userIds).toEqual([user.id]);
+        expect(p.solicitacaoMatricula.nome).toBe(user.fullName);
+        expect(p.solicitacaoMatricula.escola).toBe(school.name);
+        expect(p.solicitacaoMatricula.curso).toBe(`${course.name} — ${courseClass.label}`);
+        expect(p.solicitacaoMatricula.aluno).toBe(user.fullName);
+    });
+
+    it('when school initiates for dependent, WhatsApp aluno is dependent name', async () => {
+        const schools = new InMemorySchools();
+        const courses = new InMemoryCourses();
+        const classes = new InMemoryClasses();
+        const users = new InMemoryUsers();
+        const dependents = new InMemoryDependents();
+        const enrollments = new InMemoryEnrollments();
+        const requests = new InMemoryRequests();
+        const outbox = new CapturingOutbox();
+        const notifyStudent = {
+            async exec() {
+                return { notificationId: 'notif-2' };
+            }
+        } as unknown as NotifyStudentUser;
+
+        const { school, course, courseClass } = setupCourseStructure();
+        schools.seed(school);
+        courses.seed(course);
+        classes.seed(courseClass);
+        const user = makeUser('user-parent');
+        users.seed(user);
+        const dependent = Dependent.create({ id: 'dep-wa', userId: user.id, fullName: 'Filho Teste', birthDate: null });
+        dependents.seed(dependent);
+
+        const useCase = new CreateEnrollmentRequest(
+            schools,
+            courses,
+            classes,
+            users,
+            dependents,
+            enrollments,
+            requests,
+            notifyStudent,
+            outbox,
+            'https://app.example.com'
+        );
+        await useCase.exec({
+            schoolId: school.id,
+            courseClassId: courseClass.id,
+            requestedForUserId: user.id,
+            requestedForDependentId: dependent.id,
+            initiatedBySchool: true,
+            firstMonthlyPaymentDate: '2024-02-01'
+        });
+
+        const wa = outbox.events.find((e) => e.type === 'whatsapp_notification');
+        expect(wa).toBeDefined();
+        const p = wa!.payload as { solicitacaoMatricula: Record<string, string> };
+        expect(p.solicitacaoMatricula.nome).toBe(user.fullName);
+        expect(p.solicitacaoMatricula.aluno).toBe('Filho Teste');
     });
 
     it('stores discount value when provided', async () => {

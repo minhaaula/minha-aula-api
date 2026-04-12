@@ -34,6 +34,7 @@
     "test:sendgrid": "tsx scripts/test-sendgrid-email.ts",
     "test:whatsapp": "tsx scripts/test-whatsapp.ts",
     "test:whatsapp-cobranca": "tsx scripts/test-whatsapp-cobranca.ts",
+    "test:whatsapp-solicitacao-matricula": "tsx scripts/test-whatsapp-solicitacao-matricula.ts",
     "test:whatsapp-job": "tsx scripts/test-whatsapp-job-queue.ts",
     "test:password-reset": "tsx scripts/test-password-reset-flow.ts",
     "test:bank-accounts": "tsx scripts/test-bank-accounts-routes.ts",

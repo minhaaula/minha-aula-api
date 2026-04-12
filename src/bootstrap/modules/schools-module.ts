@@ -100,6 +100,7 @@ import { SendClassPushNotification } from '../../app/use-cases/send-class-push-n
 import { NotifyStudentUser } from '../../app/use-cases/notify-student-user';
 import { SchoolActionOtpRepositoryAdapter } from '../../infra/db/typeorm/school-action-otp-repository.adapter';
 import { createWhatsAppProviderFromEnv } from '../../infra/providers/twilio/create-whatsapp-provider';
+import { loadTwilioContentSidsFromEnv } from '../../infra/whatsapp/twilio-content-config';
 import { ConsumeSchoolActionOtp } from '../../app/use-cases/consume-school-action-otp';
 import { RequestSchoolActionOtp } from '../../app/use-cases/request-school-action-otp';
 import { VerifySchoolActionOtp } from '../../app/use-cases/verify-school-action-otp';
@@ -138,10 +139,14 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
     const schoolActionOtpRepo = new SchoolActionOtpRepositoryAdapter();
     const schoolActionOtpConsumer = new ConsumeSchoolActionOtp(schoolActionOtpRepo);
     const schoolWhatsAppProvider = createWhatsAppProviderFromEnv();
+    const twilioContentSids = loadTwilioContentSidsFromEnv();
     const requestSchoolActionOtp = new RequestSchoolActionOtp(
         deps.schoolsRepo,
         schoolActionOtpRepo,
-        schoolWhatsAppProvider
+        schoolWhatsAppProvider,
+        schoolWhatsAppProvider && twilioContentSids.messageOptIn
+            ? { contentSid: twilioContentSids.messageOptIn }
+            : undefined
     );
     const verifySchoolActionOtp = new VerifySchoolActionOtp(schoolActionOtpRepo);
 

@@ -140,3 +140,12 @@ export interface GetSchoolProfileOutput {
     hasCompletedFirstPayment: boolean;
 }
 
+/**
+ * SID do template Twilio Content (WhatsApp) para envio de OTP.
+ * Variáveis de ambiente: `TWILIO_CONTENT_SID_MESSAGE_OPT_IN` ou `TWILIO_WHATSAPP_MESSAGE_OPT_IN_CONTENT_SID`.
+ * O template deve expor pelo menos o placeholder {{1}} com o texto do OTP gerado pela API.
+ */
+export interface SchoolActionOtpWhatsAppTemplateConfig {
+    contentSid: string;
+}
+

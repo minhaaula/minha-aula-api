@@ -1,3 +1,4 @@
+import type { SchoolActionOtpWhatsAppTemplateConfig } from '../types/school.types';
 import { SchoolActionOtp, type SchoolActionOtpPurpose } from '../../domain/entities/school-action-otp';
 import { WhatsAppProviderPort } from '../../ports/providers/whatsapp-provider.port';
 import { SchoolActionOtpRepository } from '../../ports/repositories/school-action-otp.repo';
@@ -14,7 +15,9 @@ export class RequestSchoolActionOtp {
     constructor(
         private readonly schools: SchoolRepository,
         private readonly otps: SchoolActionOtpRepository,
-        private readonly whatsapp?: WhatsAppProviderPort
+        private readonly whatsapp?: WhatsAppProviderPort,
+        /** Template Twilio Content (ex.: `message_opt_in`) — obrigatório quando `whatsapp` está configurado. */
+        private readonly otpWhatsAppTemplate?: SchoolActionOtpWhatsAppTemplateConfig
     ) {}
 
     async exec(input: { schoolId: string; purpose: SchoolActionOtpPurpose }) {
@@ -40,6 +43,14 @@ export class RequestSchoolActionOtp {
             });
         }
 
+        const otpTemplate = this.otpWhatsAppTemplate;
+        if (!otpTemplate?.contentSid?.trim()) {
+            throw AppError.fromCode(ErrorCode.CONFIGURATION_ERROR, {
+                message:
+                    'Template WhatsApp para OTP não está configurado (TWILIO_CONTENT_SID_MESSAGE_OPT_IN ou TWILIO_WHATSAPP_MESSAGE_OPT_IN_CONTENT_SID)'
+            });
+        }
+
         const code = String(Math.floor(100000 + Math.random() * 900000));
         const expiresAt = new Date(Date.now() + OTP_TTL_MINUTES * 60_000);
         const otp = SchoolActionOtp.create({
@@ -53,9 +64,12 @@ export class RequestSchoolActionOtp {
         });
 
         await this.otps.save(otp);
-        await this.whatsapp.sendMessage({
+        const otpBody = `Seu codigo OTP para ${describePurpose(input.purpose)} e ${code}. Ele expira em ${OTP_TTL_MINUTES} minutos.`;
+        await this.whatsapp.sendContentTemplate({
             to: school.phone,
-            body: `Seu codigo OTP para ${describePurpose(input.purpose)} e ${code}. Ele expira em ${OTP_TTL_MINUTES} minutos.`
+            contentSid: otpTemplate.contentSid.trim(),
+            /** Placeholder {{1}} no template Twilio `message_opt_in` (ou equivalente aprovado). */
+            contentVariables: { '1': otpBody }
         });
 
         log.info('[SchoolActionOtp] OTP enviado', sanitizeForLogging({
