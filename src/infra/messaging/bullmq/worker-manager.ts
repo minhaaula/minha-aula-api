@@ -109,11 +109,13 @@ export function startWorker(): Worker {
                     : [];
                 const cobranca = event.payload?.cobranca && typeof event.payload.cobranca === 'object' ? event.payload.cobranca as Record<string, unknown> : null;
                 const smRaw = event.payload?.solicitacaoMatricula;
+                const bvRaw = event.payload?.boasVindas;
 
                 let body = '';
                 let twilioContentSid: string | undefined;
                 let twilioContentVars: Record<string, string> | undefined;
                 let fromSolicitacaoMatricula = false;
+                let fromBoasVindas = false;
 
                 if (cobranca && typeof cobranca.pixCopiaECola === 'string' && cobranca.pixCopiaECola.trim()) {
                     const { getCobrancaWhatsAppBody, getCobrancaTwilioContentVariables } = await import('../../whatsapp/templates/cobranca.template.js');
@@ -171,6 +173,33 @@ export function startWorker(): Worker {
                         userIdsCount: userIds.length,
                         hasDirectTo: !!to
                     });
+                } else if (
+                    bvRaw &&
+                    typeof bvRaw === 'object' &&
+                    bvRaw !== null &&
+                    typeof (bvRaw as Record<string, unknown>).nome === 'string'
+                ) {
+                    fromBoasVindas = true;
+                    const { loadTwilioContentSidsFromEnv } = await import('../../whatsapp/twilio-content-config.js');
+                    const { getBoasVindasTwilioContentVariables } = await import('../../whatsapp/templates/boas-vindas.template.js');
+                    twilioContentSid = loadTwilioContentSidsFromEnv().boasVindas?.trim();
+                    if (!twilioContentSid) {
+                        log.warn(
+                            '[OUTBOX] whatsapp_notification: boasVindas no payload mas TWILIO_CONTENT_SID_BOAS_VINDAS (ou TWILIO_CONTENT_SID_NOTIFICATIONS_WELCOME) não está definido; envio ignorado.'
+                        );
+                        return;
+                    }
+                    const nome = String((bvRaw as { nome: string }).nome ?? '').trim();
+                    if (!nome) {
+                        log.warn('[OUTBOX] whatsapp_notification: boasVindas.nome vazio; envio ignorado.');
+                        return;
+                    }
+                    twilioContentVars = getBoasVindasTwilioContentVariables(nome);
+                    log.info('[OUTBOX] whatsapp_notification: fila processando template boas_vindas', {
+                        aggregateId: event.aggregateId,
+                        userIdsCount: userIds.length,
+                        hasDirectTo: !!to
+                    });
                 } else {
                     body = message || ' ';
                 }
@@ -184,6 +213,7 @@ export function startWorker(): Worker {
                     userIdsCount: userIds.length,
                     fromCobranca: !!(cobranca && typeof cobranca.pixCopiaECola === 'string' && cobranca.pixCopiaECola.trim()),
                     fromSolicitacaoMatricula,
+                    fromBoasVindas,
                     twilioTemplateSid: useContentTemplate ? twilioContentSid : undefined
                 });
                 if (!useContentTemplate && !body.trim() && mediaUrls.length === 0) {
@@ -248,7 +278,11 @@ export function startWorker(): Worker {
                         sent,
                         skipped,
                         total: userIds.length,
-                        templateKind: fromSolicitacaoMatricula ? 'solicitacao_matricula' : undefined
+                        templateKind: fromSolicitacaoMatricula
+                            ? 'solicitacao_matricula'
+                            : fromBoasVindas
+                              ? 'boas_vindas'
+                              : undefined
                     });
                 } else if (useContentTemplate && !to) {
                     log.warn(

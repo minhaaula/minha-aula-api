@@ -79,6 +79,18 @@ export class RegisterUser {
                     }
                 })
                 .catch(() => {});
+
+            // WhatsApp: template Twilio `boas_vindas` (variável `nome`) — worker em `whatsapp_notification`
+            this.outbox
+                .enqueue({
+                    type: 'whatsapp_notification',
+                    aggregateId: user.id,
+                    payload: {
+                        userIds: [user.id],
+                        boasVindas: { nome: user.fullName }
+                    }
+                })
+                .catch(() => {});
         }
 
         if (user.persona === UserPersonaEnum.STUDENT && this.notifyStudent) {

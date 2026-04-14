@@ -12,7 +12,11 @@ export type TwilioContentSids = {
     mensalidadeEmAtraso?: string;
     mensalidadeVenceHoje?: string;
     mensalidadeDisponivel?: string;
-    notificationsWelcome?: string;
+    /**
+     * Template Twilio Content `boas_vindas` (WhatsApp) — variável `nome`.
+     * Preferência: TWILIO_CONTENT_SID_BOAS_VINDAS; fallback: TWILIO_CONTENT_SID_NOTIFICATIONS_WELCOME.
+     */
+    boasVindas?: string;
     /** OTP / opt-in (alias legado TWILIO_WHATSAPP_MESSAGE_OPT_IN_CONTENT_SID) */
     messageOptIn?: string;
 };
@@ -23,7 +27,9 @@ export function loadTwilioContentSidsFromEnv(): TwilioContentSids {
         mensalidadeEmAtraso: process.env.TWILIO_CONTENT_SID_MENSALIDADE_EM_ATRASO?.trim(),
         mensalidadeVenceHoje: process.env.TWILIO_CONTENT_SID_MENSALIDADE_VENCE_HOJE?.trim(),
         mensalidadeDisponivel: process.env.TWILIO_CONTENT_SID_MENSALIDADE_DISPONIVEL?.trim(),
-        notificationsWelcome: process.env.TWILIO_CONTENT_SID_NOTIFICATIONS_WELCOME?.trim(),
+        boasVindas:
+            process.env.TWILIO_CONTENT_SID_BOAS_VINDAS?.trim() ??
+            process.env.TWILIO_CONTENT_SID_NOTIFICATIONS_WELCOME?.trim(),
         messageOptIn:
             process.env.TWILIO_CONTENT_SID_MESSAGE_OPT_IN?.trim() ??
             process.env.TWILIO_WHATSAPP_MESSAGE_OPT_IN_CONTENT_SID?.trim()
