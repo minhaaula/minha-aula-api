@@ -1,5 +1,6 @@
 import type { SchoolActionOtpWhatsAppTemplateConfig } from '../types/school.types';
 import { SchoolActionOtp, type SchoolActionOtpPurpose } from '../../domain/entities/school-action-otp';
+import type { TwilioVerifyPort } from '../../ports/providers/twilio-verify.port';
 import { WhatsAppProviderPort } from '../../ports/providers/whatsapp-provider.port';
 import { SchoolActionOtpRepository } from '../../ports/repositories/school-action-otp.repo';
 import { SchoolRepository } from '../../ports/repositories/school.repo';
@@ -10,14 +11,21 @@ import { Uuid } from '../../shared/uuid';
 
 const OTP_TTL_MINUTES = 10;
 const OTP_MAX_ATTEMPTS = 5;
+/** Valor gravado em `code` quando o OTP é gerado pelo Twilio Verify (o código real não fica no banco). */
+const TWILIO_VERIFY_CODE_PLACEHOLDER = '000000';
 
 export class RequestSchoolActionOtp {
     constructor(
         private readonly schools: SchoolRepository,
         private readonly otps: SchoolActionOtpRepository,
         private readonly whatsapp?: WhatsAppProviderPort,
-        /** Template Twilio Content (ex.: `message_opt_in`) — obrigatório quando `whatsapp` está configurado. */
-        private readonly otpWhatsAppTemplate?: SchoolActionOtpWhatsAppTemplateConfig
+        /** Template Twilio Content — usado só se Twilio Verify não estiver configurado. */
+        private readonly otpWhatsAppTemplate?: SchoolActionOtpWhatsAppTemplateConfig,
+        /**
+         * Twilio Verify (canal WhatsApp no provider): `verifications.create` + `verificationChecks`.
+         * @see https://www.twilio.com/docs/verify/whatsapp
+         */
+        private readonly twilioVerify?: TwilioVerifyPort
     ) {}
 
     async exec(input: { schoolId: string; purpose: SchoolActionOtpPurpose }) {
@@ -37,6 +45,35 @@ export class RequestSchoolActionOtp {
             });
         }
 
+        const expiresAt = new Date(Date.now() + OTP_TTL_MINUTES * 60_000);
+
+        if (this.twilioVerify) {
+            const started = await this.twilioVerify.sendVerification(school.phone);
+            const otp = SchoolActionOtp.create({
+                id: Uuid(),
+                schoolId,
+                purpose: input.purpose,
+                code: TWILIO_VERIFY_CODE_PLACEHOLDER,
+                phone: school.phone,
+                expiresAt,
+                maxAttempts: OTP_MAX_ATTEMPTS,
+                twilioVerificationSid: started.verificationSid
+            });
+            await this.otps.save(otp);
+            log.info('[SchoolActionOtp] OTP Twilio Verify iniciado', sanitizeForLogging({
+                schoolId,
+                purpose: input.purpose,
+                challengeId: otp.id,
+                expiresAt: otp.expiresAt.toISOString(),
+                phone: school.phone
+            }));
+            return {
+                challengeId: otp.id,
+                purpose: otp.purpose,
+                expiresAt: otp.expiresAt
+            };
+        }
+
         if (!this.whatsapp) {
             throw AppError.fromCode(ErrorCode.CONFIGURATION_ERROR, {
                 message: 'Envio de OTP via WhatsApp não está configurado'
@@ -47,12 +84,11 @@ export class RequestSchoolActionOtp {
         if (!otpTemplate?.contentSid?.trim()) {
             throw AppError.fromCode(ErrorCode.CONFIGURATION_ERROR, {
                 message:
-                    'Template WhatsApp para OTP não está configurado (TWILIO_CONTENT_SID_MESSAGE_OPT_IN ou TWILIO_WHATSAPP_MESSAGE_OPT_IN_CONTENT_SID)'
+                    'Template WhatsApp para OTP não está configurado (TWILIO_CONTENT_SID_MESSAGE_OPT_IN ou TWILIO_WHATSAPP_MESSAGE_OPT_IN_CONTENT_SID). Ou configure Twilio Verify (TWILIO_VERIFY_SERVICE_SID).'
             });
         }
 
         const code = String(Math.floor(100000 + Math.random() * 900000));
-        const expiresAt = new Date(Date.now() + OTP_TTL_MINUTES * 60_000);
         const otp = SchoolActionOtp.create({
             id: Uuid(),
             schoolId,

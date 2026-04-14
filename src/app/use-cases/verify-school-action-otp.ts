@@ -1,10 +1,14 @@
+import type { TwilioVerifyPort } from '../../ports/providers/twilio-verify.port';
 import { SchoolActionOtpRepository } from '../../ports/repositories/school-action-otp.repo';
-import { AppError } from '../../shared/errors';
+import { AppError, ErrorCode } from '../../shared/errors';
 import { sanitizeForLogging } from '../../shared/log-sanitizer';
 import { log } from '../../shared/logger';
 
 export class VerifySchoolActionOtp {
-    constructor(private readonly otps: SchoolActionOtpRepository) {}
+    constructor(
+        private readonly otps: SchoolActionOtpRepository,
+        private readonly twilioVerify?: TwilioVerifyPort
+    ) {}
 
     async exec(input: { schoolId: string; challengeId: string; code: string }) {
         const schoolId = input.schoolId.trim();
@@ -48,7 +52,26 @@ export class VerifySchoolActionOtp {
             throw AppError.validation('Limite de tentativas excedido');
         }
 
-        const success = otp.code === code;
+        let success: boolean;
+        if (otp.twilioVerificationSid) {
+            if (!this.twilioVerify) {
+                throw AppError.fromCode(ErrorCode.CONFIGURATION_ERROR, {
+                    message: 'Validação Twilio Verify não está disponível no servidor'
+                });
+            }
+            try {
+                success = await this.twilioVerify.checkVerification(otp.phone, code);
+            } catch (e: unknown) {
+                log.error('[SchoolActionOtp] Erro ao validar OTP no Twilio Verify', sanitizeForLogging({ e }));
+                throw new AppError(
+                    ErrorCode.EXTERNAL_SERVICE_ERROR,
+                    'Não foi possível validar o código no momento'
+                );
+            }
+        } else {
+            success = otp.code === code;
+        }
+
         const updated = otp.registerAttempt(success, new Date());
         await this.otps.save(updated);
 

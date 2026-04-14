@@ -1,5 +1,6 @@
 export type SchoolActionOtpPurpose = 'WITHDRAWAL' | 'BANK_ACCOUNT_CHANGE';
 
+/** Quando Twilio Verify envia o OTP (WhatsApp/SMS), o código fica só no Twilio; gravamos placeholder em `code` e o VE… em `twilioVerificationSid`. */
 export class SchoolActionOtp {
     private constructor(
         public readonly id: string,
@@ -12,7 +13,9 @@ export class SchoolActionOtp {
         public readonly maxAttempts: number,
         public readonly verifiedAt: Date | null,
         public readonly consumedAt: Date | null,
-        public readonly createdAt: Date
+        public readonly createdAt: Date,
+        /** SID da verificação Twilio Verify (VE…); se definido, a validação usa `verificationChecks`, não comparação local do `code`. */
+        public readonly twilioVerificationSid: string | null
     ) {}
 
     static create(params: {
@@ -27,6 +30,7 @@ export class SchoolActionOtp {
         verifiedAt?: Date | null;
         consumedAt?: Date | null;
         createdAt?: Date;
+        twilioVerificationSid?: string | null;
     }): SchoolActionOtp {
         const id = params.id.trim();
         const schoolId = params.schoolId.trim();
@@ -49,7 +53,8 @@ export class SchoolActionOtp {
             params.maxAttempts ?? 5,
             params.verifiedAt ?? null,
             params.consumedAt ?? null,
-            params.createdAt ?? new Date()
+            params.createdAt ?? new Date(),
+            params.twilioVerificationSid?.trim() ? params.twilioVerificationSid.trim() : null
         );
     }
 
@@ -81,7 +86,8 @@ export class SchoolActionOtp {
             maxAttempts: this.maxAttempts,
             verifiedAt: success ? when : this.verifiedAt,
             consumedAt: this.consumedAt,
-            createdAt: this.createdAt
+            createdAt: this.createdAt,
+            twilioVerificationSid: this.twilioVerificationSid
         });
     }
 
@@ -97,7 +103,8 @@ export class SchoolActionOtp {
             maxAttempts: this.maxAttempts,
             verifiedAt: this.verifiedAt,
             consumedAt: when,
-            createdAt: this.createdAt
+            createdAt: this.createdAt,
+            twilioVerificationSid: this.twilioVerificationSid
         });
     }
 }

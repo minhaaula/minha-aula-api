@@ -15,6 +15,8 @@ export interface CreateSchoolInput {
     ownerName?: string | null;
     ownerCpf?: string | null;
     ownerEmail?: string | null;
+    /** Celular WhatsApp do responsável (somente dígitos). */
+    ownerWhatsapp?: string | null;
     ownerPassword?: string | null;
 }
 
@@ -30,6 +32,7 @@ export interface CreateSchoolOutput {
     ownerName: string | null;
     ownerCpf: string | null;
     ownerEmail: string | null;
+    ownerWhatsapp: string | null;
     incomeValue: number;
     kycUrl?: string | null;
 }
@@ -44,6 +47,7 @@ export interface UpdateSchoolInput {
     ownerName?: string | null;
     ownerCpf?: string | null;
     ownerEmail?: string | null;
+    ownerWhatsapp?: string | null;
     ownerUserId?: string | null;
     ownerPassword?: string | null;
     incomeValue?: number;
@@ -68,6 +72,7 @@ export interface UpdateSchoolOutput {
     ownerName: string | null;
     ownerCpf: string | null;
     ownerEmail: string | null;
+    ownerWhatsapp: string | null;
     incomeValue: number;
     links: {
         facebook: string | null;
@@ -115,6 +120,7 @@ export interface GetSchoolProfileOutput {
     ownerName: string | null;
     ownerCpf: string | null;
     ownerEmail: string | null;
+    ownerWhatsapp: string | null;
     incomeValue: number;
     bankAccounts: BankAccountOutput[];
     links: {

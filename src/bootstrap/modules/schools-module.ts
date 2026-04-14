@@ -99,6 +99,7 @@ import { OutboxRepository } from '../../ports/repositories/outbox.repo';
 import { SendClassPushNotification } from '../../app/use-cases/send-class-push-notification';
 import { NotifyStudentUser } from '../../app/use-cases/notify-student-user';
 import { SchoolActionOtpRepositoryAdapter } from '../../infra/db/typeorm/school-action-otp-repository.adapter';
+import { createTwilioVerifyFromEnv } from '../../infra/providers/twilio/create-twilio-verify-provider';
 import { createWhatsAppProviderFromEnv } from '../../infra/providers/twilio/create-whatsapp-provider';
 import { loadTwilioContentSidsFromEnv } from '../../infra/whatsapp/twilio-content-config';
 import { ConsumeSchoolActionOtp } from '../../app/use-cases/consume-school-action-otp';
@@ -140,15 +141,17 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
     const schoolActionOtpConsumer = new ConsumeSchoolActionOtp(schoolActionOtpRepo);
     const schoolWhatsAppProvider = createWhatsAppProviderFromEnv();
     const twilioContentSids = loadTwilioContentSidsFromEnv();
+    const twilioVerify = createTwilioVerifyFromEnv();
     const requestSchoolActionOtp = new RequestSchoolActionOtp(
         deps.schoolsRepo,
         schoolActionOtpRepo,
         schoolWhatsAppProvider,
         schoolWhatsAppProvider && twilioContentSids.messageOptIn
             ? { contentSid: twilioContentSids.messageOptIn }
-            : undefined
+            : undefined,
+        twilioVerify
     );
-    const verifySchoolActionOtp = new VerifySchoolActionOtp(schoolActionOtpRepo);
+    const verifySchoolActionOtp = new VerifySchoolActionOtp(schoolActionOtpRepo, twilioVerify);
 
     // Declarar asaasProvider antes de usar
     const asaasProvider = typeof deps.paymentProvider.createSubAccount === 'function'

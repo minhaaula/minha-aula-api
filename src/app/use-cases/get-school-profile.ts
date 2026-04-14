@@ -45,6 +45,7 @@ export class GetSchoolProfile {
         ownerName: string | null;
         ownerCpf: string | null;
         ownerEmail: string | null;
+        ownerWhatsapp: string | null;
         incomeValue: number;
         bankAccounts: BankAccountView[];
         links: {
@@ -175,6 +176,7 @@ export class GetSchoolProfile {
             ownerName: school.ownerName,
             ownerCpf: school.ownerCpf,
             ownerEmail: school.ownerEmail,
+            ownerWhatsapp: school.ownerWhatsapp,
             incomeValue: school.incomeValue,
             bankAccounts: accounts.map((account) => ({
                 id: account.id,

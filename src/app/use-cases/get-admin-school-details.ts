@@ -50,6 +50,7 @@ export class GetAdminSchoolDetails {
             ownerName: school.ownerName,
             ownerCpf: school.ownerCpf,
             ownerEmail: school.ownerEmail,
+            ownerWhatsapp: school.ownerWhatsapp,
             schoolStatus,
             paymentStatus,
             plan,

@@ -20,6 +20,7 @@ export class SchoolActionOtpRepositoryAdapter implements SchoolActionOtpReposito
         row.verifiedAt = otp.verifiedAt;
         row.consumedAt = otp.consumedAt;
         row.createdAt = otp.createdAt;
+        row.twilioVerificationSid = otp.twilioVerificationSid;
         await this.repo.save(row);
     }
 
@@ -52,7 +53,8 @@ export class SchoolActionOtpRepositoryAdapter implements SchoolActionOtpReposito
             maxAttempts: row.maxAttempts,
             verifiedAt: row.verifiedAt,
             consumedAt: row.consumedAt,
-            createdAt: row.createdAt
+            createdAt: row.createdAt,
+            twilioVerificationSid: row.twilioVerificationSid ?? null
         });
     }
 }

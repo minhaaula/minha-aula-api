@@ -102,6 +102,7 @@ export class ListSchoolsWithPlans {
                 ownerName: school.ownerName,
                 ownerCpf: school.ownerCpf,
                 ownerEmail: school.ownerEmail,
+                ownerWhatsapp: school.ownerWhatsapp,
                 schoolStatus: deriveSchoolStatus(plan, hasCompletedFirstPayment, onboardingCompleted),
                 paymentStatus: derivePaymentStatus(plan),
                 plan,

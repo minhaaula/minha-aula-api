@@ -22,6 +22,7 @@ export interface SchoolWithPlanItem {
     ownerName: string | null;
     ownerCpf: string | null;
     ownerEmail: string | null;
+    ownerWhatsapp: string | null;
     schoolStatus: SchoolStatus;
     paymentStatus: PaymentStatus;
     plan: SchoolPlanFinanceView | null;

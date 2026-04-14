@@ -1,6 +1,7 @@
 import { Router, type RequestHandler } from 'express';
 import multer from 'multer';
 import { z } from 'zod';
+import { phoneNumberSchema } from '../validators/numeric-fields';
 import { Queue } from 'bullmq';
 import { asyncHandler } from '../utils/async-handler';
 import { GetAdminStatus } from '../../../app/use-cases/get-admin-status';
@@ -193,6 +194,7 @@ export function adminRouter({
             ownerName: z.string().min(1).nullable().optional(),
             ownerCpf: z.string().min(11).max(14).nullable().optional(),
             ownerEmail: z.string().email().nullable().optional(),
+            ownerWhatsapp: z.union([z.null(), phoneNumberSchema()]).optional(),
             ownerUserId: z.string().uuid().nullable().optional(),
             ownerPassword: z.string().min(8).nullable().optional(),
             links: z.object({

@@ -35,4 +35,8 @@ export class SchoolActionOtpOrm {
 
     @CreateDateColumn({ name: 'created_at', type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
     createdAt!: Date;
+
+    /** SID Twilio Verify (VE…); quando preenchido, o código vem só do Verify (WhatsApp/SMS). */
+    @Column('varchar', { name: 'twilio_verification_sid', length: 64, nullable: true })
+    twilioVerificationSid!: string | null;
 }

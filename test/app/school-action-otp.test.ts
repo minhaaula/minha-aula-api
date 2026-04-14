@@ -9,6 +9,7 @@ import type {
     SendWhatsAppInput,
     WhatsAppProviderPort
 } from '../../src/ports/providers/whatsapp-provider.port';
+import type { TwilioVerifyPort } from '../../src/ports/providers/twilio-verify.port';
 import type { SchoolActionOtpRepository } from '../../src/ports/repositories/school-action-otp.repo';
 import type { SchoolRepository } from '../../src/ports/repositories/school.repo';
 import { Uuid } from '../../src/shared/uuid';
@@ -93,6 +94,35 @@ describe('School action OTP', () => {
         );
     });
 
+    it('requests OTP via Twilio Verify (WhatsApp) when verify port is configured', async () => {
+        const schools = new InMemorySchoolRepository();
+        const otps = new InMemorySchoolActionOtpRepository();
+        const fakeVerify: TwilioVerifyPort = {
+            async sendVerification() {
+                return { verificationSid: 'VEaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', validUntil: null };
+            },
+            async checkVerification() {
+                return true;
+            }
+        };
+        const school = School.create({
+            id: Uuid(),
+            name: 'Escola Verify',
+            email: 'verify@escola.com',
+            phone: '11999999999',
+            cnpj: '12345678000190'
+        });
+        schools.seed(school);
+
+        const useCase = new RequestSchoolActionOtp(schools, otps, undefined, undefined, fakeVerify);
+        const result = await useCase.exec({ schoolId: school.id, purpose: 'WITHDRAWAL' });
+
+        expect(result.challengeId).toBeTruthy();
+        const saved = await otps.findById(result.challengeId);
+        expect(saved?.twilioVerificationSid).toBe('VEaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');
+        expect(saved?.code).toBe('000000');
+    });
+
     it('verifies and consumes an OTP for a sensitive action', async () => {
         const otps = new InMemorySchoolActionOtpRepository();
         const otp = SchoolActionOtp.create({
@@ -124,5 +154,36 @@ describe('School action OTP', () => {
 
         const updated = await otps.findById(otp.id);
         expect(updated?.consumedAt).not.toBeNull();
+    });
+
+    it('validates Twilio Verify challenges via checkVerification', async () => {
+        const otps = new InMemorySchoolActionOtpRepository();
+        const fakeVerify: TwilioVerifyPort = {
+            async sendVerification() {
+                return { verificationSid: 'VEaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', validUntil: null };
+            },
+            async checkVerification(_phone, code) {
+                return code === '654321';
+            }
+        };
+        const otp = SchoolActionOtp.create({
+            id: Uuid(),
+            schoolId: 'school-1',
+            purpose: 'BANK_ACCOUNT_CHANGE',
+            code: '000000',
+            phone: '11999999999',
+            expiresAt: new Date(Date.now() + 60_000),
+            twilioVerificationSid: 'VEaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+        });
+        await otps.save(otp);
+
+        const verify = new VerifySchoolActionOtp(otps, fakeVerify);
+        const verified = await verify.exec({
+            schoolId: 'school-1',
+            challengeId: otp.id,
+            code: '654321'
+        });
+
+        expect(verified.verified).toBe(true);
     });
 });
