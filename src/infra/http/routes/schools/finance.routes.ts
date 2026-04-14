@@ -56,7 +56,8 @@ const formatDate = (date: Date) => date.toISOString().split('T')[0];
 
 const requestWithdrawalSchema = z.object({
     amount: z.number().positive('O valor deve ser maior que zero'),
-    bankAccountId: z.string().uuid('ID da conta bancária inválido')
+    bankAccountId: z.string().uuid('ID da conta bancária inválido'),
+    otpChallengeId: z.string().uuid('OTP challenge inválido')
 });
 
 type FinanceRoutesDeps = {
@@ -214,7 +215,8 @@ export function buildFinanceRoutes(deps: FinanceRoutesDeps, guards: SchoolRouteG
             const result = await deps.requestSchoolWithdrawal!.exec({
                 schoolId,
                 amount: body.amount,
-                bankAccountId: body.bankAccountId
+                bankAccountId: body.bankAccountId,
+                otpChallengeId: body.otpChallengeId
             });
 
             res.status(201).json({

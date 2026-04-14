@@ -2,6 +2,7 @@ import { SchoolBankAccountRepository } from '../../ports/repositories/school-ban
 import { SchoolBankAccount } from '../../domain/entities/school-bank-account';
 import { SchoolRepository } from '../../ports/repositories/school.repo';
 import { Uuid } from '../../shared/uuid';
+import { ConsumeSchoolActionOtp } from './consume-school-action-otp';
 
 type BankAccountView = {
     id: string;
@@ -23,7 +24,8 @@ type BankAccountView = {
 export class CreateSchoolBankAccount {
     constructor(
         private readonly schools: SchoolRepository,
-        private readonly bankAccounts: SchoolBankAccountRepository
+        private readonly bankAccounts: SchoolBankAccountRepository,
+        private readonly otp?: ConsumeSchoolActionOtp
     ) {}
 
     async exec(input: {
@@ -37,16 +39,28 @@ export class CreateSchoolBankAccount {
         bankAccountType: 'CORRENTE' | 'POUPANCA';
         bankAccountHolderDocument: string;
         pixKey?: string;
+        otpChallengeId: string;
     }): Promise<BankAccountView> {
         const schoolId = input.schoolId.trim();
         if (!schoolId) {
             throw new Error('School id is required');
         }
 
+        const otpChallengeId = input.otpChallengeId.trim();
+        if (!otpChallengeId) {
+            throw new Error('OTP challenge id is required');
+        }
+
         const school = await this.schools.findById(schoolId);
         if (!school) {
             throw new Error('School not found');
         }
+
+        await this.otp?.exec({
+            schoolId,
+            challengeId: otpChallengeId,
+            purpose: 'BANK_ACCOUNT_CHANGE'
+        });
 
         const account = SchoolBankAccount.create({
             id: Uuid(),
@@ -82,4 +96,3 @@ export class CreateSchoolBankAccount {
         };
     }
 }
-

@@ -42,6 +42,8 @@ export class UpdateSchool {
         const ownerName = input.ownerName !== undefined ? input.ownerName : school.ownerName;
         const ownerCpf = input.ownerCpf !== undefined ? input.ownerCpf : school.ownerCpf;
         const ownerEmail = input.ownerEmail !== undefined ? input.ownerEmail : school.ownerEmail;
+        const ownerWhatsapp =
+            input.ownerWhatsapp !== undefined ? input.ownerWhatsapp : school.ownerWhatsapp;
         let ownerUserId = input.ownerUserId !== undefined ? input.ownerUserId : school.ownerUserId;
 
         let ownerPasswordHash = school.ownerPasswordHash;
@@ -86,6 +88,7 @@ export class UpdateSchool {
             ownerName,
             ownerCpf,
             ownerEmail,
+            ownerWhatsapp,
             ownerPasswordHash,
             createdAt: school.createdAt,
             accountId: school.accountId,
@@ -113,6 +116,7 @@ export class UpdateSchool {
             ownerName: updated.ownerName,
             ownerCpf: updated.ownerCpf,
             ownerEmail: updated.ownerEmail,
+            ownerWhatsapp: updated.ownerWhatsapp,
             incomeValue: updated.incomeValue,
             links: {
                 facebook: updated.facebookLink,

@@ -36,6 +36,9 @@ export class SchoolOrm {
     @Column('varchar', { length: 191, name: 'owner_email', nullable: true })
     ownerEmail!: string | null;
 
+    @Column('varchar', { length: 32, name: 'owner_whatsapp', nullable: true })
+    ownerWhatsapp!: string | null;
+
     @Column('varchar', { length: 255, name: 'owner_password_hash', nullable: true })
     ownerPasswordHash!: string | null;
 

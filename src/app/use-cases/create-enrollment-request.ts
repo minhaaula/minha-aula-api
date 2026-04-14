@@ -84,7 +84,7 @@ export class CreateEnrollmentRequest {
         await this.requests.save(request);
 
         if (input.initiatedBySchool && this.notifyStudent && this.outbox) {
-            this.notifyEnrollmentRequestFromSchool(request).catch(() => {});
+            await this.notifyEnrollmentRequestFromSchool(request).catch(() => {});
         }
 
         return request;
@@ -133,6 +133,21 @@ export class CreateEnrollmentRequest {
                 courseName: course.name,
                 className: courseClass.label,
                 loginUrl
+            }
+        });
+
+        const cursoLabel = `${course.name} — ${courseClass.label}`.trim();
+        await this.outbox.enqueue({
+            type: 'whatsapp_notification',
+            aggregateId: request.id,
+            payload: {
+                userIds: [request.requestedForUserId],
+                solicitacaoMatricula: {
+                    nome: user.fullName.trim(),
+                    escola: school.name.trim(),
+                    curso: cursoLabel,
+                    aluno: studentName.trim()
+                }
             }
         });
     }

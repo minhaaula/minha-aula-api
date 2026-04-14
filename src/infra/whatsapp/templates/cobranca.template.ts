@@ -28,6 +28,26 @@ function getTypeLabel(type: CobrancaWhatsAppTemplateData['type']): string {
 /**
  * Gera o corpo da mensagem WhatsApp para notificação de cobrança (somente PIX copia e cola).
  */
+/**
+ * Variáveis para templates Twilio Content (placeholders {{1}} … {{6}}).
+ * Ajuste a ordem no template aprovado no Twilio para corresponder a estes índices,
+ * ou use TWILIO_COBRANCA_CONTENT_USE_FULL_BODY no worker para enviar só {{1}} com o texto completo.
+ */
+export function getCobrancaTwilioContentVariables(data: CobrancaWhatsAppTemplateData): Record<string, string> {
+    const pixCode = toPlainCode(data.pixCopiaECola);
+    const typeLabel = getTypeLabel(data.type);
+    return {
+        '1': data.studentName?.trim() || 'Cliente',
+        '2': data.amount?.trim() || '',
+        '3': data.dueDate?.trim() || '',
+        '4': data.description?.trim() || '',
+        '5': pixCode || '-',
+        '6': (data.boletoUrl ?? '').trim() || '-',
+        '7': data.courseName?.trim() || '-',
+        '8': typeLabel
+    };
+}
+
 export function getCobrancaWhatsAppBody(data: CobrancaWhatsAppTemplateData): string {
     const greeting = data.studentName ? `Olá ${data.studentName}!` : 'Olá!';
     const typeLabel = getTypeLabel(data.type);

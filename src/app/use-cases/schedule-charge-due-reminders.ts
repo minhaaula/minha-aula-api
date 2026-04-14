@@ -6,6 +6,7 @@ import type { UserRepository } from '../../ports/repositories/user.repo';
 import type { SchoolRepository } from '../../ports/repositories/school.repo';
 import type { CourseRepository } from '../../ports/repositories/course.repo';
 import type { NotifyStudentUser } from './notify-student-user';
+import { classifyMensalidadeReminderKind } from '../../shared/mensalidade-reminder-kind';
 
 const OPEN_CHARGE_STATUSES = ['PENDING_SYNC', 'OPEN', 'OVERDUE'] as const;
 const DUE_REMINDER_DAYS = 10;
@@ -118,7 +119,8 @@ export class ScheduleChargeDueReminders {
                                     type: chargeType,
                                     courseName: courseName ?? undefined,
                                     pixCopiaECola: chargeCode,
-                                    boletoUrl: charge.asaasInvoiceUrl ?? null
+                                    boletoUrl: charge.asaasInvoiceUrl ?? null,
+                                    chargeReminderKind: classifyMensalidadeReminderKind(charge.dueDate, today)
                                 }
                             }
                         });
@@ -195,7 +197,8 @@ export class ScheduleChargeDueReminders {
                                 description: invoice.description || 'Assinatura plano',
                                 type: 'plan',
                                 pixCopiaECola: invoiceCode,
-                                boletoUrl: invoice.boletoUrl ?? null
+                                boletoUrl: invoice.boletoUrl ?? null,
+                                chargeReminderKind: classifyMensalidadeReminderKind(invoice.dueDate, today)
                             }
                         }
                     });

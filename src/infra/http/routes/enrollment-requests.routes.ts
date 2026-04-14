@@ -297,6 +297,10 @@ export function enrollmentRequestsRouter(deps: {
                 });
             }
 
+            /** Escola/ADMIN criando para o aluno → notificações (e-mail/WhatsApp) de “pedido da escola”; STUDENT solicitando para si → não. */
+            const initiatedBySchool =
+                persona === UserPersonaEnum.SCHOOL || persona === UserPersonaEnum.ADMIN;
+
             const request = await deps.createEnrollmentRequest.exec({
                 schoolId,
                 courseClassId: classId,
@@ -308,7 +312,7 @@ export function enrollmentRequestsRouter(deps: {
                 enrollmentFeeAmount: data.enrollmentFeeAmount ?? null,
                 enrollmentFeeDueDate: data.enrollmentFeeDueDate ?? null,
                 firstMonthlyPaymentDate: data.firstMonthlyPaymentDate,
-                initiatedBySchool: true
+                initiatedBySchool
             });
             res.status(201).json(serializeEnrollmentRequest(request));
         } catch (err) {
@@ -379,7 +383,8 @@ export function enrollmentRequestsRouter(deps: {
                 discountMonths: data.discountMonths ?? null,
                 enrollmentFeeAmount: data.enrollmentFeeAmount ?? null,
                 enrollmentFeeDueDate: data.enrollmentFeeDueDate ?? null,
-                firstMonthlyPaymentDate: data.firstMonthlyPaymentDate
+                firstMonthlyPaymentDate: data.firstMonthlyPaymentDate,
+                initiatedBySchool: true
             });
 
             res.status(201).json(serializeEnrollmentRequest(request));

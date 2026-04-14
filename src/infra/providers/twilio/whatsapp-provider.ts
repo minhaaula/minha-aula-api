@@ -1,4 +1,8 @@
-import type { WhatsAppProviderPort, SendWhatsAppInput } from '../../../ports/providers/whatsapp-provider.port';
+import type {
+    SendWhatsAppContentTemplateInput,
+    WhatsAppProviderPort,
+    SendWhatsAppInput
+} from '../../../ports/providers/whatsapp-provider.port';
 import { toE164Brazil } from '../../../shared/phone-e164';
 import { log } from '../../../shared/logger';
 import { sanitizeForLogging } from '../../../shared/log-sanitizer';
@@ -68,6 +72,34 @@ export class TwilioWhatsAppProvider implements WhatsAppProviderPort {
             }
         } catch (error: unknown) {
             log.error('[Twilio WhatsApp] Erro ao enviar', sanitizeForLogging({ to: e164, error }));
+            throw error;
+        }
+    }
+
+    async sendContentTemplate(input: SendWhatsAppContentTemplateInput): Promise<void> {
+        const contentSid = input.contentSid?.trim();
+        if (!contentSid) {
+            throw new Error('WhatsApp content template requires contentSid');
+        }
+        const e164 = toE164Brazil(input.to);
+        if (!e164) {
+            throw new Error('WhatsApp "to" must be a valid Brazilian phone number');
+        }
+        const to = e164.startsWith('whatsapp:') ? e164 : `whatsapp:${e164}`;
+        const contentVariables =
+            input.contentVariables && Object.keys(input.contentVariables).length > 0
+                ? JSON.stringify(input.contentVariables)
+                : undefined;
+        try {
+            await this.client.messages.create({
+                from: this.from,
+                to,
+                contentSid,
+                ...(contentVariables ? { contentVariables } : {})
+            });
+            log.info('[Twilio WhatsApp] Template Content enviado', sanitizeForLogging({ to: e164, contentSid }));
+        } catch (error: unknown) {
+            log.error('[Twilio WhatsApp] Erro ao enviar template', sanitizeForLogging({ to: e164, contentSid, error }));
             throw error;
         }
     }

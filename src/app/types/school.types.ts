@@ -15,6 +15,8 @@ export interface CreateSchoolInput {
     ownerName?: string | null;
     ownerCpf?: string | null;
     ownerEmail?: string | null;
+    /** Celular WhatsApp do responsável (somente dígitos). */
+    ownerWhatsapp?: string | null;
     ownerPassword?: string | null;
 }
 
@@ -30,6 +32,7 @@ export interface CreateSchoolOutput {
     ownerName: string | null;
     ownerCpf: string | null;
     ownerEmail: string | null;
+    ownerWhatsapp: string | null;
     incomeValue: number;
     kycUrl?: string | null;
 }
@@ -44,6 +47,7 @@ export interface UpdateSchoolInput {
     ownerName?: string | null;
     ownerCpf?: string | null;
     ownerEmail?: string | null;
+    ownerWhatsapp?: string | null;
     ownerUserId?: string | null;
     ownerPassword?: string | null;
     incomeValue?: number;
@@ -68,6 +72,7 @@ export interface UpdateSchoolOutput {
     ownerName: string | null;
     ownerCpf: string | null;
     ownerEmail: string | null;
+    ownerWhatsapp: string | null;
     incomeValue: number;
     links: {
         facebook: string | null;
@@ -115,6 +120,7 @@ export interface GetSchoolProfileOutput {
     ownerName: string | null;
     ownerCpf: string | null;
     ownerEmail: string | null;
+    ownerWhatsapp: string | null;
     incomeValue: number;
     bankAccounts: BankAccountOutput[];
     links: {
@@ -138,5 +144,14 @@ export interface GetSchoolProfileOutput {
     onboardingUrl?: string | null;
     /** True se a escola já tiver ao menos um pagamento concluído (invoice PAID). */
     hasCompletedFirstPayment: boolean;
+}
+
+/**
+ * SID do template Twilio Content (WhatsApp) para envio de OTP.
+ * Variáveis de ambiente: `TWILIO_CONTENT_SID_MESSAGE_OPT_IN` ou `TWILIO_WHATSAPP_MESSAGE_OPT_IN_CONTENT_SID`.
+ * O template deve expor pelo menos o placeholder {{1}} com o texto do OTP gerado pela API.
+ */
+export interface SchoolActionOtpWhatsAppTemplateConfig {
+    contentSid: string;
 }
 

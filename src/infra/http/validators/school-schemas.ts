@@ -18,6 +18,7 @@ export const createSchoolSchema = z.object({
     ownerName: z.string().trim().min(3),
     ownerCpf: cpfNumberSchema(),
     ownerEmail: z.string().trim().email(),
+    ownerWhatsapp: phoneNumberSchema().optional(),
     ownerPassword: z.string().min(8),
     addresses: z.array(addressSchema).optional()
 });
@@ -30,6 +31,7 @@ export const updateSchoolSchema = z.object({
     ownerName: z.string().trim().min(3).nullable().optional(),
     ownerCpf: cpfNumberSchema().nullable().optional(),
     ownerEmail: z.string().trim().email().nullable().optional(),
+    ownerWhatsapp: z.union([z.null(), phoneNumberSchema()]).optional(),
     ownerUserId: z.string().trim().min(1).nullable().optional(),
     ownerPassword: z.string().min(8).nullable().optional(),
     incomeValue: z.number().int().positive().optional(),

@@ -121,6 +121,7 @@ export class SchoolRepositoryAdapter implements SchoolRepository {
             ownerName: row.ownerName ?? null,
             ownerCpf: row.ownerCpf ?? null,
             ownerEmail: row.ownerEmail ?? null,
+            ownerWhatsapp: row.ownerWhatsapp ?? null,
             ownerPasswordHash: row.ownerPasswordHash ?? null,
             accountId: row.accountId ?? null,
             accountApiKey: row.accountApiKey ?? null,
@@ -155,6 +156,7 @@ export class SchoolRepositoryAdapter implements SchoolRepository {
         row.ownerName = school.ownerName;
         row.ownerCpf = school.ownerCpf;
         row.ownerEmail = school.ownerEmail;
+        row.ownerWhatsapp = school.ownerWhatsapp;
         row.ownerPasswordHash = school.ownerPasswordHash;
         row.accountId = school.accountId;
         row.accountApiKey = school.accountApiKey;

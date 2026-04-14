@@ -14,6 +14,8 @@ export class School {
         private readonly _ownerName: string | null,
         private readonly _ownerCpf: string | null,
         private readonly _ownerEmail: Email | null,
+        /** Celular WhatsApp do responsável (somente dígitos, mesmo formato de `phone`). */
+        private readonly _ownerWhatsapp: string | null,
         private readonly _ownerPasswordHash: string | null,
         private readonly _accountId: string | null,
         private readonly _accountApiKey: string | null,
@@ -40,6 +42,7 @@ export class School {
         ownerName?: string | null;
         ownerCpf?: string | null;
         ownerEmail?: string | null;
+        ownerWhatsapp?: string | null;
         ownerPasswordHash?: string | null;
         accountId?: string | null;
         accountApiKey?: string | null;
@@ -72,6 +75,7 @@ export class School {
         const ownerName = School.normalizeOwnerName(params.ownerName);
         const ownerCpf = School.normalizeOwnerCpf(params.ownerCpf);
         const ownerEmail = School.normalizeOwnerEmail(params.ownerEmail);
+        const ownerWhatsapp = School.normalizeOwnerWhatsapp(params.ownerWhatsapp);
         const ownerPasswordHash = School.normalizeOwnerPasswordHash(params.ownerPasswordHash);
         const accountId = School.normalizeAccountId(params.accountId);
         const accountApiKey = School.normalizeAccountApiKey(params.accountApiKey);
@@ -97,6 +101,7 @@ export class School {
             ownerName,
             ownerCpf,
             ownerEmail,
+            ownerWhatsapp,
             ownerPasswordHash,
             accountId,
             accountApiKey,
@@ -142,6 +147,10 @@ export class School {
 
     get ownerEmail(): string | null {
         return this._ownerEmail ? this._ownerEmail.value : null;
+    }
+
+    get ownerWhatsapp(): string | null {
+        return this._ownerWhatsapp;
     }
 
     get ownerPasswordHash(): string | null {
@@ -240,6 +249,19 @@ export class School {
         return Email.create(value);
     }
 
+    private static normalizeOwnerWhatsapp(value: unknown): string | null {
+        if (value === undefined || value === null) return null;
+        if (typeof value !== 'string') {
+            throw new Error('School owner WhatsApp must be a string');
+        }
+        const digits = value.replace(/\D/g, '');
+        if (digits.length === 0) return null;
+        if (digits.length < 10 || digits.length > 15) {
+            throw new Error('Invalid school owner WhatsApp');
+        }
+        return digits;
+    }
+
     private static normalizeOwnerPasswordHash(value: unknown): string | null {
         if (value === undefined || value === null) return null;
         if (typeof value !== 'string') {
@@ -323,6 +345,7 @@ export class School {
             ownerName: this.ownerName,
             ownerCpf: this.ownerCpf,
             ownerEmail: this.ownerEmail,
+            ownerWhatsapp: this.ownerWhatsapp,
             ownerPasswordHash: this.ownerPasswordHash,
             createdAt: this.createdAt,
             accountId: normalized,
@@ -352,6 +375,7 @@ export class School {
             ownerName: this.ownerName,
             ownerCpf: this.ownerCpf,
             ownerEmail: this.ownerEmail,
+            ownerWhatsapp: this.ownerWhatsapp,
             ownerPasswordHash: this.ownerPasswordHash,
             createdAt: this.createdAt,
             accountId: this._accountId,
@@ -381,6 +405,7 @@ export class School {
             ownerName: this.ownerName,
             ownerCpf: this.ownerCpf,
             ownerEmail: this.ownerEmail,
+            ownerWhatsapp: this.ownerWhatsapp,
             ownerPasswordHash: this.ownerPasswordHash,
             createdAt: this.createdAt,
             accountId: this._accountId,
@@ -410,6 +435,7 @@ export class School {
             ownerName: this.ownerName,
             ownerCpf: this.ownerCpf,
             ownerEmail: this.ownerEmail,
+            ownerWhatsapp: this.ownerWhatsapp,
             ownerPasswordHash: this.ownerPasswordHash,
             createdAt: this.createdAt,
             accountId: this._accountId,
@@ -438,6 +464,7 @@ export class School {
             ownerName: this.ownerName,
             ownerCpf: this.ownerCpf,
             ownerEmail: this.ownerEmail,
+            ownerWhatsapp: this.ownerWhatsapp,
             ownerPasswordHash: this.ownerPasswordHash,
             createdAt: this.createdAt,
             accountId: this._accountId,

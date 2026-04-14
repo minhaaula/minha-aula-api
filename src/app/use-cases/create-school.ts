@@ -115,6 +115,7 @@ export class CreateSchool {
             ownerName: input.ownerName ?? null,
             ownerCpf: input.ownerCpf ?? null,
             ownerEmail: input.ownerEmail ?? null,
+            ownerWhatsapp: input.ownerWhatsapp ?? null,
             ownerPasswordHash,
             incomeValue: input.incomeValue
         });
@@ -153,6 +154,7 @@ export class CreateSchool {
             ownerName: school.ownerName,
             ownerCpf: school.ownerCpf,
             ownerEmail: school.ownerEmail,
+            ownerWhatsapp: school.ownerWhatsapp,
             incomeValue: school.incomeValue,
             kycUrl: null
         };

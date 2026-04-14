@@ -1255,7 +1255,8 @@ paths:
       description: |
         Solicita um saque do valor disponível na conta Asaas da escola para uma conta bancária pessoal cadastrada.
         O saque será processado usando a API key da conta Asaas da escola.
-        Requer persona SCHOOL e que a escola tenha conta Asaas configurada com API key.
+        Requer persona SCHOOL, que a escola tenha conta Asaas configurada com API key e um OTP previamente validado
+        em `/schools/security/otp/verify` para a finalidade `WITHDRAWAL`.
       security:
         - bearerAuth: []
       requestBody:
@@ -1267,6 +1268,7 @@ paths:
                 required:
                   - amount
                   - bankAccountId
+                  - otpChallengeId
                 properties:
                   amount:
                     type: number
@@ -1276,6 +1278,10 @@ paths:
                     type: string
                     format: uuid
                     description: ID da conta bancária cadastrada para receber o saque
+                  otpChallengeId:
+                    type: string
+                    format: uuid
+                    description: ID do desafio OTP já validado para confirmar o saque
       responses:
         '201':
           description: Solicitação de saque criada com sucesso.
@@ -2821,7 +2827,9 @@ paths:
       tags:
         - Schools
       summary: Criar uma nova conta bancária
-      description: Adiciona uma nova conta bancária para a escola autenticada.
+      description: |
+        Adiciona uma nova conta bancária para a escola autenticada.
+        Requer um OTP previamente validado em `/schools/security/otp/verify` para a finalidade `BANK_ACCOUNT_CHANGE`.
       security:
         - bearerAuth: []
       requestBody:
@@ -2860,7 +2868,9 @@ paths:
       tags:
         - Schools
       summary: Atualizar uma conta bancária
-      description: Atualiza os dados de uma conta bancária existente da escola autenticada.
+      description: |
+        Atualiza os dados de uma conta bancária existente da escola autenticada.
+        Requer um OTP previamente validado em `/schools/security/otp/verify` para a finalidade `BANK_ACCOUNT_CHANGE`.
       security:
         - bearerAuth: []
       parameters:
@@ -2906,7 +2916,9 @@ paths:
       tags:
         - Schools
       summary: Deletar uma conta bancária
-      description: Remove uma conta bancária da escola autenticada.
+      description: |
+        Remove uma conta bancária da escola autenticada.
+        Requer um OTP previamente validado em `/schools/security/otp/verify` para a finalidade `BANK_ACCOUNT_CHANGE`.
       security:
         - bearerAuth: []
       parameters:
@@ -2917,6 +2929,19 @@ paths:
             type: string
             format: uuid
           description: ID da conta bancária a ser removida
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - otpChallengeId
+              properties:
+                otpChallengeId:
+                  type: string
+                  format: uuid
+                  description: ID do desafio OTP já validado para confirmar a exclusão da conta bancária
       responses:
         '204':
           description: Conta bancária removida com sucesso.
@@ -2934,6 +2959,139 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '501':
           description: Funcionalidade de contas bancárias não configurada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /schools/security/otp/request:
+    post:
+      tags:
+        - Schools
+        - Security
+      summary: Solicitar OTP para ação sensível da escola
+      description: |
+        Gera e envia um código OTP via WhatsApp para o telefone cadastrado da escola.
+        Esse código deve ser validado antes de operações sensíveis, como saque e alteração de conta bancária.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - purpose
+              properties:
+                purpose:
+                  type: string
+                  enum:
+                    - WITHDRAWAL
+                    - BANK_ACCOUNT_CHANGE
+                  description: Finalidade do OTP que será enviado
+      responses:
+        '201':
+          description: OTP solicitado com sucesso.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  challengeId:
+                    type: string
+                    format: uuid
+                  purpose:
+                    type: string
+                    enum:
+                      - WITHDRAWAL
+                      - BANK_ACCOUNT_CHANGE
+                  expiresAt:
+                    type: string
+                    format: date-time
+                required:
+                  - challengeId
+                  - purpose
+                  - expiresAt
+        '400':
+          description: Dados inválidos ou escola sem telefone configurado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado ou sem contexto de escola.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Erro ao enviar OTP.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /schools/security/otp/verify:
+    post:
+      tags:
+        - Schools
+        - Security
+      summary: Validar OTP para ação sensível da escola
+      description: |
+        Valida o código OTP recebido via WhatsApp e habilita o uso do `challengeId`
+        em uma única operação sensível compatível com a finalidade do desafio.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - challengeId
+                - code
+              properties:
+                challengeId:
+                  type: string
+                  format: uuid
+                code:
+                  type: string
+                  pattern: '^\d{4,8}$'
+                  description: Código OTP recebido pela escola
+      responses:
+        '200':
+          description: OTP validado com sucesso.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  challengeId:
+                    type: string
+                    format: uuid
+                  purpose:
+                    type: string
+                    enum:
+                      - WITHDRAWAL
+                      - BANK_ACCOUNT_CHANGE
+                  verified:
+                    type: boolean
+                  verifiedAt:
+                    type: string
+                    format: date-time
+                required:
+                  - challengeId
+                  - purpose
+                  - verified
+                  - verifiedAt
+        '400':
+          description: OTP inválido, expirado, já utilizado ou com limite de tentativas excedido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado ou sem contexto de escola.
           content:
             application/json:
               schema:

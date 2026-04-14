@@ -2806,6 +2806,11 @@ components:
         id:
           type: string
           format: uuid
+        bankCode:
+          type: integer
+          nullable: true
+          description: Código do banco
+          example: 1
         bankName:
           type: string
           description: Nome do banco
@@ -2815,11 +2820,23 @@ components:
           maxLength: 20
           description: Número da agência bancária
           example: '1234'
+        bankAgencyDigit:
+          type: string
+          nullable: true
+          maxLength: 2
+          description: Dígito da agência
+          example: '5'
         bankAccount:
           type: string
           maxLength: 20
           description: Número da conta bancária
           example: '123456'
+        bankAccountDigit:
+          type: string
+          nullable: true
+          maxLength: 2
+          description: Dígito da conta
+          example: '9'
         bankAccountType:
           type: string
           enum:
@@ -2831,6 +2848,11 @@ components:
           type: string
           description: CPF ou CNPJ do titular da conta
           example: '12345678000190'
+        pixKey:
+          type: string
+          nullable: true
+          description: Chave PIX vinculada à conta
+          example: financeiro@escola.com
         isActive:
           type: boolean
           description: Indica se a conta está ativa
@@ -2859,24 +2881,44 @@ components:
         - bankAccount
         - bankAccountType
         - bankAccountHolderDocument
+        - otpChallengeId
       properties:
         bankName:
           type: string
           minLength: 1
           description: Nome do banco
           example: Banco do Brasil
+        banco:
+          type: integer
+          format: int32
+          minimum: 1
+          nullable: true
+          description: Código do banco
+          example: 1
         bankAgency:
           type: string
           minLength: 1
           maxLength: 20
           description: Número da agência bancária (apenas dígitos)
           example: '1234'
+        digitoAgencia:
+          type: string
+          maxLength: 2
+          nullable: true
+          description: Dígito da agência
+          example: '5'
         bankAccount:
           type: string
           minLength: 1
           maxLength: 20
           description: Número da conta bancária (apenas dígitos)
           example: '123456'
+        digitoConta:
+          type: string
+          maxLength: 2
+          nullable: true
+          description: Dígito da conta
+          example: '9'
         bankAccountType:
           type: string
           enum:
@@ -2888,6 +2930,16 @@ components:
           type: string
           description: CPF (11 dígitos) ou CNPJ (14 dígitos) do titular da conta
           example: '12345678000190'
+        PIX:
+          type: string
+          nullable: true
+          maxLength: 191
+          description: Chave PIX vinculada à conta
+          example: financeiro@escola.com
+        otpChallengeId:
+          type: string
+          format: uuid
+          description: ID do desafio OTP já validado para esta alteração bancária
     UpdateBankAccountInput:
       type: object
       properties:
@@ -2896,18 +2948,37 @@ components:
           minLength: 1
           description: Nome do banco
           example: Banco do Brasil
+        banco:
+          type: integer
+          format: int32
+          minimum: 1
+          nullable: true
+          description: Código do banco
+          example: 237
         bankAgency:
           type: string
           minLength: 1
           maxLength: 20
           description: Número da agência bancária (apenas dígitos)
           example: '1234'
+        digitoAgencia:
+          type: string
+          maxLength: 2
+          nullable: true
+          description: Dígito da agência
+          example: 'X'
         bankAccount:
           type: string
           minLength: 1
           maxLength: 20
           description: Número da conta bancária (apenas dígitos)
           example: '123456'
+        digitoConta:
+          type: string
+          maxLength: 2
+          nullable: true
+          description: Dígito da conta
+          example: 'Y'
         bankAccountType:
           type: string
           enum:
@@ -2919,10 +2990,20 @@ components:
           type: string
           description: CPF (11 dígitos) ou CNPJ (14 dígitos) do titular da conta
           example: '12345678000190'
+        PIX:
+          type: string
+          nullable: true
+          maxLength: 191
+          description: Chave PIX vinculada à conta
+          example: financeiro@escola.com
         isActive:
           type: boolean
           description: Indica se a conta está ativa
           example: true
+        otpChallengeId:
+          type: string
+          format: uuid
+          description: ID do desafio OTP já validado para esta alteração bancária
     BankAccountListResponse:
       type: object
       properties:

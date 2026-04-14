@@ -63,6 +63,9 @@ import { buildImagesRoutes } from './schools/images.routes';
 import { z } from 'zod';
 import { asyncHandler } from '../utils/async-handler';
 import { AuthenticatedRequest } from '../middlewares/auth';
+import type { RequestSchoolActionOtp } from '../../../app/use-cases/request-school-action-otp';
+import type { VerifySchoolActionOtp } from '../../../app/use-cases/verify-school-action-otp';
+import { buildSecurityRoutes } from './schools/security.routes';
 
 export type SchoolsRouterDeps = {
     createSchool: CreateSchool;
@@ -124,6 +127,8 @@ export type SchoolsRouterDeps = {
     getSchoolPendingDocuments?: import('../../../app/use-cases/get-school-pending-documents').GetSchoolPendingDocuments;
     syncSchoolOnboardingDocuments?: import('../../../app/use-cases/sync-school-onboarding-documents').SyncSchoolOnboardingDocuments;
     uploadSchoolOnboardingDocument?: import('../../../app/use-cases/admin-upload-school-onboarding-document').AdminUploadSchoolOnboardingDocument;
+    requestSchoolActionOtp?: RequestSchoolActionOtp;
+    verifySchoolActionOtp?: VerifySchoolActionOtp;
 };
 
 export function schoolsRouter(deps: SchoolsRouterDeps) {
@@ -229,6 +234,13 @@ export function schoolsRouter(deps: SchoolsRouterDeps) {
         router.use('/notifications', buildNotificationsRoutes({
             listSchoolNotifications: deps.listSchoolNotifications,
             sendClassPushNotification: deps.sendClassPushNotification
+        }, guards));
+    }
+
+    if (deps.requestSchoolActionOtp || deps.verifySchoolActionOtp) {
+        router.use('/security', buildSecurityRoutes({
+            requestSchoolActionOtp: deps.requestSchoolActionOtp,
+            verifySchoolActionOtp: deps.verifySchoolActionOtp
         }, guards));
     }
 

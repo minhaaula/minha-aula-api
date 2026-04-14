@@ -6,11 +6,13 @@ import { Money } from '../../domain/value-objects/money';
 import { Uuid } from '../../shared/uuid';
 import { AppError, ErrorCode } from '../../shared/errors';
 import { log } from '../../shared/logger';
+import { ConsumeSchoolActionOtp } from './consume-school-action-otp';
 
 export interface RequestSchoolWithdrawalInput {
     schoolId: string;
     amount: number; // valor em reais
     bankAccountId: string;
+    otpChallengeId: string;
 }
 
 export interface RequestSchoolWithdrawalOutput {
@@ -24,13 +26,18 @@ export class RequestSchoolWithdrawal {
     constructor(
         private readonly schools: SchoolRepository,
         private readonly bankAccounts: SchoolBankAccountRepository,
-        private readonly withdrawals: SchoolWithdrawalRepository
+        private readonly withdrawals: SchoolWithdrawalRepository,
+        private readonly otp?: ConsumeSchoolActionOtp
     ) {}
 
     async exec(input: RequestSchoolWithdrawalInput): Promise<RequestSchoolWithdrawalOutput> {
         const schoolId = input.schoolId?.trim();
         if (!schoolId) {
             throw AppError.validation('Identificação da escola é obrigatória');
+        }
+
+        if (!input.otpChallengeId?.trim()) {
+            throw AppError.validation('OTP é obrigatório para confirmar o saque');
         }
 
         const amount = input.amount;
@@ -74,6 +81,12 @@ export class RequestSchoolWithdrawal {
         if (!bankAccount.isActive) {
             throw AppError.validation('Conta bancária não está ativa', { bankAccountId: input.bankAccountId });
         }
+
+        await this.otp?.exec({
+            schoolId,
+            challengeId: input.otpChallengeId,
+            purpose: 'WITHDRAWAL'
+        });
 
         const { AsaasProviderFactory } = await import('../../infra/providers/asaas/asaas-provider-factory.js');
         const schoolAsaasProvider = AsaasProviderFactory.createSubAccountProvider(school.accountApiKey);

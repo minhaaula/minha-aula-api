@@ -15,6 +15,18 @@ export interface SendWhatsAppInput {
     mediaUrls?: string[];
 }
 
+/**
+ * Envio via Twilio Content API (template WhatsApp aprovado).
+ * contentSid: HX... no Console Twilio (ex.: template `message_opt_in`).
+ * Chaves de contentVariables devem corresponder aos placeholders do template (ex.: "1" para {{1}}).
+ */
+export interface SendWhatsAppContentTemplateInput {
+    to: string;
+    contentSid: string;
+    contentVariables: Record<string, string>;
+}
+
 export interface WhatsAppProviderPort {
     sendMessage(input: SendWhatsAppInput): Promise<void>;
+    sendContentTemplate(input: SendWhatsAppContentTemplateInput): Promise<void>;
 }

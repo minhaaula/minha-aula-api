@@ -10,7 +10,8 @@ export const createBankAccountSchema = z.object({
     digitoConta: z.string().trim().max(2).optional(),
     bankAccountType: z.enum(['CORRENTE', 'POUPANCA']),
     bankAccountHolderDocument: z.union([cpfNumberSchema(), cnpjNumberSchema()]),
-    PIX: z.string().trim().max(191).optional()
+    PIX: z.string().trim().max(191).optional(),
+    otpChallengeId: z.string().uuid()
 });
 
 export const updateBankAccountSchema = z.object({
@@ -23,6 +24,6 @@ export const updateBankAccountSchema = z.object({
     bankAccountType: z.enum(['CORRENTE', 'POUPANCA']).optional(),
     bankAccountHolderDocument: z.union([cpfNumberSchema(), cnpjNumberSchema()]).optional(),
     PIX: z.string().trim().max(191).optional(),
-    isActive: z.boolean().optional()
+    isActive: z.boolean().optional(),
+    otpChallengeId: z.string().uuid()
 });
-

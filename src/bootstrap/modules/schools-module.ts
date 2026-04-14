@@ -98,6 +98,13 @@ import { GetSchoolBalance } from '../../app/use-cases/get-school-balance';
 import { OutboxRepository } from '../../ports/repositories/outbox.repo';
 import { SendClassPushNotification } from '../../app/use-cases/send-class-push-notification';
 import { NotifyStudentUser } from '../../app/use-cases/notify-student-user';
+import { SchoolActionOtpRepositoryAdapter } from '../../infra/db/typeorm/school-action-otp-repository.adapter';
+import { createTwilioVerifyFromEnv } from '../../infra/providers/twilio/create-twilio-verify-provider';
+import { createWhatsAppProviderFromEnv } from '../../infra/providers/twilio/create-whatsapp-provider';
+import { loadTwilioContentSidsFromEnv } from '../../infra/whatsapp/twilio-content-config';
+import { ConsumeSchoolActionOtp } from '../../app/use-cases/consume-school-action-otp';
+import { RequestSchoolActionOtp } from '../../app/use-cases/request-school-action-otp';
+import { VerifySchoolActionOtp } from '../../app/use-cases/verify-school-action-otp';
 
 export type SchoolsModuleDeps = {
     schoolsRepo: SchoolRepositoryAdapter;
@@ -130,6 +137,21 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         deps.notificationsRepo && deps.outbox
             ? new NotifyStudentUser(deps.notificationsRepo, deps.outbox)
             : undefined;
+    const schoolActionOtpRepo = new SchoolActionOtpRepositoryAdapter();
+    const schoolActionOtpConsumer = new ConsumeSchoolActionOtp(schoolActionOtpRepo);
+    const schoolWhatsAppProvider = createWhatsAppProviderFromEnv();
+    const twilioContentSids = loadTwilioContentSidsFromEnv();
+    const twilioVerify = createTwilioVerifyFromEnv();
+    const requestSchoolActionOtp = new RequestSchoolActionOtp(
+        deps.schoolsRepo,
+        schoolActionOtpRepo,
+        schoolWhatsAppProvider,
+        schoolWhatsAppProvider && twilioContentSids.messageOptIn
+            ? { contentSid: twilioContentSids.messageOptIn }
+            : undefined,
+        twilioVerify
+    );
+    const verifySchoolActionOtp = new VerifySchoolActionOtp(schoolActionOtpRepo, twilioVerify);
 
     // Declarar asaasProvider antes de usar
     const asaasProvider = typeof deps.paymentProvider.createSubAccount === 'function'
@@ -178,13 +200,13 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         ? new ListSchoolBankAccounts(deps.bankAccountsRepo)
         : undefined;
     const createSchoolBankAccount = deps.bankAccountsRepo
-        ? new CreateSchoolBankAccount(deps.schoolsRepo, deps.bankAccountsRepo)
+        ? new CreateSchoolBankAccount(deps.schoolsRepo, deps.bankAccountsRepo, schoolActionOtpConsumer)
         : undefined;
     const updateSchoolBankAccount = deps.bankAccountsRepo
-        ? new UpdateSchoolBankAccount(deps.bankAccountsRepo)
+        ? new UpdateSchoolBankAccount(deps.bankAccountsRepo, schoolActionOtpConsumer)
         : undefined;
     const deleteSchoolBankAccount = deps.bankAccountsRepo
-        ? new DeleteSchoolBankAccount(deps.bankAccountsRepo)
+        ? new DeleteSchoolBankAccount(deps.bankAccountsRepo, schoolActionOtpConsumer)
         : undefined;
     
     const resetTokensRepo = new PasswordResetTokenRepositoryAdapter();
@@ -319,7 +341,7 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
     const listSchoolWithdrawals = new ListSchoolWithdrawals(withdrawalsRepo);
     
     const requestSchoolWithdrawal = deps.bankAccountsRepo
-        ? new RequestSchoolWithdrawal(deps.schoolsRepo, deps.bankAccountsRepo, withdrawalsRepo)
+        ? new RequestSchoolWithdrawal(deps.schoolsRepo, deps.bankAccountsRepo, withdrawalsRepo, schoolActionOtpConsumer)
         : undefined;
     const scheduleClassSession = new ScheduleClassSession(deps.classSessionsRepo, deps.classesRepo, deps.coursesRepo);
     const listClassSessions = new ListClassSessions(deps.classSessionsRepo, deps.classesRepo, deps.coursesRepo);
@@ -442,7 +464,9 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         sendClassPushNotification,
         getSchoolPendingDocuments,
         syncSchoolOnboardingDocuments,
-        uploadSchoolOnboardingDocument
+        uploadSchoolOnboardingDocument,
+        requestSchoolActionOtp,
+        verifySchoolActionOtp
     });
 
     const asaasWebhookRouterInstance = asaasWebhookRouter({
