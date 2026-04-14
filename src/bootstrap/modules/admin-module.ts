@@ -268,6 +268,7 @@ export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext)
         createDiscountCoupon,
         listDiscountCoupons,
         validateDiscountCoupon,
+        schoolsRepo: deps.schoolsRepo,
         resendSchoolAsaasAccount,
         listSchoolStudents,
         listAllStudents,

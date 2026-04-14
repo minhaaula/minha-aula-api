@@ -766,6 +766,211 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /admin/coupons:
+    get:
+      tags:
+        - Admin
+      summary: Listar cupons de desconto (planos SaaS)
+      description: |
+        Lista todos os cupons de desconto cadastrados para faturas de assinatura de plano das escolas.
+        Os cupons são globais (não vinculados a uma escola específica no banco).
+
+        Requer autenticação com persona ADMIN.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Lista retornada com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminListDiscountCouponsResponse'
+        '401':
+          description: Usuário não autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado (requer persona ADMIN).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags:
+        - Admin
+      summary: Criar cupom de desconto
+      description: |
+        Cria um cupom de desconto percentual para uso em faturas de plano de assinatura (escola).
+        O código é normalizado em maiúsculas e deve ser único.
+
+        Requer autenticação com persona ADMIN.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminCreateDiscountCouponInput'
+      responses:
+        '201':
+          description: Cupom criado com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminDiscountCouponItem'
+        '400':
+          description: Validação falhou ou código de cupom já existe.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Usuário não autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado (requer persona ADMIN).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/coupons/validate:
+    post:
+      tags:
+        - Admin
+      summary: Validar cupom de desconto (admin)
+      description: |
+        Verifica se um código de cupom existe e está ativo e dentro da validade.
+        Não exige persona ADMIN; qualquer usuário autenticado pode chamar (útil para testes no painel).
+
+        Requer apenas autenticação (Bearer).
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminValidateDiscountCouponInput'
+      responses:
+        '200':
+          description: Resultado da validação (campo `isValid` e detalhes ou mensagem de erro).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminValidateDiscountCouponOutput'
+        '401':
+          description: Usuário não autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/schools/{schoolId}/plans/coupons:
+    get:
+      tags:
+        - Admin
+      summary: Listar cupons (contexto escola / planos)
+      description: |
+        Mesmo retorno de `GET /admin/coupons`, precedido da verificação de que a escola existe.
+        A listagem continua global (todos os cupons); o `schoolId` na URL apenas contextualiza o fluxo e retorna 404 se a escola não existir.
+
+        Requer autenticação com persona ADMIN.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: schoolId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Identificador da escola
+      responses:
+        '200':
+          description: Lista retornada com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminListDiscountCouponsResponse'
+        '401':
+          description: Usuário não autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado (requer persona ADMIN).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Escola não encontrada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags:
+        - Admin
+      summary: Criar cupom (contexto escola / planos)
+      description: |
+        Mesmo comportamento de `POST /admin/coupons`, com verificação prévia de que a escola existe.
+        O cupom criado é global e pode ser usado em faturas de plano de qualquer escola (desde que o código seja informado na emissão).
+
+        Requer autenticação com persona ADMIN.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: schoolId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Identificador da escola
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminCreateDiscountCouponInput'
+      responses:
+        '201':
+          description: Cupom criado com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminDiscountCouponItem'
+        '400':
+          description: Validação falhou ou código de cupom já existe.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Usuário não autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado (requer persona ADMIN).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Escola não encontrada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /admin/schools/{schoolId}/courses:
     get:
       tags:
@@ -4192,4 +4397,140 @@ components:
         - onboardingUrl
         - success
         - message
+    AdminCreateDiscountCouponInput:
+      type: object
+      required:
+        - code
+        - percentage
+        - validUntil
+        - durationMonths
+      properties:
+        code:
+          type: string
+          minLength: 3
+          maxLength: 50
+          description: Código do cupom (será normalizado em maiúsculas).
+          example: PROMO10
+        percentage:
+          type: number
+          minimum: 1
+          maximum: 100
+          description: Percentual de desconto sobre o valor da fatura.
+        validUntil:
+          type: string
+          format: date-time
+          description: Data/hora limite de validade do cupom (ISO 8601).
+        durationMonths:
+          type: integer
+          minimum: 1
+          description: Quantidade de meses em que o desconto se aplica (ex. geração de faturas recorrentes).
+        isActive:
+          type: boolean
+          description: Se omitido, assume `true`.
+    AdminDiscountCouponItem:
+      type: object
+      description: Cupom recém-criado ou detalhe básico.
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+        percentage:
+          type: number
+        validUntil:
+          type: string
+          format: date-time
+        durationMonths:
+          type: integer
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - code
+        - percentage
+        - validUntil
+        - durationMonths
+        - isActive
+        - createdAt
+    AdminDiscountCouponSummary:
+      type: object
+      description: Item na listagem de cupons.
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+        percentage:
+          type: number
+        validUntil:
+          type: string
+          format: date-time
+        durationMonths:
+          type: integer
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        isValid:
+          type: boolean
+          description: Se o cupom está utilizável no momento (ativo, não expirado, não excluído).
+      required:
+        - id
+        - code
+        - percentage
+        - validUntil
+        - durationMonths
+        - isActive
+        - createdAt
+        - isValid
+    AdminListDiscountCouponsResponse:
+      type: object
+      properties:
+        coupons:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminDiscountCouponSummary'
+      required:
+        - coupons
+    AdminValidateDiscountCouponInput:
+      type: object
+      required:
+        - code
+      properties:
+        code:
+          type: string
+          description: Código do cupom a validar.
+    AdminValidateDiscountCouponOutput:
+      type: object
+      properties:
+        isValid:
+          type: boolean
+        coupon:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: string
+              format: uuid
+            code:
+              type: string
+            percentage:
+              type: number
+            validUntil:
+              type: string
+              format: date-time
+            durationMonths:
+              type: integer
+        error:
+          type: string
+          nullable: true
+          description: Mensagem quando `isValid` é false.
+      required:
+        - isValid
 

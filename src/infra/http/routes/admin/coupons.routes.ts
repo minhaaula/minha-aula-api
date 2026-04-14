@@ -8,7 +8,8 @@ import type { ListDiscountCoupons } from '../../../../app/use-cases/list-discoun
 import type { ValidateDiscountCoupon } from '../../../../app/use-cases/validate-discount-coupon';
 import { z } from 'zod';
 
-const createCouponSchema = z.object({
+/** Body compartilhado entre POST /admin/coupons e POST /admin/schools/:schoolId/plans/coupons */
+export const adminDiscountCouponCreateBodySchema = z.object({
     code: z.string().trim().min(3).max(50),
     percentage: z.number().min(1).max(100),
     validUntil: z.string().datetime(),
@@ -33,7 +34,7 @@ export function buildCouponsRoutes(deps: CouponsRoutesDeps, authMiddleware?: Req
 
     if (deps.createDiscountCoupon) {
         router.post('/', requireAuth, requireAdmin, asyncHandler(async (req, res) => {
-            const data = createCouponSchema.parse(req.body);
+            const data = adminDiscountCouponCreateBodySchema.parse(req.body);
             const result = await deps.createDiscountCoupon!.exec({
                 code: data.code,
                 percentage: data.percentage,

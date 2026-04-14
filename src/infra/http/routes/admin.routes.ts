@@ -10,7 +10,8 @@ import { GetAdminDashboard } from '../../../app/use-cases/get-admin-dashboard';
 import { requirePersona } from '../middlewares/require-persona';
 import { authRateLimiter } from '../middlewares/rate-limiter';
 import { UserPersonaEnum } from '../../../domain/value-objects/user-persona';
-import { buildCouponsRoutes } from './admin/coupons.routes';
+import { adminDiscountCouponCreateBodySchema, buildCouponsRoutes } from './admin/coupons.routes';
+import type { SchoolRepository } from '../../../ports/repositories/school.repo';
 import type { ResendSchoolAsaasAccount } from '../../../app/use-cases/resend-school-asaas-account';
 import { GetAdminSchoolDetails } from '../../../app/use-cases/get-admin-school-details';
 import { GetAdminSchoolPlans } from '../../../app/use-cases/get-admin-school-plans';
@@ -74,6 +75,8 @@ type AdminRouterDeps = {
     createDiscountCoupon?: import('../../../app/use-cases/create-discount-coupon').CreateDiscountCoupon;
     listDiscountCoupons?: import('../../../app/use-cases/list-discount-coupons').ListDiscountCoupons;
     validateDiscountCoupon?: import('../../../app/use-cases/validate-discount-coupon').ValidateDiscountCoupon;
+    /** Usado para validar escola nas rotas /admin/schools/:schoolId/plans/coupons */
+    schoolsRepo: SchoolRepository;
     resendSchoolAsaasAccount?: ResendSchoolAsaasAccount;
     listSchoolStudents?: ListSchoolStudents;
     listAllStudents?: ListAllStudents;
@@ -127,6 +130,7 @@ export function adminRouter({
     createDiscountCoupon,
     listDiscountCoupons,
     validateDiscountCoupon,
+    schoolsRepo,
     resendSchoolAsaasAccount,
     listSchoolStudents,
     listAllStudents,
@@ -308,6 +312,40 @@ export function adminRouter({
         const payload = await getAdminSchoolPlans.exec({ schoolId });
         res.json(payload);
     }));
+
+    // Cupons de desconto dos planos (assinatura SaaS da escola) — mesmo payload que POST /admin/coupons, com escopo por escola na URL
+    if (createDiscountCoupon) {
+        router.post('/schools/:schoolId/plans/coupons', requireAuth, requireAdminPersona, asyncHandler(async (req, res) => {
+            const paramsSchema = z.object({ schoolId: z.string().uuid() });
+            const { schoolId } = paramsSchema.parse(req.params);
+            const school = await schoolsRepo.findById(schoolId);
+            if (!school) {
+                throw AppError.fromCode(ErrorCode.SCHOOL_NOT_FOUND, { schoolId });
+            }
+            const data = adminDiscountCouponCreateBodySchema.parse(req.body);
+            const result = await createDiscountCoupon.exec({
+                code: data.code,
+                percentage: data.percentage,
+                validUntil: new Date(data.validUntil),
+                durationMonths: data.durationMonths,
+                isActive: data.isActive
+            });
+            res.status(201).json(result);
+        }));
+    }
+
+    if (listDiscountCoupons) {
+        router.get('/schools/:schoolId/plans/coupons', requireAuth, requireAdminPersona, asyncHandler(async (req, res) => {
+            const paramsSchema = z.object({ schoolId: z.string().uuid() });
+            const { schoolId } = paramsSchema.parse(req.params);
+            const school = await schoolsRepo.findById(schoolId);
+            if (!school) {
+                throw AppError.fromCode(ErrorCode.SCHOOL_NOT_FOUND, { schoolId });
+            }
+            const result = await listDiscountCoupons.exec();
+            res.json(result);
+        }));
+    }
 
     if (listAdminSchoolCourses) {
         router.get('/schools/:schoolId/courses', requireAuth, requireAdminPersona, asyncHandler(async (req, res) => {
