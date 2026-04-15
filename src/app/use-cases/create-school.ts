@@ -139,6 +139,23 @@ export class CreateSchool {
                 .catch(() => {});
         }
 
+        // WhatsApp: template Twilio `boas_vindas` (variável `nome`) — worker em `whatsapp_notification`
+        if (this.outbox && school.ownerWhatsapp) {
+            const nome = (school.ownerName ?? school.name).trim();
+            if (nome) {
+                this.outbox
+                    .enqueue({
+                        type: 'whatsapp_notification',
+                        aggregateId: school.id,
+                        payload: {
+                            to: school.ownerWhatsapp,
+                            boasVindas: { nome }
+                        }
+                    })
+                    .catch(() => {});
+            }
+        }
+
         // A subconta Asaas não é mais criada aqui. Ela é criada no webhook quando o primeiro
         // pagamento do plano é recebido (ensureSchoolSubAccount), usando sempre a escola do invoice pago.
 

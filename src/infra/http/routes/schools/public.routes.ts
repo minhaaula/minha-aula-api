@@ -62,6 +62,7 @@ export function buildPublicSchoolRoutes(deps: PublicSchoolRoutesDeps, optionalAu
             ownerName: data.ownerName,
             ownerCpf: data.ownerCpf,
             ownerEmail: data.ownerEmail,
+            ownerWhatsapp: data.ownerWhatsapp ?? null,
             ownerPassword: data.ownerPassword
         });
 
