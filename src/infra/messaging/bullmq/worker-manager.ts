@@ -15,6 +15,79 @@ type OutboxEvent = { type: string; payload: any; aggregateId: string };
 
 let workerInstance: Worker | null = null;
 
+type MensalidadeReminderKind = 'overdue' | 'due_today' | 'upcoming';
+
+function parsePtBrDateString(s: string): Date | null {
+    const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec((s ?? '').trim());
+    if (!m) return null;
+    const day = Number(m[1]);
+    const month = Number(m[2]);
+    const year = Number(m[3]);
+    const date = new Date(year, month - 1, day);
+    if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
+        return null;
+    }
+    date.setHours(0, 0, 0, 0);
+    return date;
+}
+
+function getMensalidadeNome(studentName: string): string {
+    return (studentName || '').trim() || 'Cliente';
+}
+
+function getMensalidadeCourse(courseName?: string, description?: string): string {
+    return (courseName || '').trim() || (description || '').trim() || '-';
+}
+
+function calcOverdueDays(dueDatePtBr: string, now: Date = new Date()): number {
+    const due = parsePtBrDateString(dueDatePtBr);
+    if (!due) return 1;
+    const today = new Date(now);
+    today.setHours(0, 0, 0, 0);
+    const diffMs = today.getTime() - due.getTime();
+    if (diffMs <= 0) return 1;
+    return Math.max(1, Math.floor(diffMs / (24 * 60 * 60 * 1000)));
+}
+
+function getMensalidadeMonth(dueDatePtBr: string): string {
+    const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec((dueDatePtBr ?? '').trim());
+    return m ? m[2]! : '-';
+}
+
+function buildMensalidadeContentVariables(input: {
+    kind: MensalidadeReminderKind;
+    studentName: string;
+    courseName?: string;
+    description: string;
+    dueDatePtBr: string;
+    fullBody: string;
+}): Record<string, string> {
+    const { kind } = input;
+    switch (kind) {
+        case 'overdue': {
+            const nome = getMensalidadeNome(input.studentName);
+            const course = getMensalidadeCourse(input.courseName, input.description);
+            const days = String(calcOverdueDays(input.dueDatePtBr));
+            return { nome, course, days };
+        }
+        case 'due_today': {
+            const nome = getMensalidadeNome(input.studentName);
+            const course = getMensalidadeCourse(input.courseName, input.description);
+            return { nome, course };
+        }
+        case 'upcoming': {
+            const nome = getMensalidadeNome(input.studentName);
+            const course = getMensalidadeCourse(input.courseName, input.description);
+            const month = getMensalidadeMonth(input.dueDatePtBr);
+            return { nome, month, course };
+        }
+        default: {
+            // fallback defensivo (não deveria acontecer)
+            return { '1': input.fullBody };
+        }
+    }
+}
+
 async function ensureDb() {
     if (!AppDataSource.isInitialized) {
         await AppDataSource.initialize();
@@ -140,10 +213,22 @@ export function startWorker(): Worker {
                     const sids = loadTwilioContentSidsFromEnv();
                     const reminderKind = inferMensalidadeReminderKindFromCobrancaPayload(cobranca, new Date());
                     twilioContentSid = resolveMensalidadeContentSid(reminderKind, sids);
-                    const useFullBody =
-                        process.env.TWILIO_COBRANCA_CONTENT_USE_FULL_BODY === '1' ||
-                        process.env.TWILIO_COBRANCA_CONTENT_USE_FULL_BODY === 'true';
-                    twilioContentVars = useFullBody ? { '1': body } : getCobrancaTwilioContentVariables(cobrancaData);
+
+                    if (reminderKind === 'overdue' || reminderKind === 'due_today' || reminderKind === 'upcoming') {
+                        twilioContentVars = buildMensalidadeContentVariables({
+                            kind: reminderKind,
+                            studentName: cobrancaData.studentName,
+                            courseName: cobrancaData.courseName,
+                            description: cobrancaData.description,
+                            dueDatePtBr: cobrancaData.dueDate,
+                            fullBody: body
+                        });
+                    } else {
+                        const useFullBody =
+                            process.env.TWILIO_COBRANCA_CONTENT_USE_FULL_BODY === '1' ||
+                            process.env.TWILIO_COBRANCA_CONTENT_USE_FULL_BODY === 'true';
+                        twilioContentVars = useFullBody ? { '1': body } : getCobrancaTwilioContentVariables(cobrancaData);
+                    }
                 } else if (
                     smRaw &&
                     typeof smRaw === 'object' &&

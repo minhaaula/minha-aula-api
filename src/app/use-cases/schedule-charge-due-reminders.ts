@@ -105,6 +105,7 @@ export class ScheduleChargeDueReminders {
                     const chargeCode =
                         (charge.asaasPayload && typeof charge.asaasPayload.pixCopiaECola === 'string' && charge.asaasPayload.pixCopiaECola.trim()) ||
                         (charge.asaasPayload && typeof charge.asaasPayload.digitableLine === 'string' && charge.asaasPayload.digitableLine.trim());
+                    const reminderKind = classifyMensalidadeReminderKind(charge.dueDate, today);
                     if (owner.phone?.trim() && chargeCode) {
                         await this.outbox.enqueue({
                             type: JOB_TYPE_WHATSAPP,
@@ -120,7 +121,7 @@ export class ScheduleChargeDueReminders {
                                     courseName: courseName ?? undefined,
                                     pixCopiaECola: chargeCode,
                                     boletoUrl: charge.asaasInvoiceUrl ?? null,
-                                    chargeReminderKind: classifyMensalidadeReminderKind(charge.dueDate, today)
+                                    chargeReminderKind: reminderKind
                                 }
                             }
                         });
@@ -128,11 +129,21 @@ export class ScheduleChargeDueReminders {
 
                     if (charge.chargeType === 'TUITION' && this.notifyStudent) {
                         const school = await this.schoolRepo.findById(charge.schoolId);
-                        const title = 'Mensalidade a vencer';
                         const desc = charge.description || 'Mensalidade';
-                        const message = school
-                            ? `${desc} — ${formatCurrency(charge.netAmountCents, 'BRL')} vence em ${formatDate(charge.dueDate)} (${school.name}).`
-                            : `${desc} — ${formatCurrency(charge.netAmountCents, 'BRL')} vence em ${formatDate(charge.dueDate)}.`;
+                        const title =
+                            reminderKind === 'overdue'
+                                ? 'Mensalidade em atraso'
+                                : reminderKind === 'due_today'
+                                  ? 'Mensalidade vence hoje'
+                                  : 'Mensalidade a vencer';
+                        const dueLabel =
+                            reminderKind === 'overdue'
+                                ? `venceu em ${formatDate(charge.dueDate)}`
+                                : reminderKind === 'due_today'
+                                  ? `vence hoje (${formatDate(charge.dueDate)})`
+                                  : `vence em ${formatDate(charge.dueDate)}`;
+                        const messageBase = `${desc} — ${formatCurrency(charge.netAmountCents, 'BRL')} ${dueLabel}.`;
+                        const message = school ? `${messageBase} (${school.name}).` : messageBase;
                         try {
                             await this.notifyStudent.exec({
                                 userId: charge.ownerUserId,
