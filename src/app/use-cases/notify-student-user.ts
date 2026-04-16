@@ -1,5 +1,6 @@
 import { NotificationRepository } from '../../ports/repositories/notification.repo';
 import { OutboxRepository } from '../../ports/repositories/outbox.repo';
+import type { SchoolRepository } from '../../ports/repositories/school.repo';
 import { Notification } from '../../domain/entities/notification';
 import { Uuid } from '../../shared/uuid';
 
@@ -16,7 +17,8 @@ export type StudentInAppNotificationKind =
 export class NotifyStudentUser {
     constructor(
         private readonly notifications: NotificationRepository,
-        private readonly outbox: OutboxRepository
+        private readonly outbox: OutboxRepository,
+        private readonly schools?: SchoolRepository
     ) {}
 
     async exec(input: {
@@ -48,6 +50,12 @@ export class NotifyStudentUser {
         await this.notifications.save(notification);
 
         if (input.sendPush) {
+            if (schoolId && this.schools) {
+                const school = await this.schools.findById(schoolId);
+                if (school && !school.notificationsPushEnabled) {
+                    return { notificationId: notification.id };
+                }
+            }
             const data: Record<string, string> = {
                 notificationId: notification.id,
                 scope: 'USER',

@@ -98,6 +98,8 @@ import { GetSchoolBalance } from '../../app/use-cases/get-school-balance';
 import { OutboxRepository } from '../../ports/repositories/outbox.repo';
 import { SendClassPushNotification } from '../../app/use-cases/send-class-push-notification';
 import { NotifyStudentUser } from '../../app/use-cases/notify-student-user';
+import { GetSchoolNotificationPreferences } from '../../app/use-cases/get-school-notification-preferences';
+import { UpdateSchoolNotificationPreferences } from '../../app/use-cases/update-school-notification-preferences';
 import { SchoolActionOtpRepositoryAdapter } from '../../infra/db/typeorm/school-action-otp-repository.adapter';
 import { createTwilioVerifyFromEnv } from '../../infra/providers/twilio/create-twilio-verify-provider';
 import { createWhatsAppProviderFromEnv } from '../../infra/providers/twilio/create-whatsapp-provider';
@@ -135,7 +137,7 @@ export type SchoolsModuleDeps = {
 export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupContext): ModuleBuildResult {
     const notifyStudent =
         deps.notificationsRepo && deps.outbox
-            ? new NotifyStudentUser(deps.notificationsRepo, deps.outbox)
+            ? new NotifyStudentUser(deps.notificationsRepo, deps.outbox, deps.schoolsRepo)
             : undefined;
     const schoolActionOtpRepo = new SchoolActionOtpRepositoryAdapter();
     const schoolActionOtpConsumer = new ConsumeSchoolActionOtp(schoolActionOtpRepo);
@@ -401,8 +403,10 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         ? new ListSchoolNotifications(deps.notificationsRepo)
         : undefined;
     const sendClassPushNotification = deps.notificationsRepo && deps.outbox
-        ? new SendClassPushNotification(deps.coursesRepo, deps.classesRepo, deps.enrollmentsRepo, deps.notificationsRepo, deps.outbox)
+        ? new SendClassPushNotification(deps.coursesRepo, deps.classesRepo, deps.enrollmentsRepo, deps.notificationsRepo, deps.outbox, deps.schoolsRepo)
         : undefined;
+    const getSchoolNotificationPreferences = new GetSchoolNotificationPreferences(deps.schoolsRepo);
+    const updateSchoolNotificationPreferences = new UpdateSchoolNotificationPreferences(deps.schoolsRepo);
 
     // Montar routers prontos
     const schoolsRouterInstance = schoolsRouter({
@@ -462,6 +466,8 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         validateSchoolCoupon,
         listSchoolNotifications,
         sendClassPushNotification,
+        getSchoolNotificationPreferences,
+        updateSchoolNotificationPreferences,
         getSchoolPendingDocuments,
         syncSchoolOnboardingDocuments,
         uploadSchoolOnboardingDocument,

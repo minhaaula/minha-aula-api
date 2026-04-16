@@ -3,6 +3,7 @@ import { CourseClassRepository } from '../../ports/repositories/course-class.rep
 import { EnrollmentRepository } from '../../ports/repositories/enrollment.repo';
 import { NotificationRepository } from '../../ports/repositories/notification.repo';
 import { OutboxRepository } from '../../ports/repositories/outbox.repo';
+import type { SchoolRepository } from '../../ports/repositories/school.repo';
 import { Notification } from '../../domain/entities/notification';
 import { Uuid } from '../../shared/uuid';
 
@@ -12,7 +13,8 @@ export class SendClassPushNotification {
         private readonly classes: CourseClassRepository,
         private readonly enrollments: EnrollmentRepository,
         private readonly notifications: NotificationRepository,
-        private readonly outbox: OutboxRepository
+        private readonly outbox: OutboxRepository,
+        private readonly schools: SchoolRepository
     ) {}
 
     async exec(input: { schoolId: string; classId: string; title: string; message: string; metadata?: Record<string, unknown> | null }) {
@@ -47,6 +49,12 @@ export class SendClassPushNotification {
         });
 
         await this.notifications.save(notification);
+
+        const school = await this.schools.findById(schoolId);
+        if (!school) throw new Error('School not found');
+        if (!school.notificationsPushEnabled) {
+            return { notificationId: notification.id, recipients: 0 };
+        }
 
         // data do FCM precisa ser string:string
         const data: Record<string, string> = {

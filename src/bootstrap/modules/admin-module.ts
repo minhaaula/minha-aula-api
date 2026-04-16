@@ -211,7 +211,7 @@ export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext)
 
     const notifyStudentForReminders =
         deps.notificationsRepo && deps.outbox
-            ? new NotifyStudentUser(deps.notificationsRepo, deps.outbox)
+            ? new NotifyStudentUser(deps.notificationsRepo, deps.outbox, deps.schoolsRepo)
             : undefined;
 
     const scheduleChargeDueReminders = new ScheduleChargeDueReminders(

@@ -1340,6 +1340,31 @@ components:
             $ref: '#/components/schemas/Notification'
       required:
         - notifications
+    SchoolNotificationPreferences:
+      type: object
+      description: Preferências globais de notificação da escola (toggles por canal).
+      properties:
+        emailEnabled:
+          type: boolean
+          description: Permite enfileirar/envio de notificações por email associadas à escola.
+        whatsappEnabled:
+          type: boolean
+          description: Permite enfileirar/envio de notificações por WhatsApp associadas à escola.
+        pushEnabled:
+          type: boolean
+          description: Permite enfileirar/envio de push (FCM) para eventos associados à escola.
+      required: [emailEnabled, whatsappEnabled, pushEnabled]
+    UpdateSchoolNotificationPreferencesInput:
+      type: object
+      description: Payload para atualização parcial das preferências de notificação da escola.
+      additionalProperties: false
+      properties:
+        emailEnabled:
+          type: boolean
+        whatsappEnabled:
+          type: boolean
+        pushEnabled:
+          type: boolean
     MarkAllNotificationsAsReadResponse:
       type: object
       properties:

@@ -3,12 +3,16 @@ import { z } from 'zod';
 import { asyncHandler } from '../../utils/async-handler';
 import type { ListSchoolNotifications } from '../../../../app/use-cases/list-school-notifications';
 import type { SendClassPushNotification } from '../../../../app/use-cases/send-class-push-notification';
+import type { GetSchoolNotificationPreferences } from '../../../../app/use-cases/get-school-notification-preferences';
+import type { UpdateSchoolNotificationPreferences } from '../../../../app/use-cases/update-school-notification-preferences';
 import type { SchoolRouteGuards } from './guards';
 import type { SchoolContextRequest } from '../../middlewares/resolve-school-context';
 
 type NotificationsRoutesDeps = {
-    listSchoolNotifications: ListSchoolNotifications;
+    listSchoolNotifications?: ListSchoolNotifications;
     sendClassPushNotification?: SendClassPushNotification;
+    getSchoolNotificationPreferences: GetSchoolNotificationPreferences;
+    updateSchoolNotificationPreferences: UpdateSchoolNotificationPreferences;
 };
 
 export function buildNotificationsRoutes(deps: NotificationsRoutesDeps, guards: SchoolRouteGuards) {
@@ -25,20 +29,46 @@ export function buildNotificationsRoutes(deps: NotificationsRoutesDeps, guards: 
         offset: z.coerce.number().int().min(0).optional()
     });
 
-    router.get('/', ...protectedMiddleware, asyncHandler(async (req, res) => {
+    if (deps.listSchoolNotifications) {
+        router.get('/', ...protectedMiddleware, asyncHandler(async (req, res) => {
+            const schoolId = (req as SchoolContextRequest).schoolId as string;
+
+            const query = querySchema.parse({
+                limit: req.query.limit,
+                offset: req.query.offset
+            });
+
+            const result = await deps.listSchoolNotifications!.exec({
+                schoolId,
+                limit: query.limit,
+                offset: query.offset
+            });
+
+            res.json(result);
+        }));
+    }
+
+    const updatePrefsSchema = z.object({
+        emailEnabled: z.boolean().optional(),
+        whatsappEnabled: z.boolean().optional(),
+        pushEnabled: z.boolean().optional()
+    }).strict();
+
+    router.get('/preferences', ...protectedMiddleware, asyncHandler(async (req, res) => {
         const schoolId = (req as SchoolContextRequest).schoolId as string;
+        const result = await deps.getSchoolNotificationPreferences.exec({ schoolId });
+        res.json(result);
+    }));
 
-        const query = querySchema.parse({
-            limit: req.query.limit,
-            offset: req.query.offset
-        });
-
-        const result = await deps.listSchoolNotifications.exec({
+    router.put('/preferences', ...protectedMiddleware, asyncHandler(async (req, res) => {
+        const schoolId = (req as SchoolContextRequest).schoolId as string;
+        const body = updatePrefsSchema.parse(req.body ?? {});
+        const result = await deps.updateSchoolNotificationPreferences.exec({
             schoolId,
-            limit: query.limit,
-            offset: query.offset
+            emailEnabled: body.emailEnabled,
+            whatsappEnabled: body.whatsappEnabled,
+            pushEnabled: body.pushEnabled
         });
-
         res.json(result);
     }));
 

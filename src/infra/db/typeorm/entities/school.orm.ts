@@ -75,6 +75,15 @@ export class SchoolOrm {
     @Column('datetime', { name: 'onboarding_completed_at', nullable: true })
     onboardingCompletedAt!: Date | null;
 
+    @Column('tinyint', { name: 'notifications_email_enabled', width: 1, default: () => '1' })
+    notificationsEmailEnabled!: boolean;
+
+    @Column('tinyint', { name: 'notifications_whatsapp_enabled', width: 1, default: () => '1' })
+    notificationsWhatsappEnabled!: boolean;
+
+    @Column('tinyint', { name: 'notifications_push_enabled', width: 1, default: () => '1' })
+    notificationsPushEnabled!: boolean;
+
     @OneToMany(() => SchoolAddressOrm, (address) => address.school, {
         cascade: ['insert', 'update'],
         orphanedRowAction: 'delete'

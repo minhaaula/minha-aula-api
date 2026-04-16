@@ -77,6 +77,9 @@ export class ScheduleChargeDueReminders {
 
                     const owner = await this.userRepo.findById(charge.ownerUserId);
                     if (!owner?.email) continue;
+                    const schoolForCharge = await this.schoolRepo.findById(charge.schoolId);
+                    const emailEnabled = schoolForCharge ? schoolForCharge.notificationsEmailEnabled : true;
+                    const whatsappEnabled = schoolForCharge ? schoolForCharge.notificationsWhatsappEnabled : true;
 
                     const course = await this.courseRepo.findById(charge.courseId);
                     const courseName = course?.name ?? undefined;
@@ -88,25 +91,27 @@ export class ScheduleChargeDueReminders {
                               : 'tuition';
 
                     await this.reminderRepo.markReminderSent('SCHOOL_FINANCIAL_CHARGE', charge.id);
-                    await this.outbox.enqueue({
-                        type: JOB_TYPE_EMAIL,
-                        aggregateId: charge.id,
-                        payload: {
-                            to: owner.email.value,
-                            recipientName: owner.fullName,
-                            description: charge.description || (chargeType === 'tuition' ? 'Mensalidade' : 'Taxa de matrícula'),
-                            amount: formatCurrency(charge.netAmountCents, 'BRL'),
-                            dueDate: formatDate(charge.dueDate),
-                            type: chargeType,
-                            courseName: courseName ?? undefined,
-                            boletoUrl: charge.asaasInvoiceUrl ?? undefined
-                        }
-                    });
+                    if (emailEnabled) {
+                        await this.outbox.enqueue({
+                            type: JOB_TYPE_EMAIL,
+                            aggregateId: charge.id,
+                            payload: {
+                                to: owner.email.value,
+                                recipientName: owner.fullName,
+                                description: charge.description || (chargeType === 'tuition' ? 'Mensalidade' : 'Taxa de matrícula'),
+                                amount: formatCurrency(charge.netAmountCents, 'BRL'),
+                                dueDate: formatDate(charge.dueDate),
+                                type: chargeType,
+                                courseName: courseName ?? undefined,
+                                boletoUrl: charge.asaasInvoiceUrl ?? undefined
+                            }
+                        });
+                    }
                     const chargeCode =
                         (charge.asaasPayload && typeof charge.asaasPayload.pixCopiaECola === 'string' && charge.asaasPayload.pixCopiaECola.trim()) ||
                         (charge.asaasPayload && typeof charge.asaasPayload.digitableLine === 'string' && charge.asaasPayload.digitableLine.trim());
                     const reminderKind = classifyMensalidadeReminderKind(charge.dueDate, today);
-                    if (owner.phone?.trim() && chargeCode) {
+                    if (whatsappEnabled && owner.phone?.trim() && chargeCode) {
                         await this.outbox.enqueue({
                             type: JOB_TYPE_WHATSAPP,
                             aggregateId: charge.id,
@@ -179,23 +184,25 @@ export class ScheduleChargeDueReminders {
                 if (!school?.email) continue;
 
                 await this.reminderRepo.markReminderSent('SCHOOL_PLAN_INVOICE', invoice.id);
-                await this.outbox.enqueue({
-                    type: JOB_TYPE_EMAIL,
-                    aggregateId: invoice.id,
-                    payload: {
-                        to: school.email,
-                        recipientName: school.name,
-                        description: invoice.description || 'Assinatura plano',
-                        amount: formatCurrency(invoice.amountCents, invoice.currency),
-                        dueDate: formatDate(invoice.dueDate),
-                        type: 'plan',
-                        boletoUrl: invoice.boletoUrl ?? undefined
-                    }
-                });
+                if (school.notificationsEmailEnabled) {
+                    await this.outbox.enqueue({
+                        type: JOB_TYPE_EMAIL,
+                        aggregateId: invoice.id,
+                        payload: {
+                            to: school.email,
+                            recipientName: school.name,
+                            description: invoice.description || 'Assinatura plano',
+                            amount: formatCurrency(invoice.amountCents, invoice.currency),
+                            dueDate: formatDate(invoice.dueDate),
+                            type: 'plan',
+                            boletoUrl: invoice.boletoUrl ?? undefined
+                        }
+                    });
+                }
                 const invoiceCode =
                     (invoice.pixCopiaECola && invoice.pixCopiaECola.trim()) ||
                     (invoice.digitableLine && invoice.digitableLine.trim());
-                if (school.phone?.trim() && invoiceCode) {
+                if (school.notificationsWhatsappEnabled && school.phone?.trim() && invoiceCode) {
                     await this.outbox.enqueue({
                         type: JOB_TYPE_WHATSAPP,
                         aggregateId: invoice.id,

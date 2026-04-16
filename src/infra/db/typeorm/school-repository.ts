@@ -133,7 +133,10 @@ export class SchoolRepositoryAdapter implements SchoolRepository {
             tiktokLink: row.tiktokLink ?? null,
             youtubeLink: row.youtubeLink ?? null,
             siteLink: row.siteLink ?? null,
-            onboardingCompletedAt: row.onboardingCompletedAt ?? null
+            onboardingCompletedAt: row.onboardingCompletedAt ?? null,
+            notificationsEmailEnabled: row.notificationsEmailEnabled ?? true,
+            notificationsWhatsappEnabled: row.notificationsWhatsappEnabled ?? true,
+            notificationsPushEnabled: row.notificationsPushEnabled ?? true
         });
     }
 
@@ -169,6 +172,9 @@ export class SchoolRepositoryAdapter implements SchoolRepository {
         row.youtubeLink = school.youtubeLink;
         row.siteLink = school.siteLink;
         row.onboardingCompletedAt = school.onboardingCompletedAt;
+        row.notificationsEmailEnabled = school.notificationsEmailEnabled;
+        row.notificationsWhatsappEnabled = school.notificationsWhatsappEnabled;
+        row.notificationsPushEnabled = school.notificationsPushEnabled;
         if (existing) {
             await this.repo.manager.createQueryBuilder()
                 .delete()

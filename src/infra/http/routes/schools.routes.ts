@@ -66,6 +66,8 @@ import { AuthenticatedRequest } from '../middlewares/auth';
 import type { RequestSchoolActionOtp } from '../../../app/use-cases/request-school-action-otp';
 import type { VerifySchoolActionOtp } from '../../../app/use-cases/verify-school-action-otp';
 import { buildSecurityRoutes } from './schools/security.routes';
+import type { GetSchoolNotificationPreferences } from '../../../app/use-cases/get-school-notification-preferences';
+import type { UpdateSchoolNotificationPreferences } from '../../../app/use-cases/update-school-notification-preferences';
 
 export type SchoolsRouterDeps = {
     createSchool: CreateSchool;
@@ -124,6 +126,8 @@ export type SchoolsRouterDeps = {
     validateSchoolCoupon?: import('../../../app/use-cases/validate-school-coupon').ValidateSchoolCoupon;
     listSchoolNotifications?: ListSchoolNotifications;
     sendClassPushNotification?: SendClassPushNotification;
+    getSchoolNotificationPreferences?: GetSchoolNotificationPreferences;
+    updateSchoolNotificationPreferences?: UpdateSchoolNotificationPreferences;
     getSchoolPendingDocuments?: import('../../../app/use-cases/get-school-pending-documents').GetSchoolPendingDocuments;
     syncSchoolOnboardingDocuments?: import('../../../app/use-cases/sync-school-onboarding-documents').SyncSchoolOnboardingDocuments;
     uploadSchoolOnboardingDocument?: import('../../../app/use-cases/admin-upload-school-onboarding-document').AdminUploadSchoolOnboardingDocument;
@@ -230,10 +234,12 @@ export function schoolsRouter(deps: SchoolsRouterDeps) {
         cancelClassSession: deps.cancelClassSession
     }, guards));
 
-    if (deps.listSchoolNotifications) {
+    if (deps.getSchoolNotificationPreferences && deps.updateSchoolNotificationPreferences) {
         router.use('/notifications', buildNotificationsRoutes({
             listSchoolNotifications: deps.listSchoolNotifications,
-            sendClassPushNotification: deps.sendClassPushNotification
+            sendClassPushNotification: deps.sendClassPushNotification,
+            getSchoolNotificationPreferences: deps.getSchoolNotificationPreferences,
+            updateSchoolNotificationPreferences: deps.updateSchoolNotificationPreferences
         }, guards));
     }
 

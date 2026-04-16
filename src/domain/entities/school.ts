@@ -27,7 +27,10 @@ export class School {
         private readonly _tiktokLink: string | null,
         private readonly _youtubeLink: string | null,
         private readonly _siteLink: string | null,
-        private readonly _onboardingCompletedAt: Date | null
+        private readonly _onboardingCompletedAt: Date | null,
+        private readonly _notificationsEmailEnabled: boolean,
+        private readonly _notificationsWhatsappEnabled: boolean,
+        private readonly _notificationsPushEnabled: boolean
     ) {}
 
     static create(params: {
@@ -55,6 +58,9 @@ export class School {
         youtubeLink?: string | null;
         siteLink?: string | null;
         onboardingCompletedAt?: Date | null;
+        notificationsEmailEnabled?: boolean;
+        notificationsWhatsappEnabled?: boolean;
+        notificationsPushEnabled?: boolean;
     }) {
         const name = params.name.trim();
         if (!name) throw new Error('School name is required');
@@ -88,6 +94,9 @@ export class School {
         const youtubeLink = School.normalizeLink(params.youtubeLink);
         const siteLink = School.normalizeLink(params.siteLink);
         const onboardingCompletedAt = params.onboardingCompletedAt ?? null;
+        const notificationsEmailEnabled = School.normalizePreference(params.notificationsEmailEnabled, true);
+        const notificationsWhatsappEnabled = School.normalizePreference(params.notificationsWhatsappEnabled, true);
+        const notificationsPushEnabled = School.normalizePreference(params.notificationsPushEnabled, true);
 
         return new School(
             params.id,
@@ -113,7 +122,10 @@ export class School {
             tiktokLink,
             youtubeLink,
             siteLink,
-            onboardingCompletedAt
+            onboardingCompletedAt,
+            notificationsEmailEnabled,
+            notificationsWhatsappEnabled,
+            notificationsPushEnabled
         );
     }
 
@@ -201,6 +213,18 @@ export class School {
         return this._onboardingCompletedAt;
     }
 
+    get notificationsEmailEnabled(): boolean {
+        return this._notificationsEmailEnabled;
+    }
+
+    get notificationsWhatsappEnabled(): boolean {
+        return this._notificationsWhatsappEnabled;
+    }
+
+    get notificationsPushEnabled(): boolean {
+        return this._notificationsPushEnabled;
+    }
+
     private static normalizePhone(value: string) {
         const digits = value.replace(/\D/g, '');
         if (digits.length < 10 || digits.length > 15) {
@@ -215,6 +239,12 @@ export class School {
             throw new Error('Invalid school CNPJ');
         }
         return digits;
+    }
+
+    private static normalizePreference(value: unknown, defaultValue: boolean): boolean {
+        if (value === undefined || value === null) return defaultValue;
+        if (typeof value !== 'boolean') throw new Error('School notification preference must be a boolean');
+        return value;
     }
 
     private static normalizeOwnerName(value: unknown): string | null {

@@ -74,7 +74,7 @@ export type StudentsModuleDeps = {
 export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupContext): ModuleBuildResult {
     const notifyStudent =
         deps.notificationsRepo && deps.outbox
-            ? new NotifyStudentUser(deps.notificationsRepo, deps.outbox)
+            ? new NotifyStudentUser(deps.notificationsRepo, deps.outbox, deps.schoolsRepo)
             : undefined;
 
     const addDependent = new AddDependent(deps.usersRepo, deps.dependentsRepo);
