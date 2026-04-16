@@ -112,6 +112,287 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/QueueNotConfiguredResponse'
+
+  /admin/crons:
+    get:
+      tags:
+        - Observabilidade
+      summary: Listar CRONs (BullMQ repeatable) com última execução
+      description: |
+        Retorna a lista de CRONs (jobs repetitivos) cadastrados no BullMQ, incluindo
+        a última execução registrada em banco (`cron_logs`) e o próximo agendamento.
+        Requer autenticação com persona ADMIN.
+        Se REDIS_HOST não estiver configurado, retorna 503.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Lista de CRONs retornada com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CronListResponse'
+        '401':
+          description: Usuário não autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado (requer persona ADMIN).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Fila não configurada (REDIS_HOST ausente).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueueNotConfiguredResponse'
+
+  /admin/crons/{id}/logs:
+    get:
+      tags:
+        - Observabilidade
+      summary: Listar histórico de execuções de um CRON
+      description: |
+        Retorna o histórico paginado de execuções do CRON (persistido em `cron_logs`).
+        Requer autenticação com persona ADMIN.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            maxLength: 128
+          description: Nome do CRON/job (ex. fetch_payment_receipts).
+        - in: query
+          name: status
+          required: false
+          schema:
+            type: string
+            enum: [completed, failed]
+          description: Filtra por status do log.
+        - in: query
+          name: from
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: Início do intervalo (finished_at), inclusive.
+        - in: query
+          name: to
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: Fim do intervalo (finished_at), inclusive.
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+          description: Quantidade máxima de itens por página.
+        - in: query
+          name: offset
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+          description: Offset (0-based) para paginação.
+      responses:
+        '200':
+          description: Histórico de execuções retornado com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CronLogListResponse'
+        '401':
+          description: Usuário não autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado (requer persona ADMIN).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /admin/crons/{id}/run:
+    post:
+      tags:
+        - Observabilidade
+      summary: Executar um CRON manualmente (enqueue)
+      description: |
+        Enfileira uma execução imediata do CRON/job no BullMQ (outbox). Retorna 202.
+        Requer autenticação com persona ADMIN.
+        Se REDIS_HOST não estiver configurado, retorna 503.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            maxLength: 128
+          description: Nome do CRON/job a executar.
+      responses:
+        '202':
+          description: Execução enfileirada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CronRunResponse'
+        '401':
+          description: Usuário não autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado (requer persona ADMIN).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Fila não configurada (REDIS_HOST ausente).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueueNotConfiguredResponse'
+
+  /admin/jobs:
+    get:
+      tags:
+        - Observabilidade
+      summary: Listar jobs da fila (BullMQ)
+      description: |
+        Mesmo payload de GET /admin/queue/jobs, mas agrupado na sessão de Observabilidade.
+        Requer autenticação com persona ADMIN.
+        Se REDIS_HOST não estiver configurado, retorna 503.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: waitingLimit
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+          description: Máximo de jobs em waiting a retornar na amostra.
+        - in: query
+          name: failedLimit
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 20
+          description: Máximo de jobs em failed a retornar na amostra.
+        - in: query
+          name: completedLimit
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Máximo de jobs em completed a retornar na amostra.
+      responses:
+        '200':
+          description: Status da fila retornado com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueueJobsResponse'
+        '401':
+          description: Usuário não autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado (requer persona ADMIN).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Fila não configurada (REDIS_HOST ausente).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueueNotConfiguredResponse'
+
+  /admin/jobs/{id}/retry:
+    post:
+      tags:
+        - Observabilidade
+      summary: Retry manual de um job falhado (BullMQ)
+      description: |
+        Executa retry de um job por ID, apenas quando o estado atual for `failed`.
+        Requer autenticação com persona ADMIN.
+        Se REDIS_HOST não estiver configurado, retorna 503.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            maxLength: 128
+          description: ID do job no BullMQ.
+      responses:
+        '202':
+          description: Retry aceito e job reenfileirado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobRetryResponse'
+        '401':
+          description: Usuário não autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado (requer persona ADMIN).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Job não encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Job não está em estado failed (validação).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Fila não configurada (REDIS_HOST ausente).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueueNotConfiguredResponse'
   /admin/job-logs:
     get:
       tags:
@@ -2226,6 +2507,126 @@ components:
       required:
         - error
         - message
+    CronExecutionLogEntry:
+      type: object
+      description: Registro de execução de um CRON/job repetitivo (persistido em cron_logs).
+      properties:
+        id:
+          type: string
+          format: uuid
+        cronName:
+          type: string
+          maxLength: 128
+        startedAt:
+          type: string
+          format: date-time
+        finishedAt:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [completed, failed]
+        errorMessage:
+          type: string
+          nullable: true
+          description: Mensagem de erro com stack trace quando houver falha.
+      required: [id, cronName, startedAt, finishedAt, status]
+
+    CronLogListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CronExecutionLogEntry'
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+      required: [items, total, limit, offset]
+
+    CronLastExecution:
+      type: object
+      nullable: true
+      properties:
+        id:
+          type: string
+          format: uuid
+        startedAt:
+          type: string
+          format: date-time
+        finishedAt:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [completed, failed]
+        errorMessage:
+          type: string
+          nullable: true
+      required: [id, startedAt, finishedAt, status]
+
+    CronEntry:
+      type: object
+      description: CRON/job repetitivo cadastrado no BullMQ.
+      properties:
+        id:
+          type: string
+          description: Identificador do CRON (nome do job).
+        cronName:
+          type: string
+        schedule:
+          type: string
+          nullable: true
+          description: Pattern CRON do BullMQ (quando disponível).
+        next:
+          type: string
+          format: date-time
+          nullable: true
+        lastExecution:
+          $ref: '#/components/schemas/CronLastExecution'
+      required: [id, cronName, schedule, next, lastExecution]
+
+    CronListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CronEntry'
+        total:
+          type: integer
+      required: [items, total]
+
+    CronRunResponse:
+      type: object
+      properties:
+        enqueued:
+          type: boolean
+          example: true
+        jobId:
+          type: string
+          nullable: true
+          description: ID do job no BullMQ (quando disponível).
+        cronName:
+          type: string
+      required: [enqueued, jobId, cronName]
+
+    JobRetryResponse:
+      type: object
+      properties:
+        retried:
+          type: boolean
+          example: true
+        id:
+          type: string
+          description: ID do job no BullMQ.
+        stateBefore:
+          type: string
+          description: Estado anterior do job antes do retry.
+      required: [retried, id, stateBefore]
     JobExecutionLogEntry:
       type: object
       properties:

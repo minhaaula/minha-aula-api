@@ -5,3 +5,4 @@ info.txt
 scripts/
 *Zone.Identifier
 .cursor/
+.DS_Store

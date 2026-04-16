@@ -10,6 +10,12 @@ import { sendFcmMulticast } from '../../providers/firebase/fcm-provider';
 import { log } from '../../../shared/logger';
 import { connection, getOutboxQueueName } from './queue-config';
 import { persistCompletedJobLog, persistFailedJobLog } from './worker-job-log-persistence';
+import {
+    persistCronCompletionFromJob,
+    persistCronFailureFromJob,
+    persistEventCompletionFromJob,
+    persistEventFailureFromJob
+} from './worker-observability-persistence';
 
 type OutboxEvent = { type: string; payload: any; aggregateId: string };
 
@@ -931,6 +937,8 @@ export function startWorker(): Worker {
     workerInstance.on('completed', (job) => {
         log.info('[Worker] Job completado', { name: job.name, id: job.id, data: job.data });
         void persistCompletedJobLog(job);
+        void persistCronCompletionFromJob(job);
+        void persistEventCompletionFromJob(job);
     });
 
     workerInstance.on('failed', (job, err) => {
@@ -943,6 +951,8 @@ export function startWorker(): Worker {
             attemptsMade: job?.attemptsMade
         });
         void persistFailedJobLog(job, err);
+        void persistCronFailureFromJob(job, err);
+        void persistEventFailureFromJob(job, err);
     });
 
     workerInstance.on('error', (err) => {

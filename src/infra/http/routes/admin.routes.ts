@@ -45,6 +45,8 @@ import type { ListAdminJobLogs } from '../../../app/use-cases/list-admin-job-log
 import type { GetAdminJobLog } from '../../../app/use-cases/get-admin-job-log';
 import { AppError, ErrorCode } from '../../../shared/errors';
 import { connection, getOutboxQueueName } from '../../messaging/bullmq/queue-config';
+import { CronLogRepositoryAdapter } from '../../db/typeorm/cron-log-repository.adapter';
+import { EventLogRepositoryAdapter } from '../../db/typeorm/event-log-repository.adapter';
 
 const documentUpload = multer({
     storage: multer.memoryStorage(),
@@ -158,6 +160,9 @@ export function adminRouter({
     const router = Router();
     const { requireAuth } = buildAuthGuards(authMiddleware);
     const requireAdminPersona = requirePersona(UserPersonaEnum.ADMIN);
+
+    const cronLogsRepo = new CronLogRepositoryAdapter();
+    const eventLogsRepo = new EventLogRepositoryAdapter();
 
     // Rota pública de login (com rate limit anti brute-force)
     router.post('/login', authRateLimiter, asyncHandler(async (req, res, next) => {
@@ -830,11 +835,9 @@ export function adminRouter({
         }));
     }
 
-    // Fila de jobs (BullMQ) – apenas leitura
-    router.get('/queue/jobs', requireAuth, requireAdminPersona, asyncHandler(async (req, res) => {
+    async function getQueueSnapshot(query: unknown) {
         if (!process.env.REDIS_HOST) {
-            return res.status(503).json({
-                error: 'Queue not configured',
+            throw AppError.fromCode(ErrorCode.VALIDATION_ERROR, {
                 message: 'REDIS_HOST não está configurado. A fila de jobs não está disponível.'
             });
         }
@@ -844,10 +847,10 @@ export function adminRouter({
             failedLimit: z.coerce.number().int().min(1).max(200).optional(),
             completedLimit: z.coerce.number().int().min(1).max(100).optional()
         });
-        const query = querySchema.parse(req.query);
-        const waitingLimit = query.waitingLimit ?? 50;
-        const failedLimit = query.failedLimit ?? 20;
-        const completedLimit = query.completedLimit ?? 20;
+        const q = querySchema.parse(query);
+        const waitingLimit = q.waitingLimit ?? 50;
+        const failedLimit = q.failedLimit ?? 20;
+        const completedLimit = q.completedLimit ?? 20;
 
         const queue = new Queue(getOutboxQueueName(), { connection });
 
@@ -874,7 +877,7 @@ export function adminRouter({
                 };
             };
 
-            const payload = {
+            return {
                 repeatable: repeatableJobs.map((j) => ({
                     name: j.name,
                     pattern: j.pattern,
@@ -893,11 +896,235 @@ export function adminRouter({
                 failed: failed.map(toJobSummary),
                 completed: completed.map(toJobSummary)
             };
-
-            res.json(payload);
         } finally {
             await queue.close();
         }
+    }
+
+    // Fila de jobs (BullMQ) – apenas leitura (compat)
+    router.get('/queue/jobs', requireAuth, requireAdminPersona, asyncHandler(async (req, res) => {
+        try {
+            const payload = await getQueueSnapshot(req.query);
+            res.json(payload);
+        } catch (e) {
+            if (e instanceof AppError && e.code === ErrorCode.VALIDATION_ERROR) {
+                return res.status(503).json({
+                    error: 'Queue not configured',
+                    message: String(e.details?.message ?? 'Fila indisponível')
+                });
+            }
+            throw e;
+        }
+    }));
+
+    /**
+     * Observabilidade (Admin): CRONs
+     */
+    router.get('/crons', requireAuth, requireAdminPersona, asyncHandler(async (_req, res) => {
+        if (!process.env.REDIS_HOST) {
+            return res.status(503).json({
+                error: 'Queue not configured',
+                message: 'REDIS_HOST não está configurado. Os CRONs (fila BullMQ) não estão disponíveis.'
+            });
+        }
+        const queue = new Queue(getOutboxQueueName(), { connection });
+        try {
+            const repeatable = await queue.getRepeatableJobs();
+            const uniqueNames = Array.from(new Set(repeatable.map((r) => r.name))).sort();
+            const latest = await Promise.all(uniqueNames.map((name) => cronLogsRepo.findLatestByCronName(name)));
+            const byName = new Map(uniqueNames.map((n, i) => [n, latest[i] ?? null]));
+
+            res.json({
+                items: uniqueNames.map((name) => {
+                    const rep = repeatable.find((r) => r.name === name);
+                    const last = byName.get(name);
+                    return {
+                        id: name,
+                        cronName: name,
+                        schedule: rep?.pattern ?? null,
+                        next: rep?.next ? new Date(rep.next).toISOString() : null,
+                        lastExecution: last
+                            ? {
+                                  id: last.id,
+                                  startedAt: last.startedAt.toISOString(),
+                                  finishedAt: last.finishedAt.toISOString(),
+                                  status: last.status,
+                                  errorMessage: last.errorMessage
+                              }
+                            : null
+                    };
+                }),
+                total: uniqueNames.length
+            });
+        } finally {
+            await queue.close();
+        }
+    }));
+
+    router.get('/crons/:id/logs', requireAuth, requireAdminPersona, asyncHandler(async (req, res) => {
+        const paramsSchema = z.object({ id: z.string().min(1).max(128) });
+        const querySchema = z.object({
+            status: z.enum(['completed', 'failed']).optional(),
+            from: z.coerce.date().optional(),
+            to: z.coerce.date().optional(),
+            limit: z.coerce.number().int().min(1).max(100).optional(),
+            offset: z.coerce.number().int().min(0).optional()
+        });
+        const { id } = paramsSchema.parse(req.params);
+        const query = querySchema.parse(req.query);
+        const limit = Math.min(100, Math.max(1, query.limit ?? 50));
+        const offset = Math.max(0, query.offset ?? 0);
+
+        const result = await cronLogsRepo.list({
+            cronName: id,
+            status: query.status,
+            from: query.from,
+            to: query.to,
+            limit,
+            offset
+        });
+
+        res.json({
+            items: result.items.map((row) => ({
+                id: row.id,
+                cronName: row.cronName,
+                startedAt: row.startedAt.toISOString(),
+                finishedAt: row.finishedAt.toISOString(),
+                status: row.status,
+                errorMessage: row.errorMessage
+            })),
+            total: result.total,
+            limit,
+            offset
+        });
+    }));
+
+    router.post('/crons/:id/run', requireAuth, requireAdminPersona, asyncHandler(async (req, res) => {
+        if (!process.env.REDIS_HOST) {
+            return res.status(503).json({
+                error: 'Queue not configured',
+                message: 'REDIS_HOST não está configurado. Não é possível executar CRON manualmente.'
+            });
+        }
+        const paramsSchema = z.object({ id: z.string().min(1).max(128) });
+        const { id } = paramsSchema.parse(req.params);
+
+        const queue = new Queue(getOutboxQueueName(), { connection });
+        try {
+            const aggregateId = `admin-cron-run:${id}:${Date.now()}`;
+            const job = await queue.add(
+                id,
+                { type: id, payload: {}, aggregateId },
+                { removeOnComplete: true, attempts: 1 }
+            );
+            res.status(202).json({ enqueued: true, jobId: job.id ?? null, cronName: id });
+        } finally {
+            await queue.close();
+        }
+    }));
+
+    /**
+     * Observabilidade (Admin): Jobs (BullMQ)
+     */
+    router.get('/jobs', requireAuth, requireAdminPersona, asyncHandler(async (req, res) => {
+        try {
+            const payload = await getQueueSnapshot(req.query);
+            res.json(payload);
+        } catch (e) {
+            if (e instanceof AppError && e.code === ErrorCode.VALIDATION_ERROR) {
+                return res.status(503).json({
+                    error: 'Queue not configured',
+                    message: String(e.details?.message ?? 'Fila indisponível')
+                });
+            }
+            throw e;
+        }
+    }));
+
+    router.post('/jobs/:id/retry', requireAuth, requireAdminPersona, asyncHandler(async (req, res) => {
+        if (!process.env.REDIS_HOST) {
+            return res.status(503).json({
+                error: 'Queue not configured',
+                message: 'REDIS_HOST não está configurado. Não é possível dar retry manual.'
+            });
+        }
+        const paramsSchema = z.object({ id: z.string().min(1).max(128) });
+        const { id } = paramsSchema.parse(req.params);
+
+        const queue = new Queue(getOutboxQueueName(), { connection });
+        try {
+            const job = await queue.getJob(id);
+            if (!job) {
+                throw AppError.notFound('Job', { id });
+            }
+            const state = await job.getState();
+            if (state !== 'failed') {
+                throw AppError.validation('Job não está em estado "failed"', { id, state });
+            }
+            await job.retry();
+            res.status(202).json({ retried: true, id, stateBefore: state });
+        } finally {
+            await queue.close();
+        }
+    }));
+
+    /**
+     * Observabilidade (Admin): Eventos de disparo (push/whatsapp/etc.)
+     */
+    router.get('/events', requireAuth, requireAdminPersona, asyncHandler(async (req, res) => {
+        const querySchema = z.object({
+            type: z.string().min(1).max(128).optional(),
+            status: z.enum(['completed', 'failed']).optional(),
+            from: z.coerce.date().optional(),
+            to: z.coerce.date().optional(),
+            limit: z.coerce.number().int().min(1).max(100).optional(),
+            offset: z.coerce.number().int().min(0).optional()
+        });
+        const query = querySchema.parse(req.query);
+        const limit = Math.min(100, Math.max(1, query.limit ?? 50));
+        const offset = Math.max(0, query.offset ?? 0);
+
+        const result = await eventLogsRepo.list({
+            type: query.type,
+            status: query.status,
+            from: query.from,
+            to: query.to,
+            limit,
+            offset
+        });
+
+        res.json({
+            items: result.items.map((row) => ({
+                id: row.id,
+                type: row.type,
+                recipient: row.recipient,
+                dispatchedAt: row.dispatchedAt.toISOString(),
+                status: row.status,
+                payload: row.payload,
+                errorMessage: row.errorMessage
+            })),
+            total: result.total,
+            limit,
+            offset
+        });
+    }));
+
+    router.get('/events/:id', requireAuth, requireAdminPersona, asyncHandler(async (req, res) => {
+        const paramsSchema = z.object({ id: z.string().uuid() });
+        const { id } = paramsSchema.parse(req.params);
+        const row = await eventLogsRepo.findById(id);
+        if (!row) {
+            throw AppError.notFound('Evento', { id });
+        }
+        res.json({
+            id: row.id,
+            type: row.type,
+            recipient: row.recipient,
+            dispatchedAt: row.dispatchedAt.toISOString(),
+            status: row.status,
+            payload: row.payload,
+            errorMessage: row.errorMessage
+        });
     }));
 
     return router;

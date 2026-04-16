@@ -33,6 +33,8 @@ import { UserPushTokenOrm } from './entities/user-push-token.orm';
 import { ChargeDueReminderOrm } from './entities/charge-due-reminder.orm';
 import { JobExecutionLogOrm } from './entities/job-execution-log.orm';
 import { SchoolActionOtpOrm } from './entities/school-action-otp.orm';
+import { CronLogOrm } from './entities/cron-log.orm';
+import { EventLogOrm } from './entities/event-log.orm';
 
 export const AppDataSource = new DataSource({
     type: 'mysql',
@@ -72,7 +74,9 @@ export const AppDataSource = new DataSource({
         UserPushTokenOrm,
         ChargeDueReminderOrm,
         JobExecutionLogOrm,
-        SchoolActionOtpOrm
+        SchoolActionOtpOrm,
+        CronLogOrm,
+        EventLogOrm
     ],
     synchronize: false,
     // Em dev (`ts-node` em `src/...`) usa `*.ts`; após build (`node` em `dist/...`) usa `*.js`.
