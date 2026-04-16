@@ -6,6 +6,7 @@ import type { SendClassPushNotification } from '../../../../app/use-cases/send-c
 import type { GetSchoolNotificationPreferences } from '../../../../app/use-cases/get-school-notification-preferences';
 import type { UpdateSchoolNotificationPreferences } from '../../../../app/use-cases/update-school-notification-preferences';
 import type { ReadSchoolNotification } from '../../../../app/use-cases/read-school-notification';
+import type { ReadAllSchoolNotifications } from '../../../../app/use-cases/read-all-school-notifications';
 import type { SchoolRouteGuards } from './guards';
 import type { SchoolContextRequest } from '../../middlewares/resolve-school-context';
 
@@ -15,6 +16,7 @@ type NotificationsRoutesDeps = {
     getSchoolNotificationPreferences: GetSchoolNotificationPreferences;
     updateSchoolNotificationPreferences: UpdateSchoolNotificationPreferences;
     readSchoolNotification?: ReadSchoolNotification;
+    readAllSchoolNotifications?: ReadAllSchoolNotifications;
 };
 
 export function buildNotificationsRoutes(deps: NotificationsRoutesDeps, guards: SchoolRouteGuards) {
@@ -73,6 +75,14 @@ export function buildNotificationsRoutes(deps: NotificationsRoutesDeps, guards: 
         });
         res.json(result);
     }));
+
+    if (deps.readAllSchoolNotifications) {
+        router.put('/read-all', ...protectedMiddleware, asyncHandler(async (req, res) => {
+            const schoolId = (req as SchoolContextRequest).schoolId as string;
+            const result = await deps.readAllSchoolNotifications!.exec({ schoolId });
+            res.json(result);
+        }));
+    }
 
     if (deps.sendClassPushNotification) {
         router.post('/classes/:classId/push', ...protectedMiddleware, asyncHandler(async (req, res) => {

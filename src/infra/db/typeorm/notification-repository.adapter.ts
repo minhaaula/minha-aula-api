@@ -70,6 +70,19 @@ export class NotificationRepositoryAdapter implements NotificationRepository {
         return result.affected ?? 0;
     }
 
+    async markAllAsReadBySchoolId(schoolId: string): Promise<number> {
+        const readAt = new Date();
+        const result = await this.repo
+            .createQueryBuilder()
+            .update(NotificationOrm)
+            .set({ readAt })
+            .where('schoolId = :schoolId', { schoolId })
+            .andWhere('readAt IS NULL')
+            .execute();
+
+        return result.affected ?? 0;
+    }
+
     private toDomain(row: NotificationOrm): Notification {
         return Notification.create({
             id: row.id,

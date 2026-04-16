@@ -45,6 +45,25 @@ function makeSchool(params?: Partial<{ emailEnabled: boolean; whatsappEnabled: b
     });
 }
 
+describe('School.create — preferências (coerção DB)', () => {
+    it('aceita tinyint MySQL como 0/1 (number)', () => {
+        const school = School.create({
+            id: '550e8400-e29b-41d4-a716-446655440000',
+            name: 'Escola Teste',
+            email: 'escola@teste.com',
+            phone: '11999999999',
+            cnpj: '11222333000199',
+            notificationsEmailEnabled: 1,
+            notificationsWhatsappEnabled: 0,
+            notificationsPushEnabled: 1
+        } as Parameters<typeof School.create>[0]);
+
+        expect(school.notificationsEmailEnabled).toBe(true);
+        expect(school.notificationsWhatsappEnabled).toBe(false);
+        expect(school.notificationsPushEnabled).toBe(true);
+    });
+});
+
 describe('School notification preferences (use-cases)', () => {
     it('defaults to true when not provided', async () => {
         const repo = new InMemorySchoolRepository();

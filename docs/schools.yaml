@@ -2795,6 +2795,42 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /schools/notifications/read-all:
+    put:
+      tags:
+        - Schools
+      summary: Marcar todas as notificações como lidas
+      description: >-
+        Marca todas as notificações não lidas da escola autenticada como lidas de uma vez (in-app).
+        Aplica a notificações cujo `schoolId` é o da escola no token/contexto (inclui `scope` SCHOOL e CLASS).
+        Retorna o número de notificações que foram marcadas como lidas.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Notificações marcadas como lidas com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MarkAllNotificationsAsReadResponse'
+              examples:
+                default:
+                  summary: Exemplo de resposta
+                  value:
+                    markedCount: 5
+        '401':
+          description: Usuário não autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado ou sem contexto de escola.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /schools/notifications/{notificationId}/read:
     put:
       tags:

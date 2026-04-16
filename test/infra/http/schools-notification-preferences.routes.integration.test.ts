@@ -14,6 +14,7 @@ function buildTestApp(params: {
     getPrefsExec: ReturnType<typeof vi.fn>;
     updatePrefsExec: ReturnType<typeof vi.fn>;
     readSchoolNotificationExec?: ReturnType<typeof vi.fn>;
+    readAllSchoolNotificationsExec?: ReturnType<typeof vi.fn>;
 }) {
     const app = express();
     app.use(express.json());
@@ -34,6 +35,9 @@ function buildTestApp(params: {
         updateSchoolNotificationPreferences: { exec: params.updatePrefsExec } as any,
         readSchoolNotification: params.readSchoolNotificationExec
             ? ({ exec: params.readSchoolNotificationExec } as any)
+            : undefined,
+        readAllSchoolNotifications: params.readAllSchoolNotificationsExec
+            ? ({ exec: params.readAllSchoolNotificationsExec } as any)
             : undefined
     }, {
         requireAuth: (_req, _res, next) => next(),
@@ -119,6 +123,27 @@ describe('schools notifications preferences routes (HTTP)', () => {
             readAt: '2026-01-01T00:00:00.000Z'
         });
         expect(readExec).toHaveBeenCalledTimes(1);
+    });
+
+    it('PUT /schools/notifications/read-all marca todas como lidas', async () => {
+        const getExec = vi.fn(async () => ({ emailEnabled: true, whatsappEnabled: true, pushEnabled: true }));
+        const updateExec = vi.fn(async () => ({ emailEnabled: true, whatsappEnabled: true, pushEnabled: true }));
+        const readAllExec = vi.fn(async () => ({ markedCount: 3 }));
+
+        const app = buildTestApp({
+            userCtx: { persona: 'SCHOOL', sub: 'x', schoolId: '550e8400-e29b-41d4-a716-446655440000' },
+            getPrefsExec: getExec,
+            updatePrefsExec: updateExec,
+            readAllSchoolNotificationsExec: readAllExec
+        });
+
+        const res = await request(app).put('/schools/notifications/read-all');
+        expect(res.status).toBe(200);
+        expect(res.body).toEqual({ markedCount: 3 });
+        expect(readAllExec).toHaveBeenCalledTimes(1);
+        expect(readAllExec.mock.calls[0][0]).toEqual({
+            schoolId: '550e8400-e29b-41d4-a716-446655440000'
+        });
     });
 });
 

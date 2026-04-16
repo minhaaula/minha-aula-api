@@ -27,4 +27,6 @@ export interface NotificationRepository {
         offset?: number;
     }): Promise<NotificationListItem[]>;
     markAllAsReadByUserId?(userId: string): Promise<number>;
+    /** Marca como lidas todas as notificações cujo `schoolId` coincide (escola). */
+    markAllAsReadBySchoolId?(schoolId: string): Promise<number>;
 }

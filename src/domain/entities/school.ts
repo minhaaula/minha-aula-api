@@ -241,10 +241,28 @@ export class School {
         return digits;
     }
 
+    /**
+     * Preferências vêm do MySQL como `tinyint` (0/1); drivers costumam entregar `number`, não `boolean`.
+     */
     private static normalizePreference(value: unknown, defaultValue: boolean): boolean {
         if (value === undefined || value === null) return defaultValue;
-        if (typeof value !== 'boolean') throw new Error('School notification preference must be a boolean');
-        return value;
+        if (typeof value === 'boolean') return value;
+        if (typeof value === 'number') {
+            if (value === 1) return true;
+            if (value === 0) return false;
+            throw new Error('School notification preference must be a boolean');
+        }
+        if (typeof value === 'string') {
+            if (value === '1') return true;
+            if (value === '0') return false;
+            throw new Error('School notification preference must be a boolean');
+        }
+        if (Buffer.isBuffer(value) && value.length === 1) {
+            const b = value[0];
+            if (b === 1) return true;
+            if (b === 0) return false;
+        }
+        throw new Error('School notification preference must be a boolean');
     }
 
     private static normalizeOwnerName(value: unknown): string | null {
