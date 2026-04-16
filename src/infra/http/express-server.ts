@@ -166,7 +166,11 @@ export function makeServer(deps: AppDependencies & Record<string, any>) {
     if (openApiDocument) {
         const swaggerAuth = makeSwaggerAuthMiddleware();
         const swaggerHandler = swaggerUi.setup(undefined, {
-            swaggerOptions: { spec: openApiDocument },
+            swaggerOptions: {
+                spec: openApiDocument,
+                tagsSorter: 'alpha',
+                operationsSorter: 'alpha'
+            },
             customSiteTitle: 'Minha Aula API Docs'
         });
         app.use('/docs', ...swaggerAuth, swaggerUi.serve, swaggerHandler);

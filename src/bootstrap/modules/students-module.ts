@@ -51,6 +51,7 @@ import { StorageProviderPort } from '../../ports/providers/storage-provider.port
 import { SchoolImageRepositoryAdapter } from '../../infra/db/typeorm/school-image-repository.adapter';
 import { OutboxRepository } from '../../ports/repositories/outbox.repo';
 import { NotifyStudentUser } from '../../app/use-cases/notify-student-user';
+import { MODULE_DOC_FILES } from '../module-config';
 
 export type StudentsModuleDeps = {
     usersRepo: UserRepositoryAdapter;
@@ -250,6 +251,6 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
             dependentsRouter: dependentsRouterInstance,
             enrollmentRequestsRouter: enrollmentRequestsRouterInstance
         },
-        docFiles: ['students.yaml', 'dependents.yaml', 'enrollment-requests.yaml', 'schools-public.yaml']
+        docFiles: [...MODULE_DOC_FILES.students]
     };
 }

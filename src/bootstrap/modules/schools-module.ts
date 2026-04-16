@@ -1,4 +1,5 @@
 import { ModuleBuildResult, ModuleSetupContext } from './types';
+import { MODULE_DOC_FILES } from '../module-config';
 import { SchoolRepositoryAdapter } from '../../infra/db/typeorm/school-repository';
 import { CourseRepositoryAdapter } from '../../infra/db/typeorm/course-repository';
 import { CourseClassRepositoryAdapter } from '../../infra/db/typeorm/course-class-repository.adapter';
@@ -509,6 +510,6 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
             landingRouter: landingRouterInstance,
             enrollmentRequestsRouter: enrollmentRequestsRouterInstance
         },
-        docFiles: ['schools.yaml', 'students.yaml', 'enrollment-requests.yaml', 'landing.yaml']
+        docFiles: [...MODULE_DOC_FILES.schools]
     };
 }

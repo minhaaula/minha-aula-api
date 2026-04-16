@@ -6,6 +6,7 @@ import { CapturePayment } from '../../app/use-cases/CapturePayment';
 import { IssueBoleto } from '../../app/use-cases/issue-boleto';
 import { paymentsRouter } from '../../infra/http/routes/payments.routes';
 import { PaymentProviderPort } from '../../ports/providers/payment-provider.port';
+import { MODULE_DOC_FILES } from '../module-config';
 
 export type PaymentsModuleDeps = {
     paymentsRepo: PaymentRepositoryAdapter;
@@ -35,6 +36,6 @@ export function buildPaymentsModule(deps: PaymentsModuleDeps, _ctx: ModuleSetupC
         deps: {
             paymentsRouter: router
         },
-        docFiles: ['payments.yaml']
+        docFiles: [...MODULE_DOC_FILES.payments]
     };
 }

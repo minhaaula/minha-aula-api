@@ -59,6 +59,97 @@ type LoadOptions = {
     modules?: Array<string>;
 };
 
+type OpenApiOperation = Record<string, unknown> & {
+    tags?: string[];
+};
+
+function titleizeSegment(segment: string): string {
+    const cleaned = segment
+        .replace(/^\{|\}$/g, '')
+        .replace(/[-_]+/g, ' ')
+        .trim();
+    if (!cleaned) return segment;
+    return cleaned
+        .split(' ')
+        .filter(Boolean)
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+}
+
+function computeHierarchicalTag(baseTag: string, rawPath: string): string {
+    const segments = rawPath.split('/').filter(Boolean);
+    const second = segments[1] ?? '';
+    const third = segments[2] ?? '';
+
+    // Casos especiais: rotas de autenticação da escola vivem em /schools/*
+    if (baseTag === 'Schools' && (second === 'login' || second === 'password')) {
+        if (second === 'login') {
+            return 'Schools / Auth / Login';
+        }
+        const passwordSuffix = third ? ` / ${titleizeSegment(third)}` : '';
+        return `Schools / Auth / Password${passwordSuffix}`;
+    }
+
+    if (baseTag === 'Auth') {
+        if (second === 'login') return 'Auth / Login';
+        if (second === 'register') return 'Auth / Cadastro';
+        if (second === 'refresh') return 'Auth / Tokens';
+        if (second === 'password') {
+            const passwordSuffix = third ? ` / ${titleizeSegment(third)}` : '';
+            return `Auth / Senha${passwordSuffix}`;
+        }
+    }
+
+    const category = second ? titleizeSegment(second) : baseTag;
+    const subcategory = third ? ` / ${titleizeSegment(third)}` : '';
+    return `${baseTag} / ${category}${subcategory}`;
+}
+
+function ensureTagEntry(document: any, tagName: string) {
+    if (!Array.isArray(document.tags)) {
+        document.tags = [];
+    }
+    const tags = document.tags as Array<{ name?: string; description?: string }>;
+    if (!tags.some((t) => t?.name === tagName)) {
+        tags.push({ name: tagName });
+    }
+}
+
+function applyHierarchicalTags(document: any) {
+    if (!document || typeof document !== 'object') return;
+    const paths = (document as any).paths;
+    if (!paths || typeof paths !== 'object') return;
+
+    for (const [rawPath, pathItem] of Object.entries(paths as Record<string, unknown>)) {
+        if (!pathItem || typeof pathItem !== 'object') continue;
+
+        for (const [method, operation] of Object.entries(pathItem as Record<string, unknown>)) {
+            // Ignorar chaves não-operacionais (ex.: parameters)
+            if (!['get', 'post', 'put', 'patch', 'delete', 'options', 'head'].includes(method)) continue;
+            if (!operation || typeof operation !== 'object') continue;
+
+            const op = operation as OpenApiOperation;
+            if (!Array.isArray(op.tags) || op.tags.length === 0) continue;
+
+            const baseTag = op.tags[0] ?? '';
+            if (!baseTag) continue;
+
+            const hierarchical = computeHierarchicalTag(baseTag, rawPath);
+            op.tags = [hierarchical];
+            ensureTagEntry(document, hierarchical);
+        }
+    }
+
+    // Ordenação estável: deixa o Swagger UI previsível
+    if (Array.isArray(document.tags)) {
+        document.tags = [...document.tags].sort((a: any, b: any) => {
+            const an = typeof a?.name === 'string' ? a.name : '';
+            const bn = typeof b?.name === 'string' ? b.name : '';
+            return an.localeCompare(bn, 'pt-BR');
+        });
+    }
+}
+
 export function loadOpenApiDocument(options?: LoadOptions) {
     const docsDir = DOCS_DIR_CANDIDATES.find((dir) => fs.existsSync(dir));
     if (!docsDir) {
@@ -100,6 +191,8 @@ export function loadOpenApiDocument(options?: LoadOptions) {
             servers.push({ url: prodUrl, description: 'Ambiente Prod' });
         }
     }
+
+    applyHierarchicalTags(document);
 
     return document;
 }

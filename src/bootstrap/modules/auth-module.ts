@@ -7,7 +7,7 @@ import { ScryptPasswordHasher } from '../../infra/auth/scrypt-password-hasher';
 import { HmacTokenProvider } from '../../infra/auth/hmac-token-provider';
 import { UserRepositoryAdapter } from '../../infra/db/typeorm/user-repository.adapter';
 import { SchoolRepositoryAdapter } from '../../infra/db/typeorm/school-repository';
-import type { ModuleName } from '../module-config';
+import { MODULE_DOC_FILES, type ModuleName } from '../module-config';
 import { UpdateUserPassword } from '../../app/use-cases/update-user-password';
 import { RequestUserPasswordReset } from '../../app/use-cases/request-user-password-reset';
 import { ResetUserPassword } from '../../app/use-cases/reset-user-password';
@@ -82,6 +82,6 @@ export function buildAuthModule(deps: AuthModuleDeps, ctx: ModuleSetupContext): 
         deps: {
             authRouter: router
         },
-        docFiles: ['auth.yaml']
+        docFiles: [...MODULE_DOC_FILES.auth]
     };
 }

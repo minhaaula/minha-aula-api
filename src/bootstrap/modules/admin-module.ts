@@ -8,7 +8,7 @@ import { CreateDiscountCoupon } from '../../app/use-cases/create-discount-coupon
 import { ListDiscountCoupons } from '../../app/use-cases/list-discount-coupons';
 import { ValidateDiscountCoupon } from '../../app/use-cases/validate-discount-coupon';
 import { DiscountCouponRepositoryAdapter } from '../../infra/db/typeorm/discount-coupon-repository.adapter';
-import type { ModuleName } from '../module-config';
+import { MODULE_DOC_FILES, type ModuleName } from '../module-config';
 import type { SchoolRepository } from '../../ports/repositories/school.repo';
 import type { SchoolPlanFinanceRepository } from '../../ports/repositories/school-plan-finance.repo';
 import type { SubscriptionPlanRepository } from '../../ports/repositories/subscription-plan.repo';
@@ -309,7 +309,7 @@ export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext)
         deps: {
             adminRouter: router
         },
-        docFiles: ['admin.yaml']
+        docFiles: [...MODULE_DOC_FILES.admin]
     };
 }
 
