@@ -2795,6 +2795,51 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /schools/notifications/{notificationId}/read:
+    put:
+      tags:
+        - Schools
+      summary: Marcar uma notificação como lida
+      description: >-
+        Marca uma notificação da escola autenticada como lida (in-app). Aplica a notificações cujo `schoolId`
+        é o da escola no token/contexto (inclui `scope` SCHOOL e CLASS).
+        Se já estiver lida, retorna o mesmo `readAt` (idempotente). Se o ID não existir ou não pertencer à escola, retorna 404.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: notificationId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID da notificação (retornado em GET /schools/notifications)
+      responses:
+        '200':
+          description: Notificação marcada como lida (ou já estava lida).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MarkNotificationAsReadResponse'
+        '401':
+          description: Usuário não autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado ou sem contexto de escola.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Notificação não encontrada ou não pertence à escola.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /schools/notifications/classes/{classId}/push:
     post:
       tags:

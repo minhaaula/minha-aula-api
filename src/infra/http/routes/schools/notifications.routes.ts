@@ -5,6 +5,7 @@ import type { ListSchoolNotifications } from '../../../../app/use-cases/list-sch
 import type { SendClassPushNotification } from '../../../../app/use-cases/send-class-push-notification';
 import type { GetSchoolNotificationPreferences } from '../../../../app/use-cases/get-school-notification-preferences';
 import type { UpdateSchoolNotificationPreferences } from '../../../../app/use-cases/update-school-notification-preferences';
+import type { ReadSchoolNotification } from '../../../../app/use-cases/read-school-notification';
 import type { SchoolRouteGuards } from './guards';
 import type { SchoolContextRequest } from '../../middlewares/resolve-school-context';
 
@@ -13,6 +14,7 @@ type NotificationsRoutesDeps = {
     sendClassPushNotification?: SendClassPushNotification;
     getSchoolNotificationPreferences: GetSchoolNotificationPreferences;
     updateSchoolNotificationPreferences: UpdateSchoolNotificationPreferences;
+    readSchoolNotification?: ReadSchoolNotification;
 };
 
 export function buildNotificationsRoutes(deps: NotificationsRoutesDeps, guards: SchoolRouteGuards) {
@@ -93,6 +95,17 @@ export function buildNotificationsRoutes(deps: NotificationsRoutesDeps, guards: 
             });
 
             res.status(201).json(result);
+        }));
+    }
+
+    if (deps.readSchoolNotification) {
+        router.put('/:notificationId/read', ...protectedMiddleware, asyncHandler(async (req, res) => {
+            const schoolId = (req as SchoolContextRequest).schoolId as string;
+            const paramsSchema = z.object({ notificationId: z.string().uuid() });
+            const { notificationId } = paramsSchema.parse(req.params);
+
+            const result = await deps.readSchoolNotification!.exec({ schoolId, notificationId });
+            res.json(result);
         }));
     }
 

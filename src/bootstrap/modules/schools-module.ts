@@ -100,6 +100,7 @@ import { SendClassPushNotification } from '../../app/use-cases/send-class-push-n
 import { NotifyStudentUser } from '../../app/use-cases/notify-student-user';
 import { GetSchoolNotificationPreferences } from '../../app/use-cases/get-school-notification-preferences';
 import { UpdateSchoolNotificationPreferences } from '../../app/use-cases/update-school-notification-preferences';
+import { ReadSchoolNotification } from '../../app/use-cases/read-school-notification';
 import { SchoolActionOtpRepositoryAdapter } from '../../infra/db/typeorm/school-action-otp-repository.adapter';
 import { createTwilioVerifyFromEnv } from '../../infra/providers/twilio/create-twilio-verify-provider';
 import { createWhatsAppProviderFromEnv } from '../../infra/providers/twilio/create-whatsapp-provider';
@@ -407,6 +408,9 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         : undefined;
     const getSchoolNotificationPreferences = new GetSchoolNotificationPreferences(deps.schoolsRepo);
     const updateSchoolNotificationPreferences = new UpdateSchoolNotificationPreferences(deps.schoolsRepo);
+    const readSchoolNotification = deps.notificationsRepo
+        ? new ReadSchoolNotification(deps.notificationsRepo)
+        : undefined;
 
     // Montar routers prontos
     const schoolsRouterInstance = schoolsRouter({
@@ -468,6 +472,7 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         sendClassPushNotification,
         getSchoolNotificationPreferences,
         updateSchoolNotificationPreferences,
+        readSchoolNotification,
         getSchoolPendingDocuments,
         syncSchoolOnboardingDocuments,
         uploadSchoolOnboardingDocument,

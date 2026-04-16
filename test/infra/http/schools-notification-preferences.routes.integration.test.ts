@@ -13,6 +13,7 @@ function buildTestApp(params: {
     userCtx: UserCtx;
     getPrefsExec: ReturnType<typeof vi.fn>;
     updatePrefsExec: ReturnType<typeof vi.fn>;
+    readSchoolNotificationExec?: ReturnType<typeof vi.fn>;
 }) {
     const app = express();
     app.use(express.json());
@@ -30,7 +31,10 @@ function buildTestApp(params: {
         listSchoolNotifications: undefined,
         sendClassPushNotification: undefined,
         getSchoolNotificationPreferences: { exec: params.getPrefsExec } as any,
-        updateSchoolNotificationPreferences: { exec: params.updatePrefsExec } as any
+        updateSchoolNotificationPreferences: { exec: params.updatePrefsExec } as any,
+        readSchoolNotification: params.readSchoolNotificationExec
+            ? ({ exec: params.readSchoolNotificationExec } as any)
+            : undefined
     }, {
         requireAuth: (_req, _res, next) => next(),
         requireSchoolPersona: requirePersona(UserPersonaEnum.SCHOOL),
@@ -91,6 +95,30 @@ describe('schools notifications preferences routes (HTTP)', () => {
             .put('/schools/notifications/preferences')
             .send({ whatsappEnabled: false, unknownField: true });
         expect(bad.status).toBe(400);
+    });
+
+    it('PUT /schools/notifications/:notificationId/read marca como lida', async () => {
+        const getExec = vi.fn(async () => ({ emailEnabled: true, whatsappEnabled: true, pushEnabled: true }));
+        const updateExec = vi.fn(async () => ({ emailEnabled: true, whatsappEnabled: true, pushEnabled: true }));
+        const readExec = vi.fn(async () => ({
+            id: '550e8400-e29b-41d4-a716-446655440000',
+            readAt: '2026-01-01T00:00:00.000Z'
+        }));
+
+        const app = buildTestApp({
+            userCtx: { persona: 'SCHOOL', sub: 'x', schoolId: '550e8400-e29b-41d4-a716-446655440000' },
+            getPrefsExec: getExec,
+            updatePrefsExec: updateExec,
+            readSchoolNotificationExec: readExec
+        });
+
+        const res = await request(app).put('/schools/notifications/550e8400-e29b-41d4-a716-446655440000/read');
+        expect(res.status).toBe(200);
+        expect(res.body).toEqual({
+            id: '550e8400-e29b-41d4-a716-446655440000',
+            readAt: '2026-01-01T00:00:00.000Z'
+        });
+        expect(readExec).toHaveBeenCalledTimes(1);
     });
 });
 

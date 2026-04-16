@@ -68,6 +68,7 @@ import type { VerifySchoolActionOtp } from '../../../app/use-cases/verify-school
 import { buildSecurityRoutes } from './schools/security.routes';
 import type { GetSchoolNotificationPreferences } from '../../../app/use-cases/get-school-notification-preferences';
 import type { UpdateSchoolNotificationPreferences } from '../../../app/use-cases/update-school-notification-preferences';
+import type { ReadSchoolNotification } from '../../../app/use-cases/read-school-notification';
 
 export type SchoolsRouterDeps = {
     createSchool: CreateSchool;
@@ -128,6 +129,7 @@ export type SchoolsRouterDeps = {
     sendClassPushNotification?: SendClassPushNotification;
     getSchoolNotificationPreferences?: GetSchoolNotificationPreferences;
     updateSchoolNotificationPreferences?: UpdateSchoolNotificationPreferences;
+    readSchoolNotification?: ReadSchoolNotification;
     getSchoolPendingDocuments?: import('../../../app/use-cases/get-school-pending-documents').GetSchoolPendingDocuments;
     syncSchoolOnboardingDocuments?: import('../../../app/use-cases/sync-school-onboarding-documents').SyncSchoolOnboardingDocuments;
     uploadSchoolOnboardingDocument?: import('../../../app/use-cases/admin-upload-school-onboarding-document').AdminUploadSchoolOnboardingDocument;
@@ -239,7 +241,8 @@ export function schoolsRouter(deps: SchoolsRouterDeps) {
             listSchoolNotifications: deps.listSchoolNotifications,
             sendClassPushNotification: deps.sendClassPushNotification,
             getSchoolNotificationPreferences: deps.getSchoolNotificationPreferences,
-            updateSchoolNotificationPreferences: deps.updateSchoolNotificationPreferences
+            updateSchoolNotificationPreferences: deps.updateSchoolNotificationPreferences,
+            readSchoolNotification: deps.readSchoolNotification
         }, guards));
     }
 
