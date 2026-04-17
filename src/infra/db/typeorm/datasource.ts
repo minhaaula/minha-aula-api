@@ -33,6 +33,7 @@ import { UserPushTokenOrm } from './entities/user-push-token.orm';
 import { ChargeDueReminderOrm } from './entities/charge-due-reminder.orm';
 import { JobExecutionLogOrm } from './entities/job-execution-log.orm';
 import { SchoolActionOtpOrm } from './entities/school-action-otp.orm';
+import { AuthPhoneOtpChallengeOrm } from './entities/auth-phone-otp-challenge.orm';
 import { CronLogOrm } from './entities/cron-log.orm';
 import { EventLogOrm } from './entities/event-log.orm';
 
@@ -75,6 +76,7 @@ export const AppDataSource = new DataSource({
         ChargeDueReminderOrm,
         JobExecutionLogOrm,
         SchoolActionOtpOrm,
+        AuthPhoneOtpChallengeOrm,
         CronLogOrm,
         EventLogOrm
     ],

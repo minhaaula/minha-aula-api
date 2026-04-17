@@ -61,6 +61,8 @@ export enum ErrorCode {
     CLASS_SESSION_OVERLAP = 'CLASS_SESSION_OVERLAP',
     INCOMPLETE_DATA = 'INCOMPLETE_DATA',
     NOT_ENROLLED_IN_SCHOOL = 'NOT_ENROLLED_IN_SCHOOL',
+    /** Cadastro exige token emitido após verificação do WhatsApp (Twilio Verify). */
+    SIGNUP_PHONE_NOT_VERIFIED = 'SIGNUP_PHONE_NOT_VERIFIED',
     
     // Sistema (7000-7999)
     INTERNAL_ERROR = 'INTERNAL_ERROR',
@@ -128,6 +130,7 @@ export const ErrorMessages: Record<ErrorCode, string> = {
     [ErrorCode.CLASS_SESSION_OVERLAP]: 'Sessão de aula sobrepõe com uma existente',
     [ErrorCode.INCOMPLETE_DATA]: 'Dados incompletos',
     [ErrorCode.NOT_ENROLLED_IN_SCHOOL]: 'Você ou algum dependente precisa estar matriculado na escola para avaliá-la',
+    [ErrorCode.SIGNUP_PHONE_NOT_VERIFIED]: 'Confirme o código enviado ao WhatsApp antes de concluir o cadastro',
     
     // Sistema
     [ErrorCode.INTERNAL_ERROR]: 'Erro interno do servidor',

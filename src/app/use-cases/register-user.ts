@@ -1,4 +1,5 @@
 import { UserRepository } from '../../ports/repositories/user.repo';
+import type { TokenProviderPort } from '../../ports/providers/token-provider.port';
 import { PasswordHasherPort } from '../../ports/providers/password-hasher.port';
 import { Email } from '../../domain/value-objects/email';
 import { User } from '../../domain/entities/user';
@@ -9,11 +10,13 @@ import { OutboxRepository } from '../../ports/repositories/outbox.repo';
 import { AppError, ErrorCode } from '../../shared/errors';
 import type { RegisterUserInput, RegisterUserOutput } from '../types/auth.types';
 import type { NotifyStudentUser } from './notify-student-user';
+import { toE164Brazil } from '../../shared/phone-e164';
 
 export class RegisterUser {
     constructor(
         private readonly users: UserRepository,
         private readonly hasher: PasswordHasherPort,
+        private readonly tokenProvider: TokenProviderPort,
         private readonly outbox?: OutboxRepository,
         private readonly frontendBaseUrl?: string,
         private readonly notifyStudent?: NotifyStudentUser
@@ -32,6 +35,8 @@ export class RegisterUser {
         if (existingByCpf) {
             throw AppError.fromCode(ErrorCode.CPF_ALREADY_REGISTERED, { cpf });
         }
+
+        await this.assertSignupPhoneVerified(input.phoneVerificationToken, input.phone);
 
         const birthDate = new Date(input.birthDate);
         if (Number.isNaN(birthDate.getTime())) {
@@ -122,5 +127,27 @@ export class RegisterUser {
             throw AppError.fromCode(ErrorCode.INVALID_CPF, { cpf: value });
         }
         return digits;
+    }
+
+    private async assertSignupPhoneVerified(token: string, declaredPhone: string): Promise<void> {
+        const e164Declared = toE164Brazil(declaredPhone);
+        if (!e164Declared) {
+            throw AppError.fromCode(ErrorCode.INVALID_PHONE, { phone: declaredPhone });
+        }
+        try {
+            const payload = await this.tokenProvider.verify<{ typ?: string; ph?: string }>(token.trim());
+            if (payload.typ !== 'signup_phone') {
+                throw AppError.fromCode(ErrorCode.SIGNUP_PHONE_NOT_VERIFIED);
+            }
+            const e164Token = toE164Brazil(String(payload.ph ?? ''));
+            if (!e164Token || e164Token !== e164Declared) {
+                throw AppError.fromCode(ErrorCode.SIGNUP_PHONE_NOT_VERIFIED);
+            }
+        } catch (e) {
+            if (e instanceof AppError) {
+                throw e;
+            }
+            throw AppError.fromCode(ErrorCode.SIGNUP_PHONE_NOT_VERIFIED);
+        }
     }
 }

@@ -9,7 +9,39 @@ Autenticação de **usuários** (não escola). Personas incluem STUDENT, ADMIN, 
 
 > Referência técnica completa: [Swagger UI](pathname:///docs) · [OpenAPI JSON](pathname:///docs/openapi.json)
 
+**WhatsApp (Twilio Verify):** cadastro e “esqueci minha senha” exigem confirmação por código enviado ao WhatsApp (servidor com `TWILIO_*` configurado). Não existe mais `POST /auth/password/request` (reset só por e-mail).
+
 ## Endpoints (8)
+
+### `POST` `/auth/verification/request`
+
+**Resumo:** Solicitar código no WhatsApp (cadastro ou recuperação de senha)
+
+**Funcionalidade:**
+
+Corpo com `purpose`: `signup` (e `phone`) ou `user_password_reset` (e `email`). Inicia verificação Twilio Verify; em caso de sucesso retorna `challengeId` para o passo seguinte.
+
+---
+
+### `POST` `/auth/verification/verify`
+
+**Resumo:** Validar código recebido no WhatsApp
+
+**Funcionalidade:**
+
+Envia `challengeId` e `code`. Para `signup`, a resposta inclui `phoneVerificationToken` para usar em `POST /auth/register`. Para recuperação de senha, inclui `resetToken` para `POST /auth/password/reset`.
+
+---
+
+### `POST` `/auth/register`
+
+**Resumo:** Registrar um novo usuário
+
+**Funcionalidade:**
+
+Exige `phoneVerificationToken` obtido após o fluxo de verificação do WhatsApp (mesmo telefone em `phone`). Cadastra estudantes, administradores etc. Para persona **STUDENT**, após o cadastro o sistema pode enfileirar email de boas-vindas e notificação in-app (`GET /students/notifications`, `metadata.kind` = `WELCOME`).
+
+---
 
 ### `POST` `/auth/login`
 
@@ -19,54 +51,6 @@ Autenticação de **usuários** (não escola). Personas incluem STUDENT, ADMIN, 
 
 Autentica um usuário e retorna um access token (validade curta) e um refresh token (validade de 30 dias).
 O refresh token deve ser usado para obter novos access tokens quando o atual expirar.
-
----
-
-### `PATCH` `/auth/password`
-
-**Resumo:** Atualizar a senha do usuário autenticado
-
-**Funcionalidade:** ver detalhes e parâmetros no [Swagger](pathname:///docs) (tag correspondente).
-
----
-
-### `POST` `/auth/password/request`
-
-**Resumo:** Solicitar reset de senha
-
-**Funcionalidade:**
-
-Envia um token de reset de senha para o email do usuário (estudante, admin, etc.)
-
----
-
-### `POST` `/auth/password/reset`
-
-**Resumo:** Resetar senha com token
-
-**Funcionalidade:**
-
-Redefine a senha do usuário (estudante, admin, etc.) usando o token recebido
-
----
-
-### `POST` `/auth/password/validate`
-
-**Resumo:** Validar token de reset de senha
-
-**Funcionalidade:**
-
-Verifica se um token de reset de senha é válido e retorna informações sobre ele
-
----
-
-### `PATCH` `/auth/password/validate`
-
-**Resumo:** Alterar senha do usuário logado
-
-**Funcionalidade:**
-
-Permite que um usuário autenticado (estudante, admin, etc.) altere sua própria senha
 
 ---
 
@@ -81,15 +65,30 @@ O refresh token deve ter sido obtido no login e tem validade de 30 dias.
 
 ---
 
-### `POST` `/auth/register`
+### `PATCH` `/auth/password`
 
-**Resumo:** Registrar um novo usuário
+**Resumo:** Atualizar a senha do usuário autenticado
 
-**Funcionalidade:**
-
-Cadastra um novo usuário no sistema (estudantes, administradores, etc.).
-
-Para persona **STUDENT**, após o cadastro o sistema enfileira email de boas-vindas (fila/worker) e grava uma notificação in-app de boas-vindas (`GET /students/notifications`, `metadata.kind` = `WELCOME`).
+**Funcionalidade:** ver detalhes e parâmetros no [Swagger](pathname:///docs) (tag correspondente).
 
 ---
 
+### `POST` `/auth/password/reset`
+
+**Resumo:** Resetar senha com token
+
+**Funcionalidade:**
+
+Redefine a senha usando o `resetToken` retornado por `POST /auth/verification/verify` após o fluxo com `user_password_reset` (não é mais obtido por e-mail neste passo).
+
+---
+
+### `POST` `/auth/password/validate`
+
+**Resumo:** Validar token de reset de senha
+
+**Funcionalidade:**
+
+Verifica se um token de reset de senha é válido e retorna informações sobre ele
+
+---

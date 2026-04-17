@@ -27,7 +27,7 @@ Conforme `MODULE_DOC_FILES` no código:
 | auth | `auth.yaml` |
 | admin | `admin.yaml` |
 | payments | `payments.yaml` |
-| schools | `schools.yaml`, `students.yaml`, `webhooks.yaml` |
+| schools | `schools.yaml`, `webhooks.yaml`, `enrollment-requests.yaml`, `landing.yaml` |
 | students | `students.yaml`, `dependents.yaml`, `enrollment-requests.yaml`, `schools-public.yaml` |
 
 Sempre há `health.yaml` na base.

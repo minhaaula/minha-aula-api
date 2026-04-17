@@ -448,13 +448,23 @@ Permite que uma escola autenticada altere sua própria senha
 
 ---
 
-### `POST` `/schools/password/request`
+### `POST` `/schools/password/otp/request`
 
-**Resumo:** Solicitar reset de senha
+**Resumo:** Solicitar código no WhatsApp para reset de senha
 
 **Funcionalidade:**
 
-Envia um token de reset de senha para o email da escola
+Envia código via Twilio Verify (WhatsApp) para o telefone da escola associado ao e-mail do proprietário. A rota `POST /schools/password/request` (só e-mail) foi descontinuada.
+
+---
+
+### `POST` `/schools/password/otp/verify`
+
+**Resumo:** Validar código do WhatsApp
+
+**Funcionalidade:**
+
+Retorna `resetToken` para usar em `POST /schools/password/reset`.
 
 ---
 
@@ -464,7 +474,7 @@ Envia um token de reset de senha para o email da escola
 
 **Funcionalidade:**
 
-Redefine a senha da escola usando o token recebido
+Redefine a senha da escola usando o `resetToken` obtido após `otp/verify`.
 
 ---
 

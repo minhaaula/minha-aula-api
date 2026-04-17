@@ -9,10 +9,11 @@ Cadastro e autenticação de usuários com **JWT** (access + refresh). Suporta p
 
 ## Funcionalidades
 
-- **Registro** (`POST /auth/register`) — cria usuário com endereço e CPF; persona define o perfil.
+- **Verificação WhatsApp** (`POST /auth/verification/request` + `/auth/verification/verify`) — obrigatória antes do registro e para “esqueci minha senha” (Twilio Verify).
+- **Registro** (`POST /auth/register`) — exige `phoneVerificationToken`; cria usuário com endereço e CPF; persona define o perfil.
 - **Login** (`POST /auth/login`) — retorna tokens; escolas (`SCHOOL`) usam fluxo próprio em `/schools/login`.
 - **Refresh** (`POST /auth/refresh`) — renova access token.
-- **Senha** — atualização autenticada, fluxo de esqueci senha (tokens de reset) quando configurado.
+- **Senha** — atualização autenticada (`PATCH /auth/password`); recuperação com código no WhatsApp e `resetToken` em `/auth/password/reset`.
 
 ## Estudante (STUDENT)
 
@@ -26,7 +27,8 @@ Arquivo de referência: `docs/auth.yaml` (no repositório da API).
 
 - `AUTH_TOKEN_SECRET` — obrigatório (mín. 32 caracteres).
 - `FRONTEND_BASE_URL` — links em emails (login, confirmação).
-- Provedor de email para confirmação e reset, quando habilitado.
+- **Twilio Verify** — `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_VERIFY_SERVICE_SID` — necessários para envio/validação de código no WhatsApp (cadastro e reset de senha).
+- Provedor de email para mensagens transacionais, quando habilitado.
 
 ## Cada rota (detalhe)
 

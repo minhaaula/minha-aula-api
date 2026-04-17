@@ -5,7 +5,8 @@ import { LoginUser } from '../../../app/use-cases/login-user';
 import { RefreshToken } from '../../../app/use-cases/refresh-token';
 import { USER_PERSONAS } from '../../../domain/value-objects/user-persona';
 import { UpdateUserPassword } from '../../../app/use-cases/update-user-password';
-import { RequestUserPasswordReset } from '../../../app/use-cases/request-user-password-reset';
+import type { RequestPhoneOtpChallenge } from '../../../app/use-cases/request-phone-otp-challenge';
+import type { VerifyPhoneOtpChallenge } from '../../../app/use-cases/verify-phone-otp-challenge';
 import { ResetUserPassword } from '../../../app/use-cases/reset-user-password';
 import { ValidatePasswordResetToken } from '../../../app/use-cases/validate-password-reset-token';
 import { AuthenticatedRequest } from '../middlewares/auth';
@@ -20,7 +21,8 @@ export function authRouter({
     loginUser,
     refreshToken,
     updateUserPassword,
-    requestUserPasswordReset,
+    requestPhoneOtp,
+    verifyPhoneOtp,
     resetUserPassword,
     validatePasswordResetToken,
     authMiddleware
@@ -29,7 +31,8 @@ export function authRouter({
     loginUser: LoginUser;
     refreshToken?: RefreshToken;
     updateUserPassword: UpdateUserPassword;
-    requestUserPasswordReset?: RequestUserPasswordReset;
+    requestPhoneOtp?: RequestPhoneOtpChallenge;
+    verifyPhoneOtp?: VerifyPhoneOtpChallenge;
     resetUserPassword?: ResetUserPassword;
     validatePasswordResetToken?: ValidatePasswordResetToken;
     authMiddleware?: RequestHandler;
@@ -47,7 +50,8 @@ export function authRouter({
         cpf: cpfSchema,
         address: addressSchema,
         persona: z.enum(USER_PERSONAS),
-        password: z.string().min(8)
+        password: z.string().min(8),
+        phoneVerificationToken: z.string().min(1, 'Confirme o telefone no WhatsApp antes de cadastrar')
     });
 
     const loginSchema = z.object({
@@ -59,6 +63,47 @@ export function authRouter({
         currentPassword: z.string().min(8),
         newPassword: z.string().min(8)
     });
+
+    const verificationRequestSchema = z.discriminatedUnion('purpose', [
+        z.object({
+            purpose: z.literal('signup'),
+            phone: phoneNumberSchema()
+        }),
+        z.object({
+            purpose: z.literal('user_password_reset'),
+            email: z.string().email('Email inválido')
+        })
+    ]);
+
+    const verificationVerifySchema = z.object({
+        challengeId: z.string().uuid(),
+        code: z.string().trim().regex(/^\d{4,8}$/)
+    });
+
+    if (requestPhoneOtp) {
+        r.post('/verification/request', registrationRateLimiter, async (req, res, next) => {
+            try {
+                const dto = verificationRequestSchema.parse(req.body);
+                const result = await requestPhoneOtp.exec(dto);
+                const status = 'challengeId' in result ? 201 : 200;
+                res.status(status).json(result);
+            } catch (e) {
+                next(e);
+            }
+        });
+    }
+
+    if (verifyPhoneOtp) {
+        r.post('/verification/verify', authRateLimiter, async (req, res, next) => {
+            try {
+                const dto = verificationVerifySchema.parse(req.body);
+                const result = await verifyPhoneOtp.exec(dto);
+                res.json(result);
+            } catch (e) {
+                next(e);
+            }
+        });
+    }
 
     r.post('/register', registrationRateLimiter, async (req, res, next) => {
         try {
@@ -114,23 +159,6 @@ export function authRouter({
             next(e);
         }
     });
-
-    // Rotas de reset de senha (públicas)
-    if (requestUserPasswordReset) {
-        const requestResetSchema = z.object({
-            email: z.string().email('Email inválido')
-        });
-
-        r.post('/password/request', registrationRateLimiter, async (req, res, next) => {
-            try {
-                const dto = requestResetSchema.parse(req.body);
-                const result = await requestUserPasswordReset.exec(dto);
-                res.json(result);
-            } catch (e) {
-                next(e);
-            }
-        });
-    }
 
     if (resetUserPassword) {
         const resetPasswordSchema = z.object({

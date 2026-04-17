@@ -27,29 +27,24 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-  /schools/password/request:
+  /schools/password/otp/request:
     post:
       tags:
         - Schools
-      summary: Solicitar reset de senha
-      description: Envia um token de reset de senha para o email da escola
+      summary: Solicitar código no WhatsApp para reset de senha
+      description: |
+        Inicia verificação por **Twilio Verify** (WhatsApp) para o telefone da escola associado ao e-mail do proprietário.
+        Em seguida use `POST /schools/password/otp/verify` e, com o `resetToken`, `POST /schools/password/reset`.
+        A rota antiga `POST /schools/password/request` (envio só por e-mail) foi descontinuada.
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
-              required:
-                - email
-              properties:
-                email:
-                  type: string
-                  format: email
-                  description: Email do proprietário da escola
-                  example: owner@escola.com
+              $ref: '#/components/schemas/SchoolPasswordOtpRequest'
       responses:
         '200':
-          description: Solicitação processada com sucesso
+          description: Mensagem genérica quando não há desafio criado (e-mail inexistente ou sem telefone).
           content:
             application/json:
               schema:
@@ -57,13 +52,71 @@ paths:
                 properties:
                   message:
                     type: string
-                    example: Se o email estiver cadastrado, você receberá um link para redefinir sua senha.
-                  token:
+        '201':
+          description: Código enviado ao WhatsApp.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - message
+                  - challengeId
+                  - purpose
+                  - expiresAt
+                properties:
+                  message:
                     type: string
-                    description: Token gerado (apenas em desenvolvimento)
-                    example: abc123def456
+                  challengeId:
+                    type: string
+                    format: uuid
+                  purpose:
+                    type: string
+                    enum:
+                      - school_password_reset
+                  expiresAt:
+                    type: string
+                    format: date-time
         '400':
           description: Erro de validação
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /schools/password/otp/verify:
+    post:
+      tags:
+        - Schools
+      summary: Validar código do WhatsApp (reset de senha da escola)
+      description: Retorna `resetToken` para usar em `POST /schools/password/reset`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SchoolPasswordOtpVerifyInput'
+      responses:
+        '200':
+          description: Verificação concluída.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - purpose
+                  - resetToken
+                  - challengeId
+                properties:
+                  purpose:
+                    type: string
+                    enum:
+                      - school_password_reset
+                  resetToken:
+                    type: string
+                  challengeId:
+                    type: string
+                    format: uuid
+        '400':
+          description: Código inválido ou expirado
           content:
             application/json:
               schema:
@@ -73,7 +126,9 @@ paths:
       tags:
         - Schools
       summary: Resetar senha com token
-      description: Redefine a senha da escola usando o token recebido
+      description: |
+        Redefine a senha da escola usando o `resetToken` retornado por `POST /schools/password/otp/verify`
+        (fluxo com código no WhatsApp).
       requestBody:
         required: true
         content:
@@ -86,7 +141,7 @@ paths:
               properties:
                 token:
                   type: string
-                  description: Token recebido no email
+                  description: Token retornado na verificação do WhatsApp
                   example: abc123def456
                 newPassword:
                   type: string

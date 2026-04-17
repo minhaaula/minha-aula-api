@@ -1,12 +1,13 @@
 x-student-auth-info: |
   Para autenticação, registro e gerenciamento de senha de estudantes (usuários com persona STUDENT),
   utilize as rotas do módulo Auth (/auth/*):
-  - POST /auth/register - Cadastro de estudante
+  - POST /auth/verification/request (purpose `signup`) e POST /auth/verification/verify — confirmação do telefone no WhatsApp
+  - POST /auth/register - Cadastro de estudante (campo `phoneVerificationToken` obrigatório)
   - POST /auth/login - Login de estudante
   - PATCH /auth/password - Alteração de senha (quando logado)
-  - POST /auth/password/request - Solicitar reset de senha
+  - POST /auth/verification/request (purpose `user_password_reset`) e POST /auth/verification/verify — código no WhatsApp para esqueci minha senha
   - POST /auth/password/validate - Validar token de reset
-  - POST /auth/password/reset - Resetar senha com token
+  - POST /auth/password/reset - Resetar senha com token (obtido após verificação do WhatsApp)
 
 paths:
   /students:

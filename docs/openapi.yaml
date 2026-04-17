@@ -86,6 +86,7 @@ components:
         - address
         - persona
         - password
+        - phoneVerificationToken
       properties:
         fullName:
           type: string
@@ -119,6 +120,73 @@ components:
           type: string
           format: password
           minLength: 8
+        phoneVerificationToken:
+          type: string
+          description: |
+            Token obtido em `POST /auth/verification/verify` após validar o código enviado ao WhatsApp (Twilio Verify).
+            O telefone informado em `phone` deve ser o mesmo verificado (normalização E.164 Brasil).
+          minLength: 1
+    AuthVerificationRequestSignup:
+      type: object
+      required:
+        - purpose
+        - phone
+      properties:
+        purpose:
+          type: string
+          enum:
+            - signup
+        phone:
+          type: string
+          description: Telefone (Brasil) que receberá o código no WhatsApp.
+          example: '11999999999'
+    AuthVerificationRequestUserPasswordReset:
+      type: object
+      required:
+        - purpose
+        - email
+      properties:
+        purpose:
+          type: string
+          enum:
+            - user_password_reset
+        email:
+          type: string
+          format: email
+    AuthVerificationVerifyInput:
+      type: object
+      required:
+        - challengeId
+        - code
+      properties:
+        challengeId:
+          type: string
+          format: uuid
+        code:
+          type: string
+          description: Código numérico recebido no WhatsApp (4 a 8 dígitos).
+          pattern: '^\d{4,8}$'
+    SchoolPasswordOtpRequest:
+      type: object
+      required:
+        - email
+      properties:
+        email:
+          type: string
+          format: email
+          description: E-mail do proprietário da escola cadastrado.
+    SchoolPasswordOtpVerifyInput:
+      type: object
+      required:
+        - challengeId
+        - code
+      properties:
+        challengeId:
+          type: string
+          format: uuid
+        code:
+          type: string
+          pattern: '^\d{4,8}$'
     UserAddressInput:
       type: object
       required:

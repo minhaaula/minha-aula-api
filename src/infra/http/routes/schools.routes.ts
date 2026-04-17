@@ -53,7 +53,8 @@ import type { UpdateSchoolBankAccount } from '../../../app/use-cases/update-scho
 import type { DeleteSchoolBankAccount } from '../../../app/use-cases/delete-school-bank-account';
 import type { ListSchoolNotifications } from '../../../app/use-cases/list-school-notifications';
 import type { SendClassPushNotification } from '../../../app/use-cases/send-class-push-notification';
-import type { RequestPasswordReset } from '../../../app/use-cases/request-password-reset';
+import type { RequestPhoneOtpChallenge } from '../../../app/use-cases/request-phone-otp-challenge';
+import type { VerifyPhoneOtpChallenge } from '../../../app/use-cases/verify-phone-otp-challenge';
 import type { ResetPassword } from '../../../app/use-cases/reset-password';
 import type { UpdateSchoolPassword } from '../../../app/use-cases/update-school-password';
 import type { GetStudentDirectoryEntry } from '../../../app/use-cases/get-student-directory-entry';
@@ -114,7 +115,8 @@ export type SchoolsRouterDeps = {
     createSchoolBankAccount?: CreateSchoolBankAccount;
     updateSchoolBankAccount?: UpdateSchoolBankAccount;
     deleteSchoolBankAccount?: DeleteSchoolBankAccount;
-    requestPasswordReset?: RequestPasswordReset;
+    requestSchoolPasswordPhoneOtp?: RequestPhoneOtpChallenge;
+    verifySchoolPasswordPhoneOtp?: VerifyPhoneOtpChallenge;
     resetPassword?: ResetPassword;
     validatePasswordResetToken?: import('../../../app/use-cases/validate-password-reset-token').ValidatePasswordResetToken;
     updateSchoolPassword?: UpdateSchoolPassword;
@@ -299,7 +301,8 @@ export function schoolsRouter(deps: SchoolsRouterDeps) {
 
     // Rotas públicas de reset de senha
     router.use('/password', buildPasswordResetRoutes({
-        requestPasswordReset: deps.requestPasswordReset,
+        requestSchoolPasswordPhoneOtp: deps.requestSchoolPasswordPhoneOtp,
+        verifySchoolPasswordPhoneOtp: deps.verifySchoolPasswordPhoneOtp,
         resetPassword: deps.resetPassword,
         validatePasswordResetToken: deps.validatePasswordResetToken
     }));

@@ -23,14 +23,14 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"fullName\": \"João Silva\",\n  \"birthDate\": \"1990-05-23\",\n  \"email\": \"joao.silva@example.com\",\n  \"phone\": \"+55 11 99999-0000\",\n  \"cpf\": \"12345678909\",\n  \"address\": {\n    \"street\": \"Rua das Flores\",\n    \"number\": \"123\",\n    \"complement\": \"Apto 45\",\n    \"district\": \"Centro\",\n    \"city\": \"São Paulo\",\n    \"state\": \"SP\",\n    \"zipCode\": \"01234000\"\n  },\n  \"persona\": \"STUDENT\",\n  \"password\": \"senhaSegura123\"\n}"
+							"raw": "{\n  \"fullName\": \"João Silva\",\n  \"birthDate\": \"1990-05-23\",\n  \"email\": \"joao.silva@example.com\",\n  \"phone\": \"+55 11 99999-0000\",\n  \"cpf\": \"12345678909\",\n  \"address\": {\n    \"street\": \"Rua das Flores\",\n    \"number\": \"123\",\n    \"complement\": \"Apto 45\",\n    \"district\": \"Centro\",\n    \"city\": \"São Paulo\",\n    \"state\": \"SP\",\n    \"zipCode\": \"01234000\"\n  },\n  \"persona\": \"STUDENT\",\n  \"password\": \"senhaSegura123\",\n  \"phoneVerificationToken\": \"<token de POST /auth/verification/verify após signup>\"\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/auth/register",
 							"host": ["{{base_url}}"],
 							"path": ["auth", "register"]
 						},
-						"description": "Cadastra um novo usuário no sistema (estudantes, administradores, etc.)"
+						"description": "Cadastra um novo usuário. Exige phoneVerificationToken após fluxo WhatsApp (verification/request + verify)."
 					}
 				},
 				{
@@ -83,7 +83,7 @@
 					}
 				},
 				{
-					"name": "POST /auth/password/request",
+					"name": "POST /auth/verification/request (signup)",
 					"request": {
 						"method": "POST",
 						"header": [
@@ -94,14 +94,58 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"email\": \"usuario@email.com\"\n}"
+							"raw": "{\n  \"purpose\": \"signup\",\n  \"phone\": \"11999999999\"\n}"
 						},
 						"url": {
-							"raw": "{{base_url}}/auth/password/request",
+							"raw": "{{base_url}}/auth/verification/request",
 							"host": ["{{base_url}}"],
-							"path": ["auth", "password", "request"]
+							"path": ["auth", "verification", "request"]
 						},
-						"description": "Solicitar reset de senha"
+						"description": "Enviar código WhatsApp para cadastro"
+					}
+				},
+				{
+					"name": "POST /auth/verification/request (forgot password)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"purpose\": \"user_password_reset\",\n  \"email\": \"usuario@email.com\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/verification/request",
+							"host": ["{{base_url}}"],
+							"path": ["auth", "verification", "request"]
+						},
+						"description": "Enviar código WhatsApp para reset de senha"
+					}
+				},
+				{
+					"name": "POST /auth/verification/verify",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"challengeId\": \"<uuid>\",\n  \"code\": \"123456\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/auth/verification/verify",
+							"host": ["{{base_url}}"],
+							"path": ["auth", "verification", "verify"]
+						},
+						"description": "Validar código; retorna phoneVerificationToken (signup) ou resetToken (forgot password)"
 					}
 				},
 				{
@@ -361,7 +405,7 @@
 							}
 						},
 						{
-							"name": "POST /schools/password/request",
+							"name": "POST /schools/password/otp/request",
 							"request": {
 								"method": "POST",
 								"header": [
@@ -375,11 +419,33 @@
 									"raw": "{\n  \"email\": \"owner@escola.com\"\n}"
 								},
 								"url": {
-									"raw": "{{base_url}}/schools/password/request",
+									"raw": "{{base_url}}/schools/password/otp/request",
 									"host": ["{{base_url}}"],
-									"path": ["schools", "password", "request"]
+									"path": ["schools", "password", "otp", "request"]
 								},
-								"description": "Solicitar reset de senha"
+								"description": "Solicitar código WhatsApp para reset de senha"
+							}
+						},
+						{
+							"name": "POST /schools/password/otp/verify",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"challengeId\": \"<uuid>\",\n  \"code\": \"123456\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/schools/password/otp/verify",
+									"host": ["{{base_url}}"],
+									"path": ["schools", "password", "otp", "verify"]
+								},
+								"description": "Validar código; retorna resetToken"
 							}
 						},
 						{

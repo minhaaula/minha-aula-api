@@ -76,8 +76,10 @@ import { ListSchoolBankAccounts } from '../../app/use-cases/list-school-bank-acc
 import { CreateSchoolBankAccount } from '../../app/use-cases/create-school-bank-account';
 import { UpdateSchoolBankAccount } from '../../app/use-cases/update-school-bank-account';
 import { DeleteSchoolBankAccount } from '../../app/use-cases/delete-school-bank-account';
-import { RequestPasswordReset } from '../../app/use-cases/request-password-reset';
 import { ResetPassword } from '../../app/use-cases/reset-password';
+import { AuthPhoneOtpChallengeRepositoryAdapter } from '../../infra/db/typeorm/auth-phone-otp-challenge-repository.adapter';
+import { RequestPhoneOtpChallenge } from '../../app/use-cases/request-phone-otp-challenge';
+import { VerifyPhoneOtpChallenge } from '../../app/use-cases/verify-phone-otp-challenge';
 import { ValidatePasswordResetToken } from '../../app/use-cases/validate-password-reset-token';
 import { UpdateSchoolPassword } from '../../app/use-cases/update-school-password';
 import { PasswordResetTokenRepositoryAdapter } from '../../infra/db/typeorm/password-reset-token-repository.adapter';
@@ -215,11 +217,18 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         : undefined;
     
     const resetTokensRepo = new PasswordResetTokenRepositoryAdapter();
-    const requestPasswordReset = new RequestPasswordReset(
-        deps.schoolsRepo, 
-        resetTokensRepo, 
-        deps.emailProvider,
-        deps.frontendBaseUrl
+    const authPhoneOtpRepoSchool = new AuthPhoneOtpChallengeRepositoryAdapter();
+    const requestSchoolPasswordPhoneOtp = new RequestPhoneOtpChallenge(
+        authPhoneOtpRepoSchool,
+        twilioVerify,
+        deps.usersRepo,
+        deps.schoolsRepo
+    );
+    const verifySchoolPasswordPhoneOtp = new VerifyPhoneOtpChallenge(
+        authPhoneOtpRepoSchool,
+        twilioVerify,
+        deps.tokenProvider,
+        resetTokensRepo
     );
     const resetPassword = new ResetPassword(deps.schoolsRepo, resetTokensRepo, deps.passwordHasher);
     const validatePasswordResetToken = new ValidatePasswordResetToken(resetTokensRepo);
@@ -462,7 +471,8 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         createSchoolBankAccount,
         updateSchoolBankAccount,
         deleteSchoolBankAccount,
-        requestPasswordReset,
+        requestSchoolPasswordPhoneOtp,
+        verifySchoolPasswordPhoneOtp,
         resetPassword,
         validatePasswordResetToken,
         updateSchoolPassword,

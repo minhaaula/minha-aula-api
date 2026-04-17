@@ -14,6 +14,8 @@ export interface RegisterUserInput {
     address: PostalAddressInput;
     persona: UserPersona;
     password: string;
+    /** Token emitido por `POST /auth/verification/verify` após validar o WhatsApp (mesmo telefone de `phone`). */
+    phoneVerificationToken: string;
 }
 
 export interface RegisterUserOutput {

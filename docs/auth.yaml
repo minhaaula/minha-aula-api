@@ -3,7 +3,138 @@ x-auth-info: |
   Suporta múltiplas personas: STUDENT (estudante), ADMIN (administrador), OPERATION (operação).
   Nota: Escolas (SCHOOL) têm autenticação própria em /schools/login.
 
+  **WhatsApp (Twilio Verify):** o cadastro (`POST /auth/register`) exige confirmação prévia do telefone via
+  `POST /auth/verification/request` (purpose `signup`) e `POST /auth/verification/verify`, que devolve `phoneVerificationToken`.
+  A recuperação de senha de usuário usa o mesmo par de rotas com `purpose` `user_password_reset` e depois `POST /auth/password/reset`
+  com o `resetToken` retornado na verificação (não há mais envio de link só por e-mail em `/auth/password/request`).
+
 paths:
+  /auth/verification/request:
+    post:
+      tags:
+        - Auth
+      summary: Solicitar código no WhatsApp (cadastro ou esqueci minha senha)
+      description: |
+        Inicia uma verificação via **Twilio Verify** (canal WhatsApp). Requer variáveis de ambiente da Twilio no servidor.
+
+        - **signup:** envia código para o telefone informado. Resposta `201` com `challengeId` quando o envio foi iniciado.
+        - **user_password_reset:** envia código para o telefone **cadastrado** do usuário com o e-mail informado (se existir).
+          Resposta `200` com mensagem genérica quando o e-mail não existe ou não há telefone — sem vazar existência de conta.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: '#/components/schemas/AuthVerificationRequestSignup'
+                - $ref: '#/components/schemas/AuthVerificationRequestUserPasswordReset'
+      responses:
+        '200':
+          description: |
+            Pedido aceito; mensagem genérica (ex.: recuperação de senha quando não há desafio criado).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '201':
+          description: Código enviado ao WhatsApp; use `challengeId` em `/auth/verification/verify`.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - message
+                  - challengeId
+                  - purpose
+                  - expiresAt
+                properties:
+                  message:
+                    type: string
+                  challengeId:
+                    type: string
+                    format: uuid
+                  purpose:
+                    type: string
+                    enum:
+                      - signup
+                      - user_password_reset
+                  expiresAt:
+                    type: string
+                    format: date-time
+        '400':
+          description: Erro de validação.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Twilio Verify não configurado ou falha externa.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /auth/verification/verify:
+    post:
+      tags:
+        - Auth
+      summary: Validar código do WhatsApp
+      description: |
+        Confirma o código recebido no WhatsApp.
+
+        - **signup:** resposta inclui `phoneVerificationToken` (curta validade) — envie em `POST /auth/register` no campo homônimo.
+        - **user_password_reset:** resposta inclui `resetToken` para `POST /auth/password/reset`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthVerificationVerifyInput'
+      responses:
+        '200':
+          description: Verificação concluída.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: object
+                    required:
+                      - purpose
+                      - phoneVerificationToken
+                      - challengeId
+                    properties:
+                      purpose:
+                        type: string
+                        enum:
+                          - signup
+                      phoneVerificationToken:
+                        type: string
+                      challengeId:
+                        type: string
+                        format: uuid
+                  - type: object
+                    required:
+                      - purpose
+                      - resetToken
+                      - challengeId
+                    properties:
+                      purpose:
+                        type: string
+                        enum:
+                          - user_password_reset
+                      resetToken:
+                        type: string
+                      challengeId:
+                        type: string
+                        format: uuid
+        '400':
+          description: Código inválido, expirado ou limite de tentativas.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /auth/register:
     post:
       tags:
@@ -11,6 +142,9 @@ paths:
       summary: Registrar um novo usuário
       description: |
         Cadastra um novo usuário no sistema (estudantes, administradores, etc.).
+
+        **Obrigatório:** antes, concluir `POST /auth/verification/request` (purpose `signup`) e `POST /auth/verification/verify`
+        e enviar o `phoneVerificationToken` retornado. O campo `phone` deste cadastro deve corresponder ao telefone validado.
 
         Para persona **STUDENT**, após o cadastro o sistema enfileira email de boas-vindas (fila/worker) e grava uma notificação in-app de boas-vindas (`GET /students/notifications`, `metadata.kind` = `WELCOME`).
       requestBody:
@@ -138,53 +272,14 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-  /auth/password/request:
-    post:
-      tags:
-        - Auth
-      summary: Solicitar reset de senha
-      description: Envia um token de reset de senha para o email do usuário (estudante, admin, etc.)
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - email
-              properties:
-                email:
-                  type: string
-                  format: email
-                  description: Email do usuário
-                  example: usuario@email.com
-      responses:
-        '200':
-          description: Solicitação processada com sucesso
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    example: Se o email estiver cadastrado, você receberá um link para redefinir sua senha.
-                  token:
-                    type: string
-                    description: Token gerado (apenas em desenvolvimento)
-                    example: abc123def456
-        '400':
-          description: Erro de validação
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
   /auth/password/reset:
     post:
       tags:
         - Auth
       summary: Resetar senha com token
-      description: Redefine a senha do usuário (estudante, admin, etc.) usando o token recebido
+      description: |
+        Redefine a senha do usuário (estudante, admin, etc.) usando o `resetToken` retornado por
+        `POST /auth/verification/verify` após o fluxo com `purpose` `user_password_reset` (código no WhatsApp).
       requestBody:
         required: true
         content:
@@ -197,7 +292,7 @@ paths:
               properties:
                 token:
                   type: string
-                  description: Token recebido no email
+                  description: Token retornado na verificação do WhatsApp (não é mais obtido só por e-mail).
                   example: abc123def456
                 newPassword:
                   type: string
@@ -262,47 +357,3 @@ paths:
                     format: date-time
                     description: Data de expiração do token (apenas se válido)
                     example: 2025-11-17T10:00:00Z
-    patch:
-      tags:
-        - Auth
-      summary: Alterar senha do usuário logado
-      description: Permite que um usuário autenticado (estudante, admin, etc.) altere sua própria senha
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - currentPassword
-                - newPassword
-              properties:
-                currentPassword:
-                  type: string
-                  format: password
-                  description: Senha atual do usuário
-                  minLength: 8
-                  example: senhaAtual123
-                newPassword:
-                  type: string
-                  format: password
-                  description: Nova senha (mínimo 8 caracteres)
-                  minLength: 8
-                  example: novaSenha456
-      responses:
-        '204':
-          description: Senha alterada com sucesso
-        '401':
-          description: Não autenticado ou senha atual inválida
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '400':
-          description: Dados inválidos
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
