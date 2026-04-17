@@ -3,6 +3,7 @@ import type { AuthPhoneOtpPurpose } from '../../domain/entities/auth-phone-otp-c
 import type { SchoolRepository } from '../../ports/repositories/school.repo';
 import type { UserRepository } from '../../ports/repositories/user.repo';
 import type { AuthPhoneOtpChallengeRepository } from '../../ports/repositories/auth-phone-otp-challenge.repo';
+import type { OutboxRepository } from '../../ports/repositories/outbox.repo';
 import type { TwilioVerifyPort } from '../../ports/providers/twilio-verify.port';
 import { AppError, ErrorCode } from '../../shared/errors';
 import { sanitizeForLogging } from '../../shared/log-sanitizer';
@@ -38,13 +39,19 @@ export class RequestPhoneOtpChallenge {
         private readonly challenges: AuthPhoneOtpChallengeRepository,
         private readonly twilio: TwilioVerifyPort | undefined,
         private readonly users: UserRepository,
-        private readonly schools: SchoolRepository | undefined
+        private readonly schools: SchoolRepository | undefined,
+        private readonly outbox: OutboxRepository | undefined
     ) {}
 
     async exec(input: RequestPhoneOtpInput): Promise<RequestPhoneOtpOutput> {
         if (!this.twilio) {
             throw AppError.fromCode(ErrorCode.CONFIGURATION_ERROR, {
                 message: 'Verificação por WhatsApp não está configurada (Twilio Verify)'
+            });
+        }
+        if (!this.outbox) {
+            throw AppError.fromCode(ErrorCode.CONFIGURATION_ERROR, {
+                message: 'Fila de envio de OTP não configurada (outbox)'
             });
         }
 
@@ -63,7 +70,6 @@ export class RequestPhoneOtpChallenge {
             throw AppError.fromCode(ErrorCode.INVALID_PHONE, { phone: rawPhone });
         }
 
-        const started = await this.twilio!.sendVerification(rawPhone);
         const expiresAt = new Date(Date.now() + OTP_TTL_MINUTES * 60_000);
         const otp = AuthPhoneOtpChallenge.create({
             id: Uuid(),
@@ -73,9 +79,10 @@ export class RequestPhoneOtpChallenge {
             email: null,
             expiresAt,
             maxAttempts: OTP_MAX_ATTEMPTS,
-            twilioVerificationSid: started.verificationSid
+            twilioVerificationSid: null
         });
         await this.challenges.save(otp);
+        await this.enqueuePhoneOtpSend(otp.id);
 
         log.info('[PhoneOtp] signup iniciado', sanitizeForLogging({
             challengeId: otp.id,
@@ -83,7 +90,7 @@ export class RequestPhoneOtpChallenge {
         }));
 
         return {
-            message: 'Código enviado ao WhatsApp.',
+            message: 'O código será enviado ao WhatsApp em instantes.',
             challengeId: otp.id,
             purpose: 'signup',
             expiresAt: otp.expiresAt.toISOString()
@@ -122,7 +129,6 @@ export class RequestPhoneOtpChallenge {
             return generic;
         }
 
-        const started = await this.twilio!.sendVerification(rawPhone);
         const expiresAt = new Date(Date.now() + OTP_TTL_MINUTES * 60_000);
         const otp = AuthPhoneOtpChallenge.create({
             id: Uuid(),
@@ -132,9 +138,10 @@ export class RequestPhoneOtpChallenge {
             email,
             expiresAt,
             maxAttempts: OTP_MAX_ATTEMPTS,
-            twilioVerificationSid: started.verificationSid
+            twilioVerificationSid: null
         });
         await this.challenges.save(otp);
+        await this.enqueuePhoneOtpSend(otp.id);
 
         log.info('[PhoneOtp] reset de senha (usuário) iniciado', sanitizeForLogging({
             challengeId: otp.id,
@@ -142,7 +149,7 @@ export class RequestPhoneOtpChallenge {
         }));
 
         return {
-            message: 'Código enviado ao WhatsApp.',
+            message: 'O código será enviado ao WhatsApp em instantes.',
             challengeId: otp.id,
             purpose: 'user_password_reset',
             expiresAt: otp.expiresAt.toISOString()
@@ -177,7 +184,6 @@ export class RequestPhoneOtpChallenge {
             return generic;
         }
 
-        const started = await this.twilio!.sendVerification(rawPhone);
         const expiresAt = new Date(Date.now() + OTP_TTL_MINUTES * 60_000);
         const otp = AuthPhoneOtpChallenge.create({
             id: Uuid(),
@@ -187,9 +193,10 @@ export class RequestPhoneOtpChallenge {
             email,
             expiresAt,
             maxAttempts: OTP_MAX_ATTEMPTS,
-            twilioVerificationSid: started.verificationSid
+            twilioVerificationSid: null
         });
         await this.challenges.save(otp);
+        await this.enqueuePhoneOtpSend(otp.id);
 
         log.info('[PhoneOtp] reset de senha (escola) iniciado', sanitizeForLogging({
             challengeId: otp.id,
@@ -197,10 +204,26 @@ export class RequestPhoneOtpChallenge {
         }));
 
         return {
-            message: 'Código enviado ao WhatsApp.',
+            message: 'O código será enviado ao WhatsApp em instantes.',
             challengeId: otp.id,
             purpose: 'school_password_reset',
             expiresAt: otp.expiresAt.toISOString()
         };
+    }
+
+    private async enqueuePhoneOtpSend(challengeId: string): Promise<void> {
+        try {
+            await this.outbox!.enqueue({
+                type: 'phone_otp_send',
+                aggregateId: challengeId,
+                payload: { challengeId }
+            });
+        } catch (e: unknown) {
+            log.error('[PhoneOtp] Falha ao enfileirar envio OTP', sanitizeForLogging({ e, challengeId }));
+            throw new AppError(
+                ErrorCode.EXTERNAL_SERVICE_ERROR,
+                'Não foi possível iniciar o envio do código. Verifique Redis e o worker.'
+            );
+        }
     }
 }

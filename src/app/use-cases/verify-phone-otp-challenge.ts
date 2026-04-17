@@ -65,9 +65,7 @@ export class VerifyPhoneOtpChallenge {
         }
 
         if (!otp.twilioVerificationSid) {
-            throw AppError.fromCode(ErrorCode.CONFIGURATION_ERROR, {
-                message: 'Desafio de verificação inválido'
-            });
+            throw AppError.fromCode(ErrorCode.OTP_SEND_PENDING);
         }
 
         if (!this.twilio) {

@@ -5,7 +5,10 @@
 
 import { Worker } from 'bullmq';
 import { AppDataSource } from '../../db/typeorm/datasource';
+import { AuthPhoneOtpChallengeRepositoryAdapter } from '../../db/typeorm/auth-phone-otp-challenge-repository.adapter';
 import { PushTokenRepositoryAdapter } from '../../db/typeorm/push-token-repository.adapter';
+import { createTwilioVerifyFromEnv } from '../../providers/twilio/create-twilio-verify-provider';
+import { AuthPhoneOtpChallenge } from '../../../domain/entities/auth-phone-otp-challenge';
 import { sendFcmMulticast } from '../../providers/firebase/fcm-provider';
 import { log } from '../../../shared/logger';
 import { connection, getOutboxQueueName } from './queue-config';
@@ -176,6 +179,66 @@ export function startWorker(): Worker {
                 }
 
                 log.info('[OUTBOX] push_notification sent', { successCount, failureCount, invalid: invalid.length });
+                return;
+            }
+
+            if (job.name === 'phone_otp_send' || jobType === 'phone_otp_send') {
+                await ensureDb();
+                const challengeId =
+                    typeof event.payload === 'object' &&
+                    event.payload !== null &&
+                    'challengeId' in event.payload &&
+                    typeof (event.payload as { challengeId?: unknown }).challengeId === 'string'
+                        ? (event.payload as { challengeId: string }).challengeId.trim()
+                        : '';
+                if (!challengeId) {
+                    log.warn('[OUTBOX] phone_otp_send payload inválido', { payload: event.payload });
+                    return;
+                }
+                const twilio = createTwilioVerifyFromEnv();
+                if (!twilio) {
+                    log.error('[OUTBOX] phone_otp_send: Twilio Verify não configurado no worker');
+                    throw new Error('Twilio Verify não configurado no worker');
+                }
+                const otpRepo = new AuthPhoneOtpChallengeRepositoryAdapter();
+                const otp = await otpRepo.findById(challengeId);
+                if (!otp) {
+                    log.warn('[OUTBOX] phone_otp_send: desafio não encontrado', { challengeId });
+                    return;
+                }
+                if (otp.twilioVerificationSid) {
+                    log.info('[OUTBOX] phone_otp_send: já enviado (idempotente)', { challengeId });
+                    return;
+                }
+                if (otp.isExpired()) {
+                    log.warn('[OUTBOX] phone_otp_send: desafio expirado', { challengeId });
+                    return;
+                }
+                try {
+                    const started = await twilio.sendVerification(otp.phone);
+                    const updated = AuthPhoneOtpChallenge.create({
+                        id: otp.id,
+                        purpose: otp.purpose,
+                        code: otp.code,
+                        phone: otp.phone,
+                        email: otp.email,
+                        expiresAt: otp.expiresAt,
+                        attemptsUsed: otp.attemptsUsed,
+                        maxAttempts: otp.maxAttempts,
+                        verifiedAt: otp.verifiedAt,
+                        consumedAt: otp.consumedAt,
+                        createdAt: otp.createdAt,
+                        twilioVerificationSid: started.verificationSid
+                    });
+                    await otpRepo.save(updated);
+                    log.info('[OUTBOX] phone_otp_send: envio concluído', { challengeId });
+                } catch (err: unknown) {
+                    log.error('[OUTBOX] phone_otp_send: falha Twilio', {
+                        challengeId,
+                        error: err instanceof Error ? err.message : String(err)
+                    });
+                    throw err;
+                }
                 return;
             }
 

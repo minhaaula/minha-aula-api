@@ -38,7 +38,13 @@ export function buildAuthModule(deps: AuthModuleDeps, ctx: ModuleSetupContext): 
     const resetTokensRepo = new PasswordResetTokenRepositoryAdapter();
     const authPhoneOtpRepo = new AuthPhoneOtpChallengeRepositoryAdapter();
     const twilioVerify = createTwilioVerifyFromEnv();
-    const requestPhoneOtp = new RequestPhoneOtpChallenge(authPhoneOtpRepo, twilioVerify, deps.usersRepo, undefined);
+    const requestPhoneOtp = new RequestPhoneOtpChallenge(
+        authPhoneOtpRepo,
+        twilioVerify,
+        deps.usersRepo,
+        undefined,
+        deps.outbox
+    );
     const verifyPhoneOtp = new VerifyPhoneOtpChallenge(authPhoneOtpRepo, twilioVerify, deps.tokenProvider, resetTokensRepo);
 
     const registerUser = new RegisterUser(

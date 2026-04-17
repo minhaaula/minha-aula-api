@@ -222,7 +222,8 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         authPhoneOtpRepoSchool,
         twilioVerify,
         deps.usersRepo,
-        deps.schoolsRepo
+        deps.schoolsRepo,
+        deps.outbox
     );
     const verifySchoolPasswordPhoneOtp = new VerifyPhoneOtpChallenge(
         authPhoneOtpRepoSchool,
