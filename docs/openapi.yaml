@@ -144,15 +144,16 @@ components:
       type: object
       required:
         - purpose
-        - email
+        - cpf
       properties:
         purpose:
           type: string
           enum:
             - user_password_reset
-        email:
+        cpf:
           type: string
-          format: email
+          description: CPF do usuário (apenas dígitos).
+          example: "12345678909"
     AuthVerificationVerifyInput:
       type: object
       required:

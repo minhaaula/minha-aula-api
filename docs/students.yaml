@@ -5,7 +5,7 @@ x-student-auth-info: |
   - POST /auth/register - Cadastro de estudante (campo `phoneVerificationToken` obrigatório)
   - POST /auth/login - Login de estudante
   - PATCH /auth/password - Alteração de senha (quando logado)
-  - POST /auth/verification/request (purpose `user_password_reset`) e POST /auth/verification/verify — código no WhatsApp para esqueci minha senha
+  - POST /auth/verification/request (purpose `user_password_reset` + **cpf**) e POST /auth/verification/verify — código no WhatsApp para esqueci minha senha
   - POST /auth/password/validate - Validar token de reset
   - POST /auth/password/reset - Resetar senha com token (obtido após verificação do WhatsApp)
 

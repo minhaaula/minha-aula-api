@@ -5,8 +5,8 @@ x-auth-info: |
 
   **WhatsApp (Twilio Verify):** o cadastro (`POST /auth/register`) exige confirmação prévia do telefone via
   `POST /auth/verification/request` (purpose `signup`) e `POST /auth/verification/verify`, que devolve `phoneVerificationToken`.
-  A recuperação de senha de usuário usa o mesmo par de rotas com `purpose` `user_password_reset` e depois `POST /auth/password/reset`
-  com o `resetToken` retornado na verificação (não há mais envio de link só por e-mail em `/auth/password/request`).
+  A recuperação de senha de usuário (ex.: aluno) usa `purpose` `user_password_reset` com **CPF** (não e-mail), depois `POST /auth/password/reset`
+  com o `resetToken` retornado na verificação.
 
 paths:
   /auth/verification/request:
@@ -18,8 +18,8 @@ paths:
         Inicia uma verificação via **Twilio Verify** (canal WhatsApp). Requer variáveis de ambiente da Twilio no servidor.
 
         - **signup:** envia código para o telefone informado. Resposta `201` com `challengeId` quando o envio foi iniciado.
-        - **user_password_reset:** envia código para o telefone **cadastrado** do usuário com o e-mail informado (se existir).
-          Resposta `200` com mensagem genérica quando o e-mail não existe ou não há telefone — sem vazar existência de conta.
+        - **user_password_reset:** envia código para o telefone **cadastrado** do usuário com o **CPF** informado (se existir).
+          Resposta `200` com mensagem genérica quando o CPF não existe ou não há telefone — sem vazar existência de conta.
       requestBody:
         required: true
         content:

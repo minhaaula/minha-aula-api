@@ -116,7 +116,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"purpose\": \"user_password_reset\",\n  \"email\": \"usuario@email.com\"\n}"
+							"raw": "{\n  \"purpose\": \"user_password_reset\",\n  \"cpf\": \"12345678909\"\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/auth/verification/request",

@@ -19,7 +19,7 @@ Autenticação de **usuários** (não escola). Personas incluem STUDENT, ADMIN, 
 
 **Funcionalidade:**
 
-Corpo com `purpose`: `signup` (e `phone`) ou `user_password_reset` (e `email`). Inicia verificação Twilio Verify; em caso de sucesso retorna `challengeId` para o passo seguinte.
+Corpo com `purpose`: `signup` (e `phone`) ou `user_password_reset` (e **cpf**). Inicia verificação Twilio Verify; em caso de sucesso retorna `challengeId` para o passo seguinte.
 
 ---
 

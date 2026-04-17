@@ -71,7 +71,7 @@ export function authRouter({
         }),
         z.object({
             purpose: z.literal('user_password_reset'),
-            email: z.string().email('Email inválido')
+            cpf: cpfSchema
         })
     ]);
 

@@ -16,7 +16,7 @@ const TWILIO_VERIFY_CODE_PLACEHOLDER = '000000';
 
 export type RequestPhoneOtpInput =
     | { purpose: 'signup'; phone: string }
-    | { purpose: 'user_password_reset'; email: string }
+    | { purpose: 'user_password_reset'; cpf: string }
     | { purpose: 'school_password_reset'; email: string };
 
 export type RequestPhoneOtpOutput =
@@ -52,7 +52,7 @@ export class RequestPhoneOtpChallenge {
             return this.requestSignup(input.phone);
         }
         if (input.purpose === 'user_password_reset') {
-            return this.requestUserPasswordReset(input.email);
+            return this.requestUserPasswordReset(input.cpf);
         }
         return this.requestSchoolPasswordReset(input.email);
     }
@@ -90,17 +90,27 @@ export class RequestPhoneOtpChallenge {
         };
     }
 
-    private async requestUserPasswordReset(emailRaw: string): Promise<RequestPhoneOtpOutput> {
-        const email = emailRaw.trim().toLowerCase();
-        const user = await this.users.findByEmail(email);
+    private normalizeCpf(value: string): string {
+        const digits = value.replace(/\D/g, '');
+        if (digits.length !== 11) {
+            throw AppError.fromCode(ErrorCode.INVALID_CPF, { cpf: value });
+        }
+        return digits;
+    }
+
+    private async requestUserPasswordReset(cpfRaw: string): Promise<RequestPhoneOtpOutput> {
+        const cpf = this.normalizeCpf(cpfRaw);
+        const user = await this.users.findByCpf(cpf);
         const generic: RequestPhoneOtpOutput = {
             message:
-                'Se o e-mail estiver cadastrado e houver telefone para receber o código, você receberá um WhatsApp em instantes.'
+                'Se o CPF estiver cadastrado e houver telefone para receber o código, você receberá um WhatsApp em instantes.'
         };
 
         if (!user) {
             return generic;
         }
+
+        const email = user.email.value.trim().toLowerCase();
 
         const rawPhone = user.phone?.trim();
         if (!rawPhone) {
@@ -128,7 +138,7 @@ export class RequestPhoneOtpChallenge {
 
         log.info('[PhoneOtp] reset de senha (usuário) iniciado', sanitizeForLogging({
             challengeId: otp.id,
-            email
+            cpf: `${cpf.slice(0, 3)}***${cpf.slice(-2)}`
         }));
 
         return {
