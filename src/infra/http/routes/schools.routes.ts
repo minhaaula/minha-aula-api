@@ -46,7 +46,7 @@ import { buildBankAccountsRoutes } from './schools/bank-accounts.routes';
 import { buildNotificationsRoutes } from './schools/notifications.routes';
 import { buildKycRoutes } from './schools/kyc.routes';
 import type { SchoolRouteGuards } from './schools/guards';
-import { makeResolveSchoolContextMiddleware } from '../middlewares/resolve-school-context';
+import { makeResolveSchoolContextMiddleware, type SchoolContextRequest } from '../middlewares/resolve-school-context';
 import type { ListSchoolBankAccounts } from '../../../app/use-cases/list-school-bank-accounts';
 import type { CreateSchoolBankAccount } from '../../../app/use-cases/create-school-bank-account';
 import type { UpdateSchoolBankAccount } from '../../../app/use-cases/update-school-bank-account';
@@ -63,7 +63,6 @@ import { buildDashboardRoutes } from './schools/dashboard.routes';
 import { buildImagesRoutes } from './schools/images.routes';
 import { z } from 'zod';
 import { asyncHandler } from '../utils/async-handler';
-import { AuthenticatedRequest } from '../middlewares/auth';
 import type { RequestSchoolActionOtp } from '../../../app/use-cases/request-school-action-otp';
 import type { VerifySchoolActionOtp } from '../../../app/use-cases/verify-school-action-otp';
 import { buildSecurityRoutes } from './schools/security.routes';
@@ -280,23 +279,29 @@ export function schoolsRouter(deps: SchoolsRouterDeps) {
             newPassword: z.string().min(6, 'A nova senha deve ter pelo menos 6 caracteres')
         });
 
-        router.patch('/password', requireAuth, requireSchoolPersona, asyncHandler(async (req, res) => {
-            const data = updatePasswordSchema.parse(req.body);
-            const authReq = req as AuthenticatedRequest;
-            const schoolId = authReq.user?.sub;
+        router.patch(
+            '/password',
+            requireAuth,
+            requireSchoolPersona,
+            resolveSchoolContext,
+            asyncHandler(async (req, res) => {
+                const data = updatePasswordSchema.parse(req.body);
+                const ctxReq = req as SchoolContextRequest;
+                const schoolId = ctxReq.schoolId;
 
-            if (!schoolId) {
-                return res.status(401).json({ error: 'Não autenticado' });
-            }
+                if (!schoolId) {
+                    return res.status(403).json({ error: 'School context not found for user' });
+                }
 
-            await deps.updateSchoolPassword!.exec({
-                schoolId,
-                currentPassword: data.currentPassword,
-                newPassword: data.newPassword
-            });
+                await deps.updateSchoolPassword!.exec({
+                    schoolId,
+                    currentPassword: data.currentPassword,
+                    newPassword: data.newPassword
+                });
 
-            res.status(204).send();
-        }));
+                res.status(204).send();
+            })
+        );
     }
 
     // Rotas públicas de reset de senha
