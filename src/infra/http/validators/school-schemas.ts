@@ -18,7 +18,8 @@ export const createSchoolSchema = z.object({
     ownerName: z.string().trim().min(3),
     ownerCpf: cpfNumberSchema(),
     ownerEmail: z.string().trim().email(),
-    ownerWhatsapp: phoneNumberSchema().optional(),
+    ownerWhatsapp: phoneNumberSchema(),
+    ownerWhatsappVerificationToken: z.string().trim().min(10),
     ownerPassword: z.string().min(8),
     addresses: z.array(addressSchema).optional()
 });

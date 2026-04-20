@@ -4,6 +4,8 @@ import type { CreateSchool } from '../../../../app/use-cases/create-school';
 import type { LoginSchool } from '../../../../app/use-cases/login-school';
 import type { ListCategories } from '../../../../app/use-cases/list-categories';
 import type { ListSubscriptionPlans } from '../../../../app/use-cases/list-subscription-plans';
+import type { RequestPhoneOtpChallenge } from '../../../../app/use-cases/request-phone-otp-challenge';
+import type { VerifyPhoneOtpChallenge } from '../../../../app/use-cases/verify-phone-otp-challenge';
 import type { AuthenticatedRequest } from '../../middlewares/auth';
 import { authRateLimiter } from '../../middlewares/rate-limiter';
 import { UserPersonaEnum } from '../../../../domain/value-objects/user-persona';
@@ -16,10 +18,41 @@ type PublicSchoolRoutesDeps = {
     loginSchool?: LoginSchool;
     listCategories?: ListCategories;
     listSubscriptionPlans?: ListSubscriptionPlans;
+    requestSchoolSignupPhoneOtp?: RequestPhoneOtpChallenge;
+    verifySchoolSignupPhoneOtp?: VerifyPhoneOtpChallenge;
 };
 
 export function buildPublicSchoolRoutes(deps: PublicSchoolRoutesDeps, optionalAuth: RequestHandler) {
     const router = Router();
+
+    const signupOtpRequestSchema = z.object({
+        phone: createSchoolSchema.shape.ownerWhatsapp
+    });
+
+    const signupOtpVerifySchema = z.object({
+        challengeId: z.string().uuid(),
+        code: z.string().trim().regex(/^\d{4,8}$/)
+    });
+
+    if (deps.requestSchoolSignupPhoneOtp) {
+        router.post('/verification/request', authRateLimiter, asyncHandler(async (req, res) => {
+            const body = signupOtpRequestSchema.parse(req.body ?? {});
+            const result = await deps.requestSchoolSignupPhoneOtp!.exec({
+                purpose: 'school_signup',
+                phone: body.phone
+            });
+            const status = 'challengeId' in result ? 201 : 200;
+            res.status(status).json(result);
+        }));
+    }
+
+    if (deps.verifySchoolSignupPhoneOtp) {
+        router.post('/verification/verify', authRateLimiter, asyncHandler(async (req, res) => {
+            const body = signupOtpVerifySchema.parse(req.body ?? {});
+            const result = await deps.verifySchoolSignupPhoneOtp!.exec(body);
+            res.json(result);
+        }));
+    }
 
     if (deps.loginSchool) {
         router.post('/login', authRateLimiter, asyncHandler(async (req, res) => {
@@ -63,6 +96,7 @@ export function buildPublicSchoolRoutes(deps: PublicSchoolRoutesDeps, optionalAu
             ownerCpf: data.ownerCpf,
             ownerEmail: data.ownerEmail,
             ownerWhatsapp: data.ownerWhatsapp ?? null,
+            ownerWhatsappVerificationToken: data.ownerWhatsappVerificationToken,
             ownerPassword: data.ownerPassword
         });
 

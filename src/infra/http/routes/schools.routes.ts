@@ -116,6 +116,8 @@ export type SchoolsRouterDeps = {
     deleteSchoolBankAccount?: DeleteSchoolBankAccount;
     requestSchoolPasswordPhoneOtp?: RequestPhoneOtpChallenge;
     verifySchoolPasswordPhoneOtp?: VerifyPhoneOtpChallenge;
+    requestSchoolSignupPhoneOtp?: RequestPhoneOtpChallenge;
+    verifySchoolSignupPhoneOtp?: VerifyPhoneOtpChallenge;
     resetPassword?: ResetPassword;
     validatePasswordResetToken?: import('../../../app/use-cases/validate-password-reset-token').ValidatePasswordResetToken;
     updateSchoolPassword?: UpdateSchoolPassword;
@@ -155,7 +157,9 @@ export function schoolsRouter(deps: SchoolsRouterDeps) {
         createSchool: deps.createSchool,
         loginSchool: deps.loginSchool,
         listCategories: deps.listCategories,
-        listSubscriptionPlans: deps.listSubscriptionPlans
+        listSubscriptionPlans: deps.listSubscriptionPlans,
+        requestSchoolSignupPhoneOtp: deps.requestSchoolSignupPhoneOtp,
+        verifySchoolSignupPhoneOtp: deps.verifySchoolSignupPhoneOtp
     }, optionalAuth));
 
     router.use(buildProfileRoutes({

@@ -11,11 +11,17 @@ import { log } from '../../shared/logger';
 import { toE164Brazil } from '../../shared/phone-e164';
 
 const SIGNUP_TOKEN_TTL_SEC = 15 * 60;
+const SCHOOL_SIGNUP_TOKEN_TTL_SEC = 15 * 60;
 
 export type VerifyPhoneOtpResult =
     | {
           purpose: 'signup';
           phoneVerificationToken: string;
+          challengeId: string;
+      }
+    | {
+          purpose: 'school_signup';
+          ownerWhatsappVerificationToken: string;
           challengeId: string;
       }
     | {
@@ -37,7 +43,7 @@ export class VerifyPhoneOtpChallenge {
         private readonly challenges: AuthPhoneOtpChallengeRepository,
         private readonly twilio: TwilioVerifyPort | undefined,
         private readonly tokenProvider: TokenProviderPort,
-        private readonly resetTokens: PasswordResetTokenRepository
+        private readonly resetTokens?: PasswordResetTokenRepository
     ) {}
 
     async exec(input: { challengeId: string; code: string }): Promise<VerifyPhoneOtpResult> {
@@ -111,9 +117,28 @@ export class VerifyPhoneOtpChallenge {
             return { purpose: 'signup', phoneVerificationToken, challengeId: consumed.id };
         }
 
+        if (purpose === 'school_signup') {
+            const e164 = toE164Brazil(consumed.phone);
+            if (!e164) {
+                throw AppError.fromCode(ErrorCode.INVALID_PHONE, { phone: consumed.phone });
+            }
+            const ownerWhatsappVerificationToken = await this.tokenProvider.sign(
+                { typ: 'school_signup_phone', ph: e164 },
+                { expiresIn: SCHOOL_SIGNUP_TOKEN_TTL_SEC }
+            );
+            log.info('[PhoneOtp] school_signup verificado', sanitizeForLogging({ challengeId }));
+            return { purpose: 'school_signup', ownerWhatsappVerificationToken, challengeId: consumed.id };
+        }
+
         const email = consumed.email;
         if (!email) {
             throw AppError.validation('Desafio inválido');
+        }
+
+        if (!this.resetTokens) {
+            throw AppError.fromCode(ErrorCode.CONFIGURATION_ERROR, {
+                message: 'Reset de senha não está disponível no servidor'
+            });
         }
 
         const token = this.generateResetToken();

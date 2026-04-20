@@ -1,4 +1,4 @@
-export type AuthPhoneOtpPurpose = 'signup' | 'user_password_reset' | 'school_password_reset';
+export type AuthPhoneOtpPurpose = 'signup' | 'school_signup' | 'user_password_reset' | 'school_password_reset';
 
 /** Quando Twilio Verify envia o OTP, o código real não fica no banco. */
 export class AuthPhoneOtpChallenge {

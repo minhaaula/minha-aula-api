@@ -17,6 +17,7 @@ const TWILIO_VERIFY_CODE_PLACEHOLDER = '000000';
 
 export type RequestPhoneOtpInput =
     | { purpose: 'signup'; phone: string }
+    | { purpose: 'school_signup'; phone: string }
     | { purpose: 'user_password_reset'; cpf: string }
     | { purpose: 'school_password_reset'; email: string };
 
@@ -58,6 +59,9 @@ export class RequestPhoneOtpChallenge {
         if (input.purpose === 'signup') {
             return this.requestSignup(input.phone);
         }
+        if (input.purpose === 'school_signup') {
+            return this.requestSchoolSignup(input.phone);
+        }
         if (input.purpose === 'user_password_reset') {
             return this.requestUserPasswordReset(input.cpf);
         }
@@ -93,6 +97,39 @@ export class RequestPhoneOtpChallenge {
             message: 'O código será enviado ao WhatsApp em instantes.',
             challengeId: otp.id,
             purpose: 'signup',
+            expiresAt: otp.expiresAt.toISOString()
+        };
+    }
+
+    private async requestSchoolSignup(rawPhone: string): Promise<RequestPhoneOtpOutput> {
+        const e164 = toE164Brazil(rawPhone);
+        if (!e164) {
+            throw AppError.fromCode(ErrorCode.INVALID_PHONE, { phone: rawPhone });
+        }
+
+        const expiresAt = new Date(Date.now() + OTP_TTL_MINUTES * 60_000);
+        const otp = AuthPhoneOtpChallenge.create({
+            id: Uuid(),
+            purpose: 'school_signup',
+            code: TWILIO_VERIFY_CODE_PLACEHOLDER,
+            phone: e164,
+            email: null,
+            expiresAt,
+            maxAttempts: OTP_MAX_ATTEMPTS,
+            twilioVerificationSid: null
+        });
+        await this.challenges.save(otp);
+        await this.enqueuePhoneOtpSend(otp.id);
+
+        log.info('[PhoneOtp] school_signup iniciado', sanitizeForLogging({
+            challengeId: otp.id,
+            phone: e164
+        }));
+
+        return {
+            message: 'O código será enviado ao WhatsApp em instantes.',
+            challengeId: otp.id,
+            purpose: 'school_signup',
             expiresAt: otp.expiresAt.toISOString()
         };
     }

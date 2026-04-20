@@ -170,7 +170,8 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         deps.passwordHasher,
         deps.usersRepo,
         deps.outbox,
-        deps.frontendBaseUrl
+        deps.frontendBaseUrl,
+        deps.tokenProvider
     );
     const createCourse = new CreateCourse(deps.schoolsRepo, deps.coursesRepo);
     const createCourseClass = new CreateCourseClass(deps.coursesRepo, deps.classesRepo);
@@ -230,6 +231,20 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         twilioVerify,
         deps.tokenProvider,
         resetTokensRepo
+    );
+
+    const authPhoneOtpRepoSchoolSignup = new AuthPhoneOtpChallengeRepositoryAdapter();
+    const requestSchoolSignupPhoneOtp = new RequestPhoneOtpChallenge(
+        authPhoneOtpRepoSchoolSignup,
+        twilioVerify,
+        deps.usersRepo,
+        undefined,
+        deps.outbox
+    );
+    const verifySchoolSignupPhoneOtp = new VerifyPhoneOtpChallenge(
+        authPhoneOtpRepoSchoolSignup,
+        twilioVerify,
+        deps.tokenProvider
     );
     const resetPassword = new ResetPassword(deps.schoolsRepo, resetTokensRepo, deps.passwordHasher);
     const validatePasswordResetToken = new ValidatePasswordResetToken(resetTokensRepo);
@@ -474,6 +489,8 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         deleteSchoolBankAccount,
         requestSchoolPasswordPhoneOtp,
         verifySchoolPasswordPhoneOtp,
+        requestSchoolSignupPhoneOtp,
+        verifySchoolSignupPhoneOtp,
         resetPassword,
         validatePasswordResetToken,
         updateSchoolPassword,

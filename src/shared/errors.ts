@@ -63,6 +63,8 @@ export enum ErrorCode {
     NOT_ENROLLED_IN_SCHOOL = 'NOT_ENROLLED_IN_SCHOOL',
     /** Cadastro exige token emitido após verificação do WhatsApp (Twilio Verify). */
     SIGNUP_PHONE_NOT_VERIFIED = 'SIGNUP_PHONE_NOT_VERIFIED',
+    /** Cadastro de escola exige token emitido após verificação do WhatsApp (Twilio Verify). */
+    SCHOOL_SIGNUP_PHONE_NOT_VERIFIED = 'SCHOOL_SIGNUP_PHONE_NOT_VERIFIED',
     /** Envio do código ainda não concluído pelo worker (Twilio Verify na fila). */
     OTP_SEND_PENDING = 'OTP_SEND_PENDING',
     
@@ -133,6 +135,7 @@ export const ErrorMessages: Record<ErrorCode, string> = {
     [ErrorCode.INCOMPLETE_DATA]: 'Dados incompletos',
     [ErrorCode.NOT_ENROLLED_IN_SCHOOL]: 'Você ou algum dependente precisa estar matriculado na escola para avaliá-la',
     [ErrorCode.SIGNUP_PHONE_NOT_VERIFIED]: 'Confirme o código enviado ao WhatsApp antes de concluir o cadastro',
+    [ErrorCode.SCHOOL_SIGNUP_PHONE_NOT_VERIFIED]: 'Confirme o código enviado ao WhatsApp antes de concluir o cadastro da escola',
     [ErrorCode.OTP_SEND_PENDING]: 'Aguarde alguns instantes. O código está sendo enviado ao WhatsApp.',
     
     // Sistema

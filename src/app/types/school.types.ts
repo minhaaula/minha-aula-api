@@ -17,6 +17,8 @@ export interface CreateSchoolInput {
     ownerEmail?: string | null;
     /** Celular WhatsApp do responsável (somente dígitos). */
     ownerWhatsapp?: string | null;
+    /** Token emitido após validação do OTP via WhatsApp (cadastro de escola). */
+    ownerWhatsappVerificationToken: string;
     ownerPassword?: string | null;
 }
 

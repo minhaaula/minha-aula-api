@@ -10,6 +10,8 @@ import { OutboxRepository } from '../../ports/repositories/outbox.repo';
 import { UserPersonaEnum } from '../../domain/value-objects/user-persona';
 import { AppError, ErrorCode } from '../../shared/errors';
 import type { CreateSchoolInput, CreateSchoolOutput } from '../types/school.types';
+import type { TokenProviderPort } from '../../ports/providers/token-provider.port';
+import { toE164Brazil } from '../../shared/phone-e164';
 
 /** Data de nascimento padrão para o usuário dono quando não é informada (User exige birthDate). */
 const DEFAULT_OWNER_BIRTH_DATE = new Date('1980-01-01');
@@ -20,10 +22,30 @@ export class CreateSchool {
         private readonly passwordHasher: PasswordHasherPort,
         private readonly users?: UserRepository,
         private readonly outbox?: OutboxRepository,
-        private readonly frontendBaseUrl?: string
+        private readonly frontendBaseUrl?: string,
+        private readonly tokens?: TokenProviderPort
     ) {}
 
     async exec(input: CreateSchoolInput): Promise<CreateSchoolOutput> {
+        const e164 = toE164Brazil(input.ownerWhatsapp ?? '');
+        if (!e164) {
+            throw AppError.fromCode(ErrorCode.INVALID_PHONE, { phone: input.ownerWhatsapp });
+        }
+        if (!this.tokens) {
+            throw AppError.fromCode(ErrorCode.CONFIGURATION_ERROR, { message: 'Validação de OTP não está disponível no servidor' });
+        }
+        try {
+            const payload = await this.tokens.verify<{ typ?: unknown; ph?: unknown }>(input.ownerWhatsappVerificationToken);
+            const typ = typeof payload?.typ === 'string' ? payload.typ : '';
+            const ph = typeof payload?.ph === 'string' ? payload.ph : '';
+            if (typ !== 'school_signup_phone' || ph !== e164) {
+                throw AppError.fromCode(ErrorCode.SCHOOL_SIGNUP_PHONE_NOT_VERIFIED);
+            }
+        } catch (e) {
+            if (e instanceof AppError) throw e;
+            throw AppError.fromCode(ErrorCode.SCHOOL_SIGNUP_PHONE_NOT_VERIFIED);
+        }
+
         // Evitar escolas duplicadas: e-mail e CNPJ devem ser únicos.
         const emailNorm = input.email.trim().toLowerCase();
         if (this.schools.findByEmail) {
@@ -115,7 +137,7 @@ export class CreateSchool {
             ownerName: input.ownerName ?? null,
             ownerCpf: input.ownerCpf ?? null,
             ownerEmail: input.ownerEmail ?? null,
-            ownerWhatsapp: input.ownerWhatsapp ?? null,
+            ownerWhatsapp: e164,
             ownerPasswordHash,
             incomeValue: input.incomeValue
         });
