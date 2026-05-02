@@ -1,7 +1,7 @@
 import { Money } from '../../../domain/value-objects/money';
 import { PaymentProviderPort, CreateChargeInput, CreatePixChargeInput } from '../../../ports/providers/payment-provider.port';
 import { AsaasClient } from './asaas-client';
-import { AsaasChargeResponse, AsaasSubAccount, CreateAsaasSubAccountInput, CreateAsaasTransferInput, AsaasTransferResponse, AsaasAccountDetails, AsaasAccountBalance, AsaasPaymentDetails, ListAsaasPaymentsParams, ListAsaasPaymentsResponse, AsaasPendingDocumentsResult, AsaasPendingDocumentGroup, AsaasAccountStatus } from '../../../ports/providers/asaas-port';
+import { AsaasChargeResponse, AsaasSubAccount, CreateAsaasSubAccountInput, CreateAsaasTransferInput, AsaasTransferResponse, AsaasAccountDetails, AsaasAccountBalance, AsaasPaymentDetails, ListAsaasPaymentsParams, ListAsaasPaymentsResponse, AsaasPendingDocumentsResult, AsaasPendingDocumentGroup, AsaasAccountStatus, AsaasPixQrCodeResponse } from '../../../ports/providers/asaas-port';
 import { CreateBoletoChargeInput } from '../../../ports/providers/payment-provider.port';
 import { log } from '../../../shared/logger';
 
@@ -143,6 +143,10 @@ export class AsaasProvider implements PaymentProviderPort {
             invoiceUrl: response.invoiceUrl,
             dueDate: new Date(response.dueDate)
         };
+    }
+
+    async getPixQrCode(paymentId: string): Promise<AsaasPixQrCodeResponse> {
+        return await this.client.getPixQrCode(paymentId);
     }
 
     async createSubAccount(input: CreateAsaasSubAccountInput): Promise<AsaasSubAccount> {

@@ -4,15 +4,18 @@ import type { AssignSchoolPlan } from '../../../../app/use-cases/assign-school-p
 import type { GetActiveSchoolPlan } from '../../../../app/use-cases/get-active-school-plan';
 import type { IssueSchoolPlanInvoice } from '../../../../app/use-cases/issue-school-plan-invoice';
 import type { ListSchoolPlanInvoices } from '../../../../app/use-cases/list-school-plan-invoices';
+import type { GetSchoolPlanInvoicePix } from '../../../../app/use-cases/get-school-plan-invoice-pix';
 import { assignSchoolPlanSchema, issuePlanInvoiceSchema } from '../../validators/school-schemas';
 import type { SchoolRouteGuards } from './guards';
 import type { SchoolContextRequest } from '../../middlewares/resolve-school-context';
+import { z } from 'zod';
 
 type PlansRoutesDeps = {
     assignSchoolPlan?: AssignSchoolPlan;
     getActiveSchoolPlan?: GetActiveSchoolPlan;
     issueSchoolPlanInvoice?: IssueSchoolPlanInvoice;
     listSchoolPlanInvoices?: ListSchoolPlanInvoices;
+    getSchoolPlanInvoicePix?: GetSchoolPlanInvoicePix;
 };
 
 export function buildPlansRoutes(deps: PlansRoutesDeps, guards: SchoolRouteGuards) {
@@ -55,7 +58,8 @@ export function buildPlansRoutes(deps: PlansRoutesDeps, guards: SchoolRouteGuard
                 schoolId,
                 dueDate,
                 description: data.description ?? null,
-                couponCode: data.couponCode ?? null
+                couponCode: data.couponCode ?? null,
+                generatePix: data.generatePix === true
             });
 
             res.status(result.alreadyExists ? 200 : 201).json(result);
@@ -66,6 +70,18 @@ export function buildPlansRoutes(deps: PlansRoutesDeps, guards: SchoolRouteGuard
         router.get('/plan/invoices', guards.requireAuth, guards.requireSchoolPersona, guards.resolveSchoolContext, asyncHandler(async (req, res) => {
             const schoolId = (req as SchoolContextRequest).schoolId as string;
             const result = await deps.listSchoolPlanInvoices!.exec({ schoolId });
+            res.json(result);
+        }));
+    }
+
+    if (deps.getSchoolPlanInvoicePix) {
+        router.post('/plan/invoices/:invoiceId/pix', guards.requireAuth, guards.requireSchoolPersona, guards.resolveSchoolContext, asyncHandler(async (req, res) => {
+            const schoolId = (req as SchoolContextRequest).schoolId as string;
+            const params = z.object({ invoiceId: z.string().uuid() }).parse(req.params);
+            const result = await deps.getSchoolPlanInvoicePix!.exec({
+                invoiceId: params.invoiceId,
+                schoolId
+            });
             res.json(result);
         }));
     }

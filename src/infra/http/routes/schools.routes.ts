@@ -30,6 +30,8 @@ import type { ListEnrollmentRequests } from '../../../app/use-cases/list-enrollm
 import type { DeleteCourse } from '../../../app/use-cases/delete-course';
 import type { DeleteCourseClass } from '../../../app/use-cases/delete-course-class';
 import type { CreateSchoolCharge } from '../../../app/use-cases/create-school-charge';
+import type { GenerateTuitionPix } from '../../../app/use-cases/generate-tuition-pix';
+import type { GetSchoolPlanInvoicePix } from '../../../app/use-cases/get-school-plan-invoice-pix';
 import { requirePersona } from '../middlewares/require-persona';
 import { UserPersonaEnum } from '../../../domain/value-objects/user-persona';
 import type { SchoolRepository } from '../../../ports/repositories/school.repo';
@@ -110,6 +112,8 @@ export type SchoolsRouterDeps = {
     requestSchoolWithdrawal?: import('../../../app/use-cases/request-school-withdrawal').RequestSchoolWithdrawal;
     getSchoolBalance?: import('../../../app/use-cases/get-school-balance').GetSchoolBalance;
     schoolMarkChargePaid?: import('../../../app/use-cases/school-mark-charge-paid').SchoolMarkChargePaid;
+    generateTuitionPix?: GenerateTuitionPix;
+    getSchoolPlanInvoicePix?: GetSchoolPlanInvoicePix;
     listSchoolBankAccounts?: ListSchoolBankAccounts;
     createSchoolBankAccount?: CreateSchoolBankAccount;
     updateSchoolBankAccount?: UpdateSchoolBankAccount;
@@ -171,7 +175,8 @@ export function schoolsRouter(deps: SchoolsRouterDeps) {
         assignSchoolPlan: deps.assignSchoolPlan,
         getActiveSchoolPlan: deps.getActiveSchoolPlan,
         issueSchoolPlanInvoice: deps.issueSchoolPlanInvoice,
-        listSchoolPlanInvoices: deps.listSchoolPlanInvoices
+        listSchoolPlanInvoices: deps.listSchoolPlanInvoices,
+        getSchoolPlanInvoicePix: deps.getSchoolPlanInvoicePix
     }, guards));
 
     router.use('/coupons', buildCouponsRoutes({
@@ -191,14 +196,15 @@ export function schoolsRouter(deps: SchoolsRouterDeps) {
         }, guards));
     }
 
-    if (deps.createSchoolCharge || deps.getSchoolFinancialSummary || deps.listSchoolWithdrawals || deps.requestSchoolWithdrawal || deps.getSchoolBalance || deps.schoolMarkChargePaid) {
+    if (deps.createSchoolCharge || deps.getSchoolFinancialSummary || deps.listSchoolWithdrawals || deps.requestSchoolWithdrawal || deps.getSchoolBalance || deps.schoolMarkChargePaid || deps.generateTuitionPix) {
         router.use('/finance', buildFinanceRoutes({
             createSchoolCharge: deps.createSchoolCharge,
             getSchoolFinancialSummary: deps.getSchoolFinancialSummary,
             listSchoolWithdrawals: deps.listSchoolWithdrawals,
             requestSchoolWithdrawal: deps.requestSchoolWithdrawal,
             getSchoolBalance: deps.getSchoolBalance,
-            schoolMarkChargePaid: deps.schoolMarkChargePaid
+            schoolMarkChargePaid: deps.schoolMarkChargePaid,
+            generateTuitionPix: deps.generateTuitionPix
         }, guards));
     }
 

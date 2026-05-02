@@ -106,6 +106,11 @@ export type AsaasPaymentDetails = {
     receivedDate?: string | null;
 };
 
+export type AsaasPixQrCodeResponse = {
+    encodedImage: string;
+    payload: string;
+};
+
 export type AsaasPaymentListItem = {
     id: string;
     status?: string;
@@ -143,6 +148,8 @@ export interface AsaasProviderPort {
     /** Saldo disponível da conta principal (nossa empresa). GET /finance/balance. */
     getMainAccountBalance?(): Promise<{ balance: number }>;
     getPayment?(paymentId: string): Promise<AsaasPaymentDetails>;
+    /** Obtém QR Code do PIX de um pagamento (GET /payments/{id}/pixQrCode). */
+    getPixQrCode?(paymentId: string): Promise<AsaasPixQrCodeResponse>;
     listPayments?(params?: ListAsaasPaymentsParams): Promise<ListAsaasPaymentsResponse>;
     /**
      * Exclui uma cobrança no Asaas (DELETE /v3/payments/{id}).

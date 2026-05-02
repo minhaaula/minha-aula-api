@@ -10,6 +10,9 @@ import type { SchoolRouteGuards } from './guards';
 import type { SchoolMarkChargePaid } from '../../../../app/use-cases/school-mark-charge-paid';
 import type { SchoolContextRequest } from '../../middlewares/resolve-school-context';
 import type { SchoolFinancialCharge } from '../../../../domain/entities/school-financial-charge';
+import type { GenerateTuitionPix } from '../../../../app/use-cases/generate-tuition-pix';
+import type { AuthenticatedRequest } from '../../middlewares/auth';
+import { UserPersonaEnum } from '../../../../domain/value-objects/user-persona';
 
 const chargeTypes = ['TUITION', 'ENROLLMENT', 'MATERIALS', 'DAILY', 'OTHER'] as const;
 
@@ -67,6 +70,7 @@ type FinanceRoutesDeps = {
     requestSchoolWithdrawal?: RequestSchoolWithdrawal;
     getSchoolBalance?: GetSchoolBalance;
     schoolMarkChargePaid?: SchoolMarkChargePaid;
+    generateTuitionPix?: GenerateTuitionPix;
 };
 
 export function buildFinanceRoutes(deps: FinanceRoutesDeps, guards: SchoolRouteGuards) {
@@ -120,6 +124,33 @@ export function buildFinanceRoutes(deps: FinanceRoutesDeps, guards: SchoolRouteG
                 chargeId: params.chargeId,
                 data: body.data,
                 observacao: body.observacao ?? null
+            });
+
+            res.json(result);
+        }));
+    }
+
+    if (deps.generateTuitionPix) {
+        router.post('/charges/:chargeId/pix', ...protectedMiddleware, asyncHandler(async (req, res) => {
+            const authReq = req as AuthenticatedRequest;
+            const schoolId = (req as SchoolContextRequest).schoolId as string;
+
+            if (!authReq.user?.sub) {
+                return res.status(401).json({
+                    error: 'Não autorizado',
+                    code: 'UNAUTHORIZED'
+                });
+            }
+
+            const params = z.object({ chargeId: z.string().uuid() }).parse(req.params);
+
+            const result = await deps.generateTuitionPix!.exec({
+                chargeId: params.chargeId,
+                requester: {
+                    id: authReq.user.sub,
+                    persona: UserPersonaEnum.SCHOOL,
+                    schoolId
+                }
             });
 
             res.json(result);

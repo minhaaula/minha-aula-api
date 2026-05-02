@@ -65,6 +65,18 @@ export class AsaasClient {
         }
     }
 
+    /** GET /v3/payments/{id}/pixQrCode */
+    async getPixQrCode(paymentId: string): Promise<{ encodedImage: string; payload: string }> {
+        const id = paymentId?.trim();
+        if (!id) throw new Error('paymentId is required');
+        try {
+            const { data } = await this.http.get<{ encodedImage: string; payload: string }>(`/payments/${encodeURIComponent(id)}/pixQrCode`);
+            return data;
+        } catch (error) {
+            throw this.toDomainError(error);
+        }
+    }
+
     async createSubAccount(payload: AsaasCreateSubAccountPayload): Promise<AsaasSubAccountResponse> {
         // Validação: verificar se o payload tem os campos obrigatórios antes de enviar
         if (!payload.name || !payload.name.trim()) {

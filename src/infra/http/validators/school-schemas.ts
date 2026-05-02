@@ -149,5 +149,7 @@ export const assignSchoolPlanSchema = z.object({
 export const issuePlanInvoiceSchema = z.object({
     dueDate: z.string().datetime().optional(),
     description: z.string().trim().min(1).optional(),
-    couponCode: z.string().trim().min(3).max(50).optional().nullable()
+    couponCode: z.string().trim().min(3).max(50).optional().nullable(),
+    /** Se true, emite invoice do plano via PIX ao invés de boleto. */
+    generatePix: z.boolean().optional()
 });

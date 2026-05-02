@@ -580,5 +580,109 @@ describe('GenerateTuitionPix', () => {
             })
         ).rejects.toThrow('does not allow PIX generation');
     });
+
+    it('permite escola gerar PIX quando schoolId do requester coincide com a cobrança', async () => {
+        const charges = new InMemoryCharges();
+        const users = new InMemoryUsers();
+        const schools = new InMemorySchools();
+        const courses = new InMemoryCourses();
+
+        const user = makeUser('user-school-pix');
+        users.seed(user);
+
+        const school = makeSchool('school-pix-escola');
+        schools.seed(school);
+
+        const course = makeCourse('course-school-pix', school.id);
+        courses.seed(course);
+
+        const charge = SchoolFinancialCharge.create({
+            id: 'charge-school-pix',
+            schoolId: school.id,
+            ownerUserId: user.id,
+            studentUserId: user.id,
+            dependentId: null,
+            courseId: course.id,
+            courseClassId: null,
+            chargeType: 'TUITION',
+            amountCents: 10000,
+            dueDate: new Date('2024-06-01')
+        });
+        charges.seed(charge);
+
+        const provider = new FakePixProvider({
+            providerRef: 'asaas-pix-school',
+            pixQrCode: 'qr-school',
+            pixCopiaECola: 'pix-school-payload',
+            dueDate: new Date('2024-06-01')
+        });
+
+        const useCase = new GenerateTuitionPix(charges, users, schools, courses, provider);
+
+        const result = await useCase.exec({
+            chargeId: charge.id,
+            requester: {
+                id: 'token-sub-escola',
+                persona: UserPersonaEnum.SCHOOL,
+                schoolId: school.id
+            }
+        });
+
+        expect(result.paymentProviderRef).toBe('asaas-pix-school');
+        expect(result.pixCopiaECola).toBe('pix-school-payload');
+        expect(provider.callCount).toBe(1);
+    });
+
+    it('rejeita escola quando schoolId do requester não coincide com a cobrança', async () => {
+        const charges = new InMemoryCharges();
+        const users = new InMemoryUsers();
+        const schools = new InMemorySchools();
+        const courses = new InMemoryCourses();
+
+        const user = makeUser('user-outra-escola');
+        users.seed(user);
+
+        const schoolA = makeSchool('school-a');
+        const schoolB = makeSchool('school-b');
+        schools.seed(schoolA);
+        schools.seed(schoolB);
+
+        const course = makeCourse('course-a', schoolA.id);
+        courses.seed(course);
+
+        const charge = SchoolFinancialCharge.create({
+            id: 'charge-outra-escola',
+            schoolId: schoolA.id,
+            ownerUserId: user.id,
+            studentUserId: user.id,
+            dependentId: null,
+            courseId: course.id,
+            courseClassId: null,
+            chargeType: 'TUITION',
+            amountCents: 5000,
+            dueDate: new Date('2024-07-01')
+        });
+        charges.seed(charge);
+
+        const provider = new FakePixProvider({
+            providerRef: 'asaas-should-not-call',
+            dueDate: new Date('2024-07-01')
+        });
+
+        const useCase = new GenerateTuitionPix(charges, users, schools, courses, provider);
+
+        await expect(
+            useCase.exec({
+                chargeId: charge.id,
+                requester: {
+                    id: 'token-sub',
+                    persona: UserPersonaEnum.SCHOOL,
+                    schoolId: schoolB.id
+                }
+            })
+        ).rejects.toThrow('User not allowed to generate PIX for this charge');
+
+        expect(provider.callCount).toBe(0);
+    });
 });
 

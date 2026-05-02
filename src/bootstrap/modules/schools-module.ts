@@ -47,6 +47,7 @@ import { HandleAsaasAccountWebhook } from '../../app/use-cases/handle-asaas-acco
 import { HandleAsaasTransferWebhook } from '../../app/use-cases/handle-asaas-transfer-webhook';
 import { asaasWebhookRouter } from '../../infra/http/routes/webhooks/asaas.routes';
 import { ListSchoolPlanInvoices } from '../../app/use-cases/list-school-plan-invoices';
+import { GetSchoolPlanInvoicePix } from '../../app/use-cases/get-school-plan-invoice-pix';
 import { EnrollmentRepositoryAdapter } from '../../infra/db/typeorm/enrollment-repository';
 import { EnrollmentRequestRepositoryAdapter } from '../../infra/db/typeorm/enrollment-request-repository.adapter';
 import { SchoolFinancialChargeRepositoryAdapter } from '../../infra/db/typeorm/school-financial-charge-repository.adapter';
@@ -162,9 +163,12 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
     const verifySchoolActionOtp = new VerifySchoolActionOtp(schoolActionOtpRepo, twilioVerify);
 
     // Declarar asaasProvider antes de usar
-    const asaasProvider = typeof deps.paymentProvider.createSubAccount === 'function'
-        ? deps.paymentProvider as AsaasProviderPort
-        : undefined;
+    const asaasProvider =
+        typeof (deps.paymentProvider as Partial<AsaasProviderPort>).createSubAccount === 'function' ||
+        typeof (deps.paymentProvider as Partial<AsaasProviderPort>).getPayment === 'function' ||
+        typeof (deps.paymentProvider as Partial<AsaasProviderPort>).getPixQrCode === 'function'
+            ? deps.paymentProvider as AsaasProviderPort
+            : undefined;
     
     const createSchool = new CreateSchool(
         deps.schoolsRepo,
@@ -399,6 +403,10 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         deps.planFinancesRepo,
         deps.planInvoicesRepo
     );
+    const getSchoolPlanInvoicePix = new GetSchoolPlanInvoicePix(
+        deps.planInvoicesRepo,
+        asaasProvider
+    );
 
     const handleAsaasPaymentWebhook = new HandleAsaasPaymentWebhook(
         deps.planInvoicesRepo,
@@ -473,6 +481,7 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         listSchoolWithdrawals,
         requestSchoolWithdrawal,
         schoolMarkChargePaid,
+        generateTuitionPix,
         scheduleClassSession,
         listClassSessions,
         cancelClassSession,
@@ -483,6 +492,7 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         listCategories,
         issueSchoolPlanInvoice,
         listSchoolPlanInvoices,
+        getSchoolPlanInvoicePix,
         authMiddleware: ctx.authMiddleware,
         schoolsRepo: deps.schoolsRepo,
         listSchoolBankAccounts,

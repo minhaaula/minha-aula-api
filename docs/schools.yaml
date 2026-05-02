@@ -902,6 +902,109 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /schools/finance/charges/{chargeId}/pix:
+    post:
+      tags:
+        - Schools
+      summary: Gerar PIX para cobrança (mensalidade/matrícula)
+      description: |
+        Gera o PIX (Asaas) sob demanda para uma cobrança da escola (tipos permitidos: TUITION e ENROLLMENT).
+        Se o PIX já tiver sido gerado anteriormente, retorna o PIX já existente.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: chargeId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID da cobrança
+      responses:
+        '200':
+          description: PIX gerado (ou existente) retornado com sucesso.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - chargeId
+                  - paymentProviderRef
+                  - dueDate
+                  - status
+                  - amountCents
+                  - discountCents
+                  - netAmountCents
+                  - courseName
+                  - schoolLogo
+                properties:
+                  chargeId:
+                    type: string
+                    format: uuid
+                  paymentProviderRef:
+                    type: string
+                    description: ID do pagamento/cobrança no provedor (Asaas)
+                  pixQrCode:
+                    type: string
+                    nullable: true
+                    description: QR code do PIX (base64/data URL), quando disponível
+                  pixCopiaECola:
+                    type: string
+                    nullable: true
+                    description: Código PIX copia-e-cola, quando disponível
+                  invoiceUrl:
+                    type: string
+                    nullable: true
+                    description: URL do invoice no provedor (quando disponível)
+                  dueDate:
+                    type: string
+                    format: date-time
+                  status:
+                    type: string
+                    enum: [PENDING_SYNC, FAILED, OPEN, OVERDUE, PAID, CANCELLED]
+                  amountCents:
+                    type: integer
+                    format: int32
+                    description: Valor nominal (bruto) em centavos
+                  discountCents:
+                    type: integer
+                    format: int32
+                    nullable: true
+                    description: Valor do desconto em centavos, ou null
+                  netAmountCents:
+                    type: integer
+                    format: int32
+                    description: Valor líquido a pagar em centavos
+                  courseName:
+                    type: string
+                  schoolLogo:
+                    type: string
+                    nullable: true
+                    description: URL do logo da escola (ou null)
+        '400':
+          description: "Dados inválidos (ex.: status/tipo da cobrança não permite gerar PIX)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Não autorizado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário autenticado sem permissão para a escola informada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Cobrança não encontrada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /schools/finance/charges/{chargeId}/mark-paid:
     post:
       tags:
@@ -2555,7 +2658,8 @@ paths:
               -H 'Content-Type: application/json' \
               -d '{
                 "dueDate": "2024-07-15T00:00:00.000Z",
-                "description": "Assinatura Minha Aula - Julho"
+                "description": "Assinatura Minha Aula - Julho",
+                "generatePix": true
               }'
       requestBody:
         required: false
@@ -2569,6 +2673,12 @@ paths:
                 value:
                   dueDate: '2024-07-15T00:00:00.000Z'
                   description: Assinatura Minha Aula - Julho
+              pix:
+                summary: Gerar cobrança via PIX (retorna pixCopiaECola)
+                value:
+                  dueDate: '2024-07-15T00:00:00.000Z'
+                  description: Assinatura Minha Aula - Julho (PIX)
+                  generatePix: true
               withCoupon:
                 summary: Gerar cobrança com cupom de desconto
                 value:
@@ -2674,6 +2784,64 @@ paths:
                         paidAt: '2024-06-14T15:30:00.000Z'
                         createdAt: '2024-06-01T12:00:00.000Z'
                         updatedAt: '2024-06-14T15:30:00.000Z'
+  /schools/plan/invoices/{invoiceId}/pix:
+    post:
+      tags:
+        - Schools
+      summary: Obter/gerar PIX de uma fatura do plano (por invoiceId)
+      description: |
+        Retorna `pixQrCode` e `pixCopiaECola` para uma fatura do plano da escola (informada por `invoiceId`).
+        Se a fatura ainda não tiver PIX persistido, o backend consulta o Asaas via `providerRef` e salva o PIX na invoice.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: invoiceId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID da fatura (SchoolPlanInvoice)
+      responses:
+        '200':
+          description: PIX retornado com sucesso.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - invoice
+                  - pixQrCode
+                  - pixCopiaECola
+                properties:
+                  invoice:
+                    $ref: '#/components/schemas/SchoolPlanInvoiceView'
+                  pixQrCode:
+                    type: string
+                    nullable: true
+                    description: QR code do PIX (base64/encodedImage), quando disponível
+                  pixCopiaECola:
+                    type: string
+                    nullable: true
+                    description: Código PIX copia-e-cola (payload), quando disponível
+        '400':
+          description: "Solicitação inválida (ex.: invoice sem providerRef ou Asaas não configurado)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário autenticado sem permissão para a escola informada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Fatura não encontrada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '501':
           description: Funcionalidade de faturamento não configurada.
           content:
