@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { AppError, ErrorCode } from '../../src/shared/errors';
 import { RequestSchoolActionOtp } from '../../src/app/use-cases/request-school-action-otp';
 import { VerifySchoolActionOtp } from '../../src/app/use-cases/verify-school-action-otp';
 import { ConsumeSchoolActionOtp } from '../../src/app/use-cases/consume-school-action-otp';
@@ -66,7 +67,7 @@ class FakeWhatsAppProvider implements WhatsAppProviderPort {
 }
 
 describe('School action OTP', () => {
-    it('requests an OTP and sends it to the school WhatsApp', async () => {
+    it('requests an OTP and sends it to the owner WhatsApp (not the school phone)', async () => {
         const schools = new InMemorySchoolRepository();
         const otps = new InMemorySchoolActionOtpRepository();
         const whatsapp = new FakeWhatsAppProvider();
@@ -75,7 +76,8 @@ describe('School action OTP', () => {
             name: 'Escola OTP',
             email: 'otp@escola.com',
             phone: '11999999999',
-            cnpj: '12345678000190'
+            cnpj: '12345678000190',
+            ownerWhatsapp: '11888887777'
         });
         schools.seed(school);
 
@@ -87,7 +89,7 @@ describe('School action OTP', () => {
         expect(result.challengeId).toBeTruthy();
         expect(result.purpose).toBe('WITHDRAWAL');
         expect(whatsapp.contentTemplates).toHaveLength(1);
-        expect(whatsapp.contentTemplates[0]?.to).toBe('11999999999');
+        expect(whatsapp.contentTemplates[0]?.to).toBe('11888887777');
         expect(whatsapp.contentTemplates[0]?.contentSid).toBe('HX00000000000000000000000000000001');
         expect(whatsapp.contentTemplates[0]?.contentVariables['1']).toMatch(
             /^Seu codigo OTP para confirmar o saque e \d{6}\. Ele expira em 10 minutos\.$/
@@ -97,8 +99,10 @@ describe('School action OTP', () => {
     it('requests OTP via Twilio Verify (WhatsApp) when verify port is configured', async () => {
         const schools = new InMemorySchoolRepository();
         const otps = new InMemorySchoolActionOtpRepository();
+        let verifyTo = '';
         const fakeVerify: TwilioVerifyPort = {
-            async sendVerification() {
+            async sendVerification(rawPhone: string) {
+                verifyTo = rawPhone;
                 return { verificationSid: 'VEaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', validUntil: null };
             },
             async checkVerification() {
@@ -110,7 +114,8 @@ describe('School action OTP', () => {
             name: 'Escola Verify',
             email: 'verify@escola.com',
             phone: '11999999999',
-            cnpj: '12345678000190'
+            cnpj: '12345678000190',
+            ownerWhatsapp: '11777776666'
         });
         schools.seed(school);
 
@@ -118,9 +123,39 @@ describe('School action OTP', () => {
         const result = await useCase.exec({ schoolId: school.id, purpose: 'WITHDRAWAL' });
 
         expect(result.challengeId).toBeTruthy();
+        expect(verifyTo).toBe('11777776666');
         const saved = await otps.findById(result.challengeId);
         expect(saved?.twilioVerificationSid).toBe('VEaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');
         expect(saved?.code).toBe('000000');
+        expect(saved?.phone).toBe('11777776666');
+    });
+
+    it('rejects OTP request when owner WhatsApp is not set', async () => {
+        const schools = new InMemorySchoolRepository();
+        const otps = new InMemorySchoolActionOtpRepository();
+        const whatsapp = new FakeWhatsAppProvider();
+        const school = School.create({
+            id: Uuid(),
+            name: 'Sem WhatsApp dono',
+            email: 'sem@escola.com',
+            phone: '11999999999',
+            cnpj: '12345678000190'
+        });
+        schools.seed(school);
+
+        const useCase = new RequestSchoolActionOtp(schools, otps, whatsapp, {
+            contentSid: 'HX00000000000000000000000000000001'
+        });
+        try {
+            await useCase.exec({ schoolId: school.id, purpose: 'WITHDRAWAL' });
+            expect.fail('deveria lançar INCOMPLETE_DATA');
+        } catch (e) {
+            expect(e).toBeInstanceOf(AppError);
+            const app = e as AppError;
+            expect(app.code).toBe(ErrorCode.INCOMPLETE_DATA);
+            expect(String(app.details?.message)).toMatch(/WhatsApp do responsável/);
+        }
+        expect(whatsapp.contentTemplates).toHaveLength(0);
     });
 
     it('verifies and consumes an OTP for a sensitive action', async () => {

@@ -1,4 +1,5 @@
 import type { SchoolActionOtpWhatsAppTemplateConfig } from '../types/school.types';
+import type { School } from '../../domain/entities/school';
 import { SchoolActionOtp, type SchoolActionOtpPurpose } from '../../domain/entities/school-action-otp';
 import type { TwilioVerifyPort } from '../../ports/providers/twilio-verify.port';
 import { WhatsAppProviderPort } from '../../ports/providers/whatsapp-provider.port';
@@ -39,22 +40,18 @@ export class RequestSchoolActionOtp {
             throw AppError.fromCode(ErrorCode.SCHOOL_NOT_FOUND, { schoolId });
         }
 
-        if (!school.phone?.trim()) {
-            throw AppError.fromCode(ErrorCode.INCOMPLETE_DATA, {
-                message: 'Escola não possui telefone cadastrado para receber OTP'
-            });
-        }
+        const otpPhone = ownerWhatsappDigitsForOtp(school);
 
         const expiresAt = new Date(Date.now() + OTP_TTL_MINUTES * 60_000);
 
         if (this.twilioVerify) {
-            const started = await this.twilioVerify.sendVerification(school.phone);
+            const started = await this.twilioVerify.sendVerification(otpPhone);
             const otp = SchoolActionOtp.create({
                 id: Uuid(),
                 schoolId,
                 purpose: input.purpose,
                 code: TWILIO_VERIFY_CODE_PLACEHOLDER,
-                phone: school.phone,
+                phone: otpPhone,
                 expiresAt,
                 maxAttempts: OTP_MAX_ATTEMPTS,
                 twilioVerificationSid: started.verificationSid
@@ -65,7 +62,7 @@ export class RequestSchoolActionOtp {
                 purpose: input.purpose,
                 challengeId: otp.id,
                 expiresAt: otp.expiresAt.toISOString(),
-                phone: school.phone
+                phone: otpPhone
             }));
             return {
                 challengeId: otp.id,
@@ -94,7 +91,7 @@ export class RequestSchoolActionOtp {
             schoolId,
             purpose: input.purpose,
             code,
-            phone: school.phone,
+            phone: otpPhone,
             expiresAt,
             maxAttempts: OTP_MAX_ATTEMPTS
         });
@@ -102,7 +99,7 @@ export class RequestSchoolActionOtp {
         await this.otps.save(otp);
         const otpBody = `Seu codigo OTP para ${describePurpose(input.purpose)} e ${code}. Ele expira em ${OTP_TTL_MINUTES} minutos.`;
         await this.whatsapp.sendContentTemplate({
-            to: school.phone,
+            to: otpPhone,
             contentSid: otpTemplate.contentSid.trim(),
             /** Placeholder {{1}} no template Twilio `message_opt_in` (ou equivalente aprovado). */
             contentVariables: { '1': otpBody }
@@ -113,7 +110,7 @@ export class RequestSchoolActionOtp {
             purpose: input.purpose,
             challengeId: otp.id,
             expiresAt: otp.expiresAt.toISOString(),
-            phone: school.phone
+            phone: otpPhone
         }));
 
         return {
@@ -126,4 +123,21 @@ export class RequestSchoolActionOtp {
 
 function describePurpose(purpose: SchoolActionOtpPurpose): string {
     return purpose === 'WITHDRAWAL' ? 'confirmar o saque' : 'confirmar alteracoes bancarias';
+}
+
+/**
+ * OTP de ações sensíveis vai para o WhatsApp do **responsável** (dono), não para o telefone comercial da escola.
+ */
+function ownerWhatsappDigitsForOtp(school: School): string {
+    const w = school.ownerWhatsapp?.trim();
+    if (!w) {
+        throw AppError.fromCode(ErrorCode.INCOMPLETE_DATA, {
+            message: 'Cadastre o WhatsApp do responsável da escola para receber o código de confirmação.'
+        });
+    }
+    const digits = w.replace(/\D/g, '');
+    if (digits.length < 10 || digits.length > 15) {
+        throw AppError.fromCode(ErrorCode.INVALID_PHONE, { phone: w });
+    }
+    return digits;
 }
