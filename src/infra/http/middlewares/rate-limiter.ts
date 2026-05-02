@@ -11,11 +11,11 @@ const env = (key: string, defaultNum: number): number => {
 const DEFAULT_WINDOW_MS = 15 * 60 * 1000; // 15 min
 const DEFAULT_MAX = 100;
 const AUTH_WINDOW_MS = 15 * 60 * 1000;
-const AUTH_MAX = 5;
+const AUTH_MAX = 8;
 const REGISTRATION_WINDOW_MS = 60 * 60 * 1000; // 1 hora
 const REGISTRATION_MAX = 3;
 const WEBHOOK_WINDOW_MS = 1 * 60 * 1000; // 1 min
-const WEBHOOK_MAX = 100;
+const WEBHOOK_MAX = 800;
 
 function isSkippedFromDefaultRateLimit(req: { path?: string; originalUrl?: string }): boolean {
     const path = req.path ?? '';

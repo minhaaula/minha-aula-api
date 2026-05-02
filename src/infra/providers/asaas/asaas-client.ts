@@ -6,6 +6,42 @@ import { AsaasCreateSubAccountPayload, AsaasSubAccountResponse } from './dto/sub
 import { AsaasCreateTransferPayload, AsaasCreateTransferResponse } from './dto/transfer';
 import { AsaasCreatePixPayload, AsaasCreatePixResponse } from './dto/pix-charge';
 
+/** Extrai identificador de conta bancária em respostas POST /v3/bankAccounts (formato varia entre versões/ambientes Asaas). */
+function pickAsaasBankAccountId(data: Record<string, unknown>): string | null {
+    const coerce = (v: unknown): string | null => {
+        if (typeof v === 'string' && v.trim()) return v.trim();
+        if (typeof v === 'number' && Number.isFinite(v)) return String(v);
+        return null;
+    };
+
+    const tryObject = (obj: Record<string, unknown> | null | undefined): string | null => {
+        if (!obj || typeof obj !== 'object') return null;
+        return coerce(obj.id);
+    };
+
+    const fromTop = tryObject(data);
+    if (fromTop) return fromTop;
+
+    const nested = data.bankAccount;
+    if (nested && typeof nested === 'object' && !Array.isArray(nested)) {
+        const fromNested = tryObject(nested as Record<string, unknown>);
+        if (fromNested) return fromNested;
+    }
+
+    const inner = data.data;
+    if (inner && typeof inner === 'object') {
+        if (!Array.isArray(inner)) {
+            const fromInner = tryObject(inner as Record<string, unknown>);
+            if (fromInner) return fromInner;
+        } else if (inner.length > 0 && typeof inner[0] === 'object' && inner[0] !== null) {
+            const fromFirst = tryObject(inner[0] as Record<string, unknown>);
+            if (fromFirst) return fromFirst;
+        }
+    }
+
+    return null;
+}
+
 export class AsaasClient {
     private http: AxiosInstance;
     constructor(apiKey: string, baseUrl = process.env.ASAAS_BASE_URL || 'https://www.asaas.com/api/v3') {
@@ -511,11 +547,13 @@ export class AsaasClient {
                     .join('; ');
                 throw new Error(`Asaas rejected bank account${msg ? `: ${msg}` : ''}`);
             }
-            const id = (data as { id?: unknown }).id;
-            if (typeof id !== 'string' || !id.trim()) {
+            const idStr = pickAsaasBankAccountId(data as Record<string, unknown>);
+            if (!idStr) {
+                const keys = Object.keys(data as object);
+                log.warn('[Asaas] POST /bankAccounts: resposta sem id reconhecível', { keys });
                 throw new Error('Asaas API returned bank account response without id');
             }
-            return data;
+            return { ...(data as Record<string, unknown>), id: idStr };
         } catch (error) {
             throw this.toDomainError(error);
         }
