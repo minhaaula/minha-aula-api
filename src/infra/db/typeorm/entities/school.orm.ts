@@ -75,6 +75,14 @@ export class SchoolOrm {
     @Column('datetime', { name: 'onboarding_completed_at', nullable: true })
     onboardingCompletedAt!: Date | null;
 
+    /**
+     * Snapshot do último status cadastral recebido via webhook do Asaas (white-label).
+     * Estrutura: { commercialInfo, bankAccountInfo, documentation, general, lastEvent, lastEventAt }.
+     * Permite à escola visualizar a etapa atual do KYC sem chamar a API do Asaas a cada request.
+     */
+    @Column('json', { name: 'account_status_snapshot', nullable: true })
+    accountStatusSnapshot!: Record<string, unknown> | null;
+
     @Column('tinyint', { name: 'notifications_email_enabled', width: 1, default: () => '1' })
     notificationsEmailEnabled!: boolean;
 

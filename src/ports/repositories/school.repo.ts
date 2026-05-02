@@ -11,6 +11,8 @@ export interface SchoolRepository {
     findByCnpj?(cnpj: string): Promise<School | null>;
     findByOwnerUserId?(userId: string): Promise<School | null>;
     findByOwnerEmail?(email: string): Promise<School | null>;
+    /** Localiza escola pelo `accountId` da subconta Asaas. Usado por webhooks que só trazem `account.id`. */
+    findByAccountId?(accountId: string): Promise<School | null>;
     findAll(): Promise<School[]>;
     save(school: School): Promise<void>;
     updateOwnerPassword?(schoolId: string, hashedPassword: string): Promise<void>;

@@ -63,25 +63,34 @@ export function validateAsaasWebhookTokenConfig(params: {
     selected: ModuleName[];
     nodeEnv?: string;
     asaasWebhookToken?: string;
+    asaasSubaccountWebhookAuthToken?: string;
     authTokenSecret: string;
 }) {
     const isProduction = params.nodeEnv === 'production';
     const schoolsModuleActive = params.selected.includes('schools');
     const asaasWebhookToken = params.asaasWebhookToken?.trim();
+    const asaasSubaccountWebhookAuthToken = params.asaasSubaccountWebhookAuthToken?.trim();
     const authTokenSecret = params.authTokenSecret.trim();
 
     if (!schoolsModuleActive) {
         return;
     }
 
-    if (isProduction && !asaasWebhookToken) {
+    // Em produção precisa de pelo menos um token (master OU subconta).
+    // Aceitar qualquer um dos dois é importante porque webhooks de subcontas usam um token próprio.
+    if (isProduction && !asaasWebhookToken && !asaasSubaccountWebhookAuthToken) {
         throw new Error('ASAAS_WEBHOOK_TOKEN é obrigatório em produção quando o módulo schools está ativo (webhooks Asaas)');
     }
 
-    // CRÍTICO: Garantir que os tokens sejam diferentes
+    // CRÍTICO: nenhum dos tokens pode ser igual ao AUTH_TOKEN_SECRET.
     if (asaasWebhookToken && asaasWebhookToken === authTokenSecret) {
         throw new Error(
             'CRITICAL SECURITY ERROR: ASAAS_WEBHOOK_TOKEN não pode ser igual a AUTH_TOKEN_SECRET. Use tokens diferentes para webhooks e autenticação de usuários.'
+        );
+    }
+    if (asaasSubaccountWebhookAuthToken && asaasSubaccountWebhookAuthToken === authTokenSecret) {
+        throw new Error(
+            'CRITICAL SECURITY ERROR: ASAAS_SUBACCOUNT_WEBHOOK_AUTH_TOKEN não pode ser igual a AUTH_TOKEN_SECRET.'
         );
     }
 }
@@ -161,11 +170,12 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
         throw new Error('AUTH_TOKEN_SECRET é obrigatório e deve ter pelo menos 32 caracteres para segurança adequada');
     }
 
-    // Validar ASAAS_WEBHOOK_TOKEN apenas quando o módulo schools está ativo (é quem expõe os webhooks)
+    // Validar tokens de webhook do Asaas (master e subconta) apenas quando o módulo schools está ativo.
     validateAsaasWebhookTokenConfig({
         selected,
         nodeEnv: process.env.NODE_ENV,
         asaasWebhookToken: process.env.ASAAS_WEBHOOK_TOKEN,
+        asaasSubaccountWebhookAuthToken: process.env.ASAAS_SUBACCOUNT_WEBHOOK_AUTH_TOKEN,
         authTokenSecret
     });
 

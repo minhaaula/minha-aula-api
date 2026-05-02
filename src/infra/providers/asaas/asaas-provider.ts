@@ -396,11 +396,25 @@ export class AsaasProvider implements PaymentProviderPort {
         const authToken = process.env.ASAAS_SUBACCOUNT_WEBHOOK_AUTH_TOKEN?.trim() || undefined;
         const apiVersion = Number(process.env.ASAAS_SUBACCOUNT_WEBHOOK_API_VERSION ?? 3) || 3;
 
-        // Webhook de pagamentos
+        // Webhook de pagamentos: inclui ciclo completo (criação, alteração, confirmação, recebimento, atraso, cancelamento, estorno, chargeback).
         const paymentEventsEnv = process.env.ASAAS_SUBACCOUNT_WEBHOOK_EVENTS?.trim();
         const paymentEvents = paymentEventsEnv && paymentEventsEnv.length
             ? paymentEventsEnv.split(',').map((event) => event.trim()).filter(Boolean)
-            : ['PAYMENT_CREATED', 'PAYMENT_UPDATED', 'PAYMENT_CONFIRMED', 'PAYMENT_RECEIVED'];
+            : [
+                'PAYMENT_CREATED',
+                'PAYMENT_UPDATED',
+                'PAYMENT_CONFIRMED',
+                'PAYMENT_RECEIVED',
+                'PAYMENT_OVERDUE',
+                'PAYMENT_DELETED',
+                'PAYMENT_REFUNDED',
+                'PAYMENT_REFUND_IN_PROGRESS',
+                'PAYMENT_CHARGEBACK_REQUESTED',
+                'PAYMENT_CHARGEBACK_DISPUTE',
+                'PAYMENT_AWAITING_CHARGEBACK_REVERSAL',
+                'PAYMENT_RECEIVED_IN_CASH_UNDONE',
+                'PAYMENT_BANK_SLIP_CANCELLED'
+            ];
 
         webhooks.push({
             name: process.env.ASAAS_SUBACCOUNT_WEBHOOK_NAME?.trim() || 'Webhook para cobranças',
@@ -414,7 +428,7 @@ export class AsaasProvider implements PaymentProviderPort {
             events: paymentEvents
         });
 
-        // Webhook de contas (se configurado)
+        // Webhook de contas: cobre todas as etapas do KYC (white-label) — informações comerciais, conta bancária, documentação e aprovação geral.
         const accountWebhookUrl = process.env.ASAAS_SUBACCOUNT_ACCOUNT_WEBHOOK_URL?.trim() || url;
         const accountEventsEnv = process.env.ASAAS_SUBACCOUNT_ACCOUNT_WEBHOOK_EVENTS?.trim();
         const accountEvents = accountEventsEnv && accountEventsEnv.length
@@ -423,7 +437,21 @@ export class AsaasProvider implements PaymentProviderPort {
                 'ACCOUNT_STATUS_GENERAL_APPROVAL_APPROVED',
                 'ACCOUNT_STATUS_GENERAL_APPROVAL_REJECTED',
                 'ACCOUNT_STATUS_GENERAL_APPROVAL_AWAITING_APPROVAL',
-                'ACCOUNT_STATUS_GENERAL_APPROVAL_PENDING'
+                'ACCOUNT_STATUS_GENERAL_APPROVAL_PENDING',
+                'ACCOUNT_STATUS_BANK_ACCOUNT_INFO_APPROVED',
+                'ACCOUNT_STATUS_BANK_ACCOUNT_INFO_AWAITING_APPROVAL',
+                'ACCOUNT_STATUS_BANK_ACCOUNT_INFO_PENDING',
+                'ACCOUNT_STATUS_BANK_ACCOUNT_INFO_REJECTED',
+                'ACCOUNT_STATUS_COMMERCIAL_INFO_APPROVED',
+                'ACCOUNT_STATUS_COMMERCIAL_INFO_AWAITING_APPROVAL',
+                'ACCOUNT_STATUS_COMMERCIAL_INFO_PENDING',
+                'ACCOUNT_STATUS_COMMERCIAL_INFO_REJECTED',
+                'ACCOUNT_STATUS_COMMERCIAL_INFO_EXPIRING_SOON',
+                'ACCOUNT_STATUS_COMMERCIAL_INFO_EXPIRED',
+                'ACCOUNT_STATUS_DOCUMENT_APPROVED',
+                'ACCOUNT_STATUS_DOCUMENT_AWAITING_APPROVAL',
+                'ACCOUNT_STATUS_DOCUMENT_PENDING',
+                'ACCOUNT_STATUS_DOCUMENT_REJECTED'
             ];
 
         webhooks.push({
@@ -438,6 +466,61 @@ export class AsaasProvider implements PaymentProviderPort {
             events: accountEvents
         });
 
+        // Webhook de transferências (saques): permite ao backend acompanhar TRANSFER_DONE/FAILED e atualizar
+        // o status do `school_withdrawals` (a chamada síncrona pode retornar PENDING/IN_BANK_PROCESSING).
+        const transferWebhookUrl = process.env.ASAAS_SUBACCOUNT_TRANSFER_WEBHOOK_URL?.trim() || url;
+        const transferEventsEnv = process.env.ASAAS_SUBACCOUNT_TRANSFER_WEBHOOK_EVENTS?.trim();
+        const transferEvents = transferEventsEnv && transferEventsEnv.length
+            ? transferEventsEnv.split(',').map((event) => event.trim()).filter(Boolean)
+            : [
+                'TRANSFER_CREATED',
+                'TRANSFER_PENDING',
+                'TRANSFER_IN_BANK_PROCESSING',
+                'TRANSFER_BLOCKED',
+                'TRANSFER_DONE',
+                'TRANSFER_FAILED',
+                'TRANSFER_CANCELLED'
+            ];
+
+        webhooks.push({
+            name: process.env.ASAAS_SUBACCOUNT_TRANSFER_WEBHOOK_NAME?.trim() || 'Webhook para transferências',
+            url: `${transferWebhookUrl}/transfers`,
+            email,
+            sendType,
+            interrupted: false,
+            enabled: true,
+            apiVersion,
+            authToken,
+            events: transferEvents
+        });
+
         return webhooks;
+    }
+
+    /**
+     * Lista subcontas pelo e-mail (GET /v3/accounts?email=).
+     * Útil quando o POST /v3/accounts retorna "email já em uso" e precisamos vincular a conta existente.
+     */
+    async listAccountsByEmail(email: string): Promise<AsaasSubAccount[]> {
+        const normalized = email?.trim();
+        if (!normalized) return [];
+        try {
+            const accounts = await this.client.listAccountsByEmail(normalized);
+            return accounts.map((acc) => ({
+                id: acc.id,
+                name: acc.name,
+                email: acc.email,
+                status: acc.status,
+                externalReference: acc.externalReference ?? null,
+                apiKey: acc.apiKey,
+                walletId: acc.walletId
+            }));
+        } catch (err) {
+            log.warn('[Asaas] listAccountsByEmail falhou', {
+                email: normalized,
+                error: err instanceof Error ? err.message : String(err)
+            });
+            return [];
+        }
     }
 }

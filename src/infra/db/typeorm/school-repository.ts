@@ -67,6 +67,18 @@ export class SchoolRepositoryAdapter implements SchoolRepository {
         return row ? this.toDomain(row) : null;
     }
 
+    async findByAccountId(accountId: string): Promise<School | null> {
+        const normalized = accountId?.trim();
+        if (!normalized) return null;
+        const row = await this.repo.findOne({
+            where: { accountId: normalized },
+            relations: {
+                addresses: true
+            }
+        });
+        return row ? this.toDomain(row) : null;
+    }
+
     async findAll(): Promise<School[]> {
         const rows = await this.repo.find({
             relations: {
@@ -136,7 +148,8 @@ export class SchoolRepositoryAdapter implements SchoolRepository {
             onboardingCompletedAt: row.onboardingCompletedAt ?? null,
             notificationsEmailEnabled: row.notificationsEmailEnabled ?? true,
             notificationsWhatsappEnabled: row.notificationsWhatsappEnabled ?? true,
-            notificationsPushEnabled: row.notificationsPushEnabled ?? true
+            notificationsPushEnabled: row.notificationsPushEnabled ?? true,
+            accountStatusSnapshot: (row.accountStatusSnapshot ?? null) as Record<string, unknown> | null
         });
     }
 
@@ -175,6 +188,7 @@ export class SchoolRepositoryAdapter implements SchoolRepository {
         row.notificationsEmailEnabled = school.notificationsEmailEnabled;
         row.notificationsWhatsappEnabled = school.notificationsWhatsappEnabled;
         row.notificationsPushEnabled = school.notificationsPushEnabled;
+        row.accountStatusSnapshot = school.accountStatusSnapshot as Record<string, unknown> | null;
         if (existing) {
             await this.repo.manager.createQueryBuilder()
                 .delete()

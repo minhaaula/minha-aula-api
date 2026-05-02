@@ -41,6 +41,14 @@ export class SchoolWithdrawalOrm {
 
     @Column('datetime', { name: 'cancelled_at', nullable: true }) cancelledAt!: Date | null;
 
+    /** Id da transferência no Asaas (POST /accounts/{id}/transfers). Usado pelo webhook /integrations/asaas/transfers. */
+    @Column('varchar', { length: 191, name: 'provider_ref', nullable: true })
+    providerRef!: string | null;
+
+    /** Motivo da falha retornado pelo Asaas em TRANSFER_FAILED / TRANSFER_BLOCKED. */
+    @Column('varchar', { length: 500, name: 'failure_reason', nullable: true })
+    failureReason!: string | null;
+
     @CreateDateColumn({ name: 'created_at', type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
     createdAt!: Date;
 

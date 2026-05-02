@@ -44,6 +44,7 @@ import { PaymentProviderPort } from '../../ports/providers/payment-provider.port
 import { AsaasProviderPort } from '../../ports/providers/asaas-port';
 import { HandleAsaasPaymentWebhook } from '../../app/use-cases/handle-asaas-payment-webhook';
 import { HandleAsaasAccountWebhook } from '../../app/use-cases/handle-asaas-account-webhook';
+import { HandleAsaasTransferWebhook } from '../../app/use-cases/handle-asaas-transfer-webhook';
 import { asaasWebhookRouter } from '../../infra/http/routes/webhooks/asaas.routes';
 import { ListSchoolPlanInvoices } from '../../app/use-cases/list-school-plan-invoices';
 import { EnrollmentRepositoryAdapter } from '../../infra/db/typeorm/enrollment-repository';
@@ -409,6 +410,7 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
     const handleAsaasAccountWebhook = new HandleAsaasAccountWebhook(
         deps.schoolsRepo
     );
+    const handleAsaasTransferWebhook = new HandleAsaasTransferWebhook(withdrawalsRepo);
     const assignSchoolPlan = new AssignSchoolPlan(
         deps.schoolsRepo,
         deps.subscriptionPlansRepo,
@@ -516,7 +518,8 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
 
     const asaasWebhookRouterInstance = asaasWebhookRouter({
         handleAsaasPaymentWebhook,
-        handleAsaasAccountWebhook
+        handleAsaasAccountWebhook,
+        handleAsaasTransferWebhook
     });
 
     const landingRouterInstance = landingRouter({

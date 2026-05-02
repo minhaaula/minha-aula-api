@@ -1,6 +1,24 @@
 import { PostalAddress } from '../value-objects/postal-address';
 import { Email } from '../value-objects/email';
 
+/**
+ * Snapshot do status cadastral da subconta Asaas (white-label).
+ * Reflete o payload `accountStatus` dos webhooks `ACCOUNT_STATUS_*` e/ou GET /v3/myAccount/status.
+ *
+ * Cada campo aceita valores como `APPROVED`, `AWAITING_APPROVAL`, `PENDING`, `REJECTED`
+ * (definidos pela API do Asaas em "Consultar situação cadastral da conta").
+ */
+export type SchoolAccountStatusSnapshot = {
+    commercialInfo?: string | null;
+    bankAccountInfo?: string | null;
+    documentation?: string | null;
+    general?: string | null;
+    /** Último evento ACCOUNT_STATUS_* recebido (ex.: ACCOUNT_STATUS_DOCUMENT_REJECTED). */
+    lastEvent?: string | null;
+    /** ISO timestamp do último evento processado. */
+    lastEventAt?: string | null;
+};
+
 export class School {
     private constructor(
         public readonly id: string,
@@ -30,7 +48,9 @@ export class School {
         private readonly _onboardingCompletedAt: Date | null,
         private readonly _notificationsEmailEnabled: boolean,
         private readonly _notificationsWhatsappEnabled: boolean,
-        private readonly _notificationsPushEnabled: boolean
+        private readonly _notificationsPushEnabled: boolean,
+        /** Snapshot do último status cadastral da subconta Asaas recebido via webhook. */
+        private readonly _accountStatusSnapshot: SchoolAccountStatusSnapshot | null
     ) {}
 
     static create(params: {
@@ -61,6 +81,7 @@ export class School {
         notificationsEmailEnabled?: boolean;
         notificationsWhatsappEnabled?: boolean;
         notificationsPushEnabled?: boolean;
+        accountStatusSnapshot?: SchoolAccountStatusSnapshot | null;
     }) {
         const name = params.name.trim();
         if (!name) throw new Error('School name is required');
@@ -97,6 +118,7 @@ export class School {
         const notificationsEmailEnabled = School.normalizePreference(params.notificationsEmailEnabled, true);
         const notificationsWhatsappEnabled = School.normalizePreference(params.notificationsWhatsappEnabled, true);
         const notificationsPushEnabled = School.normalizePreference(params.notificationsPushEnabled, true);
+        const accountStatusSnapshot = School.normalizeAccountStatusSnapshot(params.accountStatusSnapshot);
 
         return new School(
             params.id,
@@ -125,7 +147,8 @@ export class School {
             onboardingCompletedAt,
             notificationsEmailEnabled,
             notificationsWhatsappEnabled,
-            notificationsPushEnabled
+            notificationsPushEnabled,
+            accountStatusSnapshot
         );
     }
 
@@ -223,6 +246,10 @@ export class School {
 
     get notificationsPushEnabled(): boolean {
         return this._notificationsPushEnabled;
+    }
+
+    get accountStatusSnapshot(): SchoolAccountStatusSnapshot | null {
+        return this._accountStatusSnapshot ? { ...this._accountStatusSnapshot } : null;
     }
 
     private static normalizePhone(value: string) {
@@ -370,6 +397,37 @@ export class School {
         return Math.round(numeric);
     }
 
+    private static normalizeAccountStatusSnapshot(value: unknown): SchoolAccountStatusSnapshot | null {
+        if (value === undefined || value === null) return null;
+        if (typeof value === 'string') {
+            try {
+                const parsed = JSON.parse(value);
+                return School.normalizeAccountStatusSnapshot(parsed);
+            } catch {
+                return null;
+            }
+        }
+        if (typeof value !== 'object' || Array.isArray(value)) return null;
+        const v = value as Record<string, unknown>;
+        const pickStr = (key: string): string | null => {
+            const raw = v[key];
+            if (raw === undefined || raw === null) return null;
+            if (typeof raw !== 'string') return null;
+            const trimmed = raw.trim();
+            return trimmed ? trimmed : null;
+        };
+        const snapshot: SchoolAccountStatusSnapshot = {
+            commercialInfo: pickStr('commercialInfo'),
+            bankAccountInfo: pickStr('bankAccountInfo'),
+            documentation: pickStr('documentation'),
+            general: pickStr('general'),
+            lastEvent: pickStr('lastEvent'),
+            lastEventAt: pickStr('lastEventAt')
+        };
+        const hasAny = Object.values(snapshot).some((v) => v !== null && v !== undefined);
+        return hasAny ? snapshot : null;
+    }
+
     private static normalizeLink(value: unknown): string | null {
         if (value === undefined || value === null) return null;
         if (typeof value !== 'string') {
@@ -380,8 +438,18 @@ export class School {
         return trimmed;
     }
 
-    withAccountId(accountId: string): School {
-        const normalized = School.normalizeAccountId(accountId);
+    /**
+     * Helper interno para reduzir duplicação entre os métodos `with*`.
+     * Recebe somente os campos que mudaram; os demais são preservados do estado atual.
+     */
+    private withChanges(overrides: Partial<{
+        accountId: string | null;
+        accountApiKey: string | null;
+        walletId: string | null;
+        onboardingUrl: string | null;
+        onboardingCompletedAt: Date | null;
+        accountStatusSnapshot: SchoolAccountStatusSnapshot | null;
+    }>): School {
         return School.create({
             id: this.id,
             name: this.name,
@@ -396,136 +464,63 @@ export class School {
             ownerWhatsapp: this.ownerWhatsapp,
             ownerPasswordHash: this.ownerPasswordHash,
             createdAt: this.createdAt,
-            accountId: normalized,
-            accountApiKey: this._accountApiKey,
-            walletId: this._walletId,
-            onboardingUrl: this._onboardingUrl,
+            accountId: overrides.accountId !== undefined ? overrides.accountId : this._accountId,
+            accountApiKey: overrides.accountApiKey !== undefined ? overrides.accountApiKey : this._accountApiKey,
+            walletId: overrides.walletId !== undefined ? overrides.walletId : this._walletId,
+            onboardingUrl: overrides.onboardingUrl !== undefined ? overrides.onboardingUrl : this._onboardingUrl,
             incomeValue: this._incomeValue,
             facebookLink: this._facebookLink,
             instagramLink: this._instagramLink,
             tiktokLink: this._tiktokLink,
             youtubeLink: this._youtubeLink,
             siteLink: this._siteLink,
-            onboardingCompletedAt: this._onboardingCompletedAt
+            onboardingCompletedAt:
+                overrides.onboardingCompletedAt !== undefined ? overrides.onboardingCompletedAt : this._onboardingCompletedAt,
+            notificationsEmailEnabled: this._notificationsEmailEnabled,
+            notificationsWhatsappEnabled: this._notificationsWhatsappEnabled,
+            notificationsPushEnabled: this._notificationsPushEnabled,
+            accountStatusSnapshot:
+                overrides.accountStatusSnapshot !== undefined ? overrides.accountStatusSnapshot : this._accountStatusSnapshot
         });
+    }
+
+    withAccountId(accountId: string): School {
+        return this.withChanges({ accountId: School.normalizeAccountId(accountId) });
     }
 
     withAccountApiKey(accountApiKey: string | null): School {
-        const normalized = School.normalizeAccountApiKey(accountApiKey);
-        return School.create({
-            id: this.id,
-            name: this.name,
-            email: this.email,
-            phone: this.phone,
-            cnpj: this.cnpj,
-            addresses: this.addresses,
-            ownerUserId: this.ownerUserId,
-            ownerName: this.ownerName,
-            ownerCpf: this.ownerCpf,
-            ownerEmail: this.ownerEmail,
-            ownerWhatsapp: this.ownerWhatsapp,
-            ownerPasswordHash: this.ownerPasswordHash,
-            createdAt: this.createdAt,
-            accountId: this._accountId,
-            accountApiKey: normalized,
-            walletId: this._walletId,
-            onboardingUrl: this._onboardingUrl,
-            incomeValue: this._incomeValue,
-            facebookLink: this._facebookLink,
-            instagramLink: this._instagramLink,
-            tiktokLink: this._tiktokLink,
-            youtubeLink: this._youtubeLink,
-            siteLink: this._siteLink,
-            onboardingCompletedAt: this._onboardingCompletedAt
-        });
+        return this.withChanges({ accountApiKey: School.normalizeAccountApiKey(accountApiKey) });
     }
 
     withWalletId(walletId: string | null): School {
-        const normalized = School.normalizeWalletId(walletId);
-        return School.create({
-            id: this.id,
-            name: this.name,
-            email: this.email,
-            phone: this.phone,
-            cnpj: this.cnpj,
-            addresses: this.addresses,
-            ownerUserId: this.ownerUserId,
-            ownerName: this.ownerName,
-            ownerCpf: this.ownerCpf,
-            ownerEmail: this.ownerEmail,
-            ownerWhatsapp: this.ownerWhatsapp,
-            ownerPasswordHash: this.ownerPasswordHash,
-            createdAt: this.createdAt,
-            accountId: this._accountId,
-            accountApiKey: this._accountApiKey,
-            walletId: normalized,
-            onboardingUrl: this._onboardingUrl,
-            incomeValue: this._incomeValue,
-            facebookLink: this._facebookLink,
-            instagramLink: this._instagramLink,
-            tiktokLink: this._tiktokLink,
-            youtubeLink: this._youtubeLink,
-            siteLink: this._siteLink,
-            onboardingCompletedAt: this._onboardingCompletedAt
-        });
+        return this.withChanges({ walletId: School.normalizeWalletId(walletId) });
     }
 
     withOnboardingUrl(onboardingUrl: string | null): School {
-        const normalized = School.normalizeLink(onboardingUrl);
-        return School.create({
-            id: this.id,
-            name: this.name,
-            email: this.email,
-            phone: this.phone,
-            cnpj: this.cnpj,
-            addresses: this.addresses,
-            ownerUserId: this.ownerUserId,
-            ownerName: this.ownerName,
-            ownerCpf: this.ownerCpf,
-            ownerEmail: this.ownerEmail,
-            ownerWhatsapp: this.ownerWhatsapp,
-            ownerPasswordHash: this.ownerPasswordHash,
-            createdAt: this.createdAt,
-            accountId: this._accountId,
-            accountApiKey: this._accountApiKey,
-            walletId: this._walletId,
-            onboardingUrl: normalized,
-            incomeValue: this._incomeValue,
-            facebookLink: this._facebookLink,
-            instagramLink: this._instagramLink,
-            tiktokLink: this._tiktokLink,
-            youtubeLink: this._youtubeLink,
-            siteLink: this._siteLink,
-            onboardingCompletedAt: this._onboardingCompletedAt
-        });
+        return this.withChanges({ onboardingUrl: School.normalizeLink(onboardingUrl) });
     }
 
     withOnboardingCompletedAt(completedAt: Date | null): School {
-        return School.create({
-            id: this.id,
-            name: this.name,
-            email: this.email,
-            phone: this.phone,
-            cnpj: this.cnpj,
-            addresses: this.addresses,
-            ownerUserId: this.ownerUserId,
-            ownerName: this.ownerName,
-            ownerCpf: this.ownerCpf,
-            ownerEmail: this.ownerEmail,
-            ownerWhatsapp: this.ownerWhatsapp,
-            ownerPasswordHash: this.ownerPasswordHash,
-            createdAt: this.createdAt,
-            accountId: this._accountId,
-            accountApiKey: this._accountApiKey,
-            walletId: this._walletId,
-            onboardingUrl: this._onboardingUrl,
-            incomeValue: this._incomeValue,
-            facebookLink: this._facebookLink,
-            instagramLink: this._instagramLink,
-            tiktokLink: this._tiktokLink,
-            youtubeLink: this._youtubeLink,
-            siteLink: this._siteLink,
-            onboardingCompletedAt: completedAt
-        });
+        return this.withChanges({ onboardingCompletedAt: completedAt });
+    }
+
+    /**
+     * Atualiza o snapshot do status cadastral da subconta Asaas (white-label).
+     * Faz merge com o snapshot atual para preservar campos que não vieram no evento.
+     */
+    withAccountStatusSnapshot(partial: SchoolAccountStatusSnapshot | null): School {
+        if (!partial) {
+            return this.withChanges({ accountStatusSnapshot: null });
+        }
+        const current = this._accountStatusSnapshot ?? {};
+        const merged: SchoolAccountStatusSnapshot = {
+            commercialInfo: partial.commercialInfo ?? current.commercialInfo ?? null,
+            bankAccountInfo: partial.bankAccountInfo ?? current.bankAccountInfo ?? null,
+            documentation: partial.documentation ?? current.documentation ?? null,
+            general: partial.general ?? current.general ?? null,
+            lastEvent: partial.lastEvent ?? current.lastEvent ?? null,
+            lastEventAt: partial.lastEventAt ?? current.lastEventAt ?? null
+        };
+        return this.withChanges({ accountStatusSnapshot: merged });
     }
 }

@@ -13,7 +13,9 @@ export class SchoolWithdrawal {
         private _processedAt: Date | null,
         private _cancelledAt: Date | null,
         public readonly createdAt: Date,
-        public readonly updatedAt: Date
+        public readonly updatedAt: Date,
+        private _providerRef: string | null,
+        private _failureReason: string | null
     ) {}
 
     static create(params: {
@@ -29,6 +31,8 @@ export class SchoolWithdrawal {
         cancelledAt?: Date | null;
         createdAt?: Date;
         updatedAt?: Date;
+        providerRef?: string | null;
+        failureReason?: string | null;
     }): SchoolWithdrawal {
         const schoolId = params.schoolId.trim();
         const id = params.id.trim();
@@ -51,6 +55,8 @@ export class SchoolWithdrawal {
         const cancelledAt = params.cancelledAt ?? null;
         const createdAt = params.createdAt ?? new Date();
         const updatedAt = params.updatedAt ?? new Date();
+        const providerRef = params.providerRef?.trim() || null;
+        const failureReason = params.failureReason?.trim() || null;
 
         return new SchoolWithdrawal(
             id,
@@ -64,7 +70,9 @@ export class SchoolWithdrawal {
             processedAt,
             cancelledAt,
             createdAt,
-            updatedAt
+            updatedAt,
+            providerRef,
+            failureReason
         );
     }
 
@@ -81,6 +89,8 @@ export class SchoolWithdrawal {
         cancelledAt: Date | null;
         createdAt: Date;
         updatedAt: Date;
+        providerRef?: string | null;
+        failureReason?: string | null;
     }): SchoolWithdrawal {
         return new SchoolWithdrawal(
             params.id,
@@ -94,7 +104,9 @@ export class SchoolWithdrawal {
             params.processedAt,
             params.cancelledAt,
             params.createdAt,
-            params.updatedAt
+            params.updatedAt,
+            params.providerRef ?? null,
+            params.failureReason ?? null
         );
     }
 
@@ -110,27 +122,51 @@ export class SchoolWithdrawal {
         return this._cancelledAt;
     }
 
+    get providerRef() {
+        return this._providerRef;
+    }
+
+    get failureReason() {
+        return this._failureReason;
+    }
+
+    /** Define o id da transferência no Asaas (chamado logo após `POST /accounts/{id}/transfers`). */
+    setProviderRef(providerRef: string): void {
+        const trimmed = providerRef?.trim();
+        if (!trimmed) {
+            throw new Error('providerRef cannot be empty');
+        }
+        if (this._providerRef && this._providerRef !== trimmed) {
+            throw new Error('providerRef already set with a different value');
+        }
+        this._providerRef = trimmed;
+    }
+
     markAsCompleted(processedAt?: Date): void {
-        if (this._status !== 'PROCESSING') {
-            throw new Error('Only processing withdrawals can be marked as completed');
+        if (this._status === 'COMPLETED') return; // idempotente
+        if (this._status === 'CANCELLED') {
+            throw new Error('Cancelled withdrawals cannot be marked as completed');
         }
         this._status = 'COMPLETED';
         this._processedAt = processedAt ?? new Date();
-        this.touch();
+        this._failureReason = null;
     }
 
-    markAsCancelled(): void {
+    markAsCancelled(reason?: string | null): void {
         if (this._status === 'COMPLETED') {
             throw new Error('Completed withdrawals cannot be cancelled');
         }
+        if (this._status === 'CANCELLED') {
+            // idempotente, mas pode atualizar a razão se ainda não havia
+            if (!this._failureReason && reason && reason.trim()) {
+                this._failureReason = reason.trim().slice(0, 500);
+            }
+            return;
+        }
         this._status = 'CANCELLED';
         this._cancelledAt = new Date();
-        this.touch();
-    }
-
-    private touch() {
-        // Note: This is a domain entity, so we can't actually update updatedAt here
-        // The repository adapter should handle this when saving
+        if (reason && reason.trim()) {
+            this._failureReason = reason.trim().slice(0, 500);
+        }
     }
 }
-

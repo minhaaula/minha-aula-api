@@ -13,15 +13,28 @@ describe('validateAsaasWebhookTokenConfig', () => {
         }).not.toThrow();
     });
 
-    it('requires ASAAS_WEBHOOK_TOKEN in production when schools module IS active', () => {
+    it('requires at least one Asaas webhook token in production when schools module IS active', () => {
         expect(() => {
             validateAsaasWebhookTokenConfig({
                 selected: ['schools'],
                 nodeEnv: 'production',
                 asaasWebhookToken: undefined,
+                asaasSubaccountWebhookAuthToken: undefined,
                 authTokenSecret: 'a'.repeat(32)
             });
         }).toThrow(/ASAAS_WEBHOOK_TOKEN é obrigatório em produção quando o módulo schools está ativo/);
+    });
+
+    it('accepts only the subaccount token in production (sem ASAAS_WEBHOOK_TOKEN)', () => {
+        expect(() => {
+            validateAsaasWebhookTokenConfig({
+                selected: ['schools'],
+                nodeEnv: 'production',
+                asaasWebhookToken: undefined,
+                asaasSubaccountWebhookAuthToken: 'subaccount-token-with-32-or-more-chars',
+                authTokenSecret: 'a'.repeat(32)
+            });
+        }).not.toThrow();
     });
 
     it('does not require ASAAS_WEBHOOK_TOKEN outside production (even when schools is active)', () => {
@@ -44,7 +57,20 @@ describe('validateAsaasWebhookTokenConfig', () => {
                 asaasWebhookToken: secret,
                 authTokenSecret: secret
             });
-        }).toThrow(/CRITICAL SECURITY ERROR/);
+        }).toThrow(/CRITICAL SECURITY ERROR: ASAAS_WEBHOOK_TOKEN/);
+    });
+
+    it('throws when ASAAS_SUBACCOUNT_WEBHOOK_AUTH_TOKEN equals AUTH_TOKEN_SECRET (when schools is active)', () => {
+        const secret = 'd'.repeat(32);
+        expect(() => {
+            validateAsaasWebhookTokenConfig({
+                selected: ['schools'],
+                nodeEnv: 'production',
+                asaasWebhookToken: 'a-different-token-32chars-aaaaaaa',
+                asaasSubaccountWebhookAuthToken: secret,
+                authTokenSecret: secret
+            });
+        }).toThrow(/CRITICAL SECURITY ERROR: ASAAS_SUBACCOUNT_WEBHOOK_AUTH_TOKEN/);
     });
 
     it('does not check token equality when schools module is NOT active', () => {
@@ -59,4 +85,3 @@ describe('validateAsaasWebhookTokenConfig', () => {
         }).not.toThrow();
     });
 });
-

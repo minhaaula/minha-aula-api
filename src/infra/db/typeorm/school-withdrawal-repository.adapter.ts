@@ -11,6 +11,13 @@ export class SchoolWithdrawalRepositoryAdapter implements SchoolWithdrawalReposi
         return row ? this.toDomain(row) : null;
     }
 
+    async findByProviderRef(providerRef: string): Promise<SchoolWithdrawal | null> {
+        const normalized = providerRef?.trim();
+        if (!normalized) return null;
+        const row = await this.repo.findOne({ where: { providerRef: normalized } });
+        return row ? this.toDomain(row) : null;
+    }
+
     async findBySchoolId(schoolId: string, filters?: ListSchoolWithdrawalsFilters): Promise<SchoolWithdrawal[]> {
         const queryBuilder = this.repo
             .createQueryBuilder('withdrawal')
@@ -45,7 +52,9 @@ export class SchoolWithdrawalRepositoryAdapter implements SchoolWithdrawalReposi
             processedAt: row.processedAt,
             cancelledAt: row.cancelledAt,
             createdAt: row.createdAt,
-            updatedAt: row.updatedAt
+            updatedAt: row.updatedAt,
+            providerRef: row.providerRef ?? null,
+            failureReason: row.failureReason ?? null
         });
     }
 
@@ -62,7 +71,9 @@ export class SchoolWithdrawalRepositoryAdapter implements SchoolWithdrawalReposi
             processedAt: withdrawal.processedAt,
             cancelledAt: withdrawal.cancelledAt,
             createdAt: withdrawal.createdAt,
-            updatedAt: withdrawal.updatedAt
+            updatedAt: withdrawal.updatedAt,
+            providerRef: withdrawal.providerRef,
+            failureReason: withdrawal.failureReason
         });
         return row;
     }

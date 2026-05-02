@@ -143,18 +143,25 @@ export class RequestSchoolWithdrawal {
                 pixKey: bankAccount.pixKey ?? undefined
             });
 
-            if (transferResult.status === 'DONE' || transferResult.status === 'COMPLETED') {
-                withdrawal.markAsCompleted(transferResult.effectiveDate);
-            } else if (transferResult.status === 'CANCELLED' || transferResult.status === 'FAILED') {
-                withdrawal.markAsCancelled();
+            // Persistir o providerRef o quanto antes para que o webhook /transfers consiga localizar o saque.
+            if (transferResult.id) {
+                withdrawal.setProviderRef(transferResult.id);
             }
+
+            const status = transferResult.status?.toUpperCase?.() ?? '';
+            if (status === 'DONE' || status === 'COMPLETED') {
+                withdrawal.markAsCompleted(transferResult.effectiveDate);
+            } else if (status === 'CANCELLED' || status === 'FAILED' || status === 'BLOCKED') {
+                withdrawal.markAsCancelled(`Asaas retornou status ${status} na criação da transferência`);
+            }
+            // PENDING / IN_BANK_PROCESSING / sem status conhecido: continua PROCESSING; webhook /transfers atualiza depois.
 
             await this.withdrawals.save(withdrawal);
 
-            if (transferResult.status === 'CANCELLED' || transferResult.status === 'FAILED') {
+            if (status === 'CANCELLED' || status === 'FAILED' || status === 'BLOCKED') {
                 throw AppError.fromCode(ErrorCode.EXTERNAL_SERVICE_ERROR, {
                     message: 'Asaas recusou ou cancelou a transferência',
-                    transferStatus: transferResult.status
+                    transferStatus: status
                 });
             }
         } catch (err: unknown) {
@@ -164,7 +171,7 @@ export class RequestSchoolWithdrawal {
             const msg = err instanceof Error ? err.message : String(err);
             log.error('[RequestSchoolWithdrawal] Erro ao criar transferência no Asaas', { schoolId, withdrawalId, error: msg });
             try {
-                withdrawal.markAsCancelled();
+                withdrawal.markAsCancelled(msg);
                 await this.withdrawals.save(withdrawal);
             } catch {
                 // melhor esforço para persistir cancelamento

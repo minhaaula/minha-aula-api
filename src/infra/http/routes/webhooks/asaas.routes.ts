@@ -1,34 +1,34 @@
-import { Router } from 'express';
-import { z } from 'zod';
+import { Router, type Request, type Response } from 'express';
+import { z, ZodError } from 'zod';
 import { asyncHandler } from '../../utils/async-handler';
 import { log } from '../../../../shared/logger';
 import { sanitizeForLogging } from '../../../../shared/log-sanitizer';
 import { webhookRateLimiter } from '../../middlewares/rate-limiter';
 import type { HandleAsaasPaymentWebhook } from '../../../../app/use-cases/handle-asaas-payment-webhook';
 import type { HandleAsaasAccountWebhook } from '../../../../app/use-cases/handle-asaas-account-webhook';
+import type { HandleAsaasTransferWebhook } from '../../../../app/use-cases/handle-asaas-transfer-webhook';
 
 type AsaasWebhookDeps = {
     handleAsaasPaymentWebhook: HandleAsaasPaymentWebhook;
     handleAsaasAccountWebhook: HandleAsaasAccountWebhook;
+    handleAsaasTransferWebhook?: HandleAsaasTransferWebhook;
 };
 
 const paymentPayloadSchema = z.object({
-    // Campos no nível raiz (opcionais, pois podem variar)
     id: z.string().optional(),
     event: z.string().min(1),
     dateCreated: z.string().optional(),
     deleted: z.boolean().optional(),
     anticipated: z.boolean().optional(),
     anticipable: z.boolean().optional(),
-    // Objeto payment
     payment: z
         .object({
             object: z.string().optional().nullable(),
             id: z.string().optional().nullable(),
             dateCreated: z.string().optional().nullable(),
             customer: z.union([
-                z.string(), // Asaas pode enviar como string (ID do cliente)
-                z.object({ id: z.string().optional().nullable() }) // Ou como objeto
+                z.string(),
+                z.object({ id: z.string().optional().nullable() })
             ]).optional().nullable(),
             checkoutSession: z.any().optional().nullable(),
             paymentLink: z.any().optional().nullable(),
@@ -63,22 +63,21 @@ const paymentPayloadSchema = z.object({
             interest: z.any().optional().nullable(),
             postalService: z.boolean().optional().nullable(),
             escrow: z.any().optional().nullable(),
-            // Campos adicionais para compatibilidade
             receivedDate: z.string().optional().nullable()
         })
-        .passthrough() // Permite campos adicionais não definidos
+        .passthrough()
         .optional()
         .nullable()
-}).passthrough(); // Permite campos adicionais no nível raiz
+}).passthrough();
 
 const accountPayloadSchema = z.object({
-    // Campos no nível raiz (opcionais, pois podem variar)
-    id: z.string().optional(), // ID do evento do Asaas para idempotência
+    id: z.string().optional(),
     event: z.string().min(1),
     dateCreated: z.string().optional(),
     account: z
         .object({
             id: z.string().optional().nullable(),
+            ownerId: z.string().optional().nullable(),
             status: z.string().optional().nullable(),
             externalReference: z.string().optional().nullable(),
             name: z.string().optional().nullable(),
@@ -91,11 +90,46 @@ const accountPayloadSchema = z.object({
             apiKey: z.string().optional().nullable(),
             walletId: z.string().optional().nullable()
         })
+        .passthrough()
         .optional()
         .nullable(),
-    // Payload real do Asaas pode incluir accountStatus (documentação Asaas)
-    accountStatus: z.record(z.unknown()).optional().nullable()
-}).passthrough(); // Permite campos adicionais no nível raiz
+    accountStatus: z
+        .object({
+            id: z.string().optional().nullable(),
+            commercialInfo: z.string().optional().nullable(),
+            bankAccountInfo: z.string().optional().nullable(),
+            documentation: z.string().optional().nullable(),
+            general: z.string().optional().nullable()
+        })
+        .passthrough()
+        .optional()
+        .nullable()
+}).passthrough();
+
+const transferPayloadSchema = z.object({
+    id: z.string().optional(),
+    event: z.string().min(1),
+    dateCreated: z.string().optional(),
+    transfer: z
+        .object({
+            id: z.string().optional().nullable(),
+            status: z.string().optional().nullable(),
+            value: z.number().optional().nullable(),
+            netValue: z.number().optional().nullable(),
+            transferFee: z.number().optional().nullable(),
+            effectiveDate: z.string().optional().nullable(),
+            scheduleDate: z.string().optional().nullable(),
+            dateCreated: z.string().optional().nullable(),
+            description: z.string().optional().nullable(),
+            failReason: z.string().optional().nullable(),
+            externalReference: z.string().optional().nullable(),
+            transactionReceiptUrl: z.string().optional().nullable(),
+            bankAccount: z.any().optional().nullable()
+        })
+        .passthrough()
+        .optional()
+        .nullable()
+}).passthrough();
 
 function normalizePaymentMetadata(metadata: unknown): Record<string, string> | null {
     if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return null;
@@ -106,53 +140,100 @@ function normalizePaymentMetadata(metadata: unknown): Record<string, string> | n
     return Object.keys(out).length ? out : null;
 }
 
+/**
+ * Coleta todos os tokens de autenticação aceitos pelo endpoint de webhook.
+ * Em produção pelo menos um token precisa estar configurado.
+ *
+ * O Asaas envia o `authToken` que foi cadastrado em **cada** webhook (conta master e subcontas).
+ * Como subcontas usam um token diferente da conta master, aceitamos os dois.
+ */
+function getAcceptedWebhookTokens(): { tokens: string[]; configured: boolean } {
+    const main = process.env.ASAAS_WEBHOOK_TOKEN?.trim();
+    const sub = process.env.ASAAS_SUBACCOUNT_WEBHOOK_AUTH_TOKEN?.trim();
+    const tokens = [main, sub].filter((t): t is string => Boolean(t && t.length > 0));
+    return { tokens, configured: tokens.length > 0 };
+}
+
+/**
+ * Valida o token enviado pelo Asaas no header `asaas-access-token` (ou variantes/query).
+ * Retorna `{ ok: true }` quando o token é aceito; `{ ok: false, status, body }` para resposta de erro.
+ *
+ * - Em produção exige pelo menos um token configurado (caso contrário é erro de configuração 500).
+ * - Garante que `ASAAS_WEBHOOK_TOKEN` nunca é igual a `AUTH_TOKEN_SECRET`.
+ */
+function validateWebhookAccessToken(req: Request, path: string):
+    | { ok: true }
+    | { ok: false; status: number; body: { error: string } } {
+    const authTokenSecret = process.env.AUTH_TOKEN_SECRET?.trim();
+    const isProduction = process.env.NODE_ENV === 'production';
+    const { tokens, configured } = getAcceptedWebhookTokens();
+    const mainToken = process.env.ASAAS_WEBHOOK_TOKEN?.trim();
+
+    if (mainToken && authTokenSecret && mainToken === authTokenSecret) {
+        log.error('[Asaas Webhook] CRITICAL SECURITY ERROR: ASAAS_WEBHOOK_TOKEN não pode ser igual a AUTH_TOKEN_SECRET');
+        return { ok: false, status: 500, body: { error: 'Configuration error' } };
+    }
+
+    if (isProduction && !configured) {
+        log.error('[Asaas Webhook] Nenhum token de autenticação configurado para webhooks em produção (ASAAS_WEBHOOK_TOKEN ou ASAAS_SUBACCOUNT_WEBHOOK_AUTH_TOKEN)');
+        return { ok: false, status: 500, body: { error: 'Webhook authentication not configured' } };
+    }
+
+    if (!configured) {
+        return { ok: true };
+    }
+
+    const providedToken =
+        (req.headers['asaas-access-token'] as string | undefined) ||
+        (req.headers['x-asaas-access-token'] as string | undefined) ||
+        (typeof req.query.token === 'string' ? req.query.token : undefined);
+
+    if (!providedToken || !tokens.includes(providedToken)) {
+        log.warn('[Asaas Webhook] Token de autenticação inválido ou ausente', sanitizeForLogging({
+            path,
+            hasToken: Boolean(providedToken),
+            tokenLength: typeof providedToken === 'string' ? providedToken.length : undefined,
+            headers: req.headers,
+            body: req.body
+        }) as object);
+        return { ok: false, status: 401, body: { error: 'Unauthorized' } };
+    }
+
+    return { ok: true };
+}
+
+/**
+ * Faz o parse seguro do payload com Zod. Em caso de erro retorna 200 com handled:false
+ * para não pausar a fila do Asaas (que pausa após 15 falhas consecutivas).
+ */
+function safeParseWebhook<T>(schema: z.ZodType<T>, body: unknown, path: string):
+    | { ok: true; payload: T }
+    | { ok: false; response: { ok: boolean; handled: boolean; reason: string } } {
+    try {
+        const payload = schema.parse(body ?? {});
+        return { ok: true, payload };
+    } catch (err) {
+        const issues = err instanceof ZodError ? err.issues.map((i) => `${i.path.join('.')}: ${i.message}`) : [String(err)];
+        log.error('[Asaas Webhook] Falha ao validar payload (parse error)', sanitizeForLogging({
+            path,
+            issues,
+            body
+        }) as object);
+        return { ok: false, response: { ok: true, handled: false, reason: 'parse_error' } };
+    }
+}
+
 export function asaasWebhookRouter(deps: AsaasWebhookDeps) {
     const router = Router();
 
-    // Rate limit para todas as rotas de webhook (anti-abuso; limite próprio, global não se aplica aqui)
     router.use(webhookRateLimiter);
 
     router.post('/payments', asyncHandler(async (req, res) => {
-        // Validar token do webhook (obrigatório em produção)
-        const webhookToken = process.env.ASAAS_WEBHOOK_TOKEN?.trim();
-        const authTokenSecret = process.env.AUTH_TOKEN_SECRET?.trim();
-        const isProduction = process.env.NODE_ENV === 'production';
-
-        // Segurança: garantir que nunca use AUTH_TOKEN_SECRET para webhooks
-        if (webhookToken && authTokenSecret && webhookToken === authTokenSecret) {
-            log.error('[Asaas Webhook] CRITICAL SECURITY ERROR: ASAAS_WEBHOOK_TOKEN não pode ser igual a AUTH_TOKEN_SECRET');
-            return res.status(500).json({ error: 'Configuration error' });
+        const auth = validateWebhookAccessToken(req, '/payments');
+        if (!auth.ok) {
+            return res.status(auth.status).json(auth.body);
         }
 
-        // Em produção, token é obrigatório
-        if (isProduction && !webhookToken) {
-            log.error('[Asaas Webhook] ASAAS_WEBHOOK_TOKEN é obrigatório em produção');
-            return res.status(500).json({ error: 'Webhook authentication not configured' });
-        }
-
-        // Validar token se configurado
-        if (webhookToken) {
-            const providedToken = req.headers['asaas-access-token'] || req.headers['x-asaas-access-token'] || req.query.token;
-            if (!providedToken || providedToken !== webhookToken) {
-                log.warn('[Asaas Webhook] Token de autenticação inválido ou ausente', sanitizeForLogging({
-                    path: '/payments',
-                    hasToken: !!providedToken,
-                    tokenLength: typeof providedToken === 'string' ? providedToken.length : undefined,
-                    headers: req.headers,
-                    body: req.body
-                }) as object);
-                return res.status(401).json({ error: 'Unauthorized' });
-            }
-        } else if (isProduction) {
-            log.error('[Asaas Webhook] Webhook recebido sem token em produção', sanitizeForLogging({
-                path: '/payments',
-                headers: req.headers,
-                body: req.body
-            }) as object);
-            return res.status(401).json({ error: 'Unauthorized' });
-        }
-
-        // Log sanitizado do evento recebido
         log.info('[Asaas Webhook] Evento de pagamento recebido:', sanitizeForLogging({
             path: '/payments',
             event: req.body?.event,
@@ -165,82 +246,49 @@ export function asaasWebhookRouter(deps: AsaasWebhookDeps) {
             }
         }));
 
-        const payload = paymentPayloadSchema.parse(req.body ?? {});
+        const parsed = safeParseWebhook(paymentPayloadSchema, req.body, '/payments');
+        if (!parsed.ok) {
+            return res.status(200).json(parsed.response);
+        }
+        const payload = parsed.payload;
 
-        // Normalizar o payload para o formato esperado pelo use case
         const normalizedPayment = payload.payment && payload.payment.id ? {
-            id: String(payload.payment.id), // Garantir que seja string
+            id: String(payload.payment.id),
             status: payload.payment.status ?? null,
             externalReference: payload.payment.externalReference ?? null,
             paymentDate: payload.payment.paymentDate ?? null,
             confirmedDate: payload.payment.confirmedDate ?? null,
             receivedDate: payload.payment.receivedDate ?? null,
             dueDate: payload.payment.dueDate ?? null,
-            // Normalizar customer: pode ser string (ID) ou objeto
             customer: typeof payload.payment.customer === 'string'
                 ? { id: payload.payment.customer }
                 : payload.payment.customer ?? null,
             value: payload.payment.value ?? null,
-            // Metadata (schoolId, planId, financeId) enviada na criação — usada para validar escola do invoice
-            metadata: normalizePaymentMetadata(payload.payment.metadata)
+            metadata: normalizePaymentMetadata((payload.payment as Record<string, unknown>).metadata)
         } : undefined;
 
         const result = await deps.handleAsaasPaymentWebhook.exec({
             event: payload.event,
             payment: normalizedPayment,
-            eventId: payload.id, // ID do evento do Asaas para idempotência
-            eventCreatedAt: payload.dateCreated ?? null // horário real do evento; paymentDate no Asaas é só data
+            eventId: payload.id,
+            eventCreatedAt: payload.dateCreated ?? null
         });
 
-        res.status(200).json({ ok: true, handled: result.handled, reason: result.reason ?? null });
+        return res.status(200).json({ ok: true, handled: result.handled, reason: result.reason ?? null });
     }));
 
     router.post('/accounts', asyncHandler(async (req, res) => {
-        // Validar token do webhook (obrigatório em produção)
-        const webhookToken = process.env.ASAAS_WEBHOOK_TOKEN?.trim();
-        const authTokenSecret = process.env.AUTH_TOKEN_SECRET?.trim();
-        const isProduction = process.env.NODE_ENV === 'production';
-
-        // Segurança: garantir que nunca use AUTH_TOKEN_SECRET para webhooks
-        if (webhookToken && authTokenSecret && webhookToken === authTokenSecret) {
-            log.error('[Asaas Webhook] CRITICAL SECURITY ERROR: ASAAS_WEBHOOK_TOKEN não pode ser igual a AUTH_TOKEN_SECRET');
-            return res.status(500).json({ error: 'Configuration error' });
+        const auth = validateWebhookAccessToken(req, '/accounts');
+        if (!auth.ok) {
+            return res.status(auth.status).json(auth.body);
         }
 
-        // Em produção, token é obrigatório
-        if (isProduction && !webhookToken) {
-            log.error('[Asaas Webhook] ASAAS_WEBHOOK_TOKEN é obrigatório em produção');
-            return res.status(500).json({ error: 'Webhook authentication not configured' });
-        }
-
-        // Validar token se configurado
-        if (webhookToken) {
-            const providedToken = req.headers['asaas-access-token'] || req.headers['x-asaas-access-token'] || req.query.token;
-            if (!providedToken || providedToken !== webhookToken) {
-                log.warn('[Asaas Webhook] Token de autenticação inválido ou ausente', sanitizeForLogging({
-                    path: '/accounts',
-                    hasToken: !!providedToken,
-                    tokenLength: typeof providedToken === 'string' ? providedToken.length : undefined,
-                    headers: req.headers,
-                    body: req.body
-                }) as object);
-                return res.status(401).json({ error: 'Unauthorized' });
-            }
-        } else if (isProduction) {
-            log.error('[Asaas Webhook] Webhook recebido sem token em produção', sanitizeForLogging({
-                path: '/accounts',
-                headers: req.headers,
-                body: req.body
-            }) as object);
-            return res.status(401).json({ error: 'Unauthorized' });
-        }
-
-        // Log sanitizado do evento recebido
         log.info('[Asaas Webhook] Evento de conta recebido:', sanitizeForLogging({
             path: '/accounts',
             event: req.body?.event,
             accountId: req.body?.account?.id,
             status: req.body?.account?.status,
+            accountStatus: req.body?.accountStatus,
             headers: {
                 'content-type': req.headers['content-type'],
                 'user-agent': req.headers['user-agent'],
@@ -248,16 +296,61 @@ export function asaasWebhookRouter(deps: AsaasWebhookDeps) {
             }
         }));
 
-        const payload = accountPayloadSchema.parse(req.body ?? {});
+        const parsed = safeParseWebhook(accountPayloadSchema, req.body, '/accounts');
+        if (!parsed.ok) {
+            return res.status(200).json(parsed.response);
+        }
+        const payload = parsed.payload;
 
         const result = await deps.handleAsaasAccountWebhook.exec({
             event: payload.event,
             account: payload.account ?? undefined,
-            eventId: payload.id // ID do evento do Asaas para idempotência
+            accountStatus: payload.accountStatus ?? undefined,
+            eventId: payload.id
         });
 
-        res.status(200).json({ ok: true, handled: result.handled, reason: result.reason ?? null });
+        return res.status(200).json({ ok: true, handled: result.handled, reason: result.reason ?? null });
+    }));
+
+    router.post('/transfers', asyncHandler(async (req, res) => {
+        const auth = validateWebhookAccessToken(req, '/transfers');
+        if (!auth.ok) {
+            return res.status(auth.status).json(auth.body);
+        }
+
+        log.info('[Asaas Webhook] Evento de transferência recebido:', sanitizeForLogging({
+            path: '/transfers',
+            event: req.body?.event,
+            transferId: req.body?.transfer?.id,
+            status: req.body?.transfer?.status
+        }));
+
+        const parsed = safeParseWebhook(transferPayloadSchema, req.body, '/transfers');
+        if (!parsed.ok) {
+            return res.status(200).json(parsed.response);
+        }
+        const payload = parsed.payload;
+
+        if (!deps.handleAsaasTransferWebhook) {
+            return res.status(200).json({ ok: true, handled: false, reason: 'transfer_handler_not_configured' });
+        }
+
+        const result = await deps.handleAsaasTransferWebhook.exec({
+            event: payload.event,
+            transfer: payload.transfer ?? undefined,
+            eventId: payload.id,
+            eventCreatedAt: payload.dateCreated ?? null
+        });
+
+        return res.status(200).json({ ok: true, handled: result.handled, reason: result.reason ?? null });
     }));
 
     return router;
 }
+
+export const __testing = {
+    paymentPayloadSchema,
+    accountPayloadSchema,
+    transferPayloadSchema,
+    getAcceptedWebhookTokens
+};

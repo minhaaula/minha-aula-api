@@ -103,6 +103,26 @@ export class AsaasClient {
         }
     }
 
+    /**
+     * Lista subcontas filtrando por e-mail (GET /v3/accounts?email=).
+     * Usado quando POST /v3/accounts falha com "email já em uso" — permite recuperar a conta já existente.
+     */
+    async listAccountsByEmail(email: string): Promise<AsaasSubAccountResponse[]> {
+        const normalized = email?.trim();
+        if (!normalized) return [];
+        try {
+            const { data } = await this.http.get<{ data?: AsaasSubAccountResponse[] } | AsaasSubAccountResponse[]>(
+                `/accounts`,
+                { params: { email: normalized, limit: 10 } }
+            );
+            if (Array.isArray(data)) return data;
+            if (data && typeof data === 'object' && Array.isArray(data.data)) return data.data;
+            return [];
+        } catch (error) {
+            throw this.toDomainError(error);
+        }
+    }
+
     async createTransfer(accountId: string, payload: AsaasCreateTransferPayload): Promise<AsaasCreateTransferResponse> {
         try {
             const { data } = await this.http.post<AsaasCreateTransferResponse>(`/accounts/${accountId}/transfers`, payload);
