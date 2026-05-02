@@ -180,6 +180,11 @@ export interface AsaasProviderPort {
      * Deve ser chamado com a API key da subconta. Retorna commercialInfo, bankAccountInfo, documentation, general.
      */
     getAccountStatus?(accountApiKey: string): Promise<AsaasAccountStatus | null>;
+    /**
+     * Registra conta bancária de recebimento/saque no Asaas para a subconta autenticada (POST /v3/bankAccounts).
+     * Deve ser chamado com a API key da subconta. Pode atualizar o status `bankAccountInfo` no KYC.
+     */
+    createReceivingBankAccount?(accountApiKey: string, input: AsaasReceivingBankAccountInput): Promise<AsaasReceivingBankAccountResult>;
 }
 
 /** Grupo de documentos pendentes (AccountDocumentGroupResponseDTO). */
@@ -208,3 +213,19 @@ export type AsaasAccountStatus = {
     documentation: string;
     general: string;
 };
+
+/** Cadastro de conta bancária externa no contexto da subconta (POST /v3/bankAccounts, header access_token da subconta). */
+export type AsaasReceivingBankAccountInput = {
+    bankCode: string;
+    bankName: string;
+    ownerName: string;
+    cpfCnpjDigits: string;
+    agency: string;
+    agencyDigit?: string;
+    account: string;
+    accountDigit?: string;
+    bankAccountType: 'CORRENTE' | 'POUPANCA';
+};
+
+/** Resposta bruta do Asaas ao cadastrar conta bancária (campos variam por versão da API). */
+export type AsaasReceivingBankAccountResult = Record<string, unknown>;

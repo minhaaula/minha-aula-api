@@ -479,6 +479,49 @@ export class AsaasClient {
     }
 
     /**
+     * Cadastra conta bancária no Asaas no contexto da subconta (POST /v3/bankAccounts, header access_token).
+     * Contrato alinhado ao payload de contas bancárias em transferências / integrações comuns Asaas v3.
+     */
+    async postBankAccountsWithAccessToken(
+        accountApiKey: string,
+        payload: Record<string, unknown>
+    ): Promise<Record<string, unknown>> {
+        if (!accountApiKey?.trim()) {
+            throw new Error('accountApiKey is required');
+        }
+        const baseUrl = this.http.defaults.baseURL || process.env.ASAAS_BASE_URL || 'https://www.asaas.com/api/v3';
+        const client = axios.create({
+            baseURL: baseUrl,
+            headers: {
+                access_token: accountApiKey,
+                'Content-Type': 'application/json'
+            },
+            timeout: 30_000
+        });
+        try {
+            const { data } = await client.post<Record<string, unknown>>('/bankAccounts', payload);
+            if (!data || typeof data !== 'object') {
+                throw new Error('Asaas API returned invalid bank account response');
+            }
+            const errs = (data as { errors?: Array<{ description?: string; message?: string }> }).errors;
+            if (Array.isArray(errs) && errs.length > 0) {
+                const msg = errs
+                    .map((e) => (e && typeof e === 'object' ? e.description ?? e.message : ''))
+                    .filter((s): s is string => typeof s === 'string' && s.length > 0)
+                    .join('; ');
+                throw new Error(`Asaas rejected bank account${msg ? `: ${msg}` : ''}`);
+            }
+            const id = (data as { id?: unknown }).id;
+            if (typeof id !== 'string' || !id.trim()) {
+                throw new Error('Asaas API returned bank account response without id');
+            }
+            return data;
+        } catch (error) {
+            throw this.toDomainError(error);
+        }
+    }
+
+    /**
      * Obtém a URL de onboarding (documentos pendentes) no contexto da subconta.
      * Deve ser chamado com a API key da subconta; Asaas recomenda aguardar ~15s após criar a subconta.
      * Suporta resposta em formato de lista plana ou com grupos contendo .documents[].

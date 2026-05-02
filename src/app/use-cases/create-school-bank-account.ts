@@ -3,8 +3,25 @@ import { SchoolBankAccount } from '../../domain/entities/school-bank-account';
 import { SchoolRepository } from '../../ports/repositories/school.repo';
 import { Uuid } from '../../shared/uuid';
 import { ConsumeSchoolActionOtp } from './consume-school-action-otp';
+import type { AsaasProviderPort, AsaasReceivingBankAccountResult } from '../../ports/providers/asaas-port';
+import { AppError, ErrorCode } from '../../shared/errors';
 
-type BankAccountView = {
+function assertSuccessfulAsaasReceivingBankAccount(res: AsaasReceivingBankAccountResult): void {
+    const id = res.id;
+    if (typeof id !== 'string' || !id.trim()) {
+        throw AppError.fromCode(ErrorCode.EXTERNAL_SERVICE_ERROR, {
+            message: 'Resposta inválida do Asaas ao cadastrar conta bancária'
+        });
+    }
+    const rawErrors = (res as { errors?: unknown }).errors;
+    if (Array.isArray(rawErrors) && rawErrors.length > 0) {
+        throw AppError.fromCode(ErrorCode.EXTERNAL_SERVICE_ERROR, {
+            message: 'Asaas rejeitou o cadastro da conta bancária'
+        });
+    }
+}
+
+export type CreateSchoolBankAccountOutput = {
     id: string;
     schoolId: string;
     bankName: string;
@@ -19,13 +36,16 @@ type BankAccountView = {
     isActive: boolean;
     createdAt: Date;
     updatedAt: Date;
+    /** Presente quando a conta foi enviada ao Asaas (subconta com API key + `banco` + provedor). */
+    asaas?: AsaasReceivingBankAccountResult;
 };
 
 export class CreateSchoolBankAccount {
     constructor(
         private readonly schools: SchoolRepository,
         private readonly bankAccounts: SchoolBankAccountRepository,
-        private readonly otp?: ConsumeSchoolActionOtp
+        private readonly otp?: ConsumeSchoolActionOtp,
+        private readonly asaasProvider?: AsaasProviderPort
     ) {}
 
     async exec(input: {
@@ -40,7 +60,7 @@ export class CreateSchoolBankAccount {
         bankAccountHolderDocument: string;
         pixKey?: string;
         otpChallengeId: string;
-    }): Promise<BankAccountView> {
+    }): Promise<CreateSchoolBankAccountOutput> {
         const schoolId = input.schoolId.trim();
         if (!schoolId) {
             throw new Error('School id is required');
@@ -62,6 +82,32 @@ export class CreateSchoolBankAccount {
             purpose: 'BANK_ACCOUNT_CHANGE'
         });
 
+        const bankCode = input.bankCode;
+        const hasBankCode = bankCode != null && Number.isFinite(bankCode);
+        const hasSubaccountKey = Boolean(school.accountApiKey?.trim());
+        const wantsAsaasSync = hasBankCode && hasSubaccountKey;
+
+        let asaas: AsaasReceivingBankAccountResult | undefined;
+        if (wantsAsaasSync) {
+            if (!this.asaasProvider?.createReceivingBankAccount) {
+                throw AppError.fromCode(ErrorCode.PAYMENT_PROVIDER_NOT_CONFIGURED, {
+                    message: 'Provedor Asaas não configurado ou não suporta cadastro de conta bancária'
+                });
+            }
+            asaas = await this.asaasProvider.createReceivingBankAccount(school.accountApiKey!, {
+                bankCode: String(bankCode),
+                bankName: input.bankName,
+                ownerName: school.name.trim() || input.bankName,
+                cpfCnpjDigits: input.bankAccountHolderDocument.replace(/\D/g, ''),
+                agency: input.bankAgency,
+                agencyDigit: input.bankAgencyDigit,
+                account: input.bankAccount,
+                accountDigit: input.bankAccountDigit,
+                bankAccountType: input.bankAccountType
+            });
+            assertSuccessfulAsaasReceivingBankAccount(asaas);
+        }
+
         const account = SchoolBankAccount.create({
             id: Uuid(),
             schoolId,
@@ -78,7 +124,7 @@ export class CreateSchoolBankAccount {
 
         await this.bankAccounts.save(account);
 
-        return {
+        const base: CreateSchoolBankAccountOutput = {
             id: account.id,
             schoolId: account.schoolId,
             bankName: account.bankName,
@@ -94,5 +140,9 @@ export class CreateSchoolBankAccount {
             createdAt: account.createdAt,
             updatedAt: account.updatedAt
         };
+        if (asaas !== undefined) {
+            base.asaas = asaas;
+        }
+        return base;
     }
 }

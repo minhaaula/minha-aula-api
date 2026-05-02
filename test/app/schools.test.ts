@@ -533,6 +533,7 @@ describe('School creation flow', () => {
 
         const profile = await getProfile.exec({ schoolId: '  school-profile ' });
         expect(profile).not.toBeNull();
+        expect(profile?.onboarding.asaasStatus).toBeNull();
         expect(profile?.ownerEmail).toBe('carlos@perfil.com');
         expect(profile?.addresses).toHaveLength(1);
         expect(profile?.addresses[0]).toMatchObject({
@@ -542,6 +543,38 @@ describe('School creation flow', () => {
 
         const missing = await getProfile.exec({ schoolId: 'unknown' });
         expect(missing).toBeNull();
+    });
+
+    it('perfil /me: asaasOnboardingStatus sintético quando onboarding já concluído (sem chamar Asaas)', async () => {
+        const repo = new InMemorySchoolRepository();
+        const boomAsaas = {
+            async getAccountStatus() {
+                throw new Error('getAccountStatus não deve ser chamado quando onboardingCompletedAt já existe');
+            }
+        };
+        const getProfile = new GetSchoolProfile(repo, undefined, undefined, undefined, undefined, undefined, boomAsaas as never);
+        const doneAt = new Date('2026-01-01T12:00:00.000Z');
+        const school = School.create({
+            id: 'school-onb-done',
+            name: 'Escola Onb',
+            email: 'onb@escola.com',
+            phone: '11999999999',
+            cnpj: '12345678000190',
+            accountId: 'acc-uuid-asaas',
+            onboardingCompletedAt: doneAt
+        });
+        repo.seed(school);
+
+        const profile = await getProfile.exec({ schoolId: school.id });
+        expect(profile?.onboarding.asaasStatus).toMatchObject({
+            id: 'acc-uuid-asaas',
+            commercialInfo: 'APPROVED',
+            bankAccountInfo: 'APPROVED',
+            documentation: 'APPROVED',
+            general: 'APPROVED'
+        });
+        expect(profile?.onboarding.asaasStatus?.onboardingCompletedAt?.getTime()).toBe(doneAt.getTime());
+        expect(profile?.onboarding.completed).toBe(true);
     });
 
     it('fetches school profile with active plan', async () => {

@@ -738,6 +738,53 @@ components:
           $ref: '#/components/schemas/SchoolPlanResponse'
           nullable: true
           description: Plano ativo da escola (retornado apenas se a escola tiver um plano ativo)
+    SchoolProfileAsaasOnboardingStatus:
+      type: object
+      description: Status KYC Asaas (GET /myAccount/status ou sintético se onboarding já concluído no app).
+      properties:
+        id:
+          type: string
+        commercialInfo:
+          type: string
+        bankAccountInfo:
+          type: string
+        documentation:
+          type: string
+        general:
+          type: string
+        onboardingCompletedAt:
+          type: string
+          format: date-time
+          nullable: true
+    SchoolProfileOnboarding:
+      type: object
+      description: Onboarding / KYC da escola (GET /schools/me e PUT /schools/me).
+      required:
+        - completed
+        - url
+        - accountId
+        - hasCompletedFirstPayment
+        - asaasStatus
+      properties:
+        completed:
+          type: boolean
+          description: True quando o onboarding foi finalizado no app (ex. `onboardingCompletedAt` preenchido ou KYC Asaas aprovado).
+        url:
+          type: string
+          nullable: true
+          format: uri
+          description: Link para completar o KYC no Asaas; em geral null quando `completed` é true.
+        accountId:
+          type: string
+          nullable: true
+          description: ID da subconta Asaas, quando existir.
+        hasCompletedFirstPayment:
+          type: boolean
+          description: True se a escola já tiver ao menos um pagamento concluído (invoice PAID).
+        asaasStatus:
+          $ref: '#/components/schemas/SchoolProfileAsaasOnboardingStatus'
+          nullable: true
+          description: Detalhes do status cadastral no Asaas; null se não aplicável ou sem consulta.
     SchoolResponse:
       type: object
       properties:
@@ -863,18 +910,9 @@ components:
           type: boolean
           nullable: true
           description: Indica se a escola possui faturas atrasadas não pagas
-        onboardingCompleted:
-          type: boolean
-          description: Indica se o processo de onboarding (KYC) foi finalizado. Quando false, o campo onboardingUrl será retornado.
-        onboardingUrl:
-          type: string
-          nullable: true
-          format: uri
-          description: Link para completar o processo de KYC/onboarding no Asaas (retornado em GET /schools/me)
-          example: "https://beta.cadastro.io/c33ef9ae605f350c052be72ab094d0b7"
-        hasCompletedFirstPayment:
-          type: boolean
-          description: True se a escola já tiver ao menos um pagamento concluído (invoice PAID). False indica que ainda é o primeiro pagamento ou que nunca pagou.
+        onboarding:
+          $ref: '#/components/schemas/SchoolProfileOnboarding'
+          description: Onboarding / KYC, URL Asaas, conta e status cadastral.
         kycUrl:
           type: string
           nullable: true

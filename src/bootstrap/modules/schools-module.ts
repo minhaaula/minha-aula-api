@@ -36,6 +36,7 @@ import { UpdateSchool } from '../../app/use-cases/update-school';
 import { GetSchoolPendingDocuments } from '../../app/use-cases/get-school-pending-documents';
 import { SyncSchoolOnboardingDocuments } from '../../app/use-cases/sync-school-onboarding-documents';
 import { AdminUploadSchoolOnboardingDocument } from '../../app/use-cases/admin-upload-school-onboarding-document';
+import { SyncSchoolSubaccountStatus } from '../../app/use-cases/sync-school-subaccount-status';
 import { UpdateCourse } from '../../app/use-cases/update-course';
 import { DeleteCourse } from '../../app/use-cases/delete-course';
 import { SchoolPlanInvoiceRepositoryAdapter } from '../../infra/db/typeorm/school-plan-invoice-repository.adapter';
@@ -195,7 +196,8 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         schoolImagesRepo,
         deps.storageProvider,
         deps.planFinancesRepo,
-        deps.planInvoicesRepo
+        deps.planInvoicesRepo,
+        asaasProvider
     );
     const updateSchool = new UpdateSchool(deps.schoolsRepo, deps.passwordHasher);
     const getSchoolPendingDocuments = asaasProvider
@@ -209,11 +211,15 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         ? new AdminUploadSchoolOnboardingDocument(deps.schoolsRepo, asaasProvider)
         : undefined;
 
+    const syncSchoolSubaccountStatus = asaasProvider
+        ? new SyncSchoolSubaccountStatus(deps.schoolsRepo, asaasProvider)
+        : undefined;
+
     const listSchoolBankAccounts = deps.bankAccountsRepo
         ? new ListSchoolBankAccounts(deps.bankAccountsRepo)
         : undefined;
     const createSchoolBankAccount = deps.bankAccountsRepo
-        ? new CreateSchoolBankAccount(deps.schoolsRepo, deps.bankAccountsRepo, schoolActionOtpConsumer)
+        ? new CreateSchoolBankAccount(deps.schoolsRepo, deps.bankAccountsRepo, schoolActionOtpConsumer, asaasProvider)
         : undefined;
     const updateSchoolBankAccount = deps.bankAccountsRepo
         ? new UpdateSchoolBankAccount(deps.bankAccountsRepo, schoolActionOtpConsumer)
@@ -522,6 +528,7 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         getSchoolPendingDocuments,
         syncSchoolOnboardingDocuments,
         uploadSchoolOnboardingDocument,
+        syncSchoolSubaccountStatus,
         requestSchoolActionOtp,
         verifySchoolActionOtp
     });

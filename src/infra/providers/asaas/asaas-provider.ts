@@ -1,7 +1,24 @@
 import { Money } from '../../../domain/value-objects/money';
 import { PaymentProviderPort, CreateChargeInput, CreatePixChargeInput } from '../../../ports/providers/payment-provider.port';
 import { AsaasClient } from './asaas-client';
-import { AsaasChargeResponse, AsaasSubAccount, CreateAsaasSubAccountInput, CreateAsaasTransferInput, AsaasTransferResponse, AsaasAccountDetails, AsaasAccountBalance, AsaasPaymentDetails, ListAsaasPaymentsParams, ListAsaasPaymentsResponse, AsaasPendingDocumentsResult, AsaasPendingDocumentGroup, AsaasAccountStatus, AsaasPixQrCodeResponse } from '../../../ports/providers/asaas-port';
+import {
+    AsaasChargeResponse,
+    AsaasSubAccount,
+    CreateAsaasSubAccountInput,
+    CreateAsaasTransferInput,
+    AsaasTransferResponse,
+    AsaasAccountDetails,
+    AsaasAccountBalance,
+    AsaasPaymentDetails,
+    ListAsaasPaymentsParams,
+    ListAsaasPaymentsResponse,
+    AsaasPendingDocumentsResult,
+    AsaasPendingDocumentGroup,
+    AsaasAccountStatus,
+    AsaasPixQrCodeResponse,
+    AsaasReceivingBankAccountInput,
+    AsaasReceivingBankAccountResult
+} from '../../../ports/providers/asaas-port';
 import { CreateBoletoChargeInput } from '../../../ports/providers/payment-provider.port';
 import { log } from '../../../shared/logger';
 
@@ -384,6 +401,35 @@ export class AsaasProvider implements PaymentProviderPort {
         } catch {
             return null;
         }
+    }
+
+    async createReceivingBankAccount(
+        accountApiKey: string,
+        input: AsaasReceivingBankAccountInput
+    ): Promise<AsaasReceivingBankAccountResult> {
+        if (!accountApiKey?.trim()) {
+            throw new Error('accountApiKey is required');
+        }
+        const bankCode = input.bankCode.replace(/\D/g, '').padStart(3, '0').slice(-3);
+        if (bankCode.length !== 3) {
+            throw new Error('bankCode must be a valid 3-digit bank code');
+        }
+        const bankAccountType = input.bankAccountType === 'POUPANCA' ? 'CONTA_POUPANCA' : 'CONTA_CORRENTE';
+        const payload: Record<string, unknown> = {
+            bank: bankCode,
+            accountName: input.bankName,
+            name: input.ownerName,
+            cpfCnpj: input.cpfCnpjDigits.replace(/\D/g, ''),
+            agency: input.agency.replace(/\D/g, '') || input.agency,
+            account: input.account.replace(/\D/g, '') || input.account,
+            accountDigit: (input.accountDigit ?? '').replace(/\D/g, '') || '',
+            bankAccountType
+        };
+        const agencyDigits = (input.agencyDigit ?? '').replace(/\D/g, '');
+        if (agencyDigits) {
+            payload.agencyDigit = agencyDigits;
+        }
+        return this.client.postBankAccountsWithAccessToken(accountApiKey, payload);
     }
 
     private resolveDefaultWebhooks(fallbackEmail: string): CreateAsaasSubAccountInput['webhooks'] | undefined {

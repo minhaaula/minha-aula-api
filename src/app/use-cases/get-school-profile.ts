@@ -5,7 +5,27 @@ import { SchoolImageRepository } from '../../ports/repositories/school-image.rep
 import { StorageProviderPort } from '../../ports/providers/storage-provider.port';
 import { SchoolPlanFinanceRepository } from '../../ports/repositories/school-plan-finance.repo';
 import { SchoolPlanInvoiceRepository } from '../../ports/repositories/school-plan-invoice.repo';
+import type { AsaasProviderPort } from '../../ports/providers/asaas-port';
 import { presentSchoolPlanFinance, SchoolPlanFinanceView } from '../presenters/school-plan-finance.presenter';
+
+/** Status cadastral Asaas (GET /v3/myAccount/status) exposto no perfil da escola. */
+export type SchoolProfileAsaasOnboardingStatus = {
+    id: string;
+    commercialInfo: string;
+    bankAccountInfo: string;
+    documentation: string;
+    general: string;
+    onboardingCompletedAt: Date | null;
+};
+
+/** Dados de onboarding / KYC no `GET /schools/me`. */
+export type SchoolProfileOnboarding = {
+    completed: boolean;
+    url: string | null;
+    accountId: string | null;
+    hasCompletedFirstPayment: boolean;
+    asaasStatus: SchoolProfileAsaasOnboardingStatus | null;
+};
 
 type BankAccountView = {
     id: string;
@@ -30,7 +50,8 @@ export class GetSchoolProfile {
         private readonly schoolImages?: SchoolImageRepository,
         private readonly storage?: StorageProviderPort,
         private readonly finances?: SchoolPlanFinanceRepository,
-        private readonly invoices?: SchoolPlanInvoiceRepository
+        private readonly invoices?: SchoolPlanInvoiceRepository,
+        private readonly asaasProvider?: AsaasProviderPort
     ) {}
 
     async exec(input: { schoolId: string }): Promise<{
@@ -65,10 +86,7 @@ export class GetSchoolProfile {
             createdAt: Date;
         }>;
         isOverdue?: boolean;
-        onboardingCompleted: boolean;
-        onboardingUrl?: string | null;
-        hasCompletedFirstPayment: boolean;
-        accountId: string | null;
+        onboarding: SchoolProfileOnboarding;
         plan?: SchoolPlanFinanceView | null;
     } | null> {
         const schoolId = input.schoolId.trim();
@@ -156,13 +174,50 @@ export class GetSchoolProfile {
             }
         }
 
-        // Determinar se o onboarding foi finalizado
-        // O onboarding está finalizado quando o webhook do Asaas confirma a aprovação da conta
-        const onboardingCompleted = school.onboardingCompletedAt !== null;
+        // Determinar se o onboarding foi finalizado (pode ser atualizado após consulta ao Asaas abaixo)
+        let onboardingCompleted = school.onboardingCompletedAt !== null;
 
         const hasCompletedFirstPayment = this.invoices
             ? await this.invoices.hasSchoolAnyPaidInvoice(school.id)
             : false;
+
+        let asaasOnboardingStatus: SchoolProfileAsaasOnboardingStatus | null = null;
+        if (school.onboardingCompletedAt !== null) {
+            asaasOnboardingStatus = {
+                id: school.accountId?.trim() ?? '',
+                commercialInfo: 'APPROVED',
+                bankAccountInfo: 'APPROVED',
+                documentation: 'APPROVED',
+                general: 'APPROVED',
+                onboardingCompletedAt: school.onboardingCompletedAt
+            };
+        } else if (school.accountApiKey?.trim() && this.asaasProvider?.getAccountStatus) {
+            const status = await this.asaasProvider.getAccountStatus(school.accountApiKey);
+            if (status) {
+                const allApproved =
+                    status.commercialInfo === 'APPROVED' &&
+                    status.bankAccountInfo === 'APPROVED' &&
+                    status.documentation === 'APPROVED' &&
+                    status.general === 'APPROVED';
+
+                let onboardingCompletedAt: Date | null = school.onboardingCompletedAt;
+                if (allApproved && !school.onboardingCompletedAt) {
+                    const updated = school.withOnboardingCompletedAt(new Date());
+                    await this.schools.save(updated);
+                    onboardingCompletedAt = updated.onboardingCompletedAt;
+                    onboardingCompleted = true;
+                }
+
+                asaasOnboardingStatus = {
+                    id: status.id,
+                    commercialInfo: status.commercialInfo,
+                    bankAccountInfo: status.bankAccountInfo,
+                    documentation: status.documentation,
+                    general: status.general,
+                    onboardingCompletedAt
+                };
+            }
+        }
 
         return {
             id: school.id,
@@ -202,10 +257,13 @@ export class GetSchoolProfile {
             },
             images,
             isOverdue,
-            onboardingCompleted,
-            onboardingUrl: school.onboardingUrl,
-            hasCompletedFirstPayment,
-            accountId: school.accountId,
+            onboarding: {
+                completed: onboardingCompleted,
+                url: school.onboardingUrl,
+                accountId: school.accountId,
+                hasCompletedFirstPayment,
+                asaasStatus: asaasOnboardingStatus
+            },
             plan
         };
     }

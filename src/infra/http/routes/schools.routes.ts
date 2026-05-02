@@ -142,6 +142,7 @@ export type SchoolsRouterDeps = {
     getSchoolPendingDocuments?: import('../../../app/use-cases/get-school-pending-documents').GetSchoolPendingDocuments;
     syncSchoolOnboardingDocuments?: import('../../../app/use-cases/sync-school-onboarding-documents').SyncSchoolOnboardingDocuments;
     uploadSchoolOnboardingDocument?: import('../../../app/use-cases/admin-upload-school-onboarding-document').AdminUploadSchoolOnboardingDocument;
+    syncSchoolSubaccountStatus?: import('../../../app/use-cases/sync-school-subaccount-status').SyncSchoolSubaccountStatus;
     requestSchoolActionOtp?: RequestSchoolActionOtp;
     verifySchoolActionOtp?: VerifySchoolActionOtp;
 };
@@ -267,12 +268,19 @@ export function schoolsRouter(deps: SchoolsRouterDeps) {
         }, guards));
     }
 
-    if (deps.getSchoolPendingDocuments) {
-        router.use('/kyc', buildKycRoutes({
-            getSchoolPendingDocuments: deps.getSchoolPendingDocuments,
-            syncSchoolOnboardingDocuments: deps.syncSchoolOnboardingDocuments,
-            uploadSchoolOnboardingDocument: deps.uploadSchoolOnboardingDocument
-        }, guards));
+    if (deps.getSchoolPendingDocuments || deps.syncSchoolSubaccountStatus) {
+        router.use(
+            '/kyc',
+            buildKycRoutes(
+                {
+                    getSchoolPendingDocuments: deps.getSchoolPendingDocuments,
+                    syncSchoolOnboardingDocuments: deps.syncSchoolOnboardingDocuments,
+                    uploadSchoolOnboardingDocument: deps.uploadSchoolOnboardingDocument,
+                    syncSchoolSubaccountStatus: deps.syncSchoolSubaccountStatus
+                },
+                guards
+            )
+        );
     }
 
     router.use('/bank-accounts', buildBankAccountsRoutes({

@@ -5,6 +5,7 @@ import { asyncHandler } from '../../utils/async-handler';
 import type { GetSchoolPendingDocuments } from '../../../../app/use-cases/get-school-pending-documents';
 import type { SyncSchoolOnboardingDocuments } from '../../../../app/use-cases/sync-school-onboarding-documents';
 import type { AdminUploadSchoolOnboardingDocument } from '../../../../app/use-cases/admin-upload-school-onboarding-document';
+import type { SyncSchoolSubaccountStatus } from '../../../../app/use-cases/sync-school-subaccount-status';
 import type { SchoolRouteGuards } from './guards';
 import type { SchoolContextRequest } from '../../middlewares/resolve-school-context';
 import { AppError, ErrorCode } from '../../../../shared/errors';
@@ -23,9 +24,10 @@ const documentUpload = multer({
 });
 
 type KycRoutesDeps = {
-    getSchoolPendingDocuments: GetSchoolPendingDocuments;
+    getSchoolPendingDocuments?: GetSchoolPendingDocuments;
     syncSchoolOnboardingDocuments?: SyncSchoolOnboardingDocuments;
     uploadSchoolOnboardingDocument?: AdminUploadSchoolOnboardingDocument;
+    syncSchoolSubaccountStatus?: SyncSchoolSubaccountStatus;
 };
 
 export function buildKycRoutes(deps: KycRoutesDeps, guards: SchoolRouteGuards) {
@@ -33,16 +35,33 @@ export function buildKycRoutes(deps: KycRoutesDeps, guards: SchoolRouteGuards) {
     const { requireAuth, requireSchoolPersona, resolveSchoolContext } = guards;
     const protectedMiddleware = [requireAuth, requireSchoolPersona, resolveSchoolContext] as const;
 
-    router.get('/documents', ...protectedMiddleware, asyncHandler(async (req, res) => {
-        const schoolId = (req as SchoolContextRequest).schoolId as string;
+    if (deps.getSchoolPendingDocuments) {
+        router.get('/documents', ...protectedMiddleware, asyncHandler(async (req, res) => {
+            const schoolId = (req as SchoolContextRequest).schoolId as string;
 
-        const result = await deps.getSchoolPendingDocuments.exec({ schoolId });
+            const result = await deps.getSchoolPendingDocuments!.exec({ schoolId });
 
-        res.json({
-            documents: result.documents,
-            onboardingUrl: result.onboardingUrl
-        });
-    }));
+            res.json({
+                documents: result.documents,
+                onboardingUrl: result.onboardingUrl
+            });
+        }));
+    }
+
+    if (deps.syncSchoolSubaccountStatus) {
+        router.get('/asaas-account-status', ...protectedMiddleware, asyncHandler(async (req, res) => {
+            const schoolId = (req as SchoolContextRequest).schoolId as string;
+            const result = await deps.syncSchoolSubaccountStatus!.exec({ schoolId });
+            res.json({
+                id: result.status.id,
+                commercialInfo: result.status.commercialInfo,
+                bankAccountInfo: result.status.bankAccountInfo,
+                documentation: result.status.documentation,
+                general: result.status.general,
+                onboardingCompletedAt: result.onboardingCompletedAt
+            });
+        }));
+    }
 
     if (deps.syncSchoolOnboardingDocuments) {
         router.post('/sync-onboarding-documents', ...protectedMiddleware, asyncHandler(async (req, res) => {

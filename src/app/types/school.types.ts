@@ -142,10 +142,8 @@ export interface GetSchoolProfileOutput {
         createdAt: Date;
     }>;
     isOverdue?: boolean;
-    onboardingCompleted: boolean;
-    onboardingUrl?: string | null;
-    /** True se a escola já tiver ao menos um pagamento concluído (invoice PAID). */
-    hasCompletedFirstPayment: boolean;
+    /** Onboarding / KYC (Asaas), URL e flags relacionadas. */
+    onboarding: import('../use-cases/get-school-profile').SchoolProfileOnboarding;
 }
 
 /**
