@@ -200,34 +200,40 @@ export class GetSchoolProfile {
                 lastEventAt: school.accountStatusSnapshot?.lastEventAt ?? null
             };
         } else if (school.accountApiKey?.trim() && this.asaasProvider?.getAccountStatus) {
-            const status = await this.asaasProvider.getAccountStatus(school.accountApiKey);
-            if (status) {
-                const allApproved =
-                    status.commercialInfo === 'APPROVED' &&
-                    status.bankAccountInfo === 'APPROVED' &&
-                    status.documentation === 'APPROVED' &&
-                    status.general === 'APPROVED';
+            try {
+                const status = await this.asaasProvider.getAccountStatus(school.accountApiKey);
+                if (status) {
+                    const allApproved =
+                        status.commercialInfo === 'APPROVED' &&
+                        status.bankAccountInfo === 'APPROVED' &&
+                        status.documentation === 'APPROVED' &&
+                        status.general === 'APPROVED';
 
-                let onboardingCompletedAt: Date | null = school.onboardingCompletedAt;
-                if (allApproved && !school.onboardingCompletedAt) {
-                    const updated = school.withOnboardingCompletedAt(new Date());
-                    await this.schools.save(updated);
-                    onboardingCompletedAt = updated.onboardingCompletedAt;
-                    onboardingCompleted = true;
+                    let onboardingCompletedAt: Date | null = school.onboardingCompletedAt;
+                    if (allApproved && !school.onboardingCompletedAt) {
+                        const updated = school.withOnboardingCompletedAt(new Date());
+                        await this.schools.save(updated);
+                        onboardingCompletedAt = updated.onboardingCompletedAt;
+                        onboardingCompleted = true;
+                    }
+
+                    asaasOnboardingStatus = {
+                        id: status.id,
+                        commercialInfo: status.commercialInfo,
+                        bankAccountInfo: status.bankAccountInfo,
+                        documentation: status.documentation,
+                        general: status.general,
+                        onboardingCompletedAt,
+                        lastEvent: school.accountStatusSnapshot?.lastEvent ?? null,
+                        lastEventAt: school.accountStatusSnapshot?.lastEventAt ?? null
+                    };
                 }
-
-                asaasOnboardingStatus = {
-                    id: status.id,
-                    commercialInfo: status.commercialInfo,
-                    bankAccountInfo: status.bankAccountInfo,
-                    documentation: status.documentation,
-                    general: status.general,
-                    onboardingCompletedAt,
-                    lastEvent: school.accountStatusSnapshot?.lastEvent ?? null,
-                    lastEventAt: school.accountStatusSnapshot?.lastEventAt ?? null
-                };
+            } catch {
+                // Se o Asaas estiver instável, não quebramos o /me: caímos no snapshot persistido via webhook.
             }
-        } else if (school.accountStatusSnapshot) {
+        }
+
+        if (!asaasOnboardingStatus && school.accountStatusSnapshot) {
             const snap = school.accountStatusSnapshot;
             // Fallback: usa o snapshot gravado pelos webhooks ACCOUNT_STATUS_* para o frontend decidir.
             asaasOnboardingStatus = {
