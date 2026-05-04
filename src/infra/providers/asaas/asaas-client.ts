@@ -361,9 +361,44 @@ export class AsaasClient {
 
     async getAccountBalance(accountId: string): Promise<{ balance: number; availableBalance: number; blockedBalance?: number }> {
         try {
-            // Tentar endpoint específico de balance primeiro (se existir)
+            /**
+             * Documentação Asaas: GET /v3/finance/balance — saldo da conta associada à API key do client.
+             * Para subconta, o client deve usar a API key da escola (é o que `createSubAccountProvider` faz).
+             * Este endpoint deve ser tentado antes de rotas legadas que costumam não existir na API v3.
+             */
             try {
-                const { data } = await this.http.get<{ balance: number; availableBalance: number; blockedBalance?: number }>(`/accounts/${accountId}/balance`);
+                const { data } = await this.http.get<{
+                    balance?: number;
+                    availableBalance?: number;
+                    blockedBalance?: number;
+                }>('/finance/balance');
+                if (data && typeof data.balance === 'number') {
+                    return {
+                        balance: data.balance,
+                        availableBalance:
+                            typeof data.availableBalance === 'number' ? data.availableBalance : data.balance,
+                        blockedBalance:
+                            typeof data.blockedBalance === 'number' ? data.blockedBalance : undefined
+                    };
+                }
+            } catch (financeErr: unknown) {
+                const status = (financeErr as { response?: { status?: number } })?.response?.status;
+                if (status !== undefined && status !== 404) {
+                    log.warn('[AsaasClient.getAccountBalance] GET /finance/balance falhou', {
+                        accountId: accountId?.trim(),
+                        status,
+                        message: financeErr instanceof Error ? financeErr.message : String(financeErr)
+                    });
+                }
+            }
+
+            // Tentar endpoint por id de conta (ambientes legados / variante de API)
+            try {
+                const { data } = await this.http.get<{
+                    balance: number;
+                    availableBalance: number;
+                    blockedBalance?: number;
+                }>(`/accounts/${encodeURIComponent(accountId.trim())}/balance`);
                 if (data && typeof data.balance === 'number') {
                     return {
                         balance: data.balance,
@@ -371,33 +406,40 @@ export class AsaasClient {
                         blockedBalance: data.blockedBalance
                     };
                 }
-            } catch (balanceError: any) {
-                // Se o endpoint de balance não existir (404 ou outro erro), tentar outras abordagens
-                if (balanceError?.response?.status !== 404) {
-                    console.warn('Erro ao buscar saldo via endpoint /balance:', balanceError.message);
+            } catch (balanceError: unknown) {
+                const status = (balanceError as { response?: { status?: number } })?.response?.status;
+                if (status !== undefined && status !== 404) {
+                    log.warn('[AsaasClient.getAccountBalance] GET /accounts/{id}/balance falhou', {
+                        accountId: accountId?.trim(),
+                        status,
+                        message: balanceError instanceof Error ? balanceError.message : String(balanceError)
+                    });
                 }
             }
 
-            // Tentar buscar saldo através do endpoint de account (algumas APIs retornam saldo junto com os dados da conta)
             try {
                 const accountData = await this.getAccount(accountId);
-                
-                // Verificar se a resposta do getAccount inclui saldo
-                const accountDataAny = accountData as any;
+                const accountDataAny = accountData as Record<string, unknown>;
                 if (accountDataAny && typeof accountDataAny.balance === 'number') {
                     return {
                         balance: accountDataAny.balance,
-                        availableBalance: accountDataAny.availableBalance ?? accountDataAny.balance,
-                        blockedBalance: accountDataAny.blockedBalance
+                        availableBalance:
+                            typeof accountDataAny.availableBalance === 'number'
+                                ? (accountDataAny.availableBalance as number)
+                                : accountDataAny.balance,
+                        blockedBalance:
+                            typeof accountDataAny.blockedBalance === 'number'
+                                ? (accountDataAny.blockedBalance as number)
+                                : undefined
                     };
                 }
             } catch (accountError) {
-                console.warn('Erro ao buscar dados da conta:', accountError);
+                log.warn('[AsaasClient.getAccountBalance] getAccount sem saldo no payload', {
+                    accountId: accountId?.trim(),
+                    error: accountError instanceof Error ? accountError.message : String(accountError)
+                });
             }
 
-            // Fallback: retornar 0 se não conseguir buscar (API do Asaas pode não ter endpoint de saldo)
-            // O saldo real precisa ser consultado através do extrato ou painel do Asaas
-            // Nota: A API do Asaas pode não expor o saldo diretamente via API
             return {
                 balance: 0,
                 availableBalance: 0,
