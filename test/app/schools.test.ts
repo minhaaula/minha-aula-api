@@ -81,6 +81,7 @@ class InMemorySchoolRepository implements SchoolRepository {
             ownerName: school.ownerName,
             ownerCpf: school.ownerCpf,
             ownerEmail: school.ownerEmail,
+            ownerBirthDate: school.ownerBirthDate,
             ownerPasswordHash: hashedPassword,
             accountId: school.accountId,
             incomeValue: school.incomeValue,
@@ -314,6 +315,7 @@ describe('School creation flow', () => {
             ownerName: 'Maria Santos',
             ownerCpf: '529.982.247-25',
             ownerEmail: 'maria@escola.com.br',
+            ownerBirthDate: '1990-05-20',
             ownerWhatsapp: whatsappDigits,
             ownerWhatsappVerificationToken: JSON.stringify({ typ: 'school_signup_phone', ph: e164 }),
             ownerPassword: 'senha12345',
@@ -327,8 +329,11 @@ describe('School creation flow', () => {
         });
 
         expect(result.cnpj).toBeNull();
+        expect(result.ownerBirthDate).toBe('1990-05-20');
         const stored = await repo.findById(result.id);
         expect(stored?.cnpj).toBeNull();
+        expect(stored?.ownerBirthDate).not.toBeNull();
+        expect(stored?.ownerBirthDate?.toISOString().slice(0, 10)).toBe('1990-05-20');
     });
 
     it('creates a school without addresses when none are provided', async () => {

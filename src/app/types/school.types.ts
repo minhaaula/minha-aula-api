@@ -15,6 +15,8 @@ export interface CreateSchoolInput {
     ownerName?: string | null;
     ownerCpf?: string | null;
     ownerEmail?: string | null;
+    /** Data de nascimento do titular (YYYY-MM-DD). Obrigatória quando não há CNPJ. */
+    ownerBirthDate?: string | null;
     /** Celular WhatsApp do responsável (somente dígitos). */
     ownerWhatsapp?: string | null;
     /** Token emitido após validação do OTP via WhatsApp (cadastro de escola). */
@@ -34,6 +36,8 @@ export interface CreateSchoolOutput {
     ownerName: string | null;
     ownerCpf: string | null;
     ownerEmail: string | null;
+    /** YYYY-MM-DD */
+    ownerBirthDate: string | null;
     ownerWhatsapp: string | null;
     incomeValue: number;
     kycUrl?: string | null;
@@ -49,6 +53,7 @@ export interface UpdateSchoolInput {
     ownerName?: string | null;
     ownerCpf?: string | null;
     ownerEmail?: string | null;
+    ownerBirthDate?: string | null;
     ownerWhatsapp?: string | null;
     ownerUserId?: string | null;
     ownerPassword?: string | null;
@@ -74,6 +79,8 @@ export interface UpdateSchoolOutput {
     ownerName: string | null;
     ownerCpf: string | null;
     ownerEmail: string | null;
+    /** YYYY-MM-DD */
+    ownerBirthDate: string | null;
     ownerWhatsapp: string | null;
     incomeValue: number;
     links: {
@@ -92,6 +99,8 @@ export interface SchoolSummary {
     phone: string;
     cnpj: string | null;
     createdAt: Date;
+    /** YYYY-MM-DD */
+    ownerBirthDate?: string | null;
 }
 
 export type BankAccountOutput = {
@@ -122,6 +131,8 @@ export interface GetSchoolProfileOutput {
     ownerName: string | null;
     ownerCpf: string | null;
     ownerEmail: string | null;
+    /** YYYY-MM-DD */
+    ownerBirthDate: string | null;
     ownerWhatsapp: string | null;
     incomeValue: number;
     bankAccounts: BankAccountOutput[];

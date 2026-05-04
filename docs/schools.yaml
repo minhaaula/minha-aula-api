@@ -286,6 +286,8 @@ paths:
                     ownerName: "Maria Silva"
                     ownerCpf: "12345678901"
                     ownerEmail: "diretoria@escoladofuturo.com.br"
+                    ownerBirthDate: null
+                    ownerWhatsapp: "11987654321"
                     incomeValue: 50000
                     bankAccounts: []
                     links:

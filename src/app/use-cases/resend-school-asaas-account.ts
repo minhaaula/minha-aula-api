@@ -88,6 +88,16 @@ export class ResendSchoolAsaasAccount {
                     message: 'CNPJ da escola ou CPF do titular ausente/inválido para criar conta no Asaas'
                 };
             }
+            if (companyType === 'INDIVIDUAL' && !school.ownerBirthDate) {
+                return {
+                    schoolId: school.id,
+                    accountId: school.accountId,
+                    walletId: school.walletId,
+                    onboardingUrl: school.onboardingUrl,
+                    success: false,
+                    message: 'Data de nascimento do titular é obrigatória para cadastro no Asaas sem CNPJ (pessoa física)'
+                };
+            }
             const incomeValue = school.incomeValue && school.incomeValue > 0 ? school.incomeValue : 5000;
 
             // Criar subconta no Asaas
@@ -103,7 +113,11 @@ export class ResendSchoolAsaasAccount {
                 addressNumber: mainAddress.number,
                 complement: mainAddress.complement ?? null,
                 province: mainAddress.district ?? null,
-                postalCode: mainAddress.zipCode
+                postalCode: mainAddress.zipCode,
+                birthDate:
+                    companyType === 'INDIVIDUAL' && school.ownerBirthDate
+                        ? school.ownerBirthDate.toISOString().slice(0, 10)
+                        : null
             });
 
             // Atualizar escola com accountId, accountApiKey e walletId

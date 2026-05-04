@@ -32,6 +32,8 @@ export class School {
         private readonly _ownerName: string | null,
         private readonly _ownerCpf: string | null,
         private readonly _ownerEmail: Email | null,
+        /** Data de nascimento do titular (obrigatória no cadastro quando não há CNPJ; usada na subconta Asaas PF). */
+        private readonly _ownerBirthDate: Date | null,
         /** Celular WhatsApp do responsável (somente dígitos, mesmo formato de `phone`). */
         private readonly _ownerWhatsapp: string | null,
         private readonly _ownerPasswordHash: string | null,
@@ -65,6 +67,7 @@ export class School {
         ownerName?: string | null;
         ownerCpf?: string | null;
         ownerEmail?: string | null;
+        ownerBirthDate?: string | Date | null;
         ownerWhatsapp?: string | null;
         ownerPasswordHash?: string | null;
         accountId?: string | null;
@@ -102,6 +105,7 @@ export class School {
         const ownerName = School.normalizeOwnerName(params.ownerName);
         const ownerCpf = School.normalizeOwnerCpf(params.ownerCpf);
         const ownerEmail = School.normalizeOwnerEmail(params.ownerEmail);
+        const ownerBirthDate = School.normalizeOwnerBirthDate(params.ownerBirthDate);
         const ownerWhatsapp = School.normalizeOwnerWhatsapp(params.ownerWhatsapp);
         const ownerPasswordHash = School.normalizeOwnerPasswordHash(params.ownerPasswordHash);
         const accountId = School.normalizeAccountId(params.accountId);
@@ -132,6 +136,7 @@ export class School {
             ownerName,
             ownerCpf,
             ownerEmail,
+            ownerBirthDate,
             ownerWhatsapp,
             ownerPasswordHash,
             accountId,
@@ -182,6 +187,10 @@ export class School {
 
     get ownerEmail(): string | null {
         return this._ownerEmail ? this._ownerEmail.value : null;
+    }
+
+    get ownerBirthDate(): Date | null {
+        return this._ownerBirthDate;
     }
 
     get ownerWhatsapp(): string | null {
@@ -329,6 +338,36 @@ export class School {
         return Email.create(value);
     }
 
+    private static normalizeOwnerBirthDate(value: unknown): Date | null {
+        if (value === undefined || value === null) return null;
+        if (value instanceof Date) {
+            if (Number.isNaN(value.getTime())) {
+                throw new Error('Invalid school owner birth date');
+            }
+            const y = value.getUTCFullYear();
+            const m = value.getUTCMonth();
+            const d = value.getUTCDate();
+            return new Date(Date.UTC(y, m, d));
+        }
+        if (typeof value !== 'string') {
+            throw new Error('School owner birth date must be a string or Date');
+        }
+        const trimmed = value.trim();
+        if (!trimmed) return null;
+        const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(trimmed);
+        if (!match) {
+            throw new Error('School owner birth date must be YYYY-MM-DD');
+        }
+        const y = Number(match[1]);
+        const mo = Number(match[2]);
+        const d = Number(match[3]);
+        const dt = new Date(Date.UTC(y, mo - 1, d));
+        if (dt.getUTCFullYear() !== y || dt.getUTCMonth() !== mo - 1 || dt.getUTCDate() !== d) {
+            throw new Error('Invalid school owner birth date');
+        }
+        return dt;
+    }
+
     private static normalizeOwnerWhatsapp(value: unknown): string | null {
         if (value === undefined || value === null) return null;
         if (typeof value !== 'string') {
@@ -466,6 +505,7 @@ export class School {
             ownerName: this.ownerName,
             ownerCpf: this.ownerCpf,
             ownerEmail: this.ownerEmail,
+            ownerBirthDate: this._ownerBirthDate,
             ownerWhatsapp: this.ownerWhatsapp,
             ownerPasswordHash: this.ownerPasswordHash,
             createdAt: this.createdAt,

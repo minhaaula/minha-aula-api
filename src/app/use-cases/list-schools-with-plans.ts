@@ -102,6 +102,7 @@ export class ListSchoolsWithPlans {
                 ownerName: school.ownerName,
                 ownerCpf: school.ownerCpf,
                 ownerEmail: school.ownerEmail,
+                ownerBirthDate: school.ownerBirthDate ? school.ownerBirthDate.toISOString().slice(0, 10) : null,
                 ownerWhatsapp: school.ownerWhatsapp,
                 schoolStatus: deriveSchoolStatus(plan, hasCompletedFirstPayment, onboardingCompleted),
                 paymentStatus: derivePaymentStatus(plan),

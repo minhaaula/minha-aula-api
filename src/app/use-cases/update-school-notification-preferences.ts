@@ -36,6 +36,7 @@ export class UpdateSchoolNotificationPreferences {
             ownerName: school.ownerName,
             ownerCpf: school.ownerCpf,
             ownerEmail: school.ownerEmail,
+            ownerBirthDate: school.ownerBirthDate,
             ownerWhatsapp: school.ownerWhatsapp,
             ownerPasswordHash: school.ownerPasswordHash,
             accountId: school.accountId,

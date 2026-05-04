@@ -36,6 +36,9 @@ export class SchoolOrm {
     @Column('varchar', { length: 191, name: 'owner_email', nullable: true })
     ownerEmail!: string | null;
 
+    @Column('date', { name: 'owner_birth_date', nullable: true })
+    ownerBirthDate!: Date | null;
+
     @Column('varchar', { length: 32, name: 'owner_whatsapp', nullable: true })
     ownerWhatsapp!: string | null;
 

@@ -42,6 +42,7 @@ export function buildProfileRoutes(deps: ProfileRoutesDeps, guards: SchoolRouteG
                 ownerName: data.ownerName === undefined ? undefined : data.ownerName,
                 ownerCpf: data.ownerCpf === undefined ? undefined : data.ownerCpf,
                 ownerEmail: data.ownerEmail === undefined ? undefined : data.ownerEmail,
+                ownerBirthDate: data.ownerBirthDate === undefined ? undefined : data.ownerBirthDate,
                 ownerUserId: data.ownerUserId === undefined ? undefined : data.ownerUserId,
                 ownerPassword: data.ownerPassword === undefined ? undefined : data.ownerPassword,
                 incomeValue: data.incomeValue === undefined ? undefined : data.incomeValue,

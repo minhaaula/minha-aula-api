@@ -92,6 +92,14 @@ export class EnsureSchoolAsaasAccount {
             });
             return { done: true };
         }
+
+        if (normalizedCompanyType === 'INDIVIDUAL' && !school.ownerBirthDate) {
+            log.warn('[EnsureSchoolAsaasAccount] Encerrado: data de nascimento do titular ausente (obrigatória para PF sem CNPJ)', {
+                invoiceId,
+                schoolId: school.id
+            });
+            return { done: true };
+        }
         const rawIncomeValue = metadata.accountIncomeValue ?? metadata.incomeValue;
         const parsedIncomeValue =
             typeof rawIncomeValue === 'string'
@@ -163,7 +171,11 @@ export class EnsureSchoolAsaasAccount {
                 addressNumber: mainAddress.number,
                 complement: mainAddress.complement ?? null,
                 province: mainAddress.district ?? null,
-                postalCode: mainAddress.zipCode
+                postalCode: mainAddress.zipCode,
+                birthDate:
+                    normalizedCompanyType === 'INDIVIDUAL' && school.ownerBirthDate
+                        ? school.ownerBirthDate.toISOString().slice(0, 10)
+                        : null
             });
         } catch (createError: unknown) {
             const message = createError instanceof Error ? createError.message : String(createError);

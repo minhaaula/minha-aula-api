@@ -3189,6 +3189,12 @@ components:
           nullable: true
           format: email
           description: Email do responsável
+        ownerBirthDate:
+          type: string
+          nullable: true
+          format: date
+          description: Data de nascimento do titular (YYYY-MM-DD). Obrigatória no cadastro sem CNPJ; necessária para subconta Asaas PF.
+          example: '1990-05-20'
         schoolStatus:
           type: string
           enum: [ACTIVE, INACTIVE]
@@ -3288,6 +3294,7 @@ components:
         - ownerName
         - ownerCpf
         - ownerEmail
+        - ownerBirthDate
         - schoolStatus
         - paymentStatus
         - plan
@@ -4501,6 +4508,12 @@ components:
           nullable: true
           format: email
           description: Email do responsável
+        ownerBirthDate:
+          type: string
+          nullable: true
+          format: date
+          description: Data de nascimento do titular (YYYY-MM-DD)
+          example: '1990-05-20'
         ownerUserId:
           type: string
           format: uuid

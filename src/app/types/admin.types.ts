@@ -22,6 +22,8 @@ export interface SchoolWithPlanItem {
     ownerName: string | null;
     ownerCpf: string | null;
     ownerEmail: string | null;
+    /** YYYY-MM-DD */
+    ownerBirthDate: string | null;
     ownerWhatsapp: string | null;
     schoolStatus: SchoolStatus;
     paymentStatus: PaymentStatus;

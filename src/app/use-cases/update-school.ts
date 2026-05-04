@@ -42,6 +42,8 @@ export class UpdateSchool {
         const ownerName = input.ownerName !== undefined ? input.ownerName : school.ownerName;
         const ownerCpf = input.ownerCpf !== undefined ? input.ownerCpf : school.ownerCpf;
         const ownerEmail = input.ownerEmail !== undefined ? input.ownerEmail : school.ownerEmail;
+        const ownerBirthDate =
+            input.ownerBirthDate !== undefined ? input.ownerBirthDate : school.ownerBirthDate;
         const ownerWhatsapp =
             input.ownerWhatsapp !== undefined ? input.ownerWhatsapp : school.ownerWhatsapp;
         let ownerUserId = input.ownerUserId !== undefined ? input.ownerUserId : school.ownerUserId;
@@ -88,6 +90,7 @@ export class UpdateSchool {
             ownerName,
             ownerCpf,
             ownerEmail,
+            ownerBirthDate,
             ownerWhatsapp,
             ownerPasswordHash,
             createdAt: school.createdAt,
@@ -116,6 +119,7 @@ export class UpdateSchool {
             ownerName: updated.ownerName,
             ownerCpf: updated.ownerCpf,
             ownerEmail: updated.ownerEmail,
+            ownerBirthDate: updated.ownerBirthDate ? updated.ownerBirthDate.toISOString().slice(0, 10) : null,
             ownerWhatsapp: updated.ownerWhatsapp,
             incomeValue: updated.incomeValue,
             links: {

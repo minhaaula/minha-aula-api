@@ -9,7 +9,7 @@ import type { VerifyPhoneOtpChallenge } from '../../../../app/use-cases/verify-p
 import type { AuthenticatedRequest } from '../../middlewares/auth';
 import { authRateLimiter } from '../../middlewares/rate-limiter';
 import { UserPersonaEnum } from '../../../../domain/value-objects/user-persona';
-import { createSchoolSchema } from '../../validators/school-schemas';
+import { createSchoolObjectSchema, createSchoolSchema } from '../../validators/school-schemas';
 import { z } from 'zod';
 import { mapAddresses } from './transformers';
 
@@ -26,7 +26,7 @@ export function buildPublicSchoolRoutes(deps: PublicSchoolRoutesDeps, optionalAu
     const router = Router();
 
     const signupOtpRequestSchema = z.object({
-        phone: createSchoolSchema.shape.ownerWhatsapp
+        phone: createSchoolObjectSchema.shape.ownerWhatsapp
     });
 
     const signupOtpVerifySchema = z.object({
@@ -95,6 +95,7 @@ export function buildPublicSchoolRoutes(deps: PublicSchoolRoutesDeps, optionalAu
             ownerName: data.ownerName,
             ownerCpf: data.ownerCpf,
             ownerEmail: data.ownerEmail,
+            ownerBirthDate: data.ownerBirthDate ?? null,
             ownerWhatsapp: data.ownerWhatsapp ?? null,
             ownerWhatsappVerificationToken: data.ownerWhatsappVerificationToken,
             ownerPassword: data.ownerPassword
@@ -108,8 +109,8 @@ export function buildPublicSchoolRoutes(deps: PublicSchoolRoutesDeps, optionalAu
 
 function createLoginSchema() {
     return z.object({
-        email: createSchoolSchema.shape.email,
-        password: createSchoolSchema.shape.ownerPassword
+        email: createSchoolObjectSchema.shape.email,
+        password: createSchoolObjectSchema.shape.ownerPassword
     });
 }
 

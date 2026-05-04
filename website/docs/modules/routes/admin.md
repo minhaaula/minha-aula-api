@@ -214,7 +214,8 @@ Requer autenticação com persona ADMIN.
 Atualiza dados cadastrais e de configuração de uma escola.
 
 - Permite alterar nome, email, telefone e CNPJ (opcional; pode ser omitido ou limpo para cadastro como pessoa física)
-- Permite atualizar informações do responsável
+- Permite atualizar informações do responsável, incluindo **`ownerBirthDate`** (YYYY-MM-DD), necessária para escolas sem CNPJ quando for criar/recriar subconta Asaas como PF
+- Listagem e detalhe expõem **`ownerBirthDate`** quando cadastrada
 - Permite ajustar `incomeValue` e links públicos da escola
 - Retorna sempre a visão administrativa completa da escola após a atualização
 

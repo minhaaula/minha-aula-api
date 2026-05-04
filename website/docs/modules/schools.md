@@ -5,7 +5,7 @@ title: Módulo Schools
 
 # Módulo Schools
 
-Gestão da **escola**: cadastro, cursos, turmas, alunos, financeiro (cobranças, boletos, PIX), plano da plataforma, integração **Asaas** (subconta, KYC, webhooks) e conteúdo institucional.
+Gestão da **escola**: cadastro, cursos, turmas, alunos, financeiro (cobranças, boletos, PIX), plano da plataforma, integração **Asaas** (subconta, KYC, webhooks) e conteúdo institucional. Cadastro **sem CNPJ** (PF) exige **data de nascimento do titular** (`ownerBirthDate`) para a subconta Asaas.
 
 ## Funcionalidades principais
 

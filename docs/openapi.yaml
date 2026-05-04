@@ -565,6 +565,15 @@ components:
             CNPJ da escola (14 dígitos). Opcional: omita ou envie `null` para cadastro como **pessoa física**;
             nesse caso o **CPF do titular** (`ownerCpf`) é usado na cobrança do plano e na criação da subconta Asaas (tipo INDIVIDUAL).
           example: '12345678000190'
+        ownerBirthDate:
+          type: string
+          format: date
+          pattern: '^\\d{4}-\\d{2}-\\d{2}$'
+          description: >-
+            Data de nascimento do titular (calendário, **YYYY-MM-DD**). **Obrigatória** quando `cnpj` está ausente
+            ou `null` (PF): é persistida e enviada ao Asaas como `birthDate` na criação da subconta, junto com o CPF.
+            Opcional quando há CNPJ (14 dígitos).
+          example: '1990-05-20'
         ownerName:
           type: string
           minLength: 3
@@ -638,6 +647,13 @@ components:
           nullable: true
           format: email
           example: diretoria@escoladofuturo.com.br
+        ownerBirthDate:
+          type: string
+          nullable: true
+          format: date
+          pattern: '^\\d{4}-\\d{2}-\\d{2}$'
+          description: Data de nascimento do titular (YYYY-MM-DD). Use `null` para limpar o valor.
+          example: '1990-05-20'
         ownerUserId:
           type: string
           nullable: true
@@ -838,6 +854,16 @@ components:
           type: string
           format: email
           nullable: true
+        ownerBirthDate:
+          type: string
+          format: date
+          nullable: true
+          description: Data de nascimento do titular (YYYY-MM-DD). `null` se não informada.
+          example: '1990-05-20'
+        ownerWhatsapp:
+          type: string
+          nullable: true
+          description: Celular WhatsApp do responsável (apenas dígitos).
         incomeValue:
           type: integer
           format: int32

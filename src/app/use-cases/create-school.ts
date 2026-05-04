@@ -16,6 +16,18 @@ import { toE164Brazil } from '../../shared/phone-e164';
 /** Data de nascimento padrão para o usuário dono quando não é informada (User exige birthDate). */
 const DEFAULT_OWNER_BIRTH_DATE = new Date('1980-01-01');
 
+function parseIsoDateOnly(value: string | null | undefined): Date | null {
+    if (value == null || value === '') return null;
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value).trim());
+    if (!m) return null;
+    const y = Number(m[1]);
+    const mo = Number(m[2]);
+    const d = Number(m[3]);
+    const dt = new Date(Date.UTC(y, mo - 1, d));
+    if (dt.getUTCFullYear() !== y || dt.getUTCMonth() !== mo - 1 || dt.getUTCDate() !== d) return null;
+    return dt;
+}
+
 export class CreateSchool {
     constructor(
         private readonly schools: SchoolRepository,
@@ -110,10 +122,11 @@ export class CreateSchool {
                     state: mainAddress.state,
                     zipCode: mainAddress.zipCode
                 });
+                const ownerBirthForUser = parseIsoDateOnly(input.ownerBirthDate) ?? DEFAULT_OWNER_BIRTH_DATE;
                 const ownerUser = User.create({
                     id: ownerId,
                     fullName: input.ownerName.trim(),
-                    birthDate: DEFAULT_OWNER_BIRTH_DATE,
+                    birthDate: ownerBirthForUser,
                     email: Email.create(input.ownerEmail),
                     phone: input.phone,
                     cpf: ownerCpfDigits,
@@ -137,6 +150,7 @@ export class CreateSchool {
             ownerName: input.ownerName ?? null,
             ownerCpf: input.ownerCpf ?? null,
             ownerEmail: input.ownerEmail ?? null,
+            ownerBirthDate: input.ownerBirthDate ?? null,
             ownerWhatsapp: e164,
             ownerPasswordHash,
             incomeValue: input.incomeValue
@@ -193,6 +207,7 @@ export class CreateSchool {
             ownerName: school.ownerName,
             ownerCpf: school.ownerCpf,
             ownerEmail: school.ownerEmail,
+            ownerBirthDate: school.ownerBirthDate ? school.ownerBirthDate.toISOString().slice(0, 10) : null,
             ownerWhatsapp: school.ownerWhatsapp,
             incomeValue: school.incomeValue,
             kycUrl: null

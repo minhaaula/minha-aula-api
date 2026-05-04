@@ -9,7 +9,8 @@ import { addressSchema } from './common-schemas';
 // Re-export para compatibilidade
 export { addressSchema };
 
-export const createSchoolSchema = z.object({
+/** Schema “cru” (com `.shape`) para reutilizar campos em OTP/login; a validação final é `createSchoolSchema`. */
+export const createSchoolObjectSchema = z.object({
     name: z.string().trim().min(3),
     email: z.string().trim().email(),
     phone: phoneNumberSchema(),
@@ -18,10 +19,24 @@ export const createSchoolSchema = z.object({
     ownerName: z.string().trim().min(3),
     ownerCpf: cpfNumberSchema(),
     ownerEmail: z.string().trim().email(),
+    /** YYYY-MM-DD — obrigatório quando não há CNPJ (subconta Asaas pessoa física). */
+    ownerBirthDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
     ownerWhatsapp: phoneNumberSchema(),
     ownerWhatsappVerificationToken: z.string().trim().min(10),
     ownerPassword: z.string().min(8),
     addresses: z.array(addressSchema).optional()
+});
+
+export const createSchoolSchema = createSchoolObjectSchema.superRefine((data, ctx) => {
+    const cnpjDigits = (data.cnpj ?? '').replace(/\D/g, '');
+    const hasCnpj = cnpjDigits.length === 14;
+    if (!hasCnpj && !data.ownerBirthDate?.trim()) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Informe a data de nascimento do titular (YYYY-MM-DD) quando não há CNPJ.',
+            path: ['ownerBirthDate']
+        });
+    }
 });
 
 export const updateSchoolSchema = z.object({
@@ -32,6 +47,7 @@ export const updateSchoolSchema = z.object({
     ownerName: z.string().trim().min(3).nullable().optional(),
     ownerCpf: cpfNumberSchema().nullable().optional(),
     ownerEmail: z.string().trim().email().nullable().optional(),
+    ownerBirthDate: z.union([z.string().regex(/^\d{4}-\d{2}-\d{2}$/), z.null()]).optional(),
     ownerWhatsapp: z.union([z.null(), phoneNumberSchema()]).optional(),
     ownerUserId: z.string().trim().min(1).nullable().optional(),
     ownerPassword: z.string().min(8).nullable().optional(),
