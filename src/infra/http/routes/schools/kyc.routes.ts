@@ -6,6 +6,7 @@ import type { GetSchoolPendingDocuments } from '../../../../app/use-cases/get-sc
 import type { SyncSchoolOnboardingDocuments } from '../../../../app/use-cases/sync-school-onboarding-documents';
 import type { AdminUploadSchoolOnboardingDocument } from '../../../../app/use-cases/admin-upload-school-onboarding-document';
 import type { SyncSchoolSubaccountStatus } from '../../../../app/use-cases/sync-school-subaccount-status';
+import type { ResendSchoolAsaasBankAccount } from '../../../../app/use-cases/resend-school-asaas-bank-account';
 import type { SchoolRouteGuards } from './guards';
 import type { SchoolContextRequest } from '../../middlewares/resolve-school-context';
 import { AppError, ErrorCode } from '../../../../shared/errors';
@@ -28,6 +29,7 @@ type KycRoutesDeps = {
     syncSchoolOnboardingDocuments?: SyncSchoolOnboardingDocuments;
     uploadSchoolOnboardingDocument?: AdminUploadSchoolOnboardingDocument;
     syncSchoolSubaccountStatus?: SyncSchoolSubaccountStatus;
+    resendSchoolAsaasBankAccount?: ResendSchoolAsaasBankAccount;
 };
 
 export function buildKycRoutes(deps: KycRoutesDeps, guards: SchoolRouteGuards) {
@@ -68,6 +70,52 @@ export function buildKycRoutes(deps: KycRoutesDeps, guards: SchoolRouteGuards) {
             const schoolId = (req as SchoolContextRequest).schoolId as string;
 
             const result = await deps.syncSchoolOnboardingDocuments!.exec({ schoolId });
+
+            res.json(result);
+        }));
+    }
+
+    if (deps.syncSchoolOnboardingDocuments || deps.syncSchoolSubaccountStatus) {
+        router.post('/resend', ...protectedMiddleware, asyncHandler(async (req, res) => {
+            const schoolId = (req as SchoolContextRequest).schoolId as string;
+
+            const documents = deps.syncSchoolOnboardingDocuments
+                ? await deps.syncSchoolOnboardingDocuments.exec({ schoolId })
+                : null;
+            const status = deps.syncSchoolSubaccountStatus
+                ? await deps.syncSchoolSubaccountStatus.exec({ schoolId })
+                : null;
+
+            res.json({
+                documents,
+                status: status
+                    ? {
+                        id: status.status.id,
+                        commercialInfo: status.status.commercialInfo,
+                        bankAccountInfo: status.status.bankAccountInfo,
+                        documentation: status.status.documentation,
+                        general: status.status.general,
+                        onboardingCompletedAt: status.onboardingCompletedAt
+                    }
+                    : null
+            });
+        }));
+    }
+
+    if (deps.resendSchoolAsaasBankAccount) {
+        router.post('/bank-account/resend', ...protectedMiddleware, asyncHandler(async (req, res) => {
+            const schoolId = (req as SchoolContextRequest).schoolId as string;
+            const bodySchema = z.object({
+                otpChallengeId: z.string().uuid(),
+                bankAccountId: z.string().uuid().optional().nullable()
+            });
+            const body = bodySchema.parse(req.body ?? {});
+
+            const result = await deps.resendSchoolAsaasBankAccount!.exec({
+                schoolId,
+                otpChallengeId: body.otpChallengeId,
+                bankAccountId: body.bankAccountId ?? null
+            });
 
             res.json(result);
         }));

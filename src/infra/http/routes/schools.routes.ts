@@ -143,6 +143,7 @@ export type SchoolsRouterDeps = {
     syncSchoolOnboardingDocuments?: import('../../../app/use-cases/sync-school-onboarding-documents').SyncSchoolOnboardingDocuments;
     uploadSchoolOnboardingDocument?: import('../../../app/use-cases/admin-upload-school-onboarding-document').AdminUploadSchoolOnboardingDocument;
     syncSchoolSubaccountStatus?: import('../../../app/use-cases/sync-school-subaccount-status').SyncSchoolSubaccountStatus;
+    resendSchoolAsaasBankAccount?: import('../../../app/use-cases/resend-school-asaas-bank-account').ResendSchoolAsaasBankAccount;
     requestSchoolActionOtp?: RequestSchoolActionOtp;
     verifySchoolActionOtp?: VerifySchoolActionOtp;
 };
@@ -276,7 +277,8 @@ export function schoolsRouter(deps: SchoolsRouterDeps) {
                     getSchoolPendingDocuments: deps.getSchoolPendingDocuments,
                     syncSchoolOnboardingDocuments: deps.syncSchoolOnboardingDocuments,
                     uploadSchoolOnboardingDocument: deps.uploadSchoolOnboardingDocument,
-                    syncSchoolSubaccountStatus: deps.syncSchoolSubaccountStatus
+                    syncSchoolSubaccountStatus: deps.syncSchoolSubaccountStatus,
+                    resendSchoolAsaasBankAccount: deps.resendSchoolAsaasBankAccount
                 },
                 guards
             )

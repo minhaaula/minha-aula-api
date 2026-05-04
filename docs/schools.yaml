@@ -3796,6 +3796,220 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /schools/kyc/asaas-account-status:
+    get:
+      tags:
+        - Schools
+      summary: Consultar situação cadastral (KYC) da subconta no Asaas
+      description: |
+        Consulta diretamente o status cadastral da subconta da escola no Asaas (GET /v3/myAccount/status),
+        retornando os status por etapa:
+        - `commercialInfo`
+        - `bankAccountInfo`
+        - `documentation`
+        - `general`
+        
+        Quando todas as etapas estiverem `APPROVED`, a API marca `onboardingCompletedAt` no cadastro da escola.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Status cadastral retornado com sucesso.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - id
+                  - commercialInfo
+                  - bankAccountInfo
+                  - documentation
+                  - general
+                  - onboardingCompletedAt
+                properties:
+                  id:
+                    type: string
+                    description: ID da conta/subconta no Asaas
+                  commercialInfo:
+                    type: string
+                    description: Status da etapa de dados comerciais
+                  bankAccountInfo:
+                    type: string
+                    description: Status da etapa de dados bancários
+                  documentation:
+                    type: string
+                    description: Status da etapa de documentos
+                  general:
+                    type: string
+                    description: Status da aprovação geral
+                  onboardingCompletedAt:
+                    type: string
+                    format: date-time
+                    nullable: true
+        '400':
+          description: "Requisição inválida (ex.: escola sem subconta Asaas configurada)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Não autorizado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Requer persona SCHOOL.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Escola não encontrada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /schools/kyc/resend:
+    post:
+      tags:
+        - Schools
+      summary: Reenviar (sincronizar) KYC após reprovação/pendência
+      description: |
+        Endpoint para o frontend “reprocessar” o KYC quando houver reprovação/pendência no Asaas.
+        
+        Ele executa:
+        - sincronização de documentos pendentes + `onboardingUrl` (quando disponível)
+        - consulta do status cadastral (commercialInfo, bankAccountInfo, documentation, general)
+        
+        Requer autenticação com persona SCHOOL.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Corpo vazio
+      responses:
+        '200':
+          description: Sincronização executada.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  documents:
+                    type: object
+                    nullable: true
+                    description: Resultado da sincronização de documentos (mesmo formato de POST /schools/kyc/sync-onboarding-documents)
+                  status:
+                    type: object
+                    nullable: true
+                    description: Status cadastral por etapa
+                    properties:
+                      id:
+                        type: string
+                      commercialInfo:
+                        type: string
+                      bankAccountInfo:
+                        type: string
+                      documentation:
+                        type: string
+                      general:
+                        type: string
+                      onboardingCompletedAt:
+                        type: string
+                        format: date-time
+                        nullable: true
+        '401':
+          description: Não autorizado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Requer persona SCHOOL.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /schools/kyc/bank-account/resend:
+    post:
+      tags:
+        - Schools
+      summary: Reenviar dados bancários para o Asaas (KYC)
+      description: |
+        Reenvia/sincroniza os dados bancários da escola para o Asaas no contexto da subconta autenticada.
+        Use quando `bankAccountInfo` estiver `REJECTED`/`PENDING` e a escola precisar reenviar após corrigir os dados.
+        
+        **Requer OTP** (purpose `BANK_ACCOUNT_CHANGE`).
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - otpChallengeId
+              properties:
+                otpChallengeId:
+                  type: string
+                  format: uuid
+                  description: Challenge ID do OTP para ações sensíveis (BANK_ACCOUNT_CHANGE)
+                bankAccountId:
+                  type: string
+                  format: uuid
+                  nullable: true
+                  description: Opcional. Se omitido, tenta reenviar a conta bancária ativa da escola.
+      responses:
+        '200':
+          description: Dados bancários enviados ao Asaas com sucesso.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - schoolId
+                  - bankAccountId
+                  - asaas
+                properties:
+                  schoolId:
+                    type: string
+                    format: uuid
+                  bankAccountId:
+                    type: string
+                    format: uuid
+                  asaas:
+                    type: object
+                    description: Resposta bruta do Asaas ao cadastrar conta bancária (campos variam)
+        '400':
+          description: "Erro de validação (ex.: escola sem subconta, OTP inválido, conta bancária inválida)."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Não autorizado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Requer persona SCHOOL.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Escola não encontrada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /schools/kyc/documents/{documentGroupId}/upload:
     post:
       tags:

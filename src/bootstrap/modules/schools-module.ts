@@ -37,6 +37,7 @@ import { GetSchoolPendingDocuments } from '../../app/use-cases/get-school-pendin
 import { SyncSchoolOnboardingDocuments } from '../../app/use-cases/sync-school-onboarding-documents';
 import { AdminUploadSchoolOnboardingDocument } from '../../app/use-cases/admin-upload-school-onboarding-document';
 import { SyncSchoolSubaccountStatus } from '../../app/use-cases/sync-school-subaccount-status';
+import { ResendSchoolAsaasBankAccount } from '../../app/use-cases/resend-school-asaas-bank-account';
 import { UpdateCourse } from '../../app/use-cases/update-course';
 import { DeleteCourse } from '../../app/use-cases/delete-course';
 import { SchoolPlanInvoiceRepositoryAdapter } from '../../infra/db/typeorm/school-plan-invoice-repository.adapter';
@@ -214,6 +215,11 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
     const syncSchoolSubaccountStatus = asaasProvider
         ? new SyncSchoolSubaccountStatus(deps.schoolsRepo, asaasProvider)
         : undefined;
+
+    const resendSchoolAsaasBankAccount =
+        deps.bankAccountsRepo && asaasProvider
+            ? new ResendSchoolAsaasBankAccount(deps.schoolsRepo, deps.bankAccountsRepo, schoolActionOtpConsumer, asaasProvider)
+            : undefined;
 
     const listSchoolBankAccounts = deps.bankAccountsRepo
         ? new ListSchoolBankAccounts(deps.bankAccountsRepo)
@@ -529,6 +535,7 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         syncSchoolOnboardingDocuments,
         uploadSchoolOnboardingDocument,
         syncSchoolSubaccountStatus,
+        resendSchoolAsaasBankAccount,
         requestSchoolActionOtp,
         verifySchoolActionOtp
     });
