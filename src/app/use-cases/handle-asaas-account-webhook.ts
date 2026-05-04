@@ -35,6 +35,8 @@ type HandleAsaasAccountWebhookInput = {
      */
     accountStatus?: AsaasAccountStatusPayload | null;
     eventId?: string | null;
+    /** Data/hora de criação do evento informada pelo Asaas (ex.: "2026-05-03 15:29:46"). */
+    eventCreatedAt?: string | null;
 };
 
 type HandleAsaasAccountWebhookOutput = {
@@ -78,6 +80,7 @@ export class HandleAsaasAccountWebhook {
         const eventName = input.event?.toUpperCase?.() ?? '';
         const account = input.account ?? null;
         const accountStatus = input.accountStatus ?? null;
+        const eventCreatedAt = input.eventCreatedAt ?? null;
 
         if (!account && !accountStatus) {
             return { handled: false, reason: 'Missing account payload' };
@@ -112,6 +115,23 @@ export class HandleAsaasAccountWebhook {
         let updatedSchool = school;
         let needsUpdate = false;
 
+        // Idempotência por data do evento: se já processamos um evento mais novo, ignoramos patches do snapshot.
+        // Observação: o Asaas pode reenviar múltiplos eventos no mesmo segundo; nesse caso aceitamos o merge pois é idempotente.
+        const currentSnapshotAtMs = (() => {
+            const currentAt = school.accountStatusSnapshot?.lastEventAt?.trim();
+            if (!currentAt) return null;
+            const ms = Date.parse(currentAt);
+            return Number.isNaN(ms) ? null : ms;
+        })();
+        const incomingSnapshotAtMs = (() => {
+            const parsed = HandleAsaasAccountWebhook.parseAsaasDateTime(eventCreatedAt);
+            return parsed ? parsed.getTime() : null;
+        })();
+        const shouldApplySnapshotPatch =
+            currentSnapshotAtMs === null ||
+            incomingSnapshotAtMs === null ||
+            incomingSnapshotAtMs >= currentSnapshotAtMs;
+
         if (accountId && !school.accountId) {
             updatedSchool = updatedSchool.withAccountId(accountId);
             needsUpdate = true;
@@ -127,7 +147,12 @@ export class HandleAsaasAccountWebhook {
             needsUpdate = true;
         }
 
-        const snapshotPatch = this.buildSnapshotPatch(eventName, accountStatus);
+        const snapshotPatch = shouldApplySnapshotPatch
+            ? this.buildSnapshotPatch(eventName, accountStatus, eventCreatedAt)
+            : null;
+        if (!shouldApplySnapshotPatch && KNOWN_ACCOUNT_STATUS_EVENTS.has(eventName)) {
+            return { handled: true, reason: 'Ignored older duplicate account status event' };
+        }
         if (snapshotPatch) {
             updatedSchool = updatedSchool.withAccountStatusSnapshot(snapshotPatch);
             needsUpdate = true;
@@ -167,7 +192,8 @@ export class HandleAsaasAccountWebhook {
      */
     private buildSnapshotPatch(
         eventName: string,
-        accountStatus: AsaasAccountStatusPayload | null
+        accountStatus: AsaasAccountStatusPayload | null,
+        eventCreatedAt: string | null
     ): SchoolAccountStatusSnapshot | null {
         const patch: SchoolAccountStatusSnapshot = {};
         let hasAny = false;
@@ -200,7 +226,7 @@ export class HandleAsaasAccountWebhook {
 
         if (eventName) {
             patch.lastEvent = eventName;
-            patch.lastEventAt = new Date().toISOString();
+            patch.lastEventAt = (HandleAsaasAccountWebhook.parseAsaasDateTime(eventCreatedAt) ?? new Date()).toISOString();
             hasAny = true;
         }
 
@@ -226,5 +252,25 @@ export class HandleAsaasAccountWebhook {
             }
         }
         return null;
+    }
+
+    /**
+     * Parse do formato do Asaas: "YYYY-MM-DD HH:mm:ss" (sem timezone).
+     * Estratégia: tratar como horário local do servidor.
+     */
+    private static parseAsaasDateTime(value: string | null): Date | null {
+        if (!value) return null;
+        const trimmed = value.trim();
+        if (!trimmed) return null;
+        const m = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})$/.exec(trimmed);
+        if (!m) return null;
+        const year = Number(m[1]);
+        const month = Number(m[2]) - 1;
+        const day = Number(m[3]);
+        const hour = Number(m[4]);
+        const minute = Number(m[5]);
+        const second = Number(m[6]);
+        const d = new Date(year, month, day, hour, minute, second);
+        return Number.isNaN(d.getTime()) ? null : d;
     }
 }

@@ -306,7 +306,8 @@ export function asaasWebhookRouter(deps: AsaasWebhookDeps) {
             event: payload.event,
             account: payload.account ?? undefined,
             accountStatus: payload.accountStatus ?? undefined,
-            eventId: payload.id
+            eventId: payload.id,
+            eventCreatedAt: payload.dateCreated ?? null
         });
 
         return res.status(200).json({ ok: true, handled: result.handled, reason: result.reason ?? null });

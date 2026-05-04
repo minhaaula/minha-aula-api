@@ -16,6 +16,10 @@ export type SchoolProfileAsaasOnboardingStatus = {
     documentation: string;
     general: string;
     onboardingCompletedAt: Date | null;
+    /** Último evento ACCOUNT_STATUS_* processado (quando disponível via snapshot). */
+    lastEvent?: string | null;
+    /** ISO timestamp do último evento processado (quando disponível via snapshot). */
+    lastEventAt?: string | null;
 };
 
 /** Dados de onboarding / KYC no `GET /schools/me`. */
@@ -189,7 +193,9 @@ export class GetSchoolProfile {
                 bankAccountInfo: 'APPROVED',
                 documentation: 'APPROVED',
                 general: 'APPROVED',
-                onboardingCompletedAt: school.onboardingCompletedAt
+                onboardingCompletedAt: school.onboardingCompletedAt,
+                lastEvent: school.accountStatusSnapshot?.lastEvent ?? null,
+                lastEventAt: school.accountStatusSnapshot?.lastEventAt ?? null
             };
         } else if (school.accountApiKey?.trim() && this.asaasProvider?.getAccountStatus) {
             const status = await this.asaasProvider.getAccountStatus(school.accountApiKey);
@@ -214,9 +220,24 @@ export class GetSchoolProfile {
                     bankAccountInfo: status.bankAccountInfo,
                     documentation: status.documentation,
                     general: status.general,
-                    onboardingCompletedAt
+                    onboardingCompletedAt,
+                    lastEvent: school.accountStatusSnapshot?.lastEvent ?? null,
+                    lastEventAt: school.accountStatusSnapshot?.lastEventAt ?? null
                 };
             }
+        } else if (school.accountStatusSnapshot) {
+            const snap = school.accountStatusSnapshot;
+            // Fallback: usa o snapshot gravado pelos webhooks ACCOUNT_STATUS_* para o frontend decidir.
+            asaasOnboardingStatus = {
+                id: school.accountId?.trim() ?? '',
+                commercialInfo: snap.commercialInfo ?? 'PENDING',
+                bankAccountInfo: snap.bankAccountInfo ?? 'PENDING',
+                documentation: snap.documentation ?? 'PENDING',
+                general: snap.general ?? 'PENDING',
+                onboardingCompletedAt: school.onboardingCompletedAt,
+                lastEvent: snap.lastEvent ?? null,
+                lastEventAt: snap.lastEventAt ?? null
+            };
         }
 
         return {

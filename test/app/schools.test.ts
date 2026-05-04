@@ -577,6 +577,46 @@ describe('School creation flow', () => {
         expect(profile?.onboarding.completed).toBe(true);
     });
 
+    it('perfil /me: usa snapshot do webhook (accountStatusSnapshot) como fallback quando não chama a API do Asaas', async () => {
+        const repo = new InMemorySchoolRepository();
+        const boomAsaas = {
+            async getAccountStatus() {
+                throw new Error('getAccountStatus não deve ser chamado no fallback por snapshot');
+            }
+        };
+        const getProfile = new GetSchoolProfile(repo, undefined, undefined, undefined, undefined, undefined, boomAsaas as never);
+
+        const school = School.create({
+            id: 'school-onb-snapshot',
+            name: 'Escola Snapshot',
+            email: 'snapshot@escola.com',
+            phone: '11988887777',
+            cnpj: '12345678000191',
+            accountId: 'acc-snapshot-1',
+            accountStatusSnapshot: {
+                commercialInfo: 'PENDING',
+                bankAccountInfo: 'APPROVED',
+                documentation: 'PENDING',
+                general: 'REJECTED',
+                lastEvent: 'ACCOUNT_STATUS_GENERAL_APPROVAL_REJECTED',
+                lastEventAt: '2026-05-03T18:29:46.000Z'
+            }
+        });
+        repo.seed(school);
+
+        const profile = await getProfile.exec({ schoolId: school.id });
+        expect(profile?.onboarding.completed).toBe(false);
+        expect(profile?.onboarding.asaasStatus).toMatchObject({
+            id: 'acc-snapshot-1',
+            commercialInfo: 'PENDING',
+            bankAccountInfo: 'APPROVED',
+            documentation: 'PENDING',
+            general: 'REJECTED',
+            lastEvent: 'ACCOUNT_STATUS_GENERAL_APPROVAL_REJECTED',
+            lastEventAt: '2026-05-03T18:29:46.000Z'
+        });
+    });
+
     it('fetches school profile with active plan', async () => {
         const repo = new InMemorySchoolRepository();
         const finances = new InMemoryFinanceRepository();
