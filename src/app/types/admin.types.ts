@@ -16,7 +16,7 @@ export interface SchoolWithPlanItem {
     name: string;
     email: string;
     phone: string;
-    cnpj: string;
+    cnpj: string | null;
     addresses: PostalAddressOutput[];
     createdAt: Date;
     ownerName: string | null;

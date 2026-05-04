@@ -19,7 +19,7 @@ export class SchoolOrm {
 
     @Column('varchar', { length: 32 }) phone!: string;
 
-    @Column('char', { length: 14 }) cnpj!: string;
+    @Column('char', { length: 14, nullable: true }) cnpj!: string | null;
 
     @Column('char', { length: 36, name: 'owner_user_id', nullable: true }) ownerUserId!: string | null;
 

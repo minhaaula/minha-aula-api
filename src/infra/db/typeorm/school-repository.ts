@@ -128,7 +128,7 @@ export class SchoolRepositoryAdapter implements SchoolRepository {
             createdAt: row.createdAt,
             email: row.email,
             phone: row.phone,
-            cnpj: row.cnpj,
+            cnpj: row.cnpj ?? null,
             ownerUserId: row.ownerUserId ?? null,
             ownerName: row.ownerName ?? null,
             ownerCpf: row.ownerCpf ?? null,

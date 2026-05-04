@@ -79,7 +79,7 @@ Quando o outcome é **PAID**, o use case garante que a escola tenha subconta no 
 - Caso contrário → chama `asaasProvider.createSubAccount(...)` com dados da escola (nome, email, CNPJ, endereço, etc.); salva `accountId`, opcionalmente `accountApiKey` e `walletId` na escola; preenche metadata.  
   Em background (não bloqueia resposta): `fetchAndSaveOnboardingUrl(schoolId, apiKey)` após 15s para buscar link de onboarding e persistir na escola.
 
-Validações: nome, email, CNPJ, telefone, endereço; `incomeValue` e `companyType` com defaults.
+Validações: nome, email, documento (CNPJ da escola **ou**, na ausência de CNPJ, CPF do titular), telefone, endereço; `incomeValue` e `companyType` com defaults (PF → `INDIVIDUAL`).
 
 ### 3.3 Refactor aplicado: subconta em fila
 

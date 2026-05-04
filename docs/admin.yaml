@@ -3165,7 +3165,8 @@ components:
           description: Telefone de contato
         cnpj:
           type: string
-          description: CNPJ da escola (apenas dígitos)
+          nullable: true
+          description: CNPJ da escola (apenas dígitos). Null quando o cadastro é como pessoa física (sem CNPJ).
         addresses:
           type: array
           items:
@@ -4481,7 +4482,8 @@ components:
           description: Telefone de contato (apenas dígitos)
         cnpj:
           type: string
-          description: CNPJ da escola (apenas dígitos)
+          nullable: true
+          description: CNPJ da escola (apenas dígitos). Null quando o cadastro é como pessoa física (sem CNPJ).
         incomeValue:
           type: number
           description: Receita mensal estimada da escola

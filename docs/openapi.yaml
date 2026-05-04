@@ -538,11 +538,12 @@ components:
         - name
         - email
         - phone
-        - cnpj
         - ownerName
         - ownerCpf
         - ownerEmail
         - ownerPassword
+        - ownerWhatsapp
+        - ownerWhatsappVerificationToken
       properties:
         name:
           type: string
@@ -557,8 +558,12 @@ components:
           example: '11987654321'
         cnpj:
           type: string
+          nullable: true
           minLength: 14
           maxLength: 14
+          description: >-
+            CNPJ da escola (14 dígitos). Opcional: omita ou envie `null` para cadastro como **pessoa física**;
+            nesse caso o **CPF do titular** (`ownerCpf`) é usado na cobrança do plano e na criação da subconta Asaas (tipo INDIVIDUAL).
           example: '12345678000190'
         ownerName:
           type: string
@@ -577,6 +582,14 @@ components:
           type: string
           format: password
           minLength: 8
+        ownerWhatsapp:
+          type: string
+          description: Celular do responsável (WhatsApp), mesmo padrão de `phone`. Usado na verificação por OTP antes de concluir o cadastro.
+          example: '11987654321'
+        ownerWhatsappVerificationToken:
+          type: string
+          minLength: 10
+          description: Token retornado após validar o código OTP enviado ao WhatsApp do responsável.
         addresses:
           type: array
           description: Lista de endereços físicos da escola.
@@ -604,8 +617,10 @@ components:
           example: '11987654321'
         cnpj:
           type: string
+          nullable: true
           minLength: 14
           maxLength: 14
+          description: CNPJ da escola (14 dígitos) ou `null` se operação como pessoa física (sem CNPJ).
           example: '12345678000190'
         ownerName:
           type: string
@@ -800,6 +815,8 @@ components:
           type: string
         cnpj:
           type: string
+          nullable: true
+          description: CNPJ da escola (14 dígitos). `null` quando o cadastro é como pessoa física (sem CNPJ).
         addresses:
           type: array
           items:
@@ -928,7 +945,6 @@ components:
         - name
         - email
         - phone
-        - cnpj
         - addresses
         - createdAt
         - links

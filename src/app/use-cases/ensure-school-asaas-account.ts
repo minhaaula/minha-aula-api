@@ -62,10 +62,6 @@ export class EnsureSchoolAsaasAccount {
             log.warn('[EnsureSchoolAsaasAccount] Encerrado: escola sem nome ou email', { invoiceId, schoolId: school.id });
             return { done: true };
         }
-        if (!school.cnpj || school.cnpj.length !== 14) {
-            log.warn('[EnsureSchoolAsaasAccount] Encerrado: CNPJ da escola inválido', { invoiceId, schoolId: school.id });
-            return { done: true };
-        }
         if (!school.phone || school.phone.length < 10) {
             log.warn('[EnsureSchoolAsaasAccount] Encerrado: telefone da escola inválido (mín. 10 dígitos)', { invoiceId, schoolId: school.id });
             return { done: true };
@@ -75,10 +71,27 @@ export class EnsureSchoolAsaasAccount {
         const metadataAccountId = metadata.accountId ?? metadata.asaasSubAccountId ?? metadata.paymentAccountId;
         const metadataStatus = metadata.accountStatus ?? metadata.asaasSubAccountStatus ?? metadata.paymentAccountStatus;
         const rawCompanyType = metadata.accountCompanyType ?? metadata.companyType;
-        const normalizedCompanyType =
-            typeof rawCompanyType === 'string' && ALLOWED_COMPANY_TYPES.has(rawCompanyType.trim().toUpperCase())
-                ? rawCompanyType.trim().toUpperCase()
-                : 'LIMITED';
+
+        const hasValidCnpj = Boolean(school.cnpj && school.cnpj.length === 14);
+        const ownerCpfDigits = (school.ownerCpf ?? '').replace(/\D/g, '');
+        let cpfCnpj: string;
+        let normalizedCompanyType: string;
+        if (hasValidCnpj) {
+            cpfCnpj = school.cnpj as string;
+            normalizedCompanyType =
+                typeof rawCompanyType === 'string' && ALLOWED_COMPANY_TYPES.has(rawCompanyType.trim().toUpperCase())
+                    ? rawCompanyType.trim().toUpperCase()
+                    : 'LIMITED';
+        } else if (ownerCpfDigits.length === 11) {
+            cpfCnpj = ownerCpfDigits;
+            normalizedCompanyType = 'INDIVIDUAL';
+        } else {
+            log.warn('[EnsureSchoolAsaasAccount] Encerrado: CNPJ da escola ou CPF do titular ausente/inválido para Asaas', {
+                invoiceId,
+                schoolId: school.id
+            });
+            return { done: true };
+        }
         const rawIncomeValue = metadata.accountIncomeValue ?? metadata.incomeValue;
         const parsedIncomeValue =
             typeof rawIncomeValue === 'string'
@@ -141,7 +154,7 @@ export class EnsureSchoolAsaasAccount {
             subAccount = await this.asaasProvider.createSubAccount({
                 name: school.name,
                 email: school.email,
-                cpfCnpj: school.cnpj,
+                cpfCnpj,
                 phone: school.phone,
                 externalReference: school.id,
                 companyType: normalizedCompanyType,

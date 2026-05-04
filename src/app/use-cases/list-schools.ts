@@ -6,7 +6,7 @@ type SchoolSummary = {
     name: string;
     email: string;
     phone: string;
-    cnpj: string;
+    cnpj: string | null;
     addresses: PostalAddressProps[];
     createdAt: Date;
     ownerName: string | null;

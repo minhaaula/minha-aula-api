@@ -198,8 +198,8 @@ graph TB
 
 Quando uma escola é criada, o sistema automaticamente:
 
-1. **Cria uma subconta no Asaas** via `createSubAccount`
-   - Envia dados da escola (nome, email, CNPJ, telefone, endereço, faturamento)
+1. **Cria uma subconta no Asaas** via `createSubAccount` (em geral após o primeiro pagamento do plano, via worker `EnsureSchoolAsaasAccount`)
+   - Envia dados da escola (nome, email, documento fiscal, telefone, endereço, faturamento): **CNPJ** (PJ) ou **CPF do titular** (PF, quando não há CNPJ), com `companyType` adequado (ex.: `INDIVIDUAL` para PF)
    - Recebe: `accountId`, `apiKey`, `walletId`
 
 2. **Busca detalhes da conta** via `getAccount`
@@ -322,6 +322,8 @@ erDiagram
         string onboardingUrl
     }
 ```
+
+No modelo persistido, `cnpj` pode ser **null** quando a escola opera como **pessoa física** (sem CNPJ).
 
 ## Módulos e Rotas
 

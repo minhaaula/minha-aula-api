@@ -22,6 +22,7 @@ import { PasswordHasherPort } from '../../src/ports/providers/password-hasher.po
 import { LoginSchool } from '../../src/app/use-cases/login-school';
 import { TokenProviderPort } from '../../src/ports/providers/token-provider.port';
 import { equalUuid } from '../../src/shared/normalize-uuid';
+import { toE164Brazil } from '../../src/shared/phone-e164';
 import { SchoolPlanFinanceRepository } from '../../src/ports/repositories/school-plan-finance.repo';
 import { SchoolPlanFinance } from '../../src/domain/entities/school-plan-finance';
 import { SubscriptionPlan } from '../../src/domain/entities/subscription-plan';
@@ -218,6 +219,23 @@ class TestTokenProvider implements TokenProviderPort {
     }
 }
 
+/** Token JWT simulado: JSON com `typ` e `ph` (E.164) para cadastro de escola com OTP de WhatsApp. */
+class SignupVerifyTokenProvider implements TokenProviderPort {
+    async sign(payload: Record<string, unknown>): Promise<string> {
+        return JSON.stringify(payload);
+    }
+
+    async verify<T = Record<string, unknown>>(token: string): Promise<T> {
+        return JSON.parse(token) as T;
+    }
+}
+
+function schoolSignupVerificationToken(ownerWhatsapp: string): string {
+    const e164 = toE164Brazil(ownerWhatsapp);
+    if (!e164) throw new Error(`Invalid ownerWhatsapp for test: ${ownerWhatsapp}`);
+    return JSON.stringify({ typ: 'school_signup_phone', ph: e164 });
+}
+
 class InMemoryFinanceRepository implements SchoolPlanFinanceRepository {
     private readonly items = new Map<string, SchoolPlanFinance>();
 
@@ -237,13 +255,17 @@ class InMemoryFinanceRepository implements SchoolPlanFinanceRepository {
 describe('School creation flow', () => {
     it('creates and persists a new school with addresses', async () => {
         const repo = new InMemorySchoolRepository();
-        const useCase = new CreateSchool(repo, new TestPasswordHasher());
+        const signupTokens = new SignupVerifyTokenProvider();
+        const useCase = new CreateSchool(repo, new TestPasswordHasher(), undefined, undefined, undefined, signupTokens);
+        const ownerWhatsapp = '(11) 99876-5432';
 
         const result = await useCase.exec({
             name: '  Escola Central  ',
             email: 'contato@central.com',
-            phone: '(11) 99876-5432',
+            phone: ownerWhatsapp,
             cnpj: '12.345.678/0001-90',
+            ownerWhatsapp,
+            ownerWhatsappVerificationToken: schoolSignupVerificationToken(ownerWhatsapp),
             addresses: [{
                 street: 'Rua Central',
                 number: '100',
@@ -276,15 +298,52 @@ describe('School creation flow', () => {
         expect(stored?.cnpj).toBe('12345678000190');
     });
 
+    it('creates school as pessoa física without CNPJ', async () => {
+        const repo = new InMemorySchoolRepository();
+        const whatsappDigits = '11999887766';
+        const e164 = toE164Brazil(whatsappDigits);
+        if (!e164) throw new Error('expected e164');
+        const tokens = new SignupVerifyTokenProvider();
+        const useCase = new CreateSchool(repo, new TestPasswordHasher(), undefined, undefined, undefined, tokens);
+
+        const result = await useCase.exec({
+            name: 'Escola PF',
+            email: 'pf@escola.com.br',
+            phone: whatsappDigits,
+            cnpj: null,
+            ownerName: 'Maria Santos',
+            ownerCpf: '529.982.247-25',
+            ownerEmail: 'maria@escola.com.br',
+            ownerWhatsapp: whatsappDigits,
+            ownerWhatsappVerificationToken: JSON.stringify({ typ: 'school_signup_phone', ph: e164 }),
+            ownerPassword: 'senha12345',
+            addresses: [{
+                street: 'Rua PF',
+                number: '10',
+                city: 'São Paulo',
+                state: 'SP',
+                zipCode: '01310-100'
+            }]
+        });
+
+        expect(result.cnpj).toBeNull();
+        const stored = await repo.findById(result.id);
+        expect(stored?.cnpj).toBeNull();
+    });
+
     it('creates a school without addresses when none are provided', async () => {
         const repo = new InMemorySchoolRepository();
-        const useCase = new CreateSchool(repo, new TestPasswordHasher());
+        const signupTokens = new SignupVerifyTokenProvider();
+        const useCase = new CreateSchool(repo, new TestPasswordHasher(), undefined, undefined, undefined, signupTokens);
+        const ownerWhatsapp = '11912345678';
 
         const result = await useCase.exec({
             name: 'Escola Sem Endereço',
             email: 'contato@semendereco.com',
-            phone: '11912345678',
-            cnpj: '11.222.333/0001-44'
+            phone: ownerWhatsapp,
+            cnpj: '11.222.333/0001-44',
+            ownerWhatsapp,
+            ownerWhatsappVerificationToken: schoolSignupVerificationToken(ownerWhatsapp)
         });
 
         expect(result.addresses).toHaveLength(0);
@@ -374,7 +433,7 @@ describe('School creation flow', () => {
             schoolId: school.id,
             name: 'Curso A',
             categories: [{ categoryId: 'infantil', subcategoryIds: ['alfabetizacao'] }]
-        })).rejects.toThrow('Course name already in use for this school');
+        })).rejects.toThrow('Recurso já existe');
     });
 
     it('updates a course details and categories', async () => {
@@ -433,7 +492,7 @@ describe('School creation flow', () => {
             schoolId: school.id,
             courseId: course.id,
             name: 'Curso C'
-        })).rejects.toThrow('Course name already in use for this school');
+        })).rejects.toThrow('Recurso já existe');
     });
 
     it('lists courses for a school ordered by creation date', async () => {
@@ -677,18 +736,22 @@ describe('School creation flow', () => {
     it('updates a school profile keeping owner credentials when omitted', async () => {
         const repo = new InMemorySchoolRepository();
         const hasher = new TestPasswordHasher();
-        const create = new CreateSchool(repo, hasher);
+        const signupTokens = new SignupVerifyTokenProvider();
+        const create = new CreateSchool(repo, hasher, undefined, undefined, undefined, signupTokens);
         const update = new UpdateSchool(repo, hasher);
+        const ownerWhatsapp = '11987654321';
 
         const created = await create.exec({
             name: 'Escola Perfil',
             email: 'contato@perfil.com',
-            phone: '11987654321',
+            phone: ownerWhatsapp,
             cnpj: '12.345.678/0001-90',
             ownerName: 'Ana Silva',
             ownerCpf: '123.456.789-00',
             ownerEmail: 'ana@perfil.com',
             ownerPassword: 'senha-forte-123',
+            ownerWhatsapp,
+            ownerWhatsappVerificationToken: schoolSignupVerificationToken(ownerWhatsapp),
             addresses: [{
                 street: 'Rua A',
                 number: '123',
@@ -735,18 +798,22 @@ describe('School creation flow', () => {
     it('removes owner information when explicitly cleared', async () => {
         const repo = new InMemorySchoolRepository();
         const hasher = new TestPasswordHasher();
-        const create = new CreateSchool(repo, hasher);
+        const signupTokens = new SignupVerifyTokenProvider();
+        const create = new CreateSchool(repo, hasher, undefined, undefined, undefined, signupTokens);
         const update = new UpdateSchool(repo, hasher);
+        const ownerWhatsapp = '11987654321';
 
         const created = await create.exec({
             name: 'Escola Proprietário',
             email: 'contato@prop.com',
-            phone: '11987654321',
+            phone: ownerWhatsapp,
             cnpj: '98.765.432/0001-10',
             ownerName: 'João Souza',
             ownerCpf: '987.654.321-00',
             ownerEmail: 'joao@prop.com',
-            ownerPassword: 'senha-forte-456'
+            ownerPassword: 'senha-forte-456',
+            ownerWhatsapp,
+            ownerWhatsappVerificationToken: schoolSignupVerificationToken(ownerWhatsapp)
         });
 
         const result = await update.exec({
@@ -809,13 +876,13 @@ describe('School creation flow', () => {
             courseId: course.id,
             label: 'Turma A',
             classes: [{ day: 'Segunda', start: '10:00', end: '11:00' }]
-        })).rejects.toThrow('Class label already in use for this course');
+        })).rejects.toThrow('Recurso já existe');
         await expect(useCase.exec({
             schoolId: 'other-school',
             courseId: course.id,
             label: 'Turma B',
             classes: [{ day: 'Segunda', start: '10:00', end: '11:00' }]
-        })).rejects.toThrow('Course not found for this school');
+        })).rejects.toThrow('Curso não encontrado');
     });
 
     it('accepts school identifiers with different casing when creating a course class', async () => {
@@ -984,21 +1051,25 @@ describe('School creation flow', () => {
     it('logs in a school owner with valid credentials and returns onboarding status', async () => {
         const repo = new InMemorySchoolRepository();
         const hasher = new TestPasswordHasher();
-        const tokens = new TestTokenProvider();
-        const createSchool = new CreateSchool(repo, hasher);
+        const loginTokens = new TestTokenProvider();
+        const signupTokens = new SignupVerifyTokenProvider();
+        const createSchool = new CreateSchool(repo, hasher, undefined, undefined, undefined, signupTokens);
+        const ownerWhatsapp = '11987654321';
 
         const created = await createSchool.exec({
             name: 'Colégio Login',
             email: 'contato@colegio.com',
-            phone: '11987654321',
+            phone: ownerWhatsapp,
             cnpj: '12.345.678/0001-90',
             ownerName: 'Ana Silva',
             ownerCpf: '123.456.789-01',
             ownerEmail: 'ana@colegio.com',
-            ownerPassword: 'senha-forte-123'
+            ownerPassword: 'senha-forte-123',
+            ownerWhatsapp,
+            ownerWhatsappVerificationToken: schoolSignupVerificationToken(ownerWhatsapp)
         });
 
-        const login = new LoginSchool(repo, hasher, tokens, 3600);
+        const login = new LoginSchool(repo, hasher, loginTokens, 3600);
         const result = await login.exec({ email: 'ana@colegio.com', password: 'senha-forte-123' });
 
         expect(result.schoolId).toBe(created.id);
@@ -1154,21 +1225,25 @@ describe('School creation flow', () => {
     it('rejects login with invalid credentials', async () => {
         const repo = new InMemorySchoolRepository();
         const hasher = new TestPasswordHasher();
-        const tokens = new TestTokenProvider();
-        const createSchool = new CreateSchool(repo, hasher);
+        const loginTokens = new TestTokenProvider();
+        const signupTokens = new SignupVerifyTokenProvider();
+        const createSchool = new CreateSchool(repo, hasher, undefined, undefined, undefined, signupTokens);
+        const ownerWhatsapp = '11987654321';
 
         await createSchool.exec({
             name: 'Colégio Login 2',
             email: 'contato2@colegio.com',
-            phone: '11987654321',
+            phone: ownerWhatsapp,
             cnpj: '12.345.678/0001-91',
             ownerName: 'Bruno Lima',
             ownerCpf: '123.456.789-02',
             ownerEmail: 'bruno@colegio.com',
-            ownerPassword: 'senha-forte-123'
+            ownerPassword: 'senha-forte-123',
+            ownerWhatsapp,
+            ownerWhatsappVerificationToken: schoolSignupVerificationToken(ownerWhatsapp)
         });
 
-        const login = new LoginSchool(repo, hasher, tokens, 3600);
-        await expect(login.exec({ email: 'bruno@colegio.com', password: 'senha-errada' })).rejects.toThrow('Invalid credentials');
+        const login = new LoginSchool(repo, hasher, loginTokens, 3600);
+        await expect(login.exec({ email: 'bruno@colegio.com', password: 'senha-errada' })).rejects.toThrow('Credenciais inválidas');
     });
 });

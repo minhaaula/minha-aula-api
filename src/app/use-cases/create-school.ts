@@ -56,7 +56,7 @@ export class CreateSchool {
                 });
             }
         }
-        const cnpjDigits = input.cnpj.replace(/\D/g, '');
+        const cnpjDigits = (input.cnpj ?? '').replace(/\D/g, '');
         if (cnpjDigits.length === 14 && this.schools.findByCnpj) {
             const existingByCnpj = await this.schools.findByCnpj(cnpjDigits);
             if (existingByCnpj) {
@@ -132,7 +132,7 @@ export class CreateSchool {
             addresses,
             email: input.email,
             phone: input.phone,
-            cnpj: input.cnpj,
+            cnpj: input.cnpj ?? null,
             ownerUserId,
             ownerName: input.ownerName ?? null,
             ownerCpf: input.ownerCpf ?? null,

@@ -5,9 +5,11 @@ paths:
         - Schools
       summary: Criar uma nova escola
       description: >-
-        Cria uma escola e o usuário responsável. Se um token Bearer de uma
-        escola já existente for enviado, essa escola será definida como
-        proprietária.
+        Cria uma escola e o usuário responsável. Exige verificação do WhatsApp
+        do responsável (`ownerWhatsapp` + `ownerWhatsappVerificationToken` após fluxo de OTP).
+        O campo **cnpj** é opcional: use CNPJ (14 dígitos) para pessoa jurídica; omita ou envie `null`
+        para pessoa física — nesse caso o CPF do titular (`ownerCpf`) é usado na cobrança do plano e na subconta Asaas.
+        Se um token Bearer de uma escola já existente for enviado, essa escola será definida como proprietária.
       requestBody:
         required: true
         content:

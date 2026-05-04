@@ -112,10 +112,15 @@ export class IssueSchoolPlanInvoice {
             throw new Error('School must have at least one address to issue invoices');
         }
 
-        // Usar dados da escola (não do owner) para cobrança na Asaas — nome, CNPJ, email e telefone da escola
+        // Cobrança na Asaas: CNPJ da escola (PJ) ou CPF do titular (PF)
         const customerName = school.name;
         const customerEmail = school.email;
-        const customerTaxId = school.cnpj;
+        const customerTaxId = school.cnpj ?? school.ownerCpf ?? null;
+        if (!customerTaxId) {
+            throw AppError.fromCode(ErrorCode.INCOMPLETE_DATA, {
+                message: 'Escola sem CNPJ ou CPF do titular para emissão de cobrança do plano'
+            });
+        }
         const metadata = {
             schoolId,
             planId: plan.id,

@@ -182,7 +182,7 @@ Se REDIS_HOST não estiver configurado, retorna 503.
 **Funcionalidade:**
 
 Retorna as escolas cadastradas com informações do plano de assinatura atual e seu status.
-Suporta filtros por nome, status, mensalidade, CNPJ, CPF do titular, conta Asaas, onboardingUrl,
+Suporta filtros por nome, status, mensalidade, CNPJ (escolas sem CNPJ não casam no filtro por CNPJ), CPF do titular, conta Asaas, onboardingUrl,
 primeiro pagamento e onboarding concluído. Requer autenticação com persona ADMIN.
 
 ---
@@ -213,7 +213,7 @@ Requer autenticação com persona ADMIN.
 
 Atualiza dados cadastrais e de configuração de uma escola.
 
-- Permite alterar nome, email, telefone e CNPJ
+- Permite alterar nome, email, telefone e CNPJ (opcional; pode ser omitido ou limpo para cadastro como pessoa física)
 - Permite atualizar informações do responsável
 - Permite ajustar `incomeValue` e links públicos da escola
 - Retorna sempre a visão administrativa completa da escola após a atualização

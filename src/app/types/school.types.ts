@@ -8,7 +8,7 @@ export interface CreateSchoolInput {
     name: string;
     email: string;
     phone: string;
-    cnpj: string;
+    cnpj?: string | null;
     incomeValue?: number;
     addresses?: PostalAddressInput[];
     ownerUserId?: string | null;
@@ -27,7 +27,7 @@ export interface CreateSchoolOutput {
     name: string;
     email: string;
     phone: string;
-    cnpj: string;
+    cnpj: string | null;
     addresses: PostalAddressOutput[];
     createdAt: Date;
     ownerUserId: string | null;
@@ -44,7 +44,7 @@ export interface UpdateSchoolInput {
     name?: string;
     email?: string;
     phone?: string;
-    cnpj?: string;
+    cnpj?: string | null;
     addresses?: PostalAddressInput[];
     ownerName?: string | null;
     ownerCpf?: string | null;
@@ -67,7 +67,7 @@ export interface UpdateSchoolOutput {
     name: string;
     email: string;
     phone: string;
-    cnpj: string;
+    cnpj: string | null;
     addresses: PostalAddressOutput[];
     createdAt: Date;
     ownerUserId: string | null;
@@ -90,7 +90,7 @@ export interface SchoolSummary {
     name: string;
     email: string;
     phone: string;
-    cnpj: string;
+    cnpj: string | null;
     createdAt: Date;
 }
 
@@ -115,7 +115,7 @@ export interface GetSchoolProfileOutput {
     name: string;
     email: string;
     phone: string;
-    cnpj: string;
+    cnpj: string | null;
     addresses: PostalAddressOutput[];
     createdAt: Date;
     ownerUserId: string | null;

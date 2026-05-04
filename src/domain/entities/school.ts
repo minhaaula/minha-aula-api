@@ -27,7 +27,7 @@ export class School {
         public readonly createdAt: Date,
         private readonly _email: Email,
         private readonly _phone: string,
-        private readonly _cnpj: string,
+        private readonly _cnpj: string | null,
         private readonly _ownerUserId: string | null,
         private readonly _ownerName: string | null,
         private readonly _ownerCpf: string | null,
@@ -58,7 +58,7 @@ export class School {
         name: string;
         email: string;
         phone: string;
-        cnpj: string;
+        cnpj?: string | null;
         addresses?: PostalAddress[];
         ownerUserId?: string | null;
         createdAt?: Date;
@@ -164,7 +164,7 @@ export class School {
         return this._phone;
     }
 
-    get cnpj(): string {
+    get cnpj(): string | null {
         return this._cnpj;
     }
 
@@ -260,8 +260,13 @@ export class School {
         return digits;
     }
 
-    private static normalizeCnpj(value: string) {
+    private static normalizeCnpj(value: unknown): string | null {
+        if (value === undefined || value === null) return null;
+        if (typeof value !== 'string') {
+            throw new Error('School CNPJ must be a string');
+        }
         const digits = value.replace(/\D/g, '');
+        if (digits.length === 0) return null;
         if (digits.length !== 14) {
             throw new Error('Invalid school CNPJ');
         }

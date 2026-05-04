@@ -68,14 +68,33 @@ export class ResendSchoolAsaasAccount {
         }
 
         try {
-            const companyType = 'LIMITED'; // Tipo padrão para escolas
+            const hasValidCnpj = Boolean(school.cnpj && school.cnpj.length === 14);
+            const ownerCpfDigits = (school.ownerCpf ?? '').replace(/\D/g, '');
+            let cpfCnpj: string;
+            let companyType: string;
+            if (hasValidCnpj) {
+                cpfCnpj = school.cnpj as string;
+                companyType = 'LIMITED';
+            } else if (ownerCpfDigits.length === 11) {
+                cpfCnpj = ownerCpfDigits;
+                companyType = 'INDIVIDUAL';
+            } else {
+                return {
+                    schoolId: school.id,
+                    accountId: school.accountId,
+                    walletId: school.walletId,
+                    onboardingUrl: school.onboardingUrl,
+                    success: false,
+                    message: 'CNPJ da escola ou CPF do titular ausente/inválido para criar conta no Asaas'
+                };
+            }
             const incomeValue = school.incomeValue && school.incomeValue > 0 ? school.incomeValue : 5000;
 
             // Criar subconta no Asaas
             const subAccount = await this.asaasProvider.createSubAccount({
                 name: school.name,
                 email: school.email,
-                cpfCnpj: school.cnpj,
+                cpfCnpj,
                 phone: school.phone,
                 externalReference: school.id,
                 companyType,

@@ -175,7 +175,7 @@ describe('Class session scheduling', () => {
             courseClassId: classId,
             startsAt: new Date('2024-01-10T13:30:00Z'),
             endsAt: new Date('2024-01-10T14:30:00Z')
-        })).rejects.toThrow('Class session overlaps with an existing one');
+        })).rejects.toThrow('Sessão de aula sobrepõe com uma existente');
     });
 
     it('lists sessions for a class within an interval', async () => {

@@ -30,6 +30,18 @@ import { PasswordHasherPort } from '../../src/ports/providers/password-hasher.po
 import { PaymentProviderPort } from '../../src/ports/providers/payment-provider.port';
 import type { CreatePixChargeInput } from '../../src/ports/providers/payment-provider.port';
 import type { AsaasProviderPort, CreateAsaasSubAccountInput, AsaasSubAccount } from '../../src/ports/providers/asaas-port';
+import type { TokenProviderPort } from '../../src/ports/providers/token-provider.port';
+import { toE164Brazil } from '../../src/shared/phone-e164';
+
+class SignupVerifyTokenProvider implements TokenProviderPort {
+    async sign(_payload: Record<string, unknown>): Promise<string> {
+        return '';
+    }
+
+    async verify<T = Record<string, unknown>>(token: string): Promise<T> {
+        return JSON.parse(token) as T;
+    }
+}
 
 // --- In-Memory Repositories ---
 
@@ -240,13 +252,18 @@ describe('Fluxo: cadastro escola → seleção plano → pagamento → Asaas e o
         await planRepo.save(plan);
 
         // 1) Cadastro da escola
-        const createSchool = new CreateSchool(schoolRepo, new FakePasswordHasher());
+        const ownerWhatsapp = '11987654321';
+        const e164 = toE164Brazil(ownerWhatsapp);
+        if (!e164) throw new Error('expected e164');
+        const createSchool = new CreateSchool(schoolRepo, new FakePasswordHasher(), undefined, undefined, undefined, new SignupVerifyTokenProvider());
         const schoolOutput = await createSchool.exec({
             name: 'Escola Fluxo Teste',
             email: 'fluxo@escola.com',
-            phone: '11987654321',
+            phone: ownerWhatsapp,
             cnpj: '11222333000181',
             incomeValue: 5000,
+            ownerWhatsapp,
+            ownerWhatsappVerificationToken: JSON.stringify({ typ: 'school_signup_phone', ph: e164 }),
             addresses: [
                 {
                     street: 'Rua das Flores',

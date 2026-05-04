@@ -13,7 +13,7 @@ export const createSchoolSchema = z.object({
     name: z.string().trim().min(3),
     email: z.string().trim().email(),
     phone: phoneNumberSchema(),
-    cnpj: cnpjNumberSchema(),
+    cnpj: cnpjNumberSchema().optional().nullable(),
     incomeValue: z.number().int().positive().optional(),
     ownerName: z.string().trim().min(3),
     ownerCpf: cpfNumberSchema(),

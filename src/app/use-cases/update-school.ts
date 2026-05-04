@@ -25,7 +25,7 @@ export class UpdateSchool {
         const name = typeof input.name === 'string' ? input.name : school.name;
         const email = typeof input.email === 'string' ? input.email : school.email;
         const phone = typeof input.phone === 'string' ? input.phone : school.phone;
-        const cnpj = typeof input.cnpj === 'string' ? input.cnpj : school.cnpj;
+        const cnpj = input.cnpj !== undefined ? input.cnpj : school.cnpj;
 
         const addresses = input.addresses
             ? input.addresses.map((address) => PostalAddress.create({

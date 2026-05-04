@@ -88,7 +88,7 @@ export function buildPublicSchoolRoutes(deps: PublicSchoolRoutesDeps, optionalAu
             name: data.name,
             email: data.email,
             phone: data.phone,
-            cnpj: data.cnpj,
+            cnpj: data.cnpj ?? null,
             incomeValue: data.incomeValue,
             addresses: mapAddresses(data.addresses),
             ownerUserId,

@@ -63,7 +63,7 @@ export class GetSchoolProfile {
         name: string;
         email: string;
         phone: string;
-        cnpj: string;
+        cnpj: string | null;
         addresses: PostalAddressProps[];
         createdAt: Date;
         ownerUserId: string | null;
