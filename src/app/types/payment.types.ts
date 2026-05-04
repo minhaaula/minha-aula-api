@@ -114,6 +114,7 @@ export interface HandleAsaasPaymentWebhookInput {
         confirmedDate?: string | null;
         receivedDate?: string | null;
         dueDate?: string | null;
+        billingType?: string | null;
         customer?: { id?: string | null } | null;
         value?: number | null;
     } | null;

@@ -5,6 +5,12 @@ import { SchoolPlanStatus } from '../../domain/entities/school-plan-finance';
 import { SchoolRepository } from '../../ports/repositories/school.repo';
 import { AsaasProviderPort } from '../../ports/providers/asaas-port';
 import { OutboxRepository } from '../../ports/repositories/outbox.repo';
+import { SchoolFinancialChargeRepository } from '../../ports/repositories/school-financial-charge.repo';
+import {
+    SchoolFinancialCharge,
+    SchoolFinancialChargePaymentMethod,
+    SchoolFinancialChargeStatus
+} from '../../domain/entities/school-financial-charge';
 import { log } from '../../shared/logger';
 
 type AsaasPaymentPayload = {
@@ -17,6 +23,7 @@ type AsaasPaymentPayload = {
     dueDate?: string | null;
     customer?: { id?: string | null } | null;
     value?: number | null;
+    billingType?: string | null;
     /** Metadata enviada na criação da cobrança (schoolId, planId, financeId) — usada para validar que o invoice é da escola correta. */
     metadata?: Record<string, string> | null;
 };
@@ -42,12 +49,20 @@ const CANCELLED_EVENTS = new Set(['PAYMENT_DELETED', 'PAYMENT_CANCELED', 'PAYMEN
 const CANCELLED_STATUSES = new Set(['CANCELLED', 'REFUNDED', 'CHARGEBACK']);
 
 export class HandleAsaasPaymentWebhook {
+    private static readonly CHARGE_CAN_MARK_PAID: ReadonlySet<SchoolFinancialChargeStatus> = new Set([
+        'PENDING_SYNC',
+        'OPEN',
+        'OVERDUE',
+        'FAILED'
+    ]);
+
     constructor(
         private readonly invoices: SchoolPlanInvoiceRepository,
         private readonly finances: SchoolPlanFinanceRepository,
         private readonly schools: SchoolRepository,
         private readonly asaasProvider?: AsaasProviderPort,
-        private readonly outbox?: OutboxRepository
+        private readonly outbox?: OutboxRepository,
+        private readonly financialCharges?: SchoolFinancialChargeRepository
     ) {}
 
     async exec(input: HandleAsaasPaymentWebhookInput): Promise<HandleAsaasPaymentWebhookOutput> {
@@ -66,114 +81,260 @@ export class HandleAsaasPaymentWebhook {
             invoice = await this.invoices.findByExternalReference(payment.externalReference);
         }
 
-        if (!invoice) {
-            return { handled: false, reason: 'Invoice not found' };
+        if (invoice) {
+            // Garantir que o invoice é da escola do pagamento quando o Asaas envia metadata.schoolId (evita baixa na escola errada).
+            const paymentSchoolId = payment.metadata?.schoolId?.trim();
+            if (paymentSchoolId && invoice.schoolId !== paymentSchoolId) {
+                return {
+                    handled: false,
+                    reason: `Invoice schoolId (${invoice.schoolId}) does not match payment metadata schoolId (${paymentSchoolId})`
+                };
+            }
+
+            const status = payment.status?.toUpperCase?.() ?? '';
+
+            // Verificação de idempotência: se o status já está no estado desejado, não processar novamente
+            const outcome = this.resolveOutcome(eventName, status);
+            if (!outcome) {
+                return { handled: true, reason: 'No action for event' };
+            }
+
+            // Idempotência: verificar se o evento já foi processado
+            const currentMetadata = invoice.metadata ?? {};
+            const processedEventIds = currentMetadata.processedEventIds
+                ? typeof currentMetadata.processedEventIds === 'string'
+                    ? currentMetadata.processedEventIds.split(',').map((id) => id.trim())
+                    : []
+                : [];
+
+            // Se temos o ID do evento e ele já foi processado, retornar imediatamente
+            if (input.eventId && processedEventIds.includes(input.eventId)) {
+                return { handled: true, reason: 'Event already processed (idempotency by event ID)' };
+            }
+
+            // Idempotência adicional: verificar se já processamos este provider_ref com este status
+            // Isso previne processamento duplicado mesmo sem eventId
+            const lastProcessedProviderRef = currentMetadata.lastProcessedProviderRef;
+            const lastProcessedStatus = currentMetadata.lastProcessedStatus;
+            if (
+                lastProcessedProviderRef === providerRef &&
+                lastProcessedStatus === status &&
+                invoice.status === outcome.status
+            ) {
+                return { handled: true, reason: 'Event already processed (idempotency by provider_ref + status)' };
+            }
+
+            // Idempotência: verificar se já está no estado desejado e o último evento foi o mesmo
+            if (invoice.status === outcome.status) {
+                const lastEvent = currentMetadata.lastWebhookEvent;
+                const lastStatus = currentMetadata.lastWebhookStatus;
+
+                // Se o evento e status são os mesmos, é um evento duplicado
+                if (lastEvent === eventName && lastStatus === status) {
+                    return { handled: true, reason: 'Event already processed (idempotency by event/status)' };
+                }
+            }
+
+            const paidAt = outcome.status === 'PAID' ? this.resolvePaidAt(payment, input.eventCreatedAt) : null;
+            const metadata: Record<string, string> = { ...invoice.metadata };
+            if (eventName) metadata.lastWebhookEvent = eventName;
+            if (status) metadata.lastWebhookStatus = status;
+
+            // Armazenar provider_ref e status para idempotência adicional
+            metadata.lastProcessedProviderRef = providerRef;
+            metadata.lastProcessedStatus = status;
+
+            // Armazenar ID do evento processado para idempotência
+            if (input.eventId && !processedEventIds.includes(input.eventId)) {
+                processedEventIds.push(input.eventId);
+                // Manter apenas os últimos 50 eventos para não crescer indefinidamente
+                metadata.processedEventIds = processedEventIds.slice(-50).join(',');
+            }
+            const updatedInvoice = invoice.withChanges({
+                status: outcome.status,
+                paidAt,
+                metadata,
+                updatedAt: new Date()
+            });
+            await this.invoices.save(updatedInvoice);
+
+            const finance = await this.finances.findById(invoice.financeId);
+            if (!finance) {
+                return { handled: true, reason: 'Finance not found for invoice' };
+            }
+
+            // Idempotência: verificar se o finance já está no estado desejado
+            if (finance.status === outcome.planStatus && finance.isPaid === (outcome.status === 'PAID')) {
+                // Já está no estado desejado, não precisa atualizar
+                return { handled: true, reason: 'Finance already in desired state (idempotency)' };
+            }
+
+            const updatedFinance = finance.withChanges({
+                status: outcome.planStatus,
+                isPaid: outcome.status === 'PAID',
+                lastPaymentAt: paidAt ?? finance.lastPaymentAt,
+                updatedAt: new Date()
+            });
+            await this.finances.save(updatedFinance);
+
+            // Enfileirar job APÓS persistir invoice como PAID — evita race onde o worker
+            // processa o job antes do save e encontra invoice ainda ISSUED.
+            if (outcome.status === 'PAID' && this.outbox) {
+                log.info('[Webhook Asaas] Enfileirando job ensure_school_asaas_account (conta Asaas + onboarding)', {
+                    invoiceId: invoice.id,
+                    schoolId: invoice.schoolId,
+                    providerRef
+                });
+                await this.outbox.enqueue({
+                    type: 'ensure_school_asaas_account',
+                    payload: { invoiceId: invoice.id },
+                    aggregateId: invoice.schoolId
+                });
+            }
+
+            return { handled: true };
         }
 
-        // Garantir que o invoice é da escola do pagamento quando o Asaas envia metadata.schoolId (evita baixa na escola errada).
-        const paymentSchoolId = payment.metadata?.schoolId?.trim();
-        if (paymentSchoolId && invoice.schoolId !== paymentSchoolId) {
-            return { handled: false, reason: `Invoice schoolId (${invoice.schoolId}) does not match payment metadata schoolId (${paymentSchoolId})` };
+        if (this.financialCharges) {
+            return await this.handleSchoolFinancialCharge(input, payment, providerRef, eventName);
         }
 
-        const status = payment.status?.toUpperCase?.() ?? '';
+        return { handled: false, reason: 'Invoice or charge not found' };
+    }
 
-        // Verificação de idempotência: se o status já está no estado desejado, não processar novamente
-        const outcome = this.resolveOutcome(eventName, status);
-        if (!outcome) {
-            return { handled: true, reason: 'No action for event' };
-        }
-
-        // Idempotência: verificar se o evento já foi processado
-        const currentMetadata = invoice.metadata ?? {};
-        const processedEventIds = currentMetadata.processedEventIds 
-            ? (typeof currentMetadata.processedEventIds === 'string' 
-                ? currentMetadata.processedEventIds.split(',').map(id => id.trim())
-                : [])
-            : [];
-        
-        // Se temos o ID do evento e ele já foi processado, retornar imediatamente
-        if (input.eventId && processedEventIds.includes(input.eventId)) {
-            return { handled: true, reason: 'Event already processed (idempotency by event ID)' };
-        }
-
-        // Idempotência adicional: verificar se já processamos este provider_ref com este status
-        // Isso previne processamento duplicado mesmo sem eventId
-        const lastProcessedProviderRef = currentMetadata.lastProcessedProviderRef;
-        const lastProcessedStatus = currentMetadata.lastProcessedStatus;
-        if (lastProcessedProviderRef === providerRef && lastProcessedStatus === status && invoice.status === outcome.status) {
-            return { handled: true, reason: 'Event already processed (idempotency by provider_ref + status)' };
-        }
-
-        // Idempotência: verificar se já está no estado desejado e o último evento foi o mesmo
-        if (invoice.status === outcome.status) {
-            const lastEvent = currentMetadata.lastWebhookEvent;
-            const lastStatus = currentMetadata.lastWebhookStatus;
-            
-            // Se o evento e status são os mesmos, é um evento duplicado
-            if (lastEvent === eventName && lastStatus === status) {
-                return { handled: true, reason: 'Event already processed (idempotency by event/status)' };
+    /**
+     * Cobranças de curso (mensalidade/matrícula) na subconta da escola usam `school_financial_charges`;
+     * localiza por `asaas_payment_id` ou por `externalReference` (= id da cobrança, sem `:`).
+     */
+    private async handleSchoolFinancialCharge(
+        input: HandleAsaasPaymentWebhookInput,
+        payment: AsaasPaymentPayload,
+        providerRef: string,
+        eventName: string
+    ): Promise<HandleAsaasPaymentWebhookOutput> {
+        const charges = this.financialCharges!;
+        let charge = await charges.findByAsaasPaymentId(providerRef);
+        if (!charge && payment.externalReference?.trim()) {
+            const ext = payment.externalReference.trim();
+            if (!ext.includes(':')) {
+                charge = (await charges.findById(ext)) ?? null;
             }
         }
 
-        const paidAt = outcome.status === 'PAID' ? this.resolvePaidAt(payment, input.eventCreatedAt) : null;
-        const metadata: Record<string, string> = { ...invoice.metadata };
-        if (eventName) metadata.lastWebhookEvent = eventName;
-        if (status) metadata.lastWebhookStatus = status;
-        
-        // Armazenar provider_ref e status para idempotência adicional
-        metadata.lastProcessedProviderRef = providerRef;
-        metadata.lastProcessedStatus = status;
-        
-        // Armazenar ID do evento processado para idempotência
-        if (input.eventId && !processedEventIds.includes(input.eventId)) {
-            processedEventIds.push(input.eventId);
-            // Manter apenas os últimos 50 eventos para não crescer indefinidamente
-            metadata.processedEventIds = processedEventIds.slice(-50).join(',');
+        if (!charge) {
+            return { handled: false, reason: 'Invoice or charge not found' };
         }
-        const updatedInvoice = invoice.withChanges({
-            status: outcome.status,
-            paidAt,
-            metadata,
+
+        const paymentSchoolId = payment.metadata?.schoolId?.trim();
+        if (paymentSchoolId && charge.schoolId !== paymentSchoolId) {
+            return {
+                handled: false,
+                reason: `Charge schoolId (${charge.schoolId}) does not match payment metadata schoolId (${paymentSchoolId})`
+            };
+        }
+
+        const status = payment.status?.toUpperCase?.() ?? '';
+        const targetStatus = this.resolveFinancialChargeTargetStatus(eventName, status);
+        if (!targetStatus) {
+            return { handled: true, reason: 'No action for event' };
+        }
+
+        if (charge.status === 'PAID' && targetStatus === 'PAID') {
+            return { handled: true, reason: 'Charge already paid (idempotency)' };
+        }
+        if (charge.status === 'PAID' && targetStatus !== 'PAID') {
+            return { handled: true, reason: 'Charge already paid; ignoring event' };
+        }
+
+        if (targetStatus === 'PAID' && !HandleAsaasPaymentWebhook.CHARGE_CAN_MARK_PAID.has(charge.status)) {
+            return {
+                handled: true,
+                reason: `Charge in status ${charge.status} cannot be marked paid by webhook`
+            };
+        }
+
+        if (targetStatus === 'CANCELLED' && charge.status === 'PAID') {
+            return { handled: true, reason: 'Charge already paid; ignoring cancel event' };
+        }
+
+        if (
+            targetStatus === 'OVERDUE' &&
+            (charge.status === 'PAID' || charge.status === 'CANCELLED')
+        ) {
+            return { handled: true, reason: 'Incompatible overdue event for current charge status' };
+        }
+
+        const paidAt =
+            targetStatus === 'PAID' ? this.resolvePaidAt(payment, input.eventCreatedAt) : charge.paidAt;
+        const paymentMethodForPaid =
+            targetStatus === 'PAID'
+                ? this.mapBillingTypeToPaymentMethod(payment.billingType) ?? charge.paymentMethod
+                : charge.paymentMethod;
+
+        const updated = SchoolFinancialCharge.restore({
+            id: charge.id,
+            schoolId: charge.schoolId,
+            ownerUserId: charge.ownerUserId,
+            studentUserId: charge.studentUserId,
+            dependentId: charge.dependentId,
+            courseId: charge.courseId,
+            courseClassId: charge.courseClassId,
+            chargeType: charge.chargeType,
+            description: charge.description,
+            amountCents: charge.amountCents,
+            discountCents: charge.discountCents,
+            discountReason: charge.discountReason,
+            netAmountCents: charge.netAmountCents,
+            dueDate: charge.dueDate,
+            status: targetStatus,
+            asaasPaymentId: charge.asaasPaymentId,
+            asaasInvoiceUrl: charge.asaasInvoiceUrl,
+            asaasPayload: charge.asaasPayload,
+            paidAt:
+                targetStatus === 'PAID'
+                    ? paidAt ?? new Date()
+                    : targetStatus === 'CANCELLED'
+                      ? null
+                      : charge.paidAt,
+            paymentMethod: paymentMethodForPaid,
+            paidObservation: charge.paidObservation,
+            cancelledAt: targetStatus === 'CANCELLED' ? (charge.cancelledAt ?? new Date()) : charge.cancelledAt,
+            createdAt: charge.createdAt,
             updatedAt: new Date()
         });
-        await this.invoices.save(updatedInvoice);
 
-        const finance = await this.finances.findById(invoice.financeId);
-        if (!finance) {
-            return { handled: true, reason: 'Finance not found for invoice' };
-        }
+        await charges.save(updated);
 
-        // Idempotência: verificar se o finance já está no estado desejado
-        if (finance.status === outcome.planStatus && finance.isPaid === (outcome.status === 'PAID')) {
-            // Já está no estado desejado, não precisa atualizar
-            return { handled: true, reason: 'Finance already in desired state (idempotency)' };
-        }
-
-        const updatedFinance = finance.withChanges({
-            status: outcome.planStatus,
-            isPaid: outcome.status === 'PAID',
-            lastPaymentAt: paidAt ?? finance.lastPaymentAt,
-            updatedAt: new Date()
+        log.info('[Webhook Asaas] Cobrança financeira da escola atualizada', {
+            chargeId: charge.id,
+            schoolId: charge.schoolId,
+            providerRef,
+            targetStatus
         });
-        await this.finances.save(updatedFinance);
-
-        // Enfileirar job APÓS persistir invoice como PAID — evita race onde o worker
-        // processa o job antes do save e encontra invoice ainda ISSUED.
-        if (outcome.status === 'PAID' && this.outbox) {
-            log.info('[Webhook Asaas] Enfileirando job ensure_school_asaas_account (conta Asaas + onboarding)', {
-                invoiceId: invoice.id,
-                schoolId: invoice.schoolId,
-                providerRef
-            });
-            await this.outbox.enqueue({
-                type: 'ensure_school_asaas_account',
-                payload: { invoiceId: invoice.id },
-                aggregateId: invoice.schoolId
-            });
-        }
 
         return { handled: true };
+    }
+
+    private resolveFinancialChargeTargetStatus(
+        eventName: string,
+        paymentStatus: string
+    ): SchoolFinancialChargeStatus | null {
+        const u = eventName.toUpperCase();
+        const s = paymentStatus.toUpperCase();
+        if (SUCCESS_EVENTS.has(u) || SUCCESS_STATUSES.has(s)) return 'PAID';
+        if (CANCELLED_EVENTS.has(u) || CANCELLED_STATUSES.has(s)) return 'CANCELLED';
+        if (OVERDUE_EVENTS.has(u) || OVERDUE_STATUSES.has(s)) return 'OVERDUE';
+        if (s === 'PENDING' || u === 'PAYMENT_CREATED') return null;
+        return null;
+    }
+
+    private mapBillingTypeToPaymentMethod(
+        billingType: string | null | undefined
+    ): SchoolFinancialChargePaymentMethod | null {
+        const u = billingType?.toUpperCase()?.trim();
+        if (u === 'PIX') return 'PIX';
+        if (u === 'BOLETO') return 'BOLETO';
+        return null;
     }
 
     private resolveOutcome(eventName: string, status: string): { status: SchoolPlanInvoiceStatus; planStatus: SchoolPlanStatus } | null {
@@ -251,7 +412,9 @@ function parseAsaasWebhookEventDateTime(trimmed: string): Date | null {
     if (spaceOrT) {
         const [, y, mo, d, h, mi, s, frac, offset] = spaceOrT;
         if (offset) {
-            const iso = frac ? `${y}-${mo}-${d}T${h}:${mi}:${s}${frac}${offset}` : `${y}-${mo}-${d}T${h}:${mi}:${s}${offset}`;
+            const iso = frac
+                ? `${y}-${mo}-${d}T${h}:${mi}:${s}${frac}${offset}`
+                : `${y}-${mo}-${d}T${h}:${mi}:${s}${offset}`;
             const parsed = new Date(iso);
             return Number.isNaN(parsed.getTime()) ? null : parsed;
         }

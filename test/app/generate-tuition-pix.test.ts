@@ -17,6 +17,10 @@ import { Money } from '../../src/domain/value-objects/money';
 class InMemoryCharges implements SchoolFinancialChargeRepository {
     private readonly items = new Map<string, SchoolFinancialCharge>();
     async findById(id: string) { return this.items.get(id) ?? null; }
+    async findByAsaasPaymentId(paymentId: string) {
+        const needle = paymentId.trim();
+        return Array.from(this.items.values()).find((c) => c.asaasPaymentId === needle) ?? null;
+    }
     async save(charge: SchoolFinancialCharge) { this.items.set(charge.id, charge); }
     seed(charge: SchoolFinancialCharge) { this.items.set(charge.id, charge); }
 }

@@ -48,6 +48,8 @@ export type PaidChargeSummary = {
 
 export interface SchoolFinancialChargeRepository {
     findById(id: string): Promise<SchoolFinancialCharge | null>;
+    /** Cobrança de aluno/matrícula sincronizada com Asaas (`school_financial_charges.asaas_payment_id`). */
+    findByAsaasPaymentId(asaasPaymentId: string): Promise<SchoolFinancialCharge | null>;
     save(charge: SchoolFinancialCharge): Promise<void>;
     findByDateRange?(startDate: Date, endDate: Date): Promise<SchoolFinancialCharge[]>;
     findByOwnerUserId?(ownerUserId: string, filters?: {

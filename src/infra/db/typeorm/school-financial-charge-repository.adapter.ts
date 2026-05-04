@@ -12,6 +12,13 @@ export class SchoolFinancialChargeRepositoryAdapter implements SchoolFinancialCh
         return row ? this.toDomain(row) : null;
     }
 
+    async findByAsaasPaymentId(asaasPaymentId: string): Promise<SchoolFinancialCharge | null> {
+        const normalized = asaasPaymentId?.trim();
+        if (!normalized) return null;
+        const row = await this.repo.findOne({ where: { asaasPaymentId: normalized } });
+        return row ? this.toDomain(row) : null;
+    }
+
     async save(charge: SchoolFinancialCharge): Promise<void> {
         await this.repo.save(this.toOrm(charge));
     }

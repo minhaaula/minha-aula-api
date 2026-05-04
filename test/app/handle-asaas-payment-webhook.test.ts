@@ -9,6 +9,8 @@ import { SchoolRepository } from '../../src/ports/repositories/school.repo';
 import { School } from '../../src/domain/entities/school';
 import { PostalAddress } from '../../src/domain/value-objects/postal-address';
 import { OutboxRepository } from '../../src/ports/repositories/outbox.repo';
+import { SchoolFinancialChargeRepository } from '../../src/ports/repositories/school-financial-charge.repo';
+import { SchoolFinancialCharge } from '../../src/domain/entities/school-financial-charge';
 
 class InMemoryInvoiceRepo implements SchoolPlanInvoiceRepository {
     private readonly items = new Map<string, SchoolPlanInvoice>();
@@ -84,6 +86,27 @@ class CapturingOutbox implements OutboxRepository {
 
     async enqueue(event: { type: string; payload: unknown; aggregateId: string }): Promise<void> {
         this.events.push(event);
+    }
+}
+
+class InMemoryFinancialChargesRepo implements SchoolFinancialChargeRepository {
+    private readonly items = new Map<string, SchoolFinancialCharge>();
+
+    async findById(id: string): Promise<SchoolFinancialCharge | null> {
+        return this.items.get(id.trim()) ?? null;
+    }
+
+    async findByAsaasPaymentId(paymentId: string): Promise<SchoolFinancialCharge | null> {
+        const needle = paymentId.trim();
+        return Array.from(this.items.values()).find((c) => c.asaasPaymentId === needle) ?? null;
+    }
+
+    async save(charge: SchoolFinancialCharge): Promise<void> {
+        this.items.set(charge.id, charge);
+    }
+
+    seed(charge: SchoolFinancialCharge): void {
+        this.items.set(charge.id, charge);
     }
 }
 
@@ -359,5 +382,52 @@ describe('HandleAsaasPaymentWebhook', () => {
         expect(job).toBeDefined();
         expect((job!.payload as { invoiceId: string }).invoiceId).toBe(invoice.id);
         expect(job!.aggregateId).toBe(finance.schoolId);
+    });
+
+    it('marca cobrança de curso (school_financial_charges) como PAID quando o pagamento é da subconta', async () => {
+        const invoices = new InMemoryInvoiceRepo();
+        const finances = new InMemoryFinanceRepo();
+        const schools = new InMemorySchoolRepo();
+        const charges = new InMemoryFinancialChargesRepo();
+
+        const charge = SchoolFinancialCharge.create({
+            id: '242207fa-2782-4a15-9b14-27ccbbc6fe0c',
+            schoolId: 'school-ch',
+            ownerUserId: 'owner-1',
+            studentUserId: 'stu-1',
+            dependentId: null,
+            courseId: 'course-1',
+            courseClassId: 'class-1',
+            chargeType: 'ENROLLMENT',
+            description: 'Matrícula do curso Teste',
+            amountCents: 1000,
+            dueDate: new Date('2026-05-05')
+        });
+        charge.markAsSynced({
+            paymentId: 'pay_jo7mtae7j4qt0zvw',
+            invoiceUrl: 'https://www.asaas.com/i/x',
+            payload: {}
+        });
+        charges.seed(charge);
+
+        const useCase = new HandleAsaasPaymentWebhook(invoices, finances, schools, undefined, undefined, charges);
+        const result = await useCase.exec({
+            event: 'PAYMENT_RECEIVED',
+            payment: {
+                id: 'pay_jo7mtae7j4qt0zvw',
+                status: 'RECEIVED',
+                externalReference: charge.id,
+                billingType: 'PIX',
+                paymentDate: '2026-05-04',
+                metadata: { schoolId: charge.schoolId }
+            },
+            eventCreatedAt: '2026-05-04 17:12:54'
+        });
+
+        expect(result.handled).toBe(true);
+        const updated = await charges.findById(charge.id);
+        expect(updated?.status).toBe('PAID');
+        expect(updated?.paymentMethod).toBe('PIX');
+        expect(updated?.paidAt).not.toBeNull();
     });
 });

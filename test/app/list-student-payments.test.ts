@@ -40,6 +40,10 @@ class InMemoryFinancialChargeRepository implements SchoolFinancialChargeReposito
         return null;
     }
 
+    async findByAsaasPaymentId(): Promise<null> {
+        return null;
+    }
+
     async save(): Promise<void> {
         // No-op
     }

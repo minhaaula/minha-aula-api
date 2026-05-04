@@ -260,6 +260,7 @@ export function asaasWebhookRouter(deps: AsaasWebhookDeps) {
             confirmedDate: payload.payment.confirmedDate ?? null,
             receivedDate: payload.payment.receivedDate ?? null,
             dueDate: payload.payment.dueDate ?? null,
+            billingType: payload.payment.billingType ?? null,
             customer: typeof payload.payment.customer === 'string'
                 ? { id: payload.payment.customer }
                 : payload.payment.customer ?? null,
