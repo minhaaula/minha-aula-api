@@ -1,10 +1,37 @@
 import { SchoolBankAccountRepository } from '../../ports/repositories/school-bank-account.repo';
 import { SchoolBankAccount } from '../../domain/entities/school-bank-account';
+import type { School } from '../../domain/entities/school';
 import { SchoolRepository } from '../../ports/repositories/school.repo';
 import { Uuid } from '../../shared/uuid';
 import { ConsumeSchoolActionOtp } from './consume-school-action-otp';
 import type { AsaasProviderPort, AsaasReceivingBankAccountResult } from '../../ports/providers/asaas-port';
 import { AppError, ErrorCode } from '../../shared/errors';
+
+function digitsOnly(value: string | null | undefined): string {
+    if (!value) return '';
+    return value.replace(/\D/g, '');
+}
+
+/**
+ * Documento do titular informado no payload, ou CNPJ da escola, ou CPF do responsável (fluxo sem CNPJ).
+ */
+function resolveBankAccountHolderDocument(input: string | undefined, school: School): string {
+    const fromInput = digitsOnly(input);
+    if (fromInput.length === 11 || fromInput.length === 14) {
+        return fromInput;
+    }
+    const fromSchoolCnpj = digitsOnly(school.cnpj);
+    if (fromSchoolCnpj.length === 14) {
+        return fromSchoolCnpj;
+    }
+    const fromOwnerCpf = digitsOnly(school.ownerCpf);
+    if (fromOwnerCpf.length === 11) {
+        return fromOwnerCpf;
+    }
+    throw AppError.validation(
+        'Informe o CPF ou CNPJ do titular da conta ou complete o CNPJ da escola ou o CPF do responsável no cadastro.'
+    );
+}
 
 function assertSuccessfulAsaasReceivingBankAccount(res: AsaasReceivingBankAccountResult): void {
     const id = res.id;
@@ -57,7 +84,8 @@ export class CreateSchoolBankAccount {
         bankAccount: string;
         bankAccountDigit?: string;
         bankAccountType: 'CORRENTE' | 'POUPANCA';
-        bankAccountHolderDocument: string;
+        /** Opcional: quando omitido, usa CNPJ da escola ou CPF do responsável. */
+        bankAccountHolderDocument?: string;
         pixKey?: string;
         otpChallengeId: string;
     }): Promise<CreateSchoolBankAccountOutput> {
@@ -75,6 +103,8 @@ export class CreateSchoolBankAccount {
         if (!school) {
             throw new Error('School not found');
         }
+
+        const bankAccountHolderDocument = resolveBankAccountHolderDocument(input.bankAccountHolderDocument, school);
 
         await this.otp?.exec({
             schoolId,
@@ -98,7 +128,7 @@ export class CreateSchoolBankAccount {
                 bankCode: String(bankCode),
                 bankName: input.bankName,
                 ownerName: school.name.trim() || input.bankName,
-                cpfCnpjDigits: input.bankAccountHolderDocument.replace(/\D/g, ''),
+                cpfCnpjDigits: bankAccountHolderDocument,
                 agency: input.bankAgency,
                 agencyDigit: input.bankAgencyDigit,
                 account: input.bankAccount,
@@ -118,7 +148,7 @@ export class CreateSchoolBankAccount {
             bankAccount: input.bankAccount,
             bankAccountDigit: input.bankAccountDigit,
             bankAccountType: input.bankAccountType,
-            bankAccountHolderDocument: input.bankAccountHolderDocument,
+            bankAccountHolderDocument,
             pixKey: input.pixKey
         });
 

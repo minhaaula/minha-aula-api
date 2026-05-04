@@ -22,6 +22,16 @@ function pickAsaasBankAccountId(data: Record<string, unknown>): string | null {
     const fromTop = tryObject(data);
     if (fromTop) return fromTop;
 
+    /** Produção Asaas (white-label / terceiros): id pode vir como bankAccountInfoId */
+    const fromBankAccountInfo = coerce(data.bankAccountInfoId);
+    if (fromBankAccountInfo) return fromBankAccountInfo;
+
+    const thirdParty = data.thirdPartyAccount;
+    if (thirdParty && typeof thirdParty === 'object' && !Array.isArray(thirdParty)) {
+        const tid = coerce((thirdParty as Record<string, unknown>).id);
+        if (tid) return tid;
+    }
+
     const nested = data.bankAccount;
     if (nested && typeof nested === 'object' && !Array.isArray(nested)) {
         const fromNested = tryObject(nested as Record<string, unknown>);

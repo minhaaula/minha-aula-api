@@ -299,4 +299,76 @@ describe('CreateSchoolBankAccount (integração Asaas)', () => {
 
         expect(await bankAccountsRepo.findBySchoolId(school.id)).toHaveLength(0);
     });
+
+    it('sem documento no payload: usa CPF do responsável quando a escola não tem CNPJ', async () => {
+        const schoolsRepo = new InMemorySchoolRepository();
+        const bankAccountsRepo = new InMemorySchoolBankAccountRepository();
+        const asaas = new FakeAsaas();
+        const otp: ConsumeSchoolActionOtp = {
+            async exec() {
+                /* no-op */
+            }
+        } as unknown as ConsumeSchoolActionOtp;
+
+        const school = School.create({
+            id: Uuid(),
+            name: 'Escola PF',
+            email: 'pf@escola.com',
+            phone: '11999999999',
+            ownerCpf: '52998224725',
+            accountApiKey: '$aact_hmlg_test_key'
+        });
+        schoolsRepo.seed(school);
+
+        const uc = new CreateSchoolBankAccount(schoolsRepo, bankAccountsRepo, otp, asaas as unknown as AsaasProviderPort);
+
+        const result = await uc.exec({
+            schoolId: school.id,
+            bankName: 'Banco do Brasil',
+            bankCode: 1,
+            bankAgency: '1234',
+            bankAccount: '56789',
+            bankAccountType: 'CORRENTE',
+            otpChallengeId: 'bbbbbbbb-bbbb-bbbb-bbbb-eeeeeeeeeeee'
+        });
+
+        expect(result.bankAccountHolderDocument).toBe('52998224725');
+        expect(asaas.lastInput).not.toBeNull();
+        expect(asaas.lastInput!.cpfCnpjDigits).toBe('52998224725');
+    });
+
+    it('sem documento no payload e sem CNPJ/CPF no perfil: rejeita com validação', async () => {
+        const schoolsRepo = new InMemorySchoolRepository();
+        const bankAccountsRepo = new InMemorySchoolBankAccountRepository();
+        const asaas = new FakeAsaas();
+        const otp: ConsumeSchoolActionOtp = {
+            async exec() {
+                /* no-op */
+            }
+        } as unknown as ConsumeSchoolActionOtp;
+
+        const school = School.create({
+            id: Uuid(),
+            name: 'Incompleta',
+            email: 'inc@escola.com',
+            phone: '11999999999'
+        });
+        schoolsRepo.seed(school);
+
+        const uc = new CreateSchoolBankAccount(schoolsRepo, bankAccountsRepo, otp, asaas as unknown as AsaasProviderPort);
+
+        await expect(
+            uc.exec({
+                schoolId: school.id,
+                bankName: 'BB',
+                bankCode: 1,
+                bankAgency: '1',
+                bankAccount: '1',
+                bankAccountType: 'CORRENTE',
+                otpChallengeId: 'cccccccc-cccc-cccc-cccc-cccccccccccc'
+            })
+        ).rejects.toMatchObject({ code: ErrorCode.VALIDATION_ERROR });
+
+        expect(asaas.lastInput).toBeNull();
+    });
 });
