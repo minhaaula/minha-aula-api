@@ -1,5 +1,7 @@
 import type { SchoolRepository } from '../../ports/repositories/school.repo';
 import type { AsaasProviderPort, AsaasAccountStatus } from '../../ports/providers/asaas-port';
+import type { SchoolAccountStatusSnapshot } from '../../domain/entities/school';
+import { schoolAccountStatusSectionsEqual } from '../../domain/entities/school';
 import { AppError, ErrorCode } from '../../shared/errors';
 
 export interface SyncSchoolSubaccountStatusInput {
@@ -8,7 +10,7 @@ export interface SyncSchoolSubaccountStatusInput {
 
 export interface SyncSchoolSubaccountStatusOutput {
     schoolId: string;
-    /** Status retornado pelo Asaas (GET /v3/myAccount/status). Não é persistido; consulta direta na API. */
+    /** Status retornado pelo Asaas (GET /v3/myAccount/status). */
     status: AsaasAccountStatus;
     /** Se o onboarding foi marcado como concluído nesta chamada (todos os status Asaas APPROVED). */
     onboardingCompletedAt: Date | null;
@@ -16,7 +18,7 @@ export interface SyncSchoolSubaccountStatusOutput {
 
 /**
  * Consulta o status cadastral da subconta Asaas da escola (GET /v3/myAccount/status) e retorna os dados.
- * Não persiste o status; apenas chama o Asaas e devolve a resposta.
+ * Persiste os quatro pilares em `accountStatusSnapshot` quando mudam ou quando ainda não há snapshot (bootstrap).
  * Quando commercialInfo, bankAccountInfo, documentation e general estiverem todos APPROVED,
  * marca o onboarding como concluído (onboardingCompletedAt) no nosso lado.
  */
@@ -62,17 +64,37 @@ export class SyncSchoolSubaccountStatus {
             status.documentation === 'APPROVED' &&
             status.general === 'APPROVED';
 
-        let onboardingCompletedAt = school.onboardingCompletedAt;
+        const patch: SchoolAccountStatusSnapshot = {
+            commercialInfo: status.commercialInfo,
+            bankAccountInfo: status.bankAccountInfo,
+            documentation: status.documentation,
+            general: status.general
+        };
+        const previewSnapshot = school.withAccountStatusSnapshot(patch);
+        const sectionsChanged = !schoolAccountStatusSectionsEqual(
+            school.accountStatusSnapshot,
+            previewSnapshot.accountStatusSnapshot
+        );
+        const bootstrapSnapshot = school.accountStatusSnapshot == null;
+
+        let workingSchool = school;
+        let needsSave = false;
         if (allApproved && !school.onboardingCompletedAt) {
-            const updated = school.withOnboardingCompletedAt(new Date());
-            await this.schools.save(updated);
-            onboardingCompletedAt = updated.onboardingCompletedAt;
+            workingSchool = workingSchool.withOnboardingCompletedAt(new Date());
+            needsSave = true;
+        }
+        if (sectionsChanged || bootstrapSnapshot) {
+            workingSchool = workingSchool.withAccountStatusSnapshot(patch);
+            needsSave = true;
+        }
+        if (needsSave) {
+            await this.schools.save(workingSchool);
         }
 
         return {
             schoolId: school.id,
             status,
-            onboardingCompletedAt
+            onboardingCompletedAt: workingSchool.onboardingCompletedAt
         };
     }
 }

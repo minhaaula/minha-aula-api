@@ -1,5 +1,8 @@
 import { SchoolRepository } from '../../ports/repositories/school.repo';
-import { SchoolAccountStatusSnapshot } from '../../domain/entities/school';
+import {
+    SchoolAccountStatusSnapshot,
+    schoolAccountStatusSectionsEqual
+} from '../../domain/entities/school';
 import { log } from '../../shared/logger';
 
 type AsaasAccountPayload = {
@@ -153,9 +156,24 @@ export class HandleAsaasAccountWebhook {
         if (!shouldApplySnapshotPatch && KNOWN_ACCOUNT_STATUS_EVENTS.has(eventName)) {
             return { handled: true, reason: 'Ignored older duplicate account status event' };
         }
-        if (snapshotPatch) {
-            updatedSchool = updatedSchool.withAccountStatusSnapshot(snapshotPatch);
-            needsUpdate = true;
+        /**
+         * Persistir snapshot na primeira vez (bootstrap) ou quando um dos quatro pilares mudar.
+         * Evita regravar lastEvent/lastEventAt em reenvios do Asaas com o mesmo status cadastral.
+         */
+        let accountSnapshotPersisted = false;
+        if (snapshotPatch && shouldApplySnapshotPatch) {
+            const beforeSnap = updatedSchool.accountStatusSnapshot;
+            const afterSchool = updatedSchool.withAccountStatusSnapshot(snapshotPatch);
+            const sectionsChanged = !schoolAccountStatusSectionsEqual(
+                beforeSnap,
+                afterSchool.accountStatusSnapshot
+            );
+            const bootstrapSnapshot = beforeSnap == null;
+            if (sectionsChanged || bootstrapSnapshot) {
+                updatedSchool = afterSchool;
+                needsUpdate = true;
+                accountSnapshotPersisted = true;
+            }
         }
 
         if (eventName === ACTIVATES_ACCOUNT_EVENT && !school.onboardingCompletedAt) {
@@ -177,7 +195,10 @@ export class HandleAsaasAccountWebhook {
         }
 
         if (KNOWN_ACCOUNT_STATUS_EVENTS.has(eventName)) {
-            return { handled: true, reason: 'Account status updated' };
+            return {
+                handled: true,
+                reason: accountSnapshotPersisted ? 'Account status updated' : 'Account status unchanged'
+            };
         }
 
         return { handled: true, reason: 'Event not processed' };

@@ -6,6 +6,10 @@ import { StorageProviderPort } from '../../ports/providers/storage-provider.port
 import { SchoolPlanFinanceRepository } from '../../ports/repositories/school-plan-finance.repo';
 import { SchoolPlanInvoiceRepository } from '../../ports/repositories/school-plan-invoice.repo';
 import type { AsaasProviderPort } from '../../ports/providers/asaas-port';
+import {
+    type SchoolAccountStatusSnapshot,
+    schoolAccountStatusSectionsEqual
+} from '../../domain/entities/school';
 import { presentSchoolPlanFinance, SchoolPlanFinanceView } from '../presenters/school-plan-finance.presenter';
 
 /** Status cadastral Asaas (GET /v3/myAccount/status) exposto no perfil da escola. */
@@ -98,7 +102,7 @@ export class GetSchoolProfile {
         const schoolId = input.schoolId.trim();
         if (!schoolId) return null;
 
-        const school = await this.schools.findById(schoolId);
+        let school = await this.schools.findById(schoolId);
         if (!school) {
             return null;
         }
@@ -209,13 +213,36 @@ export class GetSchoolProfile {
                         status.documentation === 'APPROVED' &&
                         status.general === 'APPROVED';
 
-                    let onboardingCompletedAt: Date | null = school.onboardingCompletedAt;
+                    const patch: SchoolAccountStatusSnapshot = {
+                        commercialInfo: status.commercialInfo,
+                        bankAccountInfo: status.bankAccountInfo,
+                        documentation: status.documentation,
+                        general: status.general
+                    };
+                    const previewWithSnapshot = school.withAccountStatusSnapshot(patch);
+                    const sectionsChanged = !schoolAccountStatusSectionsEqual(
+                        school.accountStatusSnapshot,
+                        previewWithSnapshot.accountStatusSnapshot
+                    );
+                    const bootstrapSnapshot = school.accountStatusSnapshot == null;
+
+                    let workingSchool = school;
+                    let needsSave = false;
                     if (allApproved && !school.onboardingCompletedAt) {
-                        const updated = school.withOnboardingCompletedAt(new Date());
-                        await this.schools.save(updated);
-                        onboardingCompletedAt = updated.onboardingCompletedAt;
+                        workingSchool = workingSchool.withOnboardingCompletedAt(new Date());
                         onboardingCompleted = true;
+                        needsSave = true;
                     }
+                    if (sectionsChanged || bootstrapSnapshot) {
+                        workingSchool = workingSchool.withAccountStatusSnapshot(patch);
+                        needsSave = true;
+                    }
+                    if (needsSave) {
+                        await this.schools.save(workingSchool);
+                        school = workingSchool;
+                    }
+
+                    const onboardingCompletedAt = school.onboardingCompletedAt;
 
                     asaasOnboardingStatus = {
                         id: status.id,

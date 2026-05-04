@@ -8,8 +8,8 @@ const env = (key: string, defaultNum: number): number => {
     return Number.isNaN(n) ? defaultNum : Math.max(1, n);
 };
 
-const DEFAULT_WINDOW_MS = 15 * 60 * 1000; // 15 min
-const DEFAULT_MAX = 100;
+const DEFAULT_WINDOW_MS = 1 * 60 * 1000; // 1 min
+const DEFAULT_MAX = 500;
 const AUTH_WINDOW_MS = 15 * 60 * 1000;
 const AUTH_MAX = 8;
 const REGISTRATION_WINDOW_MS = 60 * 60 * 1000; // 1 hora
@@ -38,7 +38,7 @@ function isSkippedFromDefaultRateLimit(req: { path?: string; originalUrl?: strin
  * Rate limiter padrão para endpoints gerais (anti-abuso e DDoS leve).
  * Não se aplica a /integrations/asaas (webhooks têm limite próprio).
  * Não se aplica a /portal (site estático) nem a /docs (Swagger UI — muitos assets por página).
- * Configurável: RATE_LIMIT_WINDOW_MS, RATE_LIMIT_MAX
+ * Padrão: 500 req/min por IP. Configurável: RATE_LIMIT_WINDOW_MS, RATE_LIMIT_MAX
  */
 export const defaultRateLimiter = rateLimit({
     windowMs: env('RATE_LIMIT_WINDOW_MS', DEFAULT_WINDOW_MS),

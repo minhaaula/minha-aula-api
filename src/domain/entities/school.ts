@@ -19,6 +19,38 @@ export type SchoolAccountStatusSnapshot = {
     lastEventAt?: string | null;
 };
 
+/** Somente os quatro pilares do KYC Asaas (usado para detectar mudança real de status). */
+export type SchoolAccountStatusSections = Pick<
+    SchoolAccountStatusSnapshot,
+    'commercialInfo' | 'bankAccountInfo' | 'documentation' | 'general'
+>;
+
+export function schoolAccountStatusSectionSlice(
+    s: SchoolAccountStatusSnapshot | null | undefined
+): SchoolAccountStatusSections {
+    return {
+        commercialInfo: s?.commercialInfo ?? null,
+        bankAccountInfo: s?.bankAccountInfo ?? null,
+        documentation: s?.documentation ?? null,
+        general: s?.general ?? null
+    };
+}
+
+/** Compara só commercialInfo, bankAccountInfo, documentation e general (normaliza null / string vazia). */
+export function schoolAccountStatusSectionsEqual(
+    a: SchoolAccountStatusSnapshot | null | undefined,
+    b: SchoolAccountStatusSnapshot | null | undefined
+): boolean {
+    const A = schoolAccountStatusSectionSlice(a);
+    const B = schoolAccountStatusSectionSlice(b);
+    return (
+        (A.commercialInfo ?? '') === (B.commercialInfo ?? '') &&
+        (A.bankAccountInfo ?? '') === (B.bankAccountInfo ?? '') &&
+        (A.documentation ?? '') === (B.documentation ?? '') &&
+        (A.general ?? '') === (B.general ?? '')
+    );
+}
+
 export class School {
     private constructor(
         public readonly id: string,
