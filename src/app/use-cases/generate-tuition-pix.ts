@@ -6,10 +6,11 @@ import { PaymentProviderPort } from '../../ports/providers/payment-provider.port
 import { SchoolImageRepository } from '../../ports/repositories/school-image.repo';
 import { SchoolImageCategory } from '../../domain/value-objects/school-image-category';
 import type { StorageProviderPort } from '../../ports/providers/storage-provider.port';
-import { AsaasProvider } from '../../infra/providers/asaas/asaas-provider';
+import type { AsaasProviderPort } from '../../ports/providers/asaas-port';
 import { Money } from '../../domain/value-objects/money';
 import { SchoolFinancialChargeStatus } from '../../domain/entities/school-financial-charge';
 import { UserPersonaEnum } from '../../domain/value-objects/user-persona';
+import { log } from '../../shared/logger';
 
 export interface GenerateTuitionPixInput {
     chargeId: string;
@@ -83,11 +84,31 @@ export class GenerateTuitionPix {
             throw new Error('Course not found');
         }
 
-        // Se já tem PIX gerado, retornar existente
+        // Se já tem cobrança no Asaas, reutilizar id e completar QR em falta (GET /payments/{id}/pixQrCode).
         if (charge.asaasPaymentId) {
             const payload = charge.asaasPayload ?? {};
-            const pixQrCode = typeof payload.pixQrCode === 'string' ? payload.pixQrCode : null;
-            const pixCopiaECola = typeof payload.pixCopiaECola === 'string' ? payload.pixCopiaECola : null;
+            let pixQrCode = typeof payload.pixQrCode === 'string' ? payload.pixQrCode : null;
+            let pixCopiaECola = typeof payload.pixCopiaECola === 'string' ? payload.pixCopiaECola : null;
+
+            if (!pixQrCode?.trim() && !pixCopiaECola?.trim()) {
+                const provider = await this.resolvePaymentProvider(charge);
+                const fetched = await this.fetchPixQrViaAsaas(provider, charge.asaasPaymentId, pixQrCode, pixCopiaECola);
+                if (fetched.pixQrCode?.trim() || fetched.pixCopiaECola?.trim()) {
+                    pixQrCode = fetched.pixQrCode;
+                    pixCopiaECola = fetched.pixCopiaECola;
+                    charge.markAsSynced({
+                        paymentId: charge.asaasPaymentId,
+                        invoiceUrl: charge.asaasInvoiceUrl,
+                        payload: {
+                            ...payload,
+                            pixQrCode,
+                            pixCopiaECola
+                        }
+                    });
+                    await this.charges.save(charge);
+                }
+            }
+
             const schoolLogo = await this.getSchoolLogoUrl(charge.schoolId);
 
             return {
@@ -126,7 +147,7 @@ export class GenerateTuitionPix {
             ? charge.dueDate 
             : new Date(charge.dueDate);
 
-        const pix = await provider.createPixCharge({
+        let pix = await provider.createPixCharge({
             amount,
             dueDate,
             description: charge.description ?? (charge.chargeType === 'ENROLLMENT' ? 'Matrícula' : 'Mensalidade'),
@@ -142,6 +163,18 @@ export class GenerateTuitionPix {
             },
             metadata: this.buildMetadata(charge)
         });
+
+        const fetchedQr = await this.fetchPixQrViaAsaas(
+            provider,
+            pix.providerRef,
+            pix.pixQrCode ?? null,
+            pix.pixCopiaECola ?? null
+        );
+        pix = {
+            ...pix,
+            pixQrCode: fetchedQr.pixQrCode ?? pix.pixQrCode ?? undefined,
+            pixCopiaECola: fetchedQr.pixCopiaECola ?? pix.pixCopiaECola ?? undefined
+        };
 
         charge.markAsSynced({
             paymentId: pix.providerRef,
@@ -160,8 +193,8 @@ export class GenerateTuitionPix {
         return {
             chargeId: charge.id,
             paymentProviderRef: charge.asaasPaymentId!,
-            pixQrCode: pix.pixQrCode,
-            pixCopiaECola: pix.pixCopiaECola,
+            pixQrCode: pix.pixQrCode ?? null,
+            pixCopiaECola: pix.pixCopiaECola ?? null,
             invoiceUrl: pix.invoiceUrl,
             dueDate: pix.dueDate,
             status: charge.status,
@@ -171,6 +204,52 @@ export class GenerateTuitionPix {
             courseName: course.name,
             schoolLogo
         };
+    }
+
+    /**
+     * O POST /payments do Asaas nem sempre devolve pixQrCode/pixCopiaECola; o cliente HTTP já tenta GET /pixQrCode,
+     * mas pode falhar por timing. Repete GET com pequenos atrasos (mesma API key da cobrança — conta principal ou subconta).
+     */
+    private async fetchPixQrViaAsaas(
+        provider: PaymentProviderPort,
+        paymentId: string,
+        existingQr?: string | null,
+        existingCopia?: string | null
+    ): Promise<{ pixQrCode: string | null; pixCopiaECola: string | null }> {
+        if (existingQr?.trim() || existingCopia?.trim()) {
+            return {
+                pixQrCode: existingQr?.trim() ? existingQr.trim() : null,
+                pixCopiaECola: existingCopia?.trim() ? existingCopia.trim() : null
+            };
+        }
+        const asaas = provider as Partial<AsaasProviderPort>;
+        if (typeof asaas.getPixQrCode !== 'function') {
+            return { pixQrCode: null, pixCopiaECola: null };
+        }
+        const delaysMs = [0, 400, 900];
+        let lastErr: unknown;
+        for (let i = 0; i < delaysMs.length; i++) {
+            if (delaysMs[i] > 0) {
+                await new Promise((r) => setTimeout(r, delaysMs[i]));
+            }
+            try {
+                const qrData = await asaas.getPixQrCode!(paymentId);
+                const pixQrCode =
+                    typeof qrData?.encodedImage === 'string' && qrData.encodedImage.trim() ? qrData.encodedImage : null;
+                const pixCopiaECola =
+                    typeof qrData?.payload === 'string' && qrData.payload.trim() ? qrData.payload : null;
+                if (pixQrCode || pixCopiaECola) {
+                    return { pixQrCode, pixCopiaECola };
+                }
+            } catch (e) {
+                lastErr = e;
+            }
+        }
+        log.warn('[GenerateTuitionPix] Não foi possível obter QR PIX via GET /payments/{id}/pixQrCode após tentativas', {
+            paymentId,
+            error: lastErr instanceof Error ? lastErr.message : String(lastErr)
+        });
+        return { pixQrCode: null, pixCopiaECola: null };
     }
 
     private async getSchoolLogoUrl(schoolId: string): Promise<string | null> {

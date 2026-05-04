@@ -56,6 +56,7 @@ class InMemoryCourses implements CourseRepository {
 
 class FakePixProvider implements PaymentProviderPort {
     public callCount = 0;
+    public getPixQrCodeCalls = 0;
     public lastInput: CreatePixChargeInput | null = null;
 
     constructor(
@@ -65,6 +66,8 @@ class FakePixProvider implements PaymentProviderPort {
             pixCopiaECola?: string;
             invoiceUrl?: string;
             dueDate: Date;
+            /** Quando createPix não traz QR, o use case chama getPixQrCode (GET /payments/{id}/pixQrCode). */
+            pixQrCodeFromGet?: { encodedImage: string; payload: string } | null;
         }
     ) {}
 
@@ -86,6 +89,14 @@ class FakePixProvider implements PaymentProviderPort {
             invoiceUrl: this.response.invoiceUrl,
             dueDate: this.response.dueDate
         };
+    }
+
+    async getPixQrCode(paymentId: string) {
+        this.getPixQrCodeCalls += 1;
+        if (this.response.pixQrCodeFromGet && paymentId === this.response.providerRef) {
+            return this.response.pixQrCodeFromGet;
+        }
+        throw new Error('no qr');
     }
 }
 
@@ -222,6 +233,62 @@ describe('GenerateTuitionPix', () => {
         expect(stored!.asaasPayload?.pixQrCode).toBeTruthy();
         expect(stored!.asaasPayload?.pixCopiaECola).toBeTruthy();
         expect(stored!.status).toBe('OPEN');
+    });
+
+    it('busca QR via GET pixQrCode quando POST create não devolve imagem/copia-e-cola', async () => {
+        const charges = new InMemoryCharges();
+        const users = new InMemoryUsers();
+        const schools = new InMemorySchools();
+        const courses = new InMemoryCourses();
+
+        const user = makeUser('user-getqr');
+        users.seed(user);
+
+        const school = makeSchool('school-getqr');
+        schools.seed(school);
+
+        const course = makeCourse('course-getqr', school.id);
+        courses.seed(course);
+
+        const charge = SchoolFinancialCharge.create({
+            id: 'charge-getqr',
+            schoolId: school.id,
+            ownerUserId: user.id,
+            studentUserId: user.id,
+            dependentId: null,
+            courseId: course.id,
+            courseClassId: 'class-g',
+            chargeType: 'TUITION',
+            description: 'Mensalidade',
+            amountCents: 5000,
+            dueDate: new Date('2026-05-05')
+        });
+        charges.seed(charge);
+
+        const provider = new FakePixProvider({
+            providerRef: 'pay_sub_pix',
+            invoiceUrl: 'https://www.asaas.com/i/x',
+            dueDate: new Date('2026-05-05'),
+            pixQrCodeFromGet: {
+                encodedImage: 'base64img',
+                payload: '00020126PIXpayload'
+            }
+        });
+
+        const useCase = new GenerateTuitionPix(charges, users, schools, courses, provider);
+
+        const result = await useCase.exec({
+            chargeId: charge.id,
+            requester: { id: user.id, persona: UserPersonaEnum.STUDENT }
+        });
+
+        expect(provider.getPixQrCodeCalls).toBeGreaterThanOrEqual(1);
+        expect(result.pixQrCode).toBe('base64img');
+        expect(result.pixCopiaECola).toBe('00020126PIXpayload');
+
+        const stored = await charges.findById(charge.id);
+        expect(stored?.asaasPayload?.pixQrCode).toBe('base64img');
+        expect(stored?.asaasPayload?.pixCopiaECola).toBe('00020126PIXpayload');
     });
 
     it('returns amountCents (bruto) distinct from netAmountCents when there is discount', async () => {
