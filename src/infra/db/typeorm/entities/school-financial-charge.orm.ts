@@ -52,6 +52,10 @@ export class SchoolFinancialChargeOrm {
 
     @Column('int', { name: 'net_amount_cents' }) netAmountCents!: number;
 
+    /** Valor líquido retornado pelo provedor (ex.: Asaas `netValue`), em centavos. */
+    @Column('int', { name: 'provider_net_amount_cents', nullable: true })
+    providerNetAmountCents!: number | null;
+
     @Column('date', { name: 'due_date' }) dueDate!: Date;
 
     @Column('enum', {

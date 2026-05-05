@@ -81,6 +81,7 @@ export class AdminMarkChargePaid {
             discountCents: charge.discountCents,
             discountReason: charge.discountReason,
             netAmountCents: charge.netAmountCents,
+            providerNetAmountCents: charge.providerNetAmountCents ?? null,
             dueDate: charge.dueDate,
             status: 'PAID',
             asaasPaymentId: charge.asaasPaymentId,

@@ -16,7 +16,10 @@ export class SchoolFinancialCharge {
         private _amountCents: number,
         private _discountCents: number | null,
         private _discountReason: string | null,
+        /** Valor líquido calculado internamente (amount - discount), em centavos. */
         private _netAmountCents: number,
+        /** Valor líquido retornado pelo provedor (ex.: Asaas `netValue`), em centavos. */
+        private _providerNetAmountCents: number | null,
         private _dueDate: Date,
         private _status: SchoolFinancialChargeStatus,
         private _asaasPaymentId: string | null,
@@ -98,6 +101,7 @@ export class SchoolFinancialCharge {
             discountCents,
             discountReason,
             netAmountCents,
+            null,
             dueDate,
             'PENDING_SYNC',
             null,
@@ -126,6 +130,7 @@ export class SchoolFinancialCharge {
         discountCents: number | null;
         discountReason: string | null;
         netAmountCents: number;
+        providerNetAmountCents: number | null;
         dueDate: Date;
         status: SchoolFinancialChargeStatus;
         asaasPaymentId: string | null;
@@ -138,6 +143,9 @@ export class SchoolFinancialCharge {
         createdAt: Date;
         updatedAt: Date;
     }): SchoolFinancialCharge {
+        if (!Number.isInteger(params.netAmountCents) || params.netAmountCents <= 0) {
+            throw new Error('Invalid charge net amount');
+        }
         return new SchoolFinancialCharge(
             params.id,
             params.schoolId,
@@ -152,6 +160,7 @@ export class SchoolFinancialCharge {
             params.discountCents,
             params.discountReason,
             params.netAmountCents,
+            params.providerNetAmountCents,
             params.dueDate,
             params.status,
             params.asaasPaymentId,
@@ -184,6 +193,11 @@ export class SchoolFinancialCharge {
 
     get netAmountCents() {
         return this._netAmountCents;
+    }
+
+    /** Valor líquido retornado pelo provedor (pode ser null). */
+    get providerNetAmountCents() {
+        return this._providerNetAmountCents;
     }
 
     get dueDate() {

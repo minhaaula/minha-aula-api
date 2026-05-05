@@ -385,7 +385,8 @@ export class ApproveEnrollmentRequest {
             if (existingDiscountCount < discountMonths) {
                 chargeDiscountCents = discountCents;
                 const remainingMonths = discountMonths - existingDiscountCount;
-                chargeDiscountReason = `Desconto aplicado (${remainingMonths} de ${discountMonths} ${discountMonths === 1 ? 'mês' : 'meses'})`;
+                const currentDiscountIndex = existingDiscountCount + 1;
+                chargeDiscountReason = `Desconto aplicado (${currentDiscountIndex} de ${discountMonths} ${discountMonths === 1 ? 'mês' : 'meses'})`;
             }
         }
 
