@@ -133,6 +133,7 @@ export class RequestSchoolWithdrawal {
             const transferResult = await schoolAsaasProvider.createTransfer({
                 accountId: school.accountId,
                 amount: Money.of(amountCents, 'BRL'),
+                ownerName: school.name,
                 bankAccount: bankAccount.bankAccount,
                 bankAccountDigit: bankAccount.bankAccountDigit ?? undefined,
                 bankAgency: bankAccount.bankAgency,

@@ -272,18 +272,47 @@ export class AsaasProvider implements PaymentProviderPort {
     }
 
     async createTransfer(input: CreateAsaasTransferInput): Promise<AsaasTransferResponse> {
+        const digits = (v: string | undefined) => (v ?? '').replace(/\D/g, '');
+        const bankCode = digits(input.bankCode).padStart(3, '0').slice(-3);
+        const ownerName = input.ownerName?.trim() || 'Titular';
+        const cpfCnpj = digits(input.documentHolder);
+        const agency = digits(input.bankAgency) || input.bankAgency;
+        const account = digits(input.bankAccount) || input.bankAccount;
+        const accountDigit = digits(input.bankAccountDigit) || (input.bankAccountDigit ?? '');
+        const agencyDigit = digits(input.bankAgencyDigit) || input.bankAgencyDigit;
+
+        const inferPixKeyType = (key: string): 'CPF' | 'CNPJ' | 'EMAIL' | 'PHONE' | 'EVP' => {
+            const k = key.trim();
+            const onlyDigits = k.replace(/\D/g, '');
+            if (onlyDigits.length === 11) return 'CPF';
+            if (onlyDigits.length === 14) return 'CNPJ';
+            if (k.includes('@')) return 'EMAIL';
+            if (onlyDigits.length >= 10 && onlyDigits.length <= 13) return 'PHONE';
+            return 'EVP';
+        };
+
         const payload = {
             value: input.amount.amount / 100,
-            bankAccount: input.bankAccount,
-            bankAccountDigit: input.bankAccountDigit ?? undefined,
-            bankAgency: input.bankAgency,
-            bankAgencyDigit: input.bankAgencyDigit ?? undefined,
-            bankCode: input.bankCode,
-            accountType: input.accountType,
-            documentHolder: input.documentHolder,
             description: input.description ?? undefined,
-            pixKey: input.pixKey ?? undefined
-        };
+            ...(input.pixKey
+                ? {
+                    pixAddressKey: input.pixKey,
+                    pixAddressKeyType: inferPixKeyType(input.pixKey)
+                }
+                : {
+                    bankAccount: {
+                        bank: { code: bankCode },
+                        accountName: `${bankCode} ${account}`,
+                        ownerName,
+                        cpfCnpj,
+                        agency,
+                        ...(agencyDigit ? { agencyDigit } : {}),
+                        account,
+                        accountDigit,
+                        bankAccountType: input.accountType === 'POUPANCA' ? 'CONTA_POUPANCA' : 'CONTA_CORRENTE'
+                    }
+                })
+        } satisfies import('./dto/transfer').AsaasCreateTransferPayload;
 
         const response = await this.client.createTransfer(input.accountId, payload);
         return {

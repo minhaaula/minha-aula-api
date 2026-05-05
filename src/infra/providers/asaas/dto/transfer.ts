@@ -1,14 +1,22 @@
 export type AsaasCreateTransferPayload = {
     value: number;
-    bankAccount: string;
-    bankAccountDigit?: string;
-    bankAgency: string;
-    bankAgencyDigit?: string;
-    bankCode: string;
-    accountType: 'CORRENTE' | 'POUPANCA';
-    documentHolder: string;
     description?: string;
-    pixKey?: string;
+    /** Transferência via PIX (chave) */
+    pixAddressKey?: string;
+    pixAddressKeyType?: 'CPF' | 'CNPJ' | 'EMAIL' | 'PHONE' | 'EVP';
+    /** Transferência para conta bancária */
+    bankAccount?: {
+        bank: { code: string };
+        accountName?: string;
+        ownerName: string;
+        cpfCnpj: string;
+        agency: string;
+        agencyDigit?: string;
+        account: string;
+        accountDigit: string;
+        bankAccountType: 'CONTA_CORRENTE' | 'CONTA_POUPANCA';
+        ispb?: string;
+    };
 };
 
 export type AsaasCreateTransferResponse = {

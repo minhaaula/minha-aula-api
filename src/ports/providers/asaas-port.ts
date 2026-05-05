@@ -67,6 +67,8 @@ export type AsaasAccountDetails = {
 export type CreateAsaasTransferInput = {
     accountId: string;
     amount: Money;
+    /** Nome do titular da conta destino (obrigatório para TED/PIX via bankAccount). */
+    ownerName?: string;
     bankAccount: string;
     bankAccountDigit?: string;
     bankAgency: string;
