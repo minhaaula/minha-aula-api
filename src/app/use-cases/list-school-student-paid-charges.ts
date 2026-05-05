@@ -16,6 +16,7 @@ export type SchoolStudentPaidChargeItem = {
     amountCents: number;
     discount: number | null;
     discountCents: number | null;
+    discountReason: string | null;
     netAmount: number;
     netAmountCents: number;
     description: string | null;
@@ -154,6 +155,7 @@ export class ListSchoolStudentPaidCharges {
                 'charge.id AS charge_id',
                 'charge.amountCents AS charge_amount_cents',
                 'charge.discountCents AS charge_discount_cents',
+                'charge.discountReason AS charge_discount_reason',
                 'charge.netAmountCents AS charge_net_amount_cents',
                 'charge.description AS charge_description',
                 'charge.chargeType AS charge_charge_type',
@@ -197,6 +199,7 @@ export class ListSchoolStudentPaidCharges {
                 'charge.id AS charge_id',
                 'charge.amountCents AS charge_amount_cents',
                 'charge.discountCents AS charge_discount_cents',
+                'charge.discountReason AS charge_discount_reason',
                 'charge.netAmountCents AS charge_net_amount_cents',
                 'charge.description AS charge_description',
                 'charge.chargeType AS charge_charge_type',
@@ -224,6 +227,7 @@ export class ListSchoolStudentPaidCharges {
             amountCents: row.charge_amount_cents,
             discount: row.charge_discount_cents != null ? row.charge_discount_cents / 100 : null,
             discountCents: row.charge_discount_cents,
+            discountReason: row.charge_discount_cents != null ? (row.charge_discount_reason ?? null) : null,
             netAmount: row.charge_net_amount_cents / 100,
             netAmountCents: row.charge_net_amount_cents,
             description: formatSchoolChargeDescriptionForSchoolUi(

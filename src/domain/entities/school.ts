@@ -73,6 +73,7 @@ export class School {
         private readonly _accountApiKey: string | null,
         private readonly _walletId: string | null,
         private readonly _onboardingUrl: string | null,
+        private readonly _onboardingUrlExpiresAt: Date | null,
         private readonly _incomeValue: number,
         private readonly _facebookLink: string | null,
         private readonly _instagramLink: string | null,
@@ -106,6 +107,7 @@ export class School {
         accountApiKey?: string | null;
         walletId?: string | null;
         onboardingUrl?: string | null;
+        onboardingUrlExpiresAt?: string | Date | null;
         incomeValue?: number;
         facebookLink?: string | null;
         instagramLink?: string | null;
@@ -144,6 +146,7 @@ export class School {
         const accountApiKey = School.normalizeAccountApiKey(params.accountApiKey);
         const walletId = School.normalizeWalletId(params.walletId);
         const onboardingUrl = School.normalizeLink(params.onboardingUrl);
+        const onboardingUrlExpiresAt = School.normalizeOnboardingUrlExpiresAt(params.onboardingUrlExpiresAt);
         const incomeValue = School.normalizeIncomeValue(params.incomeValue);
         const facebookLink = School.normalizeLink(params.facebookLink);
         const instagramLink = School.normalizeLink(params.instagramLink);
@@ -175,6 +178,7 @@ export class School {
             accountApiKey,
             walletId,
             onboardingUrl,
+            onboardingUrlExpiresAt,
             incomeValue,
             facebookLink,
             instagramLink,
@@ -249,6 +253,10 @@ export class School {
         return this._onboardingUrl;
     }
 
+    get onboardingUrlExpiresAt(): Date | null {
+        return this._onboardingUrlExpiresAt;
+    }
+
     get incomeValue(): number {
         return this._incomeValue;
     }
@@ -312,6 +320,20 @@ export class School {
             throw new Error('Invalid school CNPJ');
         }
         return digits;
+    }
+
+    private static normalizeOnboardingUrlExpiresAt(value: unknown): Date | null {
+        if (value === undefined || value === null) return null;
+        if (value instanceof Date) {
+            return Number.isFinite(value.getTime()) ? value : null;
+        }
+        if (typeof value === 'string') {
+            const trimmed = value.trim();
+            if (!trimmed) return null;
+            const d = new Date(trimmed);
+            return Number.isFinite(d.getTime()) ? d : null;
+        }
+        throw new Error('School onboardingUrlExpiresAt must be a Date or ISO string');
     }
 
     /**
@@ -523,6 +545,7 @@ export class School {
         accountApiKey: string | null;
         walletId: string | null;
         onboardingUrl: string | null;
+        onboardingUrlExpiresAt: Date | null;
         onboardingCompletedAt: Date | null;
         accountStatusSnapshot: SchoolAccountStatusSnapshot | null;
     }>): School {
@@ -545,6 +568,8 @@ export class School {
             accountApiKey: overrides.accountApiKey !== undefined ? overrides.accountApiKey : this._accountApiKey,
             walletId: overrides.walletId !== undefined ? overrides.walletId : this._walletId,
             onboardingUrl: overrides.onboardingUrl !== undefined ? overrides.onboardingUrl : this._onboardingUrl,
+            onboardingUrlExpiresAt:
+                overrides.onboardingUrlExpiresAt !== undefined ? overrides.onboardingUrlExpiresAt : this._onboardingUrlExpiresAt,
             incomeValue: this._incomeValue,
             facebookLink: this._facebookLink,
             instagramLink: this._instagramLink,
@@ -575,6 +600,10 @@ export class School {
 
     withOnboardingUrl(onboardingUrl: string | null): School {
         return this.withChanges({ onboardingUrl: School.normalizeLink(onboardingUrl) });
+    }
+
+    withOnboardingUrlExpiresAt(expiresAt: Date | null): School {
+        return this.withChanges({ onboardingUrlExpiresAt: expiresAt });
     }
 
     withOnboardingCompletedAt(completedAt: Date | null): School {

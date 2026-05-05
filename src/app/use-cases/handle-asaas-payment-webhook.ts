@@ -23,6 +23,8 @@ type AsaasPaymentPayload = {
     dueDate?: string | null;
     customer?: { id?: string | null } | null;
     value?: number | null;
+    /** Valor líquido (já com taxa Asaas). */
+    netValue?: number | null;
     billingType?: string | null;
     /** Metadata enviada na criação da cobrança (schoolId, planId, financeId) — usada para validar que o invoice é da escola correta. */
     metadata?: Record<string, string> | null;
@@ -270,6 +272,10 @@ export class HandleAsaasPaymentWebhook {
             targetStatus === 'PAID'
                 ? this.mapBillingTypeToPaymentMethod(payment.billingType) ?? charge.paymentMethod
                 : charge.paymentMethod;
+        const netAmountCentsFromAsaas =
+            targetStatus === 'PAID' && typeof payment.netValue === 'number' && Number.isFinite(payment.netValue)
+                ? Math.round(payment.netValue * 100)
+                : null;
 
         const updated = SchoolFinancialCharge.restore({
             id: charge.id,
@@ -284,7 +290,7 @@ export class HandleAsaasPaymentWebhook {
             amountCents: charge.amountCents,
             discountCents: charge.discountCents,
             discountReason: charge.discountReason,
-            netAmountCents: charge.netAmountCents,
+            netAmountCents: netAmountCentsFromAsaas ?? charge.netAmountCents,
             dueDate: charge.dueDate,
             status: targetStatus,
             asaasPaymentId: charge.asaasPaymentId,

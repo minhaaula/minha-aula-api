@@ -57,6 +57,10 @@ export class SchoolOrm {
     @Column('varchar', { length: 500, name: 'onboarding_url', nullable: true })
     onboardingUrl!: string | null;
 
+    /** Expiração do link de onboarding (documentos) retornado pelo Asaas. */
+    @Column('datetime', { name: 'onboarding_url_expires_at', nullable: true })
+    onboardingUrlExpiresAt!: Date | null;
+
     @Column('int', { name: 'income_value', default: 5000 })
     incomeValue!: number;
 

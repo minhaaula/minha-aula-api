@@ -21,6 +21,7 @@ export interface SyncSchoolOnboardingDocumentsOutput {
     onboardingUrl: string | null;
     /** Indica se a escola foi atualizada com nova onboardingUrl. */
     onboardingUrlUpdated: boolean;
+    onboardingUrlExpiresAt: string | null;
 }
 
 /**
@@ -50,7 +51,8 @@ export class SyncSchoolOnboardingDocuments {
                 schoolId: school.id,
                 documents: [],
                 onboardingUrl: school.onboardingUrl,
-                onboardingUrlUpdated: false
+                onboardingUrlUpdated: false,
+                onboardingUrlExpiresAt: school.onboardingUrlExpiresAt ? school.onboardingUrlExpiresAt.toISOString() : null
             };
         }
 
@@ -59,7 +61,8 @@ export class SyncSchoolOnboardingDocuments {
                 schoolId: school.id,
                 documents: [],
                 onboardingUrl: school.onboardingUrl,
-                onboardingUrlUpdated: false
+                onboardingUrlUpdated: false,
+                onboardingUrlExpiresAt: school.onboardingUrlExpiresAt ? school.onboardingUrlExpiresAt.toISOString() : null
             };
         }
 
@@ -76,10 +79,17 @@ export class SyncSchoolOnboardingDocuments {
         }));
 
         const chosenUrl = this.pickBestOnboardingUrl(groups);
+        const chosenExpiresAt = this.pickOnboardingUrlExpiresAt(groups, chosenUrl);
         let onboardingUrlUpdated = false;
 
-        if (chosenUrl && chosenUrl !== school.onboardingUrl) {
-            const updated = school.withOnboardingUrl(chosenUrl);
+        if ((chosenUrl && chosenUrl !== school.onboardingUrl) || (chosenExpiresAt && chosenExpiresAt !== school.onboardingUrlExpiresAt?.toISOString())) {
+            let updated = school;
+            if (chosenUrl && chosenUrl !== school.onboardingUrl) {
+                updated = updated.withOnboardingUrl(chosenUrl);
+            }
+            if (chosenExpiresAt) {
+                updated = updated.withOnboardingUrlExpiresAt(new Date(chosenExpiresAt));
+            }
             await this.schools.save(updated);
             onboardingUrlUpdated = true;
         }
@@ -90,7 +100,8 @@ export class SyncSchoolOnboardingDocuments {
             schoolId: school.id,
             documents,
             onboardingUrl,
-            onboardingUrlUpdated
+            onboardingUrlUpdated,
+            onboardingUrlExpiresAt: chosenExpiresAt ?? (school.onboardingUrlExpiresAt ? school.onboardingUrlExpiresAt.toISOString() : null)
         };
     }
 
@@ -112,5 +123,16 @@ export class SyncSchoolOnboardingDocuments {
             }
         }
         return firstValid ?? firstAny;
+    }
+
+    private pickOnboardingUrlExpiresAt(groups: AsaasPendingDocumentGroup[], url: string | null): string | null {
+        if (!url) return null;
+        for (const g of groups) {
+            const gUrl = g.onboardingUrl?.trim() || null;
+            if (!gUrl || gUrl !== url) continue;
+            const exp = g.onboardingUrlExpirationDate?.trim() || null;
+            return exp;
+        }
+        return null;
     }
 }

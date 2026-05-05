@@ -140,6 +140,7 @@ export class SchoolRepositoryAdapter implements SchoolRepository {
             accountApiKey: row.accountApiKey ?? null,
             walletId: row.walletId ?? null,
             onboardingUrl: row.onboardingUrl ?? null,
+            onboardingUrlExpiresAt: row.onboardingUrlExpiresAt ?? null,
             incomeValue: typeof row.incomeValue === 'number' ? row.incomeValue : 5000,
             facebookLink: row.facebookLink ?? null,
             instagramLink: row.instagramLink ?? null,
@@ -180,6 +181,7 @@ export class SchoolRepositoryAdapter implements SchoolRepository {
         row.accountApiKey = school.accountApiKey;
         row.walletId = school.walletId;
         row.onboardingUrl = school.onboardingUrl;
+        row.onboardingUrlExpiresAt = school.onboardingUrlExpiresAt;
         row.incomeValue = school.incomeValue;
         row.facebookLink = school.facebookLink;
         row.instagramLink = school.instagramLink;
