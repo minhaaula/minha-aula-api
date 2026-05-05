@@ -33,7 +33,7 @@ function resolveBankAccountHolderDocument(input: string | undefined, school: Sch
     );
 }
 
-function assertSuccessfulAsaasReceivingBankAccount(res: AsaasReceivingBankAccountResult): void {
+export function assertSuccessfulAsaasReceivingBankAccount(res: AsaasReceivingBankAccountResult): void {
     const id = res.id;
     if (typeof id !== 'string' || !id.trim()) {
         throw AppError.fromCode(ErrorCode.EXTERNAL_SERVICE_ERROR, {
