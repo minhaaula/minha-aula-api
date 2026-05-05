@@ -59,6 +59,8 @@ export interface SchoolPaymentRecord {
     discountCents: number | null;
     discountReason: string | null;
     netAmountCents: number;
+    /** Líquido retornado pelo provedor (ex.: Asaas `netValue`), em centavos; só preenchido após pagamento quando disponível. */
+    providerNetAmountCents: number | null;
     status: string;
     /** Status para exibição (Pendente, Atrasado, Pago, etc.). */
     statusDisplay: SchoolPaymentStatusDisplay;

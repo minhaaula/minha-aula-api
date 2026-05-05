@@ -12,6 +12,8 @@ export type StudentPaymentInfo = {
     discountCents: number | null;
     /** Valor líquido em centavos (amountCents - discountCents). */
     netAmountCents: number;
+    /** Líquido retornado pelo provedor (ex.: Asaas `netValue`), em centavos. */
+    providerNetAmountCents: number | null;
     dueDate: Date;
     status: SchoolFinancialChargeStatus;
     chargeType: SchoolFinancialChargeType;

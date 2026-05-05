@@ -77,6 +77,7 @@ export class ListPaidSchoolPayments {
                 'charge.discountCents AS charge_discount_cents',
                 'charge.discountReason AS charge_discount_reason',
                 'charge.netAmountCents AS charge_net_amount_cents',
+                'charge.providerNetAmountCents AS charge_provider_net_amount_cents',
                 'charge.status AS charge_status',
                 'charge.chargeType AS charge_charge_type',
                 'charge.description AS charge_description',
@@ -216,6 +217,11 @@ export class ListPaidSchoolPayments {
                 discountCents: row.charge_discount_cents,
                 discountReason: row.charge_discount_reason,
                 netAmountCents: row.charge_net_amount_cents,
+                providerNetAmountCents:
+                    row.charge_provider_net_amount_cents !== undefined &&
+                    row.charge_provider_net_amount_cents !== null
+                        ? Number(row.charge_provider_net_amount_cents)
+                        : null,
                 status: row.charge_status as SchoolFinancialChargeStatus,
                 statusDisplay: 'Pago',
                 chargeType: row.charge_charge_type,

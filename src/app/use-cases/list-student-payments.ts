@@ -24,6 +24,7 @@ export interface StudentPaymentRecord {
     amountCents: number;
     discountCents: number | null;
     netAmountCents: number;
+    providerNetAmountCents: number | null;
     dueDate: Date;
     paidAt: Date | null;
     status: string;
@@ -99,6 +100,7 @@ export class ListStudentPayments {
             amountCents: data.amountCents,
             discountCents: data.discountCents,
             netAmountCents: data.netAmountCents,
+            providerNetAmountCents: data.providerNetAmountCents ?? null,
             dueDate: data.dueDate,
             paidAt: data.paidAt,
             status: this.getDisplayStatus(data.status, data.dueDate),

@@ -50,6 +50,7 @@ export class SchoolFinancialChargeRepositoryAdapter implements SchoolFinancialCh
             'charge.amountCents AS amountCents',
             'charge.discountCents AS discountCents',
             'charge.netAmountCents AS netAmountCents',
+            'charge.providerNetAmountCents AS providerNetAmountCents',
             'charge.dueDate AS dueDate',
             'charge.status AS status',
             'charge.chargeType AS chargeType',
@@ -84,6 +85,10 @@ export class SchoolFinancialChargeRepositoryAdapter implements SchoolFinancialCh
             amountCents: row.amountCents ?? 0,
             discountCents: row.discountCents ?? null,
             netAmountCents: row.netAmountCents ?? row.amountCents ?? 0,
+            providerNetAmountCents:
+                row.providerNetAmountCents !== undefined && row.providerNetAmountCents !== null
+                    ? Number(row.providerNetAmountCents)
+                    : null,
             dueDate: new Date(row.dueDate),
             status: row.status as SchoolFinancialChargeStatus,
             chargeType: row.chargeType,
