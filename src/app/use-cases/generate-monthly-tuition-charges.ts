@@ -29,6 +29,8 @@ type GenerateMonthlyTuitionChargesOutput = {
 };
 
 export class GenerateMonthlyTuitionCharges {
+    private static readonly DAYS_BEFORE_DUE_TO_GENERATE = 30;
+
     constructor(
         private readonly enrollments: EnrollmentRepository,
         private readonly charges: SchoolFinancialChargeRepository,
@@ -43,7 +45,7 @@ export class GenerateMonthlyTuitionCharges {
         const currentMonth = now.getMonth() + 1; // 1-12
         const currentYear = now.getFullYear();
 
-        // Se não especificado, calcular mês/ano baseado na lógica: gerar 10 dias antes do vencimento
+        // Se não especificado, calcular mês/ano baseado na lógica: gerar até 30 dias antes do vencimento
         // Exemplo: se vence dia 10, gera no dia 1 do mesmo mês
         let targetMonth: number;
         let targetYear: number;
@@ -103,15 +105,15 @@ export class GenerateMonthlyTuitionCharges {
         });
 
         // Filtrar apenas enrollments que devem ter cobrança gerada hoje
-        // Lógica: gerar 10 dias antes do vencimento
-        // Exemplo: se vence dia 10, gera no dia 1 do mesmo mês (10 - 10 + 1 = 1)
-        // Exemplo: se vence dia 5, gera no dia 26 do mês anterior (5 - 10 = -5, então último dia do mês anterior - 4)
+        // Lógica: gerar X dias antes do vencimento (padrão: 30)
+        // Exemplo (X=30): se vence dia 31, gera no dia 1 do mês anterior (31 - 30 = 1)
+        // Exemplo (X=30): se vence dia 10, gera no dia 10 do mês anterior (10 - 30 = -20)
         const enrollmentsToProcess = activeEnrollments.filter((enrollment) => {
             const dueDay = enrollment.paymentDueDay; // Dia do mês que vence (1-31)
-            const generationDay = dueDay - 10; // Dia que deve gerar (10 dias antes)
+            const generationDay = dueDay - GenerateMonthlyTuitionCharges.DAYS_BEFORE_DUE_TO_GENERATE;
             
             // Se generationDay for negativo ou zero, gerar no mês anterior
-            // Exemplo: se vence dia 5, generationDay = -5, então gera no dia (último dia - 4) do mês anterior
+            // Exemplo (X=30): se vence dia 10, generationDay = -20, então gera no dia (último dia - 19) do mês anterior
             if (generationDay <= 0) {
                 // Calcular último dia do mês anterior
                 const lastMonth = currentMonth === 1 ? 12 : currentMonth - 1;
@@ -235,7 +237,7 @@ export class GenerateMonthlyTuitionCharges {
         const dueDay = enrollment.paymentDueDay; // Dia do mês que vence (1-31)
         
         // Calcular mês/ano de vencimento
-        // Se hoje é o dia de gerar (10 dias antes), a cobrança vence no próximo mês
+        // A cobrança vence no próximo mês (mês-alvo da geração)
         let dueMonth = currentMonth + 1;
         let dueYear = currentYear;
         if (dueMonth > 12) {
