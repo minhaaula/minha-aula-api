@@ -29,7 +29,8 @@ type GenerateMonthlyTuitionChargesOutput = {
 };
 
 export class GenerateMonthlyTuitionCharges {
-    private static readonly DAYS_BEFORE_DUE_TO_GENERATE = 30;
+    /** Inclui até 31 dias antes do vencimento (ex.: maio→junho). */
+    private static readonly DAYS_BEFORE_DUE_TO_GENERATE = 31;
 
     constructor(
         private readonly enrollments: EnrollmentRepository,
@@ -47,8 +48,7 @@ export class GenerateMonthlyTuitionCharges {
         const todayStart = new Date(currentYear, currentMonth - 1, currentDay);
         todayStart.setHours(0, 0, 0, 0);
 
-        // Se não especificado, calcular mês/ano baseado na lógica: gerar até 30 dias antes do vencimento
-        // Exemplo: se vence dia 10, gera no dia 1 do mesmo mês
+        // Se não especificado, mês-alvo é sempre o próximo mês (janela de geração vem do filtro por dias até o vencimento).
         let targetMonth: number;
         let targetYear: number;
 
@@ -107,7 +107,7 @@ export class GenerateMonthlyTuitionCharges {
         });
 
         // Filtrar apenas enrollments que devem ter cobrança gerada hoje
-        // Lógica: gerar quando faltar X dias (ou menos) para o vencimento do PRÓXIMO MÊS (padrão: 30).
+        // Lógica: gerar quando faltar X dias (ou menos) para o vencimento do PRÓXIMO MÊS (padrão: 31).
         // Como o cron roda a cada 5 minutos, a idempotência é garantida por `findTuitionChargesForMonth`.
         const enrollmentsToProcess = activeEnrollments.filter((enrollment) => {
             const dueDay = enrollment.paymentDueDay; // 1-31
