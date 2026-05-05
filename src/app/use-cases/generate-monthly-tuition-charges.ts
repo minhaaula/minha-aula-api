@@ -44,6 +44,8 @@ export class GenerateMonthlyTuitionCharges {
         const currentDay = now.getDate();
         const currentMonth = now.getMonth() + 1; // 1-12
         const currentYear = now.getFullYear();
+        const todayStart = new Date(currentYear, currentMonth - 1, currentDay);
+        todayStart.setHours(0, 0, 0, 0);
 
         // Se não especificado, calcular mês/ano baseado na lógica: gerar até 30 dias antes do vencimento
         // Exemplo: se vence dia 10, gera no dia 1 do mesmo mês
@@ -105,27 +107,30 @@ export class GenerateMonthlyTuitionCharges {
         });
 
         // Filtrar apenas enrollments que devem ter cobrança gerada hoje
-        // Lógica: gerar X dias antes do vencimento (padrão: 30)
-        // Exemplo (X=30): se vence dia 31, gera no dia 1 do mês anterior (31 - 30 = 1)
-        // Exemplo (X=30): se vence dia 10, gera no dia 10 do mês anterior (10 - 30 = -20)
+        // Lógica: gerar quando faltar X dias (ou menos) para o vencimento do PRÓXIMO MÊS (padrão: 30).
+        // Como o cron roda a cada 5 minutos, a idempotência é garantida por `findTuitionChargesForMonth`.
         const enrollmentsToProcess = activeEnrollments.filter((enrollment) => {
-            const dueDay = enrollment.paymentDueDay; // Dia do mês que vence (1-31)
-            const generationDay = dueDay - GenerateMonthlyTuitionCharges.DAYS_BEFORE_DUE_TO_GENERATE;
-            
-            // Se generationDay for negativo ou zero, gerar no mês anterior
-            // Exemplo (X=30): se vence dia 10, generationDay = -20, então gera no dia (último dia - 19) do mês anterior
-            if (generationDay <= 0) {
-                // Calcular último dia do mês anterior
-                const lastMonth = currentMonth === 1 ? 12 : currentMonth - 1;
-                const lastMonthYear = currentMonth === 1 ? currentYear - 1 : currentYear;
-                const lastDayOfLastMonth = new Date(lastMonthYear, lastMonth, 0).getDate();
-                const adjustedGenerationDay = lastDayOfLastMonth + generationDay + 1; // +1 porque generationDay é negativo
-                // Verificar se hoje é o mês anterior e o dia correto
-                return currentDay === adjustedGenerationDay && currentMonth === lastMonth && currentYear === lastMonthYear;
+            const dueDay = enrollment.paymentDueDay; // 1-31
+
+            // A cobrança vence no próximo mês
+            let dueMonth = currentMonth + 1;
+            let dueYear = currentYear;
+            if (dueMonth > 12) {
+                dueMonth = 1;
+                dueYear = currentYear + 1;
             }
-            
-            // Se generationDay é positivo, gerar no mesmo mês
-            return currentDay === generationDay;
+
+            // Ajustar vencimento para meses com menos dias (ex.: 31 em fevereiro)
+            const daysInDueMonth = new Date(dueYear, dueMonth, 0).getDate();
+            const adjustedDueDay = Math.min(dueDay, daysInDueMonth);
+            const dueDate = new Date(dueYear, dueMonth - 1, adjustedDueDay);
+            dueDate.setHours(0, 0, 0, 0);
+
+            const diffMs = dueDate.getTime() - todayStart.getTime();
+            const diffDays = Math.floor(diffMs / (24 * 60 * 60 * 1000));
+
+            // Processar se o vencimento está dentro da janela [0, X] dias.
+            return diffDays >= 0 && diffDays <= GenerateMonthlyTuitionCharges.DAYS_BEFORE_DUE_TO_GENERATE;
         });
 
         log.info('[GenerateMonthlyTuitionCharges] Matrículas filtradas para processamento', {
