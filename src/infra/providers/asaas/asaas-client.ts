@@ -183,7 +183,9 @@ export class AsaasClient {
 
     async createTransfer(accountId: string, payload: AsaasCreateTransferPayload): Promise<AsaasCreateTransferResponse> {
         try {
-            const { data } = await this.http.post<AsaasCreateTransferResponse>(`/accounts/${accountId}/transfers`, payload);
+            // Transferência (saque) deve usar POST /v3/transfers (Asaas v3).
+            // O parâmetro accountId é mantido na assinatura por compatibilidade com chamadas existentes.
+            const { data } = await this.http.post<AsaasCreateTransferResponse>(`/transfers`, payload);
             return data;
         } catch (error) {
             throw this.toDomainError(error);
