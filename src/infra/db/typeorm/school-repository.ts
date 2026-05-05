@@ -90,11 +90,16 @@ export class SchoolRepositoryAdapter implements SchoolRepository {
     }
 
     async findWithAccountKeyWithoutOnboardingUrl(limit = 50): Promise<School[]> {
+        const pendingGeneralStatuses = ['PENDING', 'AWAITING_APPROVAL'];
         const qb = this.repo
             .createQueryBuilder('s')
             .leftJoinAndSelect('s.addresses', 'addresses')
             .where('s.accountApiKey IS NOT NULL')
             .andWhere('(s.onboardingUrl IS NULL OR s.onboardingUrl = :empty)', { empty: '' })
+            .andWhere(
+                "JSON_UNQUOTE(JSON_EXTRACT(s.accountStatusSnapshot, '$.general')) IN (:...pendingGeneralStatuses)",
+                { pendingGeneralStatuses }
+            )
             .orderBy('s.createdAt', 'DESC')
             .take(limit);
         const rows = await qb.getMany();
