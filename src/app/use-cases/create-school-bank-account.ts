@@ -48,6 +48,19 @@ export function assertSuccessfulAsaasReceivingBankAccount(res: AsaasReceivingBan
     }
 }
 
+function isAsaasBankAccountAlreadyExistsError(err: unknown): boolean {
+    const msg = err instanceof Error ? err.message : String(err);
+    const normalized = msg.toLowerCase();
+    // AsaasClient.toDomainError() inclui "(status XXX)" no texto.
+    if (normalized.includes('status 409')) return true;
+    // Mensagens comuns quando já existe cadastro semelhante.
+    if (normalized.includes('already exists')) return true;
+    if (normalized.includes('já existe')) return true;
+    if (normalized.includes('ja existe')) return true;
+    if (normalized.includes('duplic')) return true;
+    return false;
+}
+
 export type CreateSchoolBankAccountOutput = {
     id: string;
     schoolId: string;
@@ -124,18 +137,25 @@ export class CreateSchoolBankAccount {
                     message: 'Provedor Asaas não configurado ou não suporta cadastro de conta bancária'
                 });
             }
-            asaas = await this.asaasProvider.createReceivingBankAccount(school.accountApiKey!, {
-                bankCode: String(bankCode),
-                bankName: input.bankName,
-                ownerName: school.name.trim() || input.bankName,
-                cpfCnpjDigits: bankAccountHolderDocument,
-                agency: input.bankAgency,
-                agencyDigit: input.bankAgencyDigit,
-                account: input.bankAccount,
-                accountDigit: input.bankAccountDigit,
-                bankAccountType: input.bankAccountType
-            });
-            assertSuccessfulAsaasReceivingBankAccount(asaas);
+            try {
+                asaas = await this.asaasProvider.createReceivingBankAccount(school.accountApiKey!, {
+                    bankCode: String(bankCode),
+                    bankName: input.bankName,
+                    ownerName: school.name.trim() || input.bankName,
+                    cpfCnpjDigits: bankAccountHolderDocument,
+                    agency: input.bankAgency,
+                    agencyDigit: input.bankAgencyDigit,
+                    account: input.bankAccount,
+                    accountDigit: input.bankAccountDigit,
+                    bankAccountType: input.bankAccountType
+                });
+                assertSuccessfulAsaasReceivingBankAccount(asaas);
+            } catch (err: unknown) {
+                // Se já existir no Asaas, não bloqueia criar/atualizar do nosso lado.
+                if (!isAsaasBankAccountAlreadyExistsError(err)) {
+                    throw err;
+                }
+            }
         }
 
         const account = SchoolBankAccount.create({

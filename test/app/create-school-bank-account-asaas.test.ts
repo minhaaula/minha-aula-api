@@ -300,6 +300,54 @@ describe('CreateSchoolBankAccount (integração Asaas)', () => {
         expect(await bankAccountsRepo.findBySchoolId(school.id)).toHaveLength(0);
     });
 
+    it('se o Asaas indicar que a conta já existe: persiste localmente mesmo assim', async () => {
+        const schoolsRepo = new InMemorySchoolRepository();
+        const bankAccountsRepo = new InMemorySchoolBankAccountRepository();
+        const otp: ConsumeSchoolActionOtp = {
+            async exec() {
+                /* no-op */
+            }
+        } as unknown as ConsumeSchoolActionOtp;
+
+        const school = School.create({
+            id: Uuid(),
+            name: 'Já existe',
+            email: 'ja@escola.com',
+            phone: '11999999999',
+            cnpj: '12345678000190',
+            accountApiKey: 'key'
+        });
+        schoolsRepo.seed(school);
+
+        class FakeAsaasAlreadyExists implements Pick<AsaasProviderPort, 'createReceivingBankAccount'> {
+            async createReceivingBankAccount(): Promise<Record<string, unknown>> {
+                throw new Error('Asaas request failed (status 409): Bank account already exists');
+            }
+        }
+
+        const uc = new CreateSchoolBankAccount(
+            schoolsRepo,
+            bankAccountsRepo,
+            otp,
+            new FakeAsaasAlreadyExists() as unknown as AsaasProviderPort
+        );
+
+        const result = await uc.exec({
+            schoolId: school.id,
+            bankName: 'BB',
+            bankCode: 1,
+            bankAgency: '1',
+            bankAccount: '1',
+            bankAccountType: 'CORRENTE',
+            bankAccountHolderDocument: '12345678000190',
+            otpChallengeId: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'
+        });
+
+        expect(result.id).toBeTruthy();
+        expect(result.asaas).toBeUndefined();
+        expect(await bankAccountsRepo.findBySchoolId(school.id)).toHaveLength(1);
+    });
+
     it('sem documento no payload: usa CPF do responsável quando a escola não tem CNPJ', async () => {
         const schoolsRepo = new InMemorySchoolRepository();
         const bankAccountsRepo = new InMemorySchoolBankAccountRepository();
