@@ -252,12 +252,14 @@ export function startWorker(): Worker {
                 const cobranca = event.payload?.cobranca && typeof event.payload.cobranca === 'object' ? event.payload.cobranca as Record<string, unknown> : null;
                 const smRaw = event.payload?.solicitacaoMatricula;
                 const bvRaw = event.payload?.boasVindas;
+                const srRaw = event.payload?.saqueRealizadoEscola;
 
                 let body = '';
                 let twilioContentSid: string | undefined;
                 let twilioContentVars: Record<string, string> | undefined;
                 let fromSolicitacaoMatricula = false;
                 let fromBoasVindas = false;
+                let fromSaqueRealizadoEscola = false;
 
                 if (cobranca && typeof cobranca.pixCopiaECola === 'string' && cobranca.pixCopiaECola.trim()) {
                     const { getCobrancaWhatsAppBody, getCobrancaTwilioContentVariables } = await import('../../whatsapp/templates/cobranca.template.js');
@@ -354,6 +356,37 @@ export function startWorker(): Worker {
                         userIdsCount: userIds.length,
                         hasDirectTo: !!to
                     });
+                } else if (
+                    srRaw &&
+                    typeof srRaw === 'object' &&
+                    srRaw !== null &&
+                    typeof (srRaw as Record<string, unknown>).nome === 'string' &&
+                    typeof (srRaw as Record<string, unknown>).escola === 'string'
+                ) {
+                    fromSaqueRealizadoEscola = true;
+                    const { loadTwilioContentSidsFromEnv } = await import('../../whatsapp/twilio-content-config.js');
+                    const { getSaqueRealizadoEscolaTwilioContentVariables } = await import(
+                        '../../whatsapp/templates/saque-realizado-escola.template.js'
+                    );
+                    twilioContentSid = loadTwilioContentSidsFromEnv().saqueRealizadoEscola?.trim();
+                    if (!twilioContentSid) {
+                        log.warn(
+                            '[OUTBOX] whatsapp_notification: saqueRealizadoEscola no payload mas TWILIO_CONTENT_SID_SAQUE_REALIZADO_ESCOLA não está definido; envio ignorado.'
+                        );
+                        return;
+                    }
+                    const nome = String((srRaw as { nome: string }).nome ?? '').trim();
+                    const escola = String((srRaw as { escola: string }).escola ?? '').trim();
+                    if (!nome || !escola) {
+                        log.warn('[OUTBOX] whatsapp_notification: saqueRealizadoEscola com variáveis vazias; envio ignorado.');
+                        return;
+                    }
+                    twilioContentVars = getSaqueRealizadoEscolaTwilioContentVariables({ nome, escola });
+                    log.info('[OUTBOX] whatsapp_notification: fila processando template saque_realizado (escola)', {
+                        aggregateId: event.aggregateId,
+                        userIdsCount: userIds.length,
+                        hasDirectTo: !!to
+                    });
                 } else {
                     body = message || ' ';
                 }
@@ -368,6 +401,7 @@ export function startWorker(): Worker {
                     fromCobranca: !!(cobranca && typeof cobranca.pixCopiaECola === 'string' && cobranca.pixCopiaECola.trim()),
                     fromSolicitacaoMatricula,
                     fromBoasVindas,
+                    fromSaqueRealizadoEscola,
                     twilioTemplateSid: useContentTemplate ? twilioContentSid : undefined
                 });
                 if (!useContentTemplate && !body.trim() && mediaUrls.length === 0) {
@@ -436,6 +470,8 @@ export function startWorker(): Worker {
                             ? 'solicitacao_matricula'
                             : fromBoasVindas
                               ? 'boas_vindas'
+                              : fromSaqueRealizadoEscola
+                                ? 'saque_realizado_escola'
                               : undefined
                     });
                 } else if (useContentTemplate && !to) {

@@ -431,7 +431,7 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
     const handleAsaasAccountWebhook = new HandleAsaasAccountWebhook(
         deps.schoolsRepo
     );
-    const handleAsaasTransferWebhook = new HandleAsaasTransferWebhook(withdrawalsRepo);
+    const handleAsaasTransferWebhook = new HandleAsaasTransferWebhook(withdrawalsRepo, deps.schoolsRepo, deps.outbox);
     const assignSchoolPlan = new AssignSchoolPlan(
         deps.schoolsRepo,
         deps.subscriptionPlansRepo,

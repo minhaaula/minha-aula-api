@@ -13,6 +13,11 @@ export type TwilioContentSids = {
     mensalidadeVenceHoje?: string;
     mensalidadeDisponivel?: string;
     /**
+     * Template Twilio Content `saque_realizado_escola` (WhatsApp) — variáveis `nome` e `escola`.
+     * Preferência: TWILIO_CONTENT_SID_SAQUE_REALIZADO_ESCOLA; fallback: SID fixo do template.
+     */
+    saqueRealizadoEscola?: string;
+    /**
      * Template Twilio Content `boas_vindas` (WhatsApp) — variável `nome`.
      * Preferência: TWILIO_CONTENT_SID_BOAS_VINDAS; fallback: TWILIO_CONTENT_SID_NOTIFICATIONS_WELCOME.
      */
@@ -27,6 +32,8 @@ export function loadTwilioContentSidsFromEnv(): TwilioContentSids {
         mensalidadeEmAtraso: process.env.TWILIO_CONTENT_SID_MENSALIDADE_EM_ATRASO?.trim(),
         mensalidadeVenceHoje: process.env.TWILIO_CONTENT_SID_MENSALIDADE_VENCE_HOJE?.trim(),
         mensalidadeDisponivel: process.env.TWILIO_CONTENT_SID_MENSALIDADE_DISPONIVEL?.trim(),
+        saqueRealizadoEscola:
+            process.env.TWILIO_CONTENT_SID_SAQUE_REALIZADO_ESCOLA?.trim(),
         boasVindas:
             process.env.TWILIO_CONTENT_SID_BOAS_VINDAS?.trim() ??
             process.env.TWILIO_CONTENT_SID_NOTIFICATIONS_WELCOME?.trim(),

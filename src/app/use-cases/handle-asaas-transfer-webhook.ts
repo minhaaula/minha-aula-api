@@ -1,5 +1,8 @@
 import { SchoolWithdrawalRepository } from '../../ports/repositories/school-withdrawal.repo';
+import type { SchoolRepository } from '../../ports/repositories/school.repo';
+import type { OutboxRepository } from '../../ports/repositories/outbox.repo';
 import { log } from '../../shared/logger';
+import { sanitizeForLogging } from '../../shared/log-sanitizer';
 
 type AsaasTransferPayload = {
     id?: string | null;
@@ -47,7 +50,11 @@ const PENDING_EVENTS: ReadonlySet<string> = new Set([
  * resposta síncrona, o status final só é conhecido via webhook.
  */
 export class HandleAsaasTransferWebhook {
-    constructor(private readonly withdrawals: SchoolWithdrawalRepository) {}
+    constructor(
+        private readonly withdrawals: SchoolWithdrawalRepository,
+        private readonly schools?: SchoolRepository,
+        private readonly outbox?: OutboxRepository
+    ) {}
 
     async exec(input: HandleAsaasTransferWebhookInput): Promise<HandleAsaasTransferWebhookOutput> {
         const eventName = input.event?.toUpperCase?.() ?? '';
@@ -87,6 +94,7 @@ export class HandleAsaasTransferWebhook {
             withdrawal.markAsCompleted(effectiveDate ?? undefined);
             await this.withdrawals.save(withdrawal);
             log.info('[Asaas Transfer] Saque concluído', { providerRef, withdrawalId: withdrawal.id });
+            await this.tryEnqueueCompletedWithdrawalWhatsApp(withdrawal.id, withdrawal.schoolId);
             return { handled: true, reason: 'Withdrawal completed' };
         }
 
@@ -117,6 +125,43 @@ export class HandleAsaasTransferWebhook {
         }
 
         return { handled: true, reason: 'Event not actionable' };
+    }
+
+    private async tryEnqueueCompletedWithdrawalWhatsApp(withdrawalId: string, schoolId: string): Promise<void> {
+        if (!this.schools || !this.outbox) return;
+        try {
+            const school = await this.schools.findById(schoolId);
+            if (!school) return;
+            if (!school.notificationsWhatsappEnabled) return;
+
+            const to = school.ownerWhatsapp?.trim();
+            if (!to) return;
+
+            const nome = (school.ownerName ?? school.name).trim();
+            const escola = school.name.trim();
+
+            await this.outbox.enqueue({
+                type: 'whatsapp_notification',
+                aggregateId: withdrawalId,
+                payload: {
+                    to,
+                    saqueRealizadoEscola: { nome, escola }
+                }
+            });
+
+            log.info('[Asaas Transfer] WhatsApp de saque concluído enfileirado', sanitizeForLogging({
+                aggregateId: withdrawalId,
+                schoolId,
+                to,
+            }) as object);
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : String(err);
+            log.error('[Asaas Transfer] Falha ao enfileirar WhatsApp de saque concluído', sanitizeForLogging({
+                aggregateId: withdrawalId,
+                schoolId,
+                error: msg
+            }) as object);
+        }
     }
 
     private parseDate(value: string): Date | null {
