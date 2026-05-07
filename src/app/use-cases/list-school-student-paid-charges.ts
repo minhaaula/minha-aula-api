@@ -19,6 +19,10 @@ export type SchoolStudentPaidChargeItem = {
     discountReason: string | null;
     netAmount: number;
     netAmountCents: number;
+    /** Líquido retornado pelo provedor (ex.: Asaas `netValue`), em reais; só após pagamento quando disponível. */
+    providerNetAmount: number | null;
+    /** Líquido retornado pelo provedor (centavos). */
+    providerNetAmountCents: number | null;
     description: string | null;
     dueDate: Date;
     paidAt: Date | null;
@@ -157,6 +161,7 @@ export class ListSchoolStudentPaidCharges {
                 'charge.discountCents AS charge_discount_cents',
                 'charge.discountReason AS charge_discount_reason',
                 'charge.netAmountCents AS charge_net_amount_cents',
+                'charge.providerNetAmountCents AS charge_provider_net_amount_cents',
                 'charge.description AS charge_description',
                 'charge.chargeType AS charge_charge_type',
                 'charge.dueDate AS charge_due_date',
@@ -201,6 +206,7 @@ export class ListSchoolStudentPaidCharges {
                 'charge.discountCents AS charge_discount_cents',
                 'charge.discountReason AS charge_discount_reason',
                 'charge.netAmountCents AS charge_net_amount_cents',
+                'charge.providerNetAmountCents AS charge_provider_net_amount_cents',
                 'charge.description AS charge_description',
                 'charge.chargeType AS charge_charge_type',
                 'charge.dueDate AS charge_due_date',
@@ -221,6 +227,11 @@ export class ListSchoolStudentPaidCharges {
     }
 
     private mapRow(row: any): SchoolStudentPaidChargeItem {
+        const providerNetCents =
+            row.charge_provider_net_amount_cents === undefined || row.charge_provider_net_amount_cents === null
+                ? null
+                : Number(row.charge_provider_net_amount_cents);
+
         return {
             id: row.charge_id,
             amount: row.charge_amount_cents / 100,
@@ -230,6 +241,8 @@ export class ListSchoolStudentPaidCharges {
             discountReason: row.charge_discount_cents != null ? (row.charge_discount_reason ?? null) : null,
             netAmount: row.charge_net_amount_cents / 100,
             netAmountCents: row.charge_net_amount_cents,
+            providerNetAmountCents: providerNetCents,
+            providerNetAmount: providerNetCents !== null ? providerNetCents / 100 : null,
             description: formatSchoolChargeDescriptionForSchoolUi(
                 row.charge_charge_type,
                 row.charge_description,
