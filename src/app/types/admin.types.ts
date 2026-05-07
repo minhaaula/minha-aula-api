@@ -5,6 +5,7 @@
 import type { AdminSchoolAsaasAccountView } from '../presenters/admin-school-asaas-account.presenter';
 import type { SchoolPlanFinanceView } from '../presenters/school-plan-finance.presenter';
 import type { PostalAddressOutput } from './common.types';
+import type { SchoolProfileOnboarding } from './school.types';
 
 /** Status da escola no sistema: ativo (com plano em uso) ou inativo */
 export type SchoolStatus = 'ACTIVE' | 'INACTIVE';
@@ -67,10 +68,9 @@ export interface AdminSchoolDetails extends SchoolWithPlanItem {
     onboardingCompleted: boolean;
     onboardingCompletedAt: Date | null;
     /**
-     * True se a escola já tiver ao menos um pagamento concluído (invoice PAID).
-     * False indica que ainda é o primeiro pagamento (ou que nunca pagou).
+     * Onboarding / KYC (Asaas), mesmo contrato do objeto `onboarding` em GET `/schools/me`.
      */
-    hasCompletedFirstPayment: boolean;
+    onboarding: SchoolProfileOnboarding;
 }
 
 export interface AdminSchoolPlansResponse {

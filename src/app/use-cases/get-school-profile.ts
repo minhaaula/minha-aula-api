@@ -6,34 +6,11 @@ import { StorageProviderPort } from '../../ports/providers/storage-provider.port
 import { SchoolPlanFinanceRepository } from '../../ports/repositories/school-plan-finance.repo';
 import { SchoolPlanInvoiceRepository } from '../../ports/repositories/school-plan-invoice.repo';
 import type { AsaasProviderPort } from '../../ports/providers/asaas-port';
-import {
-    type SchoolAccountStatusSnapshot,
-    schoolAccountStatusSectionsEqual
-} from '../../domain/entities/school';
 import { presentSchoolPlanFinance, SchoolPlanFinanceView } from '../presenters/school-plan-finance.presenter';
+import type { SchoolProfileOnboarding } from '../types/school.types';
+import { resolveSchoolProfileOnboarding } from './resolve-school-profile-onboarding';
 
-/** Status cadastral Asaas (GET /v3/myAccount/status) exposto no perfil da escola. */
-export type SchoolProfileAsaasOnboardingStatus = {
-    id: string;
-    commercialInfo: string;
-    bankAccountInfo: string;
-    documentation: string;
-    general: string;
-    onboardingCompletedAt: Date | null;
-    /** Último evento ACCOUNT_STATUS_* processado (quando disponível via snapshot). */
-    lastEvent?: string | null;
-    /** ISO timestamp do último evento processado (quando disponível via snapshot). */
-    lastEventAt?: string | null;
-};
-
-/** Dados de onboarding / KYC no `GET /schools/me`. */
-export type SchoolProfileOnboarding = {
-    completed: boolean;
-    url: string | null;
-    accountId: string | null;
-    hasCompletedFirstPayment: boolean;
-    asaasStatus: SchoolProfileAsaasOnboardingStatus | null;
-};
+export type { SchoolProfileAsaasOnboardingStatus, SchoolProfileOnboarding } from '../types/school.types';
 
 type BankAccountView = {
     id: string;
@@ -184,96 +161,17 @@ export class GetSchoolProfile {
             }
         }
 
-        // Determinar se o onboarding foi finalizado (pode ser atualizado após consulta ao Asaas abaixo)
-        let onboardingCompleted = school.onboardingCompletedAt !== null;
-
         const hasCompletedFirstPayment = this.invoices
             ? await this.invoices.hasSchoolAnyPaidInvoice(school.id)
             : false;
 
-        let asaasOnboardingStatus: SchoolProfileAsaasOnboardingStatus | null = null;
-        if (school.onboardingCompletedAt !== null) {
-            asaasOnboardingStatus = {
-                id: school.accountId?.trim() ?? '',
-                commercialInfo: 'APPROVED',
-                bankAccountInfo: 'APPROVED',
-                documentation: 'APPROVED',
-                general: 'APPROVED',
-                onboardingCompletedAt: school.onboardingCompletedAt,
-                lastEvent: school.accountStatusSnapshot?.lastEvent ?? null,
-                lastEventAt: school.accountStatusSnapshot?.lastEventAt ?? null
-            };
-        } else if (school.accountApiKey?.trim() && this.asaasProvider?.getAccountStatus) {
-            try {
-                const status = await this.asaasProvider.getAccountStatus(school.accountApiKey);
-                if (status) {
-                    const allApproved =
-                        status.commercialInfo === 'APPROVED' &&
-                        status.bankAccountInfo === 'APPROVED' &&
-                        status.documentation === 'APPROVED' &&
-                        status.general === 'APPROVED';
-
-                    const patch: SchoolAccountStatusSnapshot = {
-                        commercialInfo: status.commercialInfo,
-                        bankAccountInfo: status.bankAccountInfo,
-                        documentation: status.documentation,
-                        general: status.general
-                    };
-                    const previewWithSnapshot = school.withAccountStatusSnapshot(patch);
-                    const sectionsChanged = !schoolAccountStatusSectionsEqual(
-                        school.accountStatusSnapshot,
-                        previewWithSnapshot.accountStatusSnapshot
-                    );
-                    const bootstrapSnapshot = school.accountStatusSnapshot == null;
-
-                    let workingSchool = school;
-                    let needsSave = false;
-                    if (allApproved && !school.onboardingCompletedAt) {
-                        workingSchool = workingSchool.withOnboardingCompletedAt(new Date());
-                        onboardingCompleted = true;
-                        needsSave = true;
-                    }
-                    if (sectionsChanged || bootstrapSnapshot) {
-                        workingSchool = workingSchool.withAccountStatusSnapshot(patch);
-                        needsSave = true;
-                    }
-                    if (needsSave) {
-                        await this.schools.save(workingSchool);
-                        school = workingSchool;
-                    }
-
-                    const onboardingCompletedAt = school.onboardingCompletedAt;
-
-                    asaasOnboardingStatus = {
-                        id: status.id,
-                        commercialInfo: status.commercialInfo,
-                        bankAccountInfo: status.bankAccountInfo,
-                        documentation: status.documentation,
-                        general: status.general,
-                        onboardingCompletedAt,
-                        lastEvent: school.accountStatusSnapshot?.lastEvent ?? null,
-                        lastEventAt: school.accountStatusSnapshot?.lastEventAt ?? null
-                    };
-                }
-            } catch {
-                // Se o Asaas estiver instável, não quebramos o /me: caímos no snapshot persistido via webhook.
-            }
-        }
-
-        if (!asaasOnboardingStatus && school.accountStatusSnapshot) {
-            const snap = school.accountStatusSnapshot;
-            // Fallback: usa o snapshot gravado pelos webhooks ACCOUNT_STATUS_* para o frontend decidir.
-            asaasOnboardingStatus = {
-                id: school.accountId?.trim() ?? '',
-                commercialInfo: snap.commercialInfo ?? 'PENDING',
-                bankAccountInfo: snap.bankAccountInfo ?? 'PENDING',
-                documentation: snap.documentation ?? 'PENDING',
-                general: snap.general ?? 'PENDING',
-                onboardingCompletedAt: school.onboardingCompletedAt,
-                lastEvent: snap.lastEvent ?? null,
-                lastEventAt: snap.lastEventAt ?? null
-            };
-        }
+        const { school: schoolAfterOnboarding, onboarding } = await resolveSchoolProfileOnboarding({
+            school,
+            hasCompletedFirstPayment,
+            schools: this.schools,
+            asaasProvider: this.asaasProvider
+        });
+        school = schoolAfterOnboarding;
 
         return {
             id: school.id,
@@ -314,13 +212,7 @@ export class GetSchoolProfile {
             },
             images,
             isOverdue,
-            onboarding: {
-                completed: onboardingCompleted,
-                url: school.onboardingUrl,
-                accountId: school.accountId,
-                hasCompletedFirstPayment,
-                asaasStatus: asaasOnboardingStatus
-            },
+            onboarding,
             plan
         };
     }

@@ -119,6 +119,32 @@ export type BankAccountOutput = {
     updatedAt: Date;
 };
 
+/** Status cadastral Asaas (GET /v3/myAccount/status) exposto no perfil da escola e espelhado no admin. */
+export type SchoolProfileAsaasOnboardingStatus = {
+    id: string;
+    commercialInfo: string;
+    bankAccountInfo: string;
+    documentation: string;
+    general: string;
+    onboardingCompletedAt: Date | null;
+    /** Último evento ACCOUNT_STATUS_* processado (quando disponível via snapshot). */
+    lastEvent?: string | null;
+    /** ISO timestamp do último evento processado (quando disponível via snapshot). */
+    lastEventAt?: string | null;
+};
+
+/**
+ * Objeto `onboarding` do GET `/schools/me`.
+ * Mantido igual no detalhe admin para o painel espelhar a mesma estrutura.
+ */
+export type SchoolProfileOnboarding = {
+    completed: boolean;
+    url: string | null;
+    accountId: string | null;
+    hasCompletedFirstPayment: boolean;
+    asaasStatus: SchoolProfileAsaasOnboardingStatus | null;
+};
+
 export interface GetSchoolProfileOutput {
     id: string;
     name: string;
@@ -154,7 +180,7 @@ export interface GetSchoolProfileOutput {
     }>;
     isOverdue?: boolean;
     /** Onboarding / KYC (Asaas), URL e flags relacionadas. */
-    onboarding: import('../use-cases/get-school-profile').SchoolProfileOnboarding;
+    onboarding: SchoolProfileOnboarding;
 }
 
 /**

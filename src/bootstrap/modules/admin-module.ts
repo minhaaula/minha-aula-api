@@ -108,7 +108,8 @@ export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext)
     const getAdminSchoolDetails = new GetAdminSchoolDetails(
         deps.schoolsRepo,
         deps.planFinancesRepo,
-        deps.planInvoicesRepo
+        deps.planInvoicesRepo,
+        deps.asaasProvider
     );
 
     const getAdminSchoolPlans = new GetAdminSchoolPlans(
