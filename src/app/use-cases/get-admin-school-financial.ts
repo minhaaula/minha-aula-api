@@ -1,6 +1,11 @@
+import {
+    type AdminSchoolAsaasAccountView,
+    presentAdminSchoolAsaasAccountFromSchool
+} from '../presenters/admin-school-asaas-account.presenter';
 import type { SchoolRepository } from '../../ports/repositories/school.repo';
 import type { SchoolFinancialChargeRepository } from '../../ports/repositories/school-financial-charge.repo';
 import type { SchoolWithdrawalRepository } from '../../ports/repositories/school-withdrawal.repo';
+import { AppError, ErrorCode } from '../../shared/errors';
 
 export type GetAdminSchoolFinancialInput = {
     schoolId: string;
@@ -26,6 +31,8 @@ export type GetAdminSchoolFinancialOutput = {
     schoolId: string;
     balance: AdminSchoolFinancialBalance;
     withdrawals: AdminSchoolWithdrawalItem[];
+    /** Status/resumo da subconta Asaas (somente dados persistidos). */
+    asaasAccount: AdminSchoolAsaasAccountView | null;
 };
 
 export class GetAdminSchoolFinancial {
@@ -38,12 +45,12 @@ export class GetAdminSchoolFinancial {
     async exec(input: GetAdminSchoolFinancialInput): Promise<GetAdminSchoolFinancialOutput> {
         const schoolId = input.schoolId?.trim();
         if (!schoolId) {
-            throw new Error('School id is required');
+            throw AppError.fromCode(ErrorCode.REQUIRED_FIELD, { field: 'schoolId' });
         }
 
         const school = await this.schools.findById(schoolId);
         if (!school) {
-            throw new Error('School not found');
+            throw AppError.fromCode(ErrorCode.SCHOOL_NOT_FOUND, { schoolId });
         }
 
         let totalGanhoCents = 0;
@@ -84,7 +91,8 @@ export class GetAdminSchoolFinancial {
         return {
             schoolId,
             balance,
-            withdrawals
+            withdrawals,
+            asaasAccount: presentAdminSchoolAsaasAccountFromSchool(school)
         };
     }
 }

@@ -2,6 +2,7 @@
  * Tipos relacionados ao módulo admin
  */
 
+import type { AdminSchoolAsaasAccountView } from '../presenters/admin-school-asaas-account.presenter';
 import type { SchoolPlanFinanceView } from '../presenters/school-plan-finance.presenter';
 import type { PostalAddressOutput } from './common.types';
 
@@ -34,6 +35,11 @@ export interface SchoolWithPlanItem {
     onboardingCompleted: boolean;
     /** ID da subconta Asaas (null se ainda não criada). */
     accountId: string | null;
+    /**
+     * Status consolidado da conta Asaas (snapshot persistido; sem chamada ao provedor).
+     * `null` quando não há subconta (`accountId` ausente).
+     */
+    asaasAccount: AdminSchoolAsaasAccountView | null;
 }
 
 /**

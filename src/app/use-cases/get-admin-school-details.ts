@@ -1,6 +1,7 @@
 import { SchoolRepository } from '../../ports/repositories/school.repo';
 import { SchoolPlanFinanceRepository } from '../../ports/repositories/school-plan-finance.repo';
 import { SchoolPlanInvoiceRepository } from '../../ports/repositories/school-plan-invoice.repo';
+import { presentAdminSchoolAsaasAccountFromSchool } from '../presenters/admin-school-asaas-account.presenter';
 import { presentSchoolPlanFinance } from '../presenters/school-plan-finance.presenter';
 import type { AdminSchoolDetails } from '../types/admin.types';
 import { AppError, ErrorCode } from '../../shared/errors';
@@ -62,7 +63,8 @@ export class GetAdminSchoolDetails {
             onboardingUrl: school.onboardingUrl,
             onboardingCompleted,
             onboardingCompletedAt: school.onboardingCompletedAt,
-            hasCompletedFirstPayment
+            hasCompletedFirstPayment,
+            asaasAccount: presentAdminSchoolAsaasAccountFromSchool(school)
         };
     }
 }

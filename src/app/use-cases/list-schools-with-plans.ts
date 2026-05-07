@@ -1,6 +1,7 @@
 import { SchoolRepository } from '../../ports/repositories/school.repo';
 import { SchoolPlanFinanceRepository } from '../../ports/repositories/school-plan-finance.repo';
 import { SchoolPlanInvoiceRepository } from '../../ports/repositories/school-plan-invoice.repo';
+import { presentAdminSchoolAsaasAccountFromSchool } from '../presenters/admin-school-asaas-account.presenter';
 import { presentSchoolPlanFinance, type SchoolPlanFinanceView } from '../presenters/school-plan-finance.presenter';
 import type { SchoolWithPlanItem, SchoolStatus, PaymentStatus } from '../types/admin.types';
 
@@ -109,7 +110,8 @@ export class ListSchoolsWithPlans {
                 plan,
                 hasCompletedFirstPayment,
                 onboardingCompleted,
-                accountId: school.accountId
+                accountId: school.accountId,
+                asaasAccount: presentAdminSchoolAsaasAccountFromSchool(school)
             };
         });
 
