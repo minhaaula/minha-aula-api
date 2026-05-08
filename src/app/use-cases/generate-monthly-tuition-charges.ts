@@ -50,7 +50,7 @@ function formatDateBr(date: Date): string {
 
 export class GenerateMonthlyTuitionCharges {
   /** Inclui até 31 dias antes do vencimento (ex.: maio→junho). */
-  private static readonly DAYS_BEFORE_DUE_TO_GENERATE = 60;
+  private static readonly DAYS_BEFORE_DUE_TO_GENERATE = 10;
 
   constructor(
     private readonly enrollments: EnrollmentRepository,
