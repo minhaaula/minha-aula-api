@@ -26,6 +26,8 @@ export type SchoolStudentPaidChargeItem = {
     description: string | null;
     dueDate: Date;
     paidAt: Date | null;
+    /** Meio de pagamento registrado no pagamento (PIX, BOLETO, MANUAL); `null` se ainda não pago ou não informado. */
+    paymentMethod: 'PIX' | 'BOLETO' | 'MANUAL' | null;
     status: string;
     statusDisplay: SchoolPaymentStatusDisplay;
     course: {
@@ -166,6 +168,7 @@ export class ListSchoolStudentPaidCharges {
                 'charge.chargeType AS charge_charge_type',
                 'charge.dueDate AS charge_due_date',
                 'charge.paidAt AS charge_paid_at',
+                'charge.paymentMethod AS charge_payment_method',
                 'charge.status AS charge_status',
                 'course.id AS course_id',
                 'course.name AS course_name',
@@ -211,6 +214,7 @@ export class ListSchoolStudentPaidCharges {
                 'charge.chargeType AS charge_charge_type',
                 'charge.dueDate AS charge_due_date',
                 'charge.paidAt AS charge_paid_at',
+                'charge.paymentMethod AS charge_payment_method',
                 'charge.status AS charge_status',
                 'course.id AS course_id',
                 'course.name AS course_name',
@@ -250,6 +254,7 @@ export class ListSchoolStudentPaidCharges {
             ),
             dueDate: new Date(row.charge_due_date),
             paidAt: row.charge_paid_at ? new Date(row.charge_paid_at) : null,
+            paymentMethod: this.normalizePaymentMethod(row.charge_payment_method),
             status: row.charge_status,
             statusDisplay: this.getStatusDisplay(row.charge_status as SchoolFinancialChargeStatus, new Date(row.charge_due_date)),
             course: {
@@ -261,6 +266,15 @@ export class ListSchoolStudentPaidCharges {
                 label: row.class_label
             }
         };
+    }
+
+    private normalizePaymentMethod(
+        raw: unknown
+    ): 'PIX' | 'BOLETO' | 'MANUAL' | null {
+        if (raw === 'PIX' || raw === 'BOLETO' || raw === 'MANUAL') {
+            return raw;
+        }
+        return null;
     }
 
     private getStatusDisplay(status: SchoolFinancialChargeStatus, dueDate: Date): SchoolPaymentStatusDisplay {
