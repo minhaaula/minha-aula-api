@@ -5,6 +5,10 @@ import { SchoolFinancialChargeRepositoryAdapter } from '../db/typeorm/school-fin
 import { CourseRepositoryAdapter } from '../db/typeorm/course-repository';
 import { CourseClassRepositoryAdapter } from '../db/typeorm/course-class-repository.adapter';
 import { EnrollmentRequestRepositoryAdapter } from '../db/typeorm/enrollment-request-repository.adapter';
+import { NotificationRepositoryAdapter } from '../db/typeorm/notification-repository.adapter';
+import { SchoolRepositoryAdapter } from '../db/typeorm/school-repository';
+import { OutboxProducer } from '../messaging/bullmq/outbox-producer';
+import { NotifyStudentUser } from '../../app/use-cases/notify-student-user';
 import { GenerateMonthlyTuitionCharges } from '../../app/use-cases/generate-monthly-tuition-charges';
 import { log } from '../../shared/logger';
 
@@ -37,13 +41,18 @@ export async function runGenerateMonthlyCharges(): Promise<GenerateMonthlyCharge
     const courses = new CourseRepositoryAdapter();
     const classes = new CourseClassRepositoryAdapter();
     const enrollmentRequests = new EnrollmentRequestRepositoryAdapter();
+    const schools = new SchoolRepositoryAdapter();
+    const notifications = new NotificationRepositoryAdapter();
+    const outbox = new OutboxProducer();
+    const notifyStudent = new NotifyStudentUser(notifications, outbox, schools);
 
     const generateCharges = new GenerateMonthlyTuitionCharges(
         enrollments,
         charges,
         courses,
         classes,
-        enrollmentRequests
+        enrollmentRequests,
+        notifyStudent
     );
 
     const result = await generateCharges.exec();

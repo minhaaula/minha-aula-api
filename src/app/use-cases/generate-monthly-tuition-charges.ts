@@ -6,6 +6,7 @@ import { EnrollmentRequestRepository } from '../../ports/repositories/enrollment
 import { SchoolFinancialCharge } from '../../domain/entities/school-financial-charge';
 import { Uuid } from '../../shared/uuid';
 import { log } from '../../shared/logger';
+import type { NotifyStudentUser } from './notify-student-user';
 import { AppDataSource } from '../../infra/db/typeorm/datasource';
 import { EnrollmentOrm } from '../../infra/db/typeorm/entities/enrollment.orm';
 import { Enrollment } from '../../domain/entities/enrollment';
@@ -28,6 +29,22 @@ type GenerateMonthlyTuitionChargesOutput = {
     }>;
 };
 
+function formatCurrency(cents: number, currency: string = 'BRL'): string {
+    const value = cents / 100;
+    if (currency === 'BRL') {
+        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+    }
+    return `${currency} ${value.toFixed(2)}`;
+}
+
+function formatDateBr(date: Date): string {
+    return new Intl.DateTimeFormat('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+    }).format(date);
+}
+
 export class GenerateMonthlyTuitionCharges {
     /** Inclui até 31 dias antes do vencimento (ex.: maio→junho). */
     private static readonly DAYS_BEFORE_DUE_TO_GENERATE = 31;
@@ -37,7 +54,8 @@ export class GenerateMonthlyTuitionCharges {
         private readonly charges: SchoolFinancialChargeRepository,
         private readonly courses: CourseRepository,
         private readonly classes: CourseClassRepository,
-        private readonly enrollmentRequests?: EnrollmentRequestRepository
+        private readonly enrollmentRequests: EnrollmentRequestRepository | undefined,
+        private readonly notifyStudent?: NotifyStudentUser
     ) {}
 
     async exec(input: GenerateMonthlyTuitionChargesInput = {}): Promise<GenerateMonthlyTuitionChargesOutput> {
@@ -338,6 +356,32 @@ export class GenerateMonthlyTuitionCharges {
         });
 
         await this.charges.save(charge);
+
+        if (this.notifyStudent) {
+            try {
+                const desc = charge.description || 'Mensalidade';
+                const messageBase = `${desc} — ${formatCurrency(charge.netAmountCents, 'BRL')} · vencimento ${formatDateBr(charge.dueDate)}. Abra o app para gerar o pagamento.`;
+                const message = `${messageBase} (${course.name}).`;
+                await this.notifyStudent.exec({
+                    userId: enrollment.ownerUserId,
+                    schoolId: charge.schoolId,
+                    title: 'Nova mensalidade',
+                    message,
+                    kind: 'TUITION_CHARGE_CREATED',
+                    sendPush: true,
+                    extraMetadata: {
+                        chargeId: charge.id,
+                        courseId: charge.courseId,
+                        courseClassId: enrollment.courseClassId
+                    }
+                });
+            } catch (err) {
+                log.warn('[GenerateMonthlyTuitionCharges] Falha ao notificar nova mensalidade (in-app/push)', {
+                    chargeId: charge.id,
+                    error: err instanceof Error ? err.message : String(err)
+                });
+            }
+        }
 
         return {
             enrollmentId: enrollment.id,

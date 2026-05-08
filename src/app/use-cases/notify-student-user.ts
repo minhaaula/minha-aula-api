@@ -9,7 +9,8 @@ export type StudentInAppNotificationKind =
     | 'ENROLLMENT_REQUEST_RECEIVED'
     | 'ENROLLMENT_CONFIRMED'
     | 'ENROLLMENT_REQUEST_REJECTED'
-    | 'TUITION_DUE_REMINDER';
+    | 'TUITION_DUE_REMINDER'
+    | 'TUITION_CHARGE_CREATED';
 
 /**
  * Persiste notificação in-app (sino) para o aluno e, opcionalmente, enfileira push FCM.
