@@ -416,6 +416,7 @@ describe('HandleAsaasPaymentWebhook', () => {
             payment: {
                 id: 'pay_jo7mtae7j4qt0zvw',
                 status: 'RECEIVED',
+                netValue: 29.01,
                 externalReference: charge.id,
                 billingType: 'PIX',
                 paymentDate: '2026-05-04',
@@ -429,5 +430,6 @@ describe('HandleAsaasPaymentWebhook', () => {
         expect(updated?.status).toBe('PAID');
         expect(updated?.paymentMethod).toBe('PIX');
         expect(updated?.paidAt).not.toBeNull();
+        expect(updated?.providerNetAmountCents).toBe(2901);
     });
 });

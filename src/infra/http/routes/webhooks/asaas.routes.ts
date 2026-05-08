@@ -265,6 +265,7 @@ export function asaasWebhookRouter(deps: AsaasWebhookDeps) {
                 ? { id: payload.payment.customer }
                 : payload.payment.customer ?? null,
             value: payload.payment.value ?? null,
+            netValue: payload.payment.netValue ?? null,
             metadata: normalizePaymentMetadata((payload.payment as Record<string, unknown>).metadata)
         } : undefined;
 
