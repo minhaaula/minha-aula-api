@@ -6,6 +6,7 @@ import type { SchoolRepository } from '../../ports/repositories/school.repo';
 import type { SchoolFinancialChargeRepository } from '../../ports/repositories/school-financial-charge.repo';
 import type { SchoolWithdrawalRepository } from '../../ports/repositories/school-withdrawal.repo';
 import { AppError, ErrorCode } from '../../shared/errors';
+import type { GetSchoolBalance } from './get-school-balance';
 
 export type GetAdminSchoolFinancialInput = {
     schoolId: string;
@@ -39,7 +40,9 @@ export class GetAdminSchoolFinancial {
     constructor(
         private readonly schools: SchoolRepository,
         private readonly financialCharges: SchoolFinancialChargeRepository,
-        private readonly withdrawals: SchoolWithdrawalRepository
+        private readonly withdrawals: SchoolWithdrawalRepository,
+        /** Quando definido, `saldoDisponivelCents` vem do Asaas (subconta / `accountId`), não do ledger local. */
+        private readonly getSchoolBalance?: GetSchoolBalance
     ) {}
 
     async exec(input: GetAdminSchoolFinancialInput): Promise<GetAdminSchoolFinancialOutput> {
@@ -71,8 +74,14 @@ export class GetAdminSchoolFinancial {
             atrasadoCents = overdue.totalAmountCents;
         }
 
+        let saldoDisponivelCents = totalGanhoCents;
+        if (this.getSchoolBalance) {
+            const asaasSaldo = await this.getSchoolBalance.exec({ schoolId });
+            saldoDisponivelCents = asaasSaldo.availableBalanceCents;
+        }
+
         const balance: AdminSchoolFinancialBalance = {
-            saldoDisponivelCents: totalGanhoCents,
+            saldoDisponivelCents,
             totalGanhoCents,
             pendenteCents,
             atrasadoCents

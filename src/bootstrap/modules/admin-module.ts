@@ -40,6 +40,7 @@ import { UpdateCategory } from '../../app/use-cases/update-category';
 import { ListSchoolStudents } from '../../app/use-cases/list-school-students';
 import { ListAllStudents } from '../../app/use-cases/list-all-students';
 import { GetAdminSchoolFinancial } from '../../app/use-cases/get-admin-school-financial';
+import { GetSchoolBalance } from '../../app/use-cases/get-school-balance';
 import { GetAdminSchoolBilling } from '../../app/use-cases/get-admin-school-billing';
 import { ListAdminSchoolInvoices } from '../../app/use-cases/list-admin-school-invoices';
 import { ListAdminPaymentHistory } from '../../app/use-cases/list-admin-payment-history';
@@ -165,10 +166,14 @@ export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext)
     );
 
     const withdrawalsRepo = new SchoolWithdrawalRepositoryAdapter();
+    const getSchoolBalanceForAdmin = deps.asaasProvider
+        ? new GetSchoolBalance(deps.schoolsRepo, deps.asaasProvider)
+        : undefined;
     const getAdminSchoolFinancial = new GetAdminSchoolFinancial(
         deps.schoolsRepo,
         deps.financialChargesRepo,
-        withdrawalsRepo
+        withdrawalsRepo,
+        getSchoolBalanceForAdmin
     );
 
     const getAdminSchoolBilling = new GetAdminSchoolBilling(
