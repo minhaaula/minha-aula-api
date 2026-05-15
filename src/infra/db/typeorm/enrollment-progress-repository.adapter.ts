@@ -1,6 +1,7 @@
 import { AppDataSource } from './datasource';
 import type {
     EnrollmentProgressRepository,
+    EnrollmentProgressCertificateRow,
     EnrollmentProgressCertificateTemplate,
     EnrollmentProgressPromotionRow,
     EnrollmentProgressSchoolLevel,
@@ -57,6 +58,21 @@ function toPromotionRow(r: EnrollmentLevelPromotionOrm): EnrollmentProgressPromo
         notes: r.notes,
         createdByUserId: r.createdByUserId,
         createdAt: r.createdAt
+    };
+}
+
+function toCertificateRow(r: EnrollmentPromotionCertificateOrm): EnrollmentProgressCertificateRow {
+    return {
+        id: r.id,
+        enrollmentId: r.enrollmentId,
+        promotionId: r.promotionId,
+        certificateTemplateId: r.certificateTemplateId,
+        status: r.status === 'GENERATED' ? 'GENERATED' : 'PENDING',
+        issuedAt: r.issuedAt,
+        documentUrl: r.documentUrl,
+        metadata: r.metadata,
+        logicalTemplateId: r.certificateTemplate?.logicalTemplateId ?? null,
+        templateName: r.certificateTemplate?.name ?? null
     };
 }
 
@@ -189,12 +205,16 @@ export class EnrollmentProgressRepositoryAdapter implements EnrollmentProgressRe
                     templateName: c.certificateTemplate?.name ?? null,
                     logicalTemplateId: c.certificateTemplate?.logicalTemplateId ?? null,
                     documentUrl: c.documentUrl,
-                    metadata: c.metadata
+                    metadata: c.metadata,
+                    status: c.status
                 }
             });
         }
 
         for (const e of customEvents) {
+            if (e.eventType === EnrollmentTimelineEventKind.LEVEL_PROMOTION) {
+                continue;
+            }
             aggregated.push({
                 id: e.id,
                 kind: EnrollmentTimelineEventKind.CUSTOM_MILESTONE,
@@ -260,6 +280,63 @@ export class EnrollmentProgressRepositoryAdapter implements EnrollmentProgressRe
         return row ? toLevelRow(row) : null;
     }
 
+    async updateLevel(input: {
+        schoolId: string;
+        levelId: string;
+        label: string;
+        templateCode: string | null;
+        sortOrder: number;
+    }): Promise<void> {
+        await this.levels.update(
+            { id: input.levelId, schoolId: input.schoolId },
+            {
+                label: input.label,
+                templateCode: input.templateCode,
+                sortOrder: input.sortOrder
+            }
+        );
+    }
+
+    async deleteLevel(schoolId: string, levelId: string): Promise<void> {
+        await this.levels.delete({ id: levelId, schoolId });
+    }
+
+    async countLevelAssociations(schoolId: string, levelId: string): Promise<number> {
+        const currentCount = await this.enrollments
+            .createQueryBuilder('e')
+            .innerJoin('e.courseClass', 'class')
+            .innerJoin('class.course', 'course')
+            .where('course.school_id = :schoolId', { schoolId })
+            .andWhere('e.current_school_student_level_id = :levelId', { levelId })
+            .getCount();
+
+        const promotionCount = await this.promotions
+            .createQueryBuilder('p')
+            .innerJoin('p.enrollment', 'e')
+            .innerJoin('e.courseClass', 'class')
+            .innerJoin('class.course', 'course')
+            .where('course.school_id = :schoolId', { schoolId })
+            .andWhere('(p.from_level_id = :levelId OR p.to_level_id = :levelId)', { levelId })
+            .getCount();
+
+        return currentCount + promotionCount;
+    }
+
+    async reorderLevels(schoolId: string, items: Array<{ id: string; sortOrder: number }>): Promise<void> {
+        await this.levels.manager.transaction(async (manager) => {
+            const repo = manager.getRepository(SchoolStudentLevelOrm);
+            for (let i = 0; i < items.length; i++) {
+                await repo.update(
+                    { id: items[i].id, schoolId },
+                    { sortOrder: -(i + 1) }
+                );
+            }
+            for (const item of items) {
+                await repo.update({ id: item.id, schoolId }, { sortOrder: item.sortOrder });
+            }
+        });
+    }
+
     async listCertificateTemplates(schoolId: string): Promise<EnrollmentProgressCertificateTemplate[]> {
         const rows = await this.templates.find({ where: { schoolId }, order: { name: 'ASC' } });
         return rows.map(toTemplateRow);
@@ -290,12 +367,29 @@ export class EnrollmentProgressRepositoryAdapter implements EnrollmentProgressRe
         return row ? toTemplateRow(row) : null;
     }
 
-    async listPromotions(enrollmentId: string): Promise<EnrollmentProgressPromotionRow[]> {
+    async listPromotions(enrollmentId: string, order: 'asc' | 'desc' = 'desc'): Promise<EnrollmentProgressPromotionRow[]> {
         const rows = await this.promotions.find({
             where: { enrollmentId },
-            order: { promotedAt: 'DESC' }
+            order: { promotedAt: order === 'asc' ? 'ASC' : 'DESC' }
         });
         return rows.map(toPromotionRow);
+    }
+
+    async findCertificateByPromotionId(promotionId: string): Promise<EnrollmentProgressCertificateRow | null> {
+        const row = await this.certificates.findOne({
+            where: { promotionId },
+            relations: { certificateTemplate: true }
+        });
+        return row ? toCertificateRow(row) : null;
+    }
+
+    async listCertificatesByEnrollment(enrollmentId: string): Promise<EnrollmentProgressCertificateRow[]> {
+        const rows = await this.certificates.find({
+            where: { enrollmentId },
+            relations: { certificateTemplate: true },
+            order: { issuedAt: 'ASC' }
+        });
+        return rows.map(toCertificateRow);
     }
 
     async createPromotion(input: {
@@ -369,6 +463,7 @@ export class EnrollmentProgressRepositoryAdapter implements EnrollmentProgressRe
         enrollmentId: string;
         promotionId: string;
         certificateTemplateId: string;
+        status: 'PENDING' | 'GENERATED';
         issuedAt: Date;
         documentUrl: string | null;
         metadata: Record<string, unknown> | null;
@@ -378,10 +473,22 @@ export class EnrollmentProgressRepositoryAdapter implements EnrollmentProgressRe
             enrollmentId: input.enrollmentId,
             promotionId: input.promotionId,
             certificateTemplateId: input.certificateTemplateId,
+            status: input.status,
             issuedAt: input.issuedAt,
             documentUrl: input.documentUrl,
             metadata: input.metadata
         });
         await this.certificates.save(row);
+    }
+
+    async updatePromotionCertificateDocument(input: {
+        certificateId: string;
+        documentUrl: string;
+        status: 'GENERATED';
+    }): Promise<void> {
+        await this.certificates.update(
+            { id: input.certificateId },
+            { documentUrl: input.documentUrl, status: input.status }
+        );
     }
 }

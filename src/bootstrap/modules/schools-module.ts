@@ -126,6 +126,10 @@ import { RecordEnrollmentLevelPromotion } from '../../app/use-cases/record-enrol
 import { AppendEnrollmentTimelineEvent } from '../../app/use-cases/append-enrollment-timeline-event';
 import { IssueEnrollmentPromotionCertificate } from '../../app/use-cases/issue-enrollment-promotion-certificate';
 import { ListEnrollmentTimeline } from '../../app/use-cases/list-enrollment-timeline';
+import { UpdateSchoolStudentLevel } from '../../app/use-cases/update-school-student-level';
+import { DeleteSchoolStudentLevel } from '../../app/use-cases/delete-school-student-level';
+import { ReorderSchoolStudentLevels } from '../../app/use-cases/reorder-school-student-levels';
+import { ListEnrollmentLevelPromotions } from '../../app/use-cases/list-enrollment-level-promotions';
 
 export type SchoolsModuleDeps = {
     schoolsRepo: SchoolRepositoryAdapter;
@@ -485,6 +489,10 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
     const appendEnrollmentTimelineEvent = new AppendEnrollmentTimelineEvent(enrollmentProgressRepo);
     const issueEnrollmentPromotionCertificate = new IssueEnrollmentPromotionCertificate(enrollmentProgressRepo);
     const listEnrollmentTimeline = new ListEnrollmentTimeline(enrollmentProgressRepo);
+    const updateSchoolStudentLevel = new UpdateSchoolStudentLevel(enrollmentProgressRepo);
+    const deleteSchoolStudentLevel = new DeleteSchoolStudentLevel(enrollmentProgressRepo);
+    const reorderSchoolStudentLevels = new ReorderSchoolStudentLevels(enrollmentProgressRepo);
+    const listEnrollmentLevelPromotions = new ListEnrollmentLevelPromotions(enrollmentProgressRepo);
 
     // Montar routers prontos
     const schoolsRouterInstance = schoolsRouter({
@@ -568,7 +576,11 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         recordEnrollmentLevelPromotion,
         appendEnrollmentTimelineEvent,
         issueEnrollmentPromotionCertificate,
-        listEnrollmentTimeline
+        listEnrollmentTimeline,
+        updateSchoolStudentLevel,
+        deleteSchoolStudentLevel,
+        reorderSchoolStudentLevels,
+        listEnrollmentLevelPromotions
     });
 
     const asaasWebhookRouterInstance = asaasWebhookRouter({

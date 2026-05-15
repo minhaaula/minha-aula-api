@@ -9,7 +9,7 @@ Gestão da **escola** autenticada (**persona SCHOOL**): perfil, cursos, turmas, 
 
 > Referência técnica completa: [Swagger UI](pathname:///docs) · [OpenAPI JSON](pathname:///docs/openapi.json)
 
-## Endpoints (80)
+## Endpoints (84)
 
 ### `POST` `/schools`
 
@@ -288,6 +288,18 @@ O nível é **por matrícula**, não global ao aluno. Use `timelineLimit` para l
 
 ---
 
+### `GET` `/schools/enrollments/\{enrollmentId\}/promotions`
+
+**Resumo:** Histórico de promoções da matrícula
+
+**Funcionalidade:**
+
+Retorna promoções da matrícula em ordem cronológica (`order=asc` padrão).
+Inclui certificado vinculado (se houver) com `status` PENDING ou GENERATED.
+Requer matrícula da escola autenticada.
+
+---
+
 ### `POST` `/schools/enrollments/\{enrollmentId\}/promotions`
 
 **Resumo:** Registrar promoção de nível na matrícula
@@ -295,8 +307,9 @@ O nível é **por matrícula**, não global ao aluno. Use `timelineLimit` para l
 **Funcionalidade:**
 
 Registra uma promoção e atualiza o nível atual da matrícula (`currentSchoolStudentLevelId`).
-`toLevelId` é obrigatório. Se `fromLevelId` for omitido, a origem é o nível atual da matrícula (ou vazio na primeira promoção).
-Snapshots de rótulo e ordem são gravados no histórico.
+Somente matrículas **ACTIVE**. `toLevelId` obrigatório.
+Com `issueCertificate: true`, exige `certificateTemplateId` e cria certificado **PENDING** (PDF gerado sob demanda no app).
+Registra evento na timeline da matrícula.
 
 ---
 
@@ -844,6 +857,36 @@ Usado para promoções de matrícula e certificados. Requer persona **SCHOOL** (
 
 Cadastra um nível no catálogo da escola. `sortOrder` deve ser **único por escola**;
 `templateCode` é opcional e também único por escola quando informado.
+
+---
+
+### `PUT` `/schools/student-levels/reorder`
+
+**Resumo:** Reordenar níveis da escola
+
+**Funcionalidade:**
+
+Atualiza `sortOrder` de **todos** os níveis da escola em uma única operação.
+Body: `\{ "levels": [\{ "id": "uuid", "sortOrder": 0 \}, ...] \}` (lista completa, ordens únicas).
+
+---
+
+### `PUT` `/schools/student-levels/\{levelId\}`
+
+**Resumo:** Editar nível da escola
+
+**Funcionalidade:** ver detalhes e parâmetros no [Swagger](pathname:///docs) (tag correspondente).
+
+---
+
+### `DELETE` `/schools/student-levels/\{levelId\}`
+
+**Resumo:** Remover nível da escola
+
+**Funcionalidade:**
+
+Remove o nível se **não** houver matrículas com esse nível atual ou histórico de promoções referenciando-o.
+Erro `SCHOOL_STUDENT_LEVEL_IN_USE` quando houver associações.
 
 ---
 

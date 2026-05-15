@@ -61,6 +61,9 @@ export enum ErrorCode {
     CLASS_SESSION_OVERLAP = 'CLASS_SESSION_OVERLAP',
     INCOMPLETE_DATA = 'INCOMPLETE_DATA',
     NOT_ENROLLED_IN_SCHOOL = 'NOT_ENROLLED_IN_SCHOOL',
+    SCHOOL_STUDENT_LEVEL_IN_USE = 'SCHOOL_STUDENT_LEVEL_IN_USE',
+    SCHOOL_STUDENT_LEVEL_NOT_FOUND = 'SCHOOL_STUDENT_LEVEL_NOT_FOUND',
+    ENROLLMENT_NOT_ACTIVE_FOR_PROMOTION = 'ENROLLMENT_NOT_ACTIVE_FOR_PROMOTION',
     /** Cadastro exige token emitido após verificação do WhatsApp (Twilio Verify). */
     SIGNUP_PHONE_NOT_VERIFIED = 'SIGNUP_PHONE_NOT_VERIFIED',
     /** Cadastro de escola exige token emitido após verificação do WhatsApp (Twilio Verify). */
@@ -134,6 +137,9 @@ export const ErrorMessages: Record<ErrorCode, string> = {
     [ErrorCode.CLASS_SESSION_OVERLAP]: 'Sessão de aula sobrepõe com uma existente',
     [ErrorCode.INCOMPLETE_DATA]: 'Dados incompletos',
     [ErrorCode.NOT_ENROLLED_IN_SCHOOL]: 'Você ou algum dependente precisa estar matriculado na escola para avaliá-la',
+    [ErrorCode.SCHOOL_STUDENT_LEVEL_IN_USE]: 'Nível possui alunos ou histórico associado e não pode ser removido',
+    [ErrorCode.SCHOOL_STUDENT_LEVEL_NOT_FOUND]: 'Nível da escola não encontrado',
+    [ErrorCode.ENROLLMENT_NOT_ACTIVE_FOR_PROMOTION]: 'Somente matrículas ativas podem receber promoção de nível',
     [ErrorCode.SIGNUP_PHONE_NOT_VERIFIED]: 'Confirme o código enviado ao WhatsApp antes de concluir o cadastro',
     [ErrorCode.SCHOOL_SIGNUP_PHONE_NOT_VERIFIED]: 'Confirme o código enviado ao WhatsApp antes de concluir o cadastro da escola',
     [ErrorCode.OTP_SEND_PENDING]: 'Aguarde alguns instantes. O código está sendo enviado ao WhatsApp.',

@@ -16,6 +16,9 @@ export class EnrollmentPromotionCertificateOrm {
 
     @Column('char', { length: 36, name: 'certificate_template_id' }) certificateTemplateId!: string;
 
+    /** PENDING = registro criado; PDF ainda não gerado. GENERATED = document_url preenchido. */
+    @Column('varchar', { length: 16, default: 'PENDING' }) status!: 'PENDING' | 'GENERATED';
+
     @Column('datetime', { name: 'issued_at', default: () => 'CURRENT_TIMESTAMP' }) issuedAt!: Date;
 
     @Column('varchar', { length: 2048, name: 'document_url', nullable: true }) documentUrl!: string | null;

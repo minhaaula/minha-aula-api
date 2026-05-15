@@ -657,6 +657,116 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /schools/student-levels/reorder:
+    put:
+      tags:
+        - Schools
+      summary: Reordenar níveis da escola
+      description: |
+        Atualiza `sortOrder` de **todos** os níveis da escola em uma única operação.
+        Body: `{ "levels": [{ "id": "uuid", "sortOrder": 0 }, ...] }` (lista completa, ordens únicas).
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - levels
+              properties:
+                levels:
+                  type: array
+                  items:
+                    type: object
+                    required:
+                      - id
+                      - sortOrder
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                      sortOrder:
+                        type: integer
+                        minimum: 0
+      responses:
+        '200':
+          description: Níveis reordenados.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchoolStudentLevelsListResponse'
+        '400':
+          description: Validação (lista incompleta ou sortOrder duplicado).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /schools/student-levels/{levelId}:
+    put:
+      tags:
+        - Schools
+      summary: Editar nível da escola
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: levelId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSchoolStudentLevelInput'
+      responses:
+        '200':
+          description: Nível atualizado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchoolStudentLevel'
+        '404':
+          description: Nível não encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+        - Schools
+      summary: Remover nível da escola
+      description: |
+        Remove o nível se **não** houver matrículas com esse nível atual ou histórico de promoções referenciando-o.
+        Erro `SCHOOL_STUDENT_LEVEL_IN_USE` quando houver associações.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: levelId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Nível removido.
+        '404':
+          description: Nível não encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Nível em uso (alunos ou histórico).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /schools/certificate-templates:
     get:
       tags:
@@ -825,14 +935,53 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
   /schools/enrollments/{enrollmentId}/promotions:
+    get:
+      tags:
+        - Schools
+      summary: Histórico de promoções da matrícula
+      description: |
+        Retorna promoções da matrícula em ordem cronológica (`order=asc` padrão).
+        Inclui certificado vinculado (se houver) com `status` PENDING ou GENERATED.
+        Requer matrícula da escola autenticada.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: enrollmentId
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: query
+          name: order
+          schema:
+            type: string
+            enum:
+              - asc
+              - desc
+            default: asc
+      responses:
+        '200':
+          description: Histórico de promoções.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnrollmentPromotionsListResponse'
+        '404':
+          description: Matrícula não encontrada nesta escola.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     post:
       tags:
         - Schools
       summary: Registrar promoção de nível na matrícula
       description: |
         Registra uma promoção e atualiza o nível atual da matrícula (`currentSchoolStudentLevelId`).
-        `toLevelId` é obrigatório. Se `fromLevelId` for omitido, a origem é o nível atual da matrícula (ou vazio na primeira promoção).
-        Snapshots de rótulo e ordem são gravados no histórico.
+        Somente matrículas **ACTIVE**. `toLevelId` obrigatório.
+        Com `issueCertificate: true`, exige `certificateTemplateId` e cria certificado **PENDING** (PDF gerado sob demanda no app).
+        Registra evento na timeline da matrícula.
       security:
         - bearerAuth: []
       parameters:

@@ -33,6 +33,19 @@ export type EnrollmentProgressPromotionRow = {
     createdAt: Date;
 };
 
+export type EnrollmentProgressCertificateRow = {
+    id: string;
+    enrollmentId: string;
+    promotionId: string;
+    certificateTemplateId: string;
+    status: 'PENDING' | 'GENERATED';
+    issuedAt: Date;
+    documentUrl: string | null;
+    metadata: Record<string, unknown> | null;
+    logicalTemplateId?: string | null;
+    templateName?: string | null;
+};
+
 export type EnrollmentProgressTimelineRow = {
     id: string;
     enrollmentId: string;
@@ -105,6 +118,21 @@ export interface EnrollmentProgressRepository {
 
     findLevel(schoolId: string, levelId: string): Promise<EnrollmentProgressSchoolLevel | null>;
 
+    updateLevel(input: {
+        schoolId: string;
+        levelId: string;
+        label: string;
+        templateCode: string | null;
+        sortOrder: number;
+    }): Promise<void>;
+
+    deleteLevel(schoolId: string, levelId: string): Promise<void>;
+
+    /** Matrículas com nível atual ou promoções que referenciam o nível. */
+    countLevelAssociations(schoolId: string, levelId: string): Promise<number>;
+
+    reorderLevels(schoolId: string, items: Array<{ id: string; sortOrder: number }>): Promise<void>;
+
     listCertificateTemplates(schoolId: string): Promise<EnrollmentProgressCertificateTemplate[]>;
 
     createCertificateTemplate(input: {
@@ -117,7 +145,11 @@ export interface EnrollmentProgressRepository {
 
     findCertificateTemplate(schoolId: string, templateId: string): Promise<EnrollmentProgressCertificateTemplate | null>;
 
-    listPromotions(enrollmentId: string): Promise<EnrollmentProgressPromotionRow[]>;
+    listPromotions(enrollmentId: string, order?: 'asc' | 'desc'): Promise<EnrollmentProgressPromotionRow[]>;
+
+    findCertificateByPromotionId(promotionId: string): Promise<EnrollmentProgressCertificateRow | null>;
+
+    listCertificatesByEnrollment(enrollmentId: string): Promise<EnrollmentProgressCertificateRow[]>;
 
     createPromotion(input: {
         id: string;
@@ -153,8 +185,15 @@ export interface EnrollmentProgressRepository {
         enrollmentId: string;
         promotionId: string;
         certificateTemplateId: string;
+        status: 'PENDING' | 'GENERATED';
         issuedAt: Date;
         documentUrl: string | null;
         metadata: Record<string, unknown> | null;
+    }): Promise<void>;
+
+    updatePromotionCertificateDocument(input: {
+        certificateId: string;
+        documentUrl: string;
+        status: 'GENERATED';
     }): Promise<void>;
 }

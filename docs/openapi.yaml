@@ -3499,6 +3499,13 @@ components:
           type: string
           maxLength: 4096
           nullable: true
+        issueCertificate:
+          type: boolean
+          description: Se true, cria registro de certificado com status PENDING
+        certificateTemplateId:
+          type: string
+          format: uuid
+          nullable: true
     RecordEnrollmentLevelPromotionResponse:
       type: object
       properties:
@@ -3514,11 +3521,81 @@ components:
         currentSchoolStudentLevelId:
           type: string
           format: uuid
+        currentLevel:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: string
+              format: uuid
+            label:
+              type: string
+            sortOrder:
+              type: integer
+            templateCode:
+              type: string
+              nullable: true
+        certificate:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: string
+              format: uuid
+            status:
+              type: string
+              enum:
+                - PENDING
+                - GENERATED
+            certificateTemplateId:
+              type: string
+              format: uuid
       required:
         - promotionId
         - enrollmentId
         - promotedAt
         - currentSchoolStudentLevelId
+    EnrollmentPromotionsListResponse:
+      type: object
+      properties:
+        enrollmentId:
+          type: string
+          format: uuid
+        promotions:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+              promotedAt:
+                type: string
+                format: date-time
+              toLevelLabelSnapshot:
+                type: string
+                nullable: true
+              notes:
+                type: string
+                nullable: true
+              certificate:
+                type: object
+                nullable: true
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  status:
+                    type: string
+                    enum:
+                      - PENDING
+                      - GENERATED
+                  documentUrl:
+                    type: string
+                    nullable: true
+      required:
+        - enrollmentId
+        - promotions
     AppendEnrollmentTimelineEventInput:
       type: object
       required:

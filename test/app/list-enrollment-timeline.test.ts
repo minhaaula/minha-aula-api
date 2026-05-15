@@ -62,6 +62,13 @@ function makeRepo(overrides: Partial<EnrollmentProgressRepository> = {}): Enroll
         createTimelineEvent: async () => undefined,
         countCertificatesByPromotionId: async () => 0,
         createPromotionCertificate: async () => undefined,
+        updateLevel: async () => undefined,
+        deleteLevel: async () => undefined,
+        countLevelAssociations: async () => 0,
+        reorderLevels: async () => undefined,
+        findCertificateByPromotionId: async () => null,
+        listCertificatesByEnrollment: async () => [],
+        updatePromotionCertificateDocument: async () => undefined,
         ...overrides
     };
 }

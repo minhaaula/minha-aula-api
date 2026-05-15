@@ -14,10 +14,17 @@ import type { AppendEnrollmentTimelineEvent } from '../../../../app/use-cases/ap
 import type { IssueEnrollmentPromotionCertificate } from '../../../../app/use-cases/issue-enrollment-promotion-certificate';
 import type { ListEnrollmentTimeline } from '../../../../app/use-cases/list-enrollment-timeline';
 import { parseEnrollmentTimelineQuery } from '../../../../app/use-cases/list-enrollment-timeline';
+import type { UpdateSchoolStudentLevel } from '../../../../app/use-cases/update-school-student-level';
+import type { DeleteSchoolStudentLevel } from '../../../../app/use-cases/delete-school-student-level';
+import type { ReorderSchoolStudentLevels } from '../../../../app/use-cases/reorder-school-student-levels';
+import type { ListEnrollmentLevelPromotions } from '../../../../app/use-cases/list-enrollment-level-promotions';
 
 export type EnrollmentProgressRoutesDeps = {
     listSchoolStudentLevels: ListSchoolStudentLevels;
     createSchoolStudentLevel: CreateSchoolStudentLevel;
+    updateSchoolStudentLevel: UpdateSchoolStudentLevel;
+    deleteSchoolStudentLevel: DeleteSchoolStudentLevel;
+    reorderSchoolStudentLevels: ReorderSchoolStudentLevels;
     listSchoolCertificateTemplates: ListSchoolCertificateTemplates;
     createSchoolCertificateTemplate: CreateSchoolCertificateTemplate;
     getEnrollmentProgressOverview: GetEnrollmentProgressOverview;
@@ -25,6 +32,7 @@ export type EnrollmentProgressRoutesDeps = {
     appendEnrollmentTimelineEvent: AppendEnrollmentTimelineEvent;
     issueEnrollmentPromotionCertificate: IssueEnrollmentPromotionCertificate;
     listEnrollmentTimeline: ListEnrollmentTimeline;
+    listEnrollmentLevelPromotions: ListEnrollmentLevelPromotions;
 };
 
 export function buildEnrollmentProgressRoutes(deps: EnrollmentProgressRoutesDeps, guards: SchoolRouteGuards) {
@@ -52,6 +60,47 @@ export function buildEnrollmentProgressRoutes(deps: EnrollmentProgressRoutesDeps
             templateCode: body.templateCode
         });
         res.status(201).json(created);
+    }));
+
+    router.put('/student-levels/reorder', ...mw, asyncHandler(async (req, res) => {
+        const schoolId = (req as SchoolContextRequest).schoolId as string;
+        const bodySchema = z.object({
+            levels: z.array(
+                z.object({
+                    id: z.string().uuid(),
+                    sortOrder: z.coerce.number().int().nonnegative()
+                })
+            )
+        });
+        const body = bodySchema.parse(req.body);
+        const result = await deps.reorderSchoolStudentLevels.exec({ schoolId, levels: body.levels });
+        res.json(result);
+    }));
+
+    router.put('/student-levels/:levelId', ...mw, asyncHandler(async (req, res) => {
+        const schoolId = (req as SchoolContextRequest).schoolId as string;
+        const params = z.object({ levelId: z.string().uuid() }).parse(req.params);
+        const bodySchema = z.object({
+            label: z.string().trim().min(1),
+            sortOrder: z.coerce.number().int().nonnegative(),
+            templateCode: z.union([z.string().trim(), z.null()]).optional()
+        });
+        const body = bodySchema.parse(req.body);
+        const updated = await deps.updateSchoolStudentLevel.exec({
+            schoolId,
+            levelId: params.levelId,
+            label: body.label,
+            sortOrder: body.sortOrder,
+            templateCode: body.templateCode
+        });
+        res.json(updated);
+    }));
+
+    router.delete('/student-levels/:levelId', ...mw, asyncHandler(async (req, res) => {
+        const schoolId = (req as SchoolContextRequest).schoolId as string;
+        const params = z.object({ levelId: z.string().uuid() }).parse(req.params);
+        await deps.deleteSchoolStudentLevel.exec({ schoolId, levelId: params.levelId });
+        res.status(204).send();
     }));
 
     router.get('/certificate-templates', ...mw, asyncHandler(async (req, res) => {
@@ -107,12 +156,31 @@ export function buildEnrollmentProgressRoutes(deps: EnrollmentProgressRoutesDeps
         res.json(overview);
     }));
 
+    router.get('/enrollments/:enrollmentId/promotions', ...mw, asyncHandler(async (req, res) => {
+        const params = z.object({ enrollmentId: z.string().uuid() }).parse(req.params);
+        const schoolId = (req as SchoolContextRequest).schoolId as string;
+        const query = z
+            .object({ order: z.enum(['asc', 'desc']).optional() })
+            .parse(req.query);
+        const result = await deps.listEnrollmentLevelPromotions.exec({
+            schoolId,
+            enrollmentId: params.enrollmentId,
+            order: query.order
+        });
+        if (!result) {
+            return res.status(404).json({ error: 'Matrícula não encontrada nesta escola', code: 'NOT_FOUND' });
+        }
+        res.json(result);
+    }));
+
     router.post('/enrollments/:enrollmentId/promotions', ...mw, asyncHandler(async (req, res) => {
         const params = z.object({ enrollmentId: z.string().uuid() }).parse(req.params);
         const bodySchema = z.object({
             toLevelId: z.string().uuid(),
             fromLevelId: z.string().uuid().optional().nullable(),
-            notes: z.string().max(4096).optional().nullable()
+            notes: z.string().max(4096).optional().nullable(),
+            issueCertificate: z.boolean().optional(),
+            certificateTemplateId: z.string().uuid().optional().nullable()
         });
         const body = bodySchema.parse(req.body);
         const schoolId = (req as SchoolContextRequest).schoolId as string;
@@ -123,7 +191,9 @@ export function buildEnrollmentProgressRoutes(deps: EnrollmentProgressRoutesDeps
             toLevelId: body.toLevelId,
             fromLevelId: body.fromLevelId,
             notes: body.notes,
-            actorUserId: typeof actor === 'string' ? actor : null
+            actorUserId: typeof actor === 'string' ? actor : null,
+            issueCertificate: body.issueCertificate,
+            certificateTemplateId: body.certificateTemplateId
         });
         res.status(201).json(result);
     }));

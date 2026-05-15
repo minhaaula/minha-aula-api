@@ -1,50 +1,22 @@
 import type { EnrollmentProgressRepository } from '../../ports/repositories/enrollment-progress.repo';
 
-export class GetEnrollmentProgressOverview {
+export class ListEnrollmentLevelPromotions {
     constructor(private readonly progress: EnrollmentProgressRepository) {}
 
-    async exec(input: { schoolId: string; enrollmentId: string; timelineLimit?: number }) {
+    async exec(input: { schoolId: string; enrollmentId: string; order?: 'asc' | 'desc' }) {
         const schoolId = input.schoolId.trim();
         const enrollmentId = input.enrollmentId.trim();
-        const limit = input.timelineLimit ?? 50;
+        const order = input.order === 'desc' ? 'desc' : 'asc';
 
         const ctx = await this.progress.findEnrollmentTimelineContextInSchool(enrollmentId, schoolId);
-        if (!ctx) {
-            return null;
-        }
+        if (!ctx) return null;
 
-        const promotions = await this.progress.listPromotions(enrollmentId, 'asc');
+        const promotions = await this.progress.listPromotions(enrollmentId, order);
         const certificates = await this.progress.listCertificatesByEnrollment(enrollmentId);
         const certByPromotion = new Map(certificates.map((c) => [c.promotionId, c]));
-        const timeline = await this.progress.listTimelineEvents(enrollmentId, limit);
-
-        let currentLevelDetail: {
-            id: string;
-            label: string;
-            sortOrder: number;
-            templateCode: string | null;
-        } | null = null;
-
-        const enrollmentSummary = await this.progress.findEnrollmentSummaryInSchool(enrollmentId, schoolId);
-        const currentLevelId = enrollmentSummary?.currentSchoolStudentLevelId ?? null;
-
-        if (currentLevelId) {
-            const level = await this.progress.findLevel(schoolId, currentLevelId);
-            if (level) {
-                currentLevelDetail = {
-                    id: level.id,
-                    label: level.label,
-                    sortOrder: level.sortOrder,
-                    templateCode: level.templateCode
-                };
-            }
-        }
 
         return {
-            enrollmentId: ctx.id,
-            enrollmentStatus: ctx.status,
-            currentSchoolStudentLevelId: currentLevelId,
-            currentLevel: currentLevelDetail,
+            enrollmentId,
             promotions: promotions.map((p) => {
                 const cert = certByPromotion.get(p.id);
                 return {
@@ -64,20 +36,14 @@ export class GetEnrollmentProgressOverview {
                               id: cert.id,
                               status: cert.status,
                               certificateTemplateId: cert.certificateTemplateId,
+                              logicalTemplateId: cert.logicalTemplateId ?? null,
+                              templateName: cert.templateName ?? null,
                               documentUrl: cert.documentUrl,
                               issuedAt: cert.issuedAt.toISOString()
                           }
                         : null
                 };
-            }),
-            timeline: timeline.map((t) => ({
-                id: t.id,
-                eventType: t.eventType,
-                payload: t.payload,
-                occurredAt: t.occurredAt.toISOString(),
-                actorUserId: t.actorUserId,
-                createdAt: t.createdAt.toISOString()
-            }))
+            })
         };
     }
 }

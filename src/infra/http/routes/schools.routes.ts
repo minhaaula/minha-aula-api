@@ -82,6 +82,10 @@ import type { RecordEnrollmentLevelPromotion } from '../../../app/use-cases/reco
 import type { AppendEnrollmentTimelineEvent } from '../../../app/use-cases/append-enrollment-timeline-event';
 import type { IssueEnrollmentPromotionCertificate } from '../../../app/use-cases/issue-enrollment-promotion-certificate';
 import type { ListEnrollmentTimeline } from '../../../app/use-cases/list-enrollment-timeline';
+import type { UpdateSchoolStudentLevel } from '../../../app/use-cases/update-school-student-level';
+import type { DeleteSchoolStudentLevel } from '../../../app/use-cases/delete-school-student-level';
+import type { ReorderSchoolStudentLevels } from '../../../app/use-cases/reorder-school-student-levels';
+import type { ListEnrollmentLevelPromotions } from '../../../app/use-cases/list-enrollment-level-promotions';
 
 export type SchoolsRouterDeps = {
     createSchool: CreateSchool;
@@ -165,6 +169,10 @@ export type SchoolsRouterDeps = {
     appendEnrollmentTimelineEvent?: AppendEnrollmentTimelineEvent;
     issueEnrollmentPromotionCertificate?: IssueEnrollmentPromotionCertificate;
     listEnrollmentTimeline?: ListEnrollmentTimeline;
+    updateSchoolStudentLevel?: UpdateSchoolStudentLevel;
+    deleteSchoolStudentLevel?: DeleteSchoolStudentLevel;
+    reorderSchoolStudentLevels?: ReorderSchoolStudentLevels;
+    listEnrollmentLevelPromotions?: ListEnrollmentLevelPromotions;
 };
 
 export function schoolsRouter(deps: SchoolsRouterDeps) {
@@ -297,7 +305,11 @@ export function schoolsRouter(deps: SchoolsRouterDeps) {
         deps.recordEnrollmentLevelPromotion &&
         deps.appendEnrollmentTimelineEvent &&
         deps.issueEnrollmentPromotionCertificate &&
-        deps.listEnrollmentTimeline
+        deps.listEnrollmentTimeline &&
+        deps.updateSchoolStudentLevel &&
+        deps.deleteSchoolStudentLevel &&
+        deps.reorderSchoolStudentLevels &&
+        deps.listEnrollmentLevelPromotions
     ) {
         router.use(
             '/',
@@ -305,13 +317,17 @@ export function schoolsRouter(deps: SchoolsRouterDeps) {
                 {
                     listSchoolStudentLevels: deps.listSchoolStudentLevels,
                     createSchoolStudentLevel: deps.createSchoolStudentLevel,
+                    updateSchoolStudentLevel: deps.updateSchoolStudentLevel,
+                    deleteSchoolStudentLevel: deps.deleteSchoolStudentLevel,
+                    reorderSchoolStudentLevels: deps.reorderSchoolStudentLevels,
                     listSchoolCertificateTemplates: deps.listSchoolCertificateTemplates,
                     createSchoolCertificateTemplate: deps.createSchoolCertificateTemplate,
                     getEnrollmentProgressOverview: deps.getEnrollmentProgressOverview,
                     recordEnrollmentLevelPromotion: deps.recordEnrollmentLevelPromotion,
                     appendEnrollmentTimelineEvent: deps.appendEnrollmentTimelineEvent,
                     issueEnrollmentPromotionCertificate: deps.issueEnrollmentPromotionCertificate,
-                    listEnrollmentTimeline: deps.listEnrollmentTimeline
+                    listEnrollmentTimeline: deps.listEnrollmentTimeline,
+                    listEnrollmentLevelPromotions: deps.listEnrollmentLevelPromotions
                 },
                 guards
             )

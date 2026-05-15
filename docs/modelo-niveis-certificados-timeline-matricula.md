@@ -19,6 +19,20 @@ Tipos retornados em `kind`: `ENROLLMENT`, `LEVEL_PROMOTION`, `CERTIFICATE`, `CUS
 
 Paginação: query `limit`, `offset`, `order` (`asc` \| `desc`).
 
+## Gerenciamento de níveis e promoções (API escola)
+
+| Método | Rota | Descrição |
+|--------|------|-----------|
+| `GET` | `/schools/student-levels` | Catálogo de níveis |
+| `POST` | `/schools/student-levels` | Criar nível |
+| `PUT` | `/schools/student-levels/{levelId}` | Editar nível |
+| `PUT` | `/schools/student-levels/reorder` | Reordenar todos os níveis (`{ levels: [{ id, sortOrder }] }`) |
+| `DELETE` | `/schools/student-levels/{levelId}` | Remover (bloqueado se houver alunos/histórico) |
+| `GET` | `/schools/enrollments/{enrollmentId}/promotions` | Histórico de promoções (`order=asc`) |
+| `POST` | `/schools/enrollments/{enrollmentId}/promotions` | Promover (body: `issueCertificate`, `certificateTemplateId`) |
+
+Promoção exige matrícula **ACTIVE**. Com `issueCertificate: true`, cria certificado com `status: PENDING` (PDF gerado depois no app).
+
 ## Princípios
 
 1. **Nível nunca é global ao aluno** — o estado atual e o histórico referem-se à **matrícula** (`enrollment_id`), não ao usuário nem ao dependente de forma isolada.
