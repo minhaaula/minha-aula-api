@@ -8,12 +8,18 @@ import { AuthenticatedRequest } from '../middlewares/auth';
 import { requirePersona } from '../middlewares/require-persona';
 import { UserPersonaEnum } from '../../../domain/value-objects/user-persona';
 import { asyncHandler } from '../utils/async-handler';
+import { profilePhotoUpload } from '../middlewares/profile-photo-upload';
+import type { UploadDependentProfilePhoto } from '../../../app/use-cases/upload-dependent-profile-photo';
+import type { RemoveDependentProfilePhoto } from '../../../app/use-cases/remove-dependent-profile-photo';
+import { AppError } from '../../../shared/errors';
 
 export function dependentsRouter(deps: { 
     addDependent: AddDependent;
     listMyDependents?: ListMyDependents;
     deleteDependent?: DeleteDependent;
     updateDependent?: UpdateDependent;
+    uploadDependentProfilePhoto?: UploadDependentProfilePhoto;
+    removeDependentProfilePhoto?: RemoveDependentProfilePhoto;
 }) {
     const r = Router();
 
@@ -58,6 +64,58 @@ export function dependentsRouter(deps: {
             const result = await deps.listMyDependents!.exec({ userId: authReq.user.sub });
             res.json(result);
         }));
+    }
+
+    if (deps.uploadDependentProfilePhoto) {
+        r.post(
+            '/:dependentId/profile-photo',
+            requireStudentPersona,
+            profilePhotoUpload.single('image'),
+            asyncHandler(async (req, res) => {
+                const authReq = req as AuthenticatedRequest;
+                if (!authReq.user?.sub) {
+                    return res.status(401).json({ error: 'Não autorizado', code: 'UNAUTHORIZED' });
+                }
+                const dependentId = req.params.dependentId?.trim();
+                if (!dependentId) {
+                    return res.status(400).json({ error: 'ID do dependente é obrigatório', code: 'INVALID_IDENTIFIERS' });
+                }
+                const file = req.file;
+                if (!file) {
+                    throw AppError.validation('Arquivo de imagem é obrigatório (campo image)');
+                }
+                const result = await deps.uploadDependentProfilePhoto!.exec({
+                    ownerUserId: authReq.user.sub,
+                    dependentId,
+                    file: file.buffer,
+                    fileName: file.originalname,
+                    contentType: file.mimetype
+                });
+                res.status(200).json(result);
+            })
+        );
+    }
+
+    if (deps.removeDependentProfilePhoto) {
+        r.delete(
+            '/:dependentId/profile-photo',
+            requireStudentPersona,
+            asyncHandler(async (req, res) => {
+                const authReq = req as AuthenticatedRequest;
+                if (!authReq.user?.sub) {
+                    return res.status(401).json({ error: 'Não autorizado', code: 'UNAUTHORIZED' });
+                }
+                const dependentId = req.params.dependentId?.trim();
+                if (!dependentId) {
+                    return res.status(400).json({ error: 'ID do dependente é obrigatório', code: 'INVALID_IDENTIFIERS' });
+                }
+                const result = await deps.removeDependentProfilePhoto!.exec({
+                    ownerUserId: authReq.user.sub,
+                    dependentId
+                });
+                res.json(result);
+            })
+        );
     }
 
     if (deps.updateDependent) {

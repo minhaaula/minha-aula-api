@@ -66,7 +66,8 @@ export class DependentRepositoryAdapter implements DependentRepository {
             birthDate: row.birthDate ? new Date(row.birthDate) : null,
             relationship: row.relationship,
             createdAt: new Date(row.createdAt),
-            deletedAt: row.deletedAt ? new Date(row.deletedAt) : null
+            deletedAt: row.deletedAt ? new Date(row.deletedAt) : null,
+            photoStorageKey: row.photoUrl ?? null
         });
     }
 
@@ -80,6 +81,7 @@ export class DependentRepositoryAdapter implements DependentRepository {
         row.relationship = dependent.relationship;
         row.createdAt = dependent.createdAt;
         row.deletedAt = dependent.deletedAt;
+        row.photoUrl = dependent.photoStorageKey;
         return row;
     }
 }

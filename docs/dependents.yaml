@@ -44,6 +44,11 @@ paths:
                           type: string
                           format: date-time
                           description: Data de cadastro do dependente
+                        photoUrl:
+                          type: string
+                          nullable: true
+                          format: uri
+                          description: URL da foto de perfil do dependente
                       required:
                         - id
                         - fullName
@@ -119,6 +124,92 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '403':
           description: Usuário não autorizado. Requer persona STUDENT.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /dependents/{dependentId}/profile-photo:
+    post:
+      tags:
+        - Dependents
+      summary: Enviar ou atualizar foto de perfil do dependente
+      description: |
+        Upload da foto do dependente (apenas o responsável autenticado). JPG/PNG, máx. 5MB, campo `image`.
+        Substitui foto anterior. Retorna URL assinada (7 dias).
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: dependentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - image
+              properties:
+                image:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Foto atualizada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfilePhotoResponse'
+        '400':
+          description: Validação ou arquivo ausente.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Dependente não pertence ao usuário.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Dependente não encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+        - Dependents
+      summary: Remover foto de perfil do dependente
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: dependentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Foto removida.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfilePhotoResponse'
+        '403':
+          description: Dependente não pertence ao usuário.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Dependente não encontrado.
           content:
             application/json:
               schema:

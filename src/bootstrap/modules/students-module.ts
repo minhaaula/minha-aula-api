@@ -48,6 +48,10 @@ import { RegisterPushToken } from '../../app/use-cases/register-push-token';
 import { UnregisterPushToken } from '../../app/use-cases/unregister-push-token';
 import { EnrollmentProgressRepositoryAdapter } from '../../infra/db/typeorm/enrollment-progress-repository.adapter';
 import { ListEnrollmentTimeline } from '../../app/use-cases/list-enrollment-timeline';
+import { UploadStudentProfilePhoto } from '../../app/use-cases/upload-student-profile-photo';
+import { RemoveStudentProfilePhoto } from '../../app/use-cases/remove-student-profile-photo';
+import { UploadDependentProfilePhoto } from '../../app/use-cases/upload-dependent-profile-photo';
+import { RemoveDependentProfilePhoto } from '../../app/use-cases/remove-dependent-profile-photo';
 
 import { StorageProviderPort } from '../../ports/providers/storage-provider.port';
 import { SchoolImageRepositoryAdapter } from '../../infra/db/typeorm/school-image-repository.adapter';
@@ -89,7 +93,7 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
         deps.enrollmentsRepo
     );
     const getStudentDirectoryEntry = new GetStudentDirectoryEntry(deps.usersRepo, deps.dependentsRepo);
-    const getMyProfile = new GetMyProfile(deps.usersRepo, deps.dependentsRepo);
+    const getMyProfile = new GetMyProfile(deps.usersRepo, deps.dependentsRepo, deps.storageProvider);
     const updateStudentProfile = new UpdateStudentProfile(deps.usersRepo);
     const deactivateStudentAccount = new DeactivateStudentAccount(deps.usersRepo);
     const schoolImagesRepo = new SchoolImageRepositoryAdapter();
@@ -202,6 +206,19 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
     const enrollmentProgressRepo = new EnrollmentProgressRepositoryAdapter();
     const listEnrollmentTimeline = new ListEnrollmentTimeline(enrollmentProgressRepo);
 
+    const uploadStudentProfilePhoto = deps.storageProvider
+        ? new UploadStudentProfilePhoto(deps.usersRepo, deps.storageProvider)
+        : undefined;
+    const removeStudentProfilePhoto = deps.storageProvider
+        ? new RemoveStudentProfilePhoto(deps.usersRepo, deps.storageProvider)
+        : undefined;
+    const uploadDependentProfilePhoto = deps.storageProvider
+        ? new UploadDependentProfilePhoto(deps.dependentsRepo, deps.storageProvider)
+        : undefined;
+    const removeDependentProfilePhoto = deps.storageProvider
+        ? new RemoveDependentProfilePhoto(deps.dependentsRepo, deps.storageProvider)
+        : undefined;
+
     const studentsRouterInstance = studentsRouter({
         listStudents,
         getStudentDirectoryEntry,
@@ -225,10 +242,12 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
         readStudentNotification,
         registerPushToken,
         unregisterPushToken,
-        listEnrollmentTimeline
+        listEnrollmentTimeline,
+        uploadStudentProfilePhoto,
+        removeStudentProfilePhoto
     });
 
-    const listMyDependents = new ListMyDependents(deps.dependentsRepo);
+    const listMyDependents = new ListMyDependents(deps.dependentsRepo, deps.storageProvider);
     const deleteDependent = new DeleteDependent(
         deps.dependentsRepo,
         deps.enrollmentsRepo,
@@ -240,7 +259,9 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
         addDependent,
         listMyDependents,
         deleteDependent,
-        updateDependent
+        updateDependent,
+        uploadDependentProfilePhoto,
+        removeDependentProfilePhoto
     });
 
     const enrollmentRequestsRouterInstance = enrollmentRequestsRouter({

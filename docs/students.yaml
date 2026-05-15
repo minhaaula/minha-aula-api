@@ -162,6 +162,11 @@ paths:
                     type: string
                     format: date-time
                     description: Data de cadastro do estudante
+                  photoUrl:
+                    type: string
+                    nullable: true
+                    format: uri
+                    description: URL da foto de perfil (assinada quando configurado storage)
                   dependents:
                     type: array
                     description: Lista de dependentes do estudante
@@ -188,6 +193,11 @@ paths:
                           type: string
                           nullable: true
                           description: "Relacionamento com o responsável (ex: Filho, Filha)"
+                        photoUrl:
+                          type: string
+                          nullable: true
+                          format: uri
+                          description: URL da foto de perfil do dependente
                       required:
                         - id
                         - fullName
@@ -413,6 +423,86 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '501':
           description: Funcionalidade de edição de perfil do estudante não configurada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /students/me/profile-photo:
+    post:
+      tags:
+        - Students
+      summary: Enviar ou atualizar foto de perfil do aluno
+      description: |
+        Faz upload da foto de perfil do estudante autenticado (substitui a anterior, se existir).
+        Aceita apenas **JPG** e **PNG** (máx. 5MB). Campo multipart `image`.
+        Retorna URL assinada acessível publicamente (validade de 7 dias). Requer persona **STUDENT**.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - image
+              properties:
+                image:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Foto atualizada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfilePhotoResponse'
+        '400':
+          description: Arquivo ausente ou formato inválido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Não autorizado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Requer persona STUDENT.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Usuário não encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+        - Students
+      summary: Remover foto de perfil do aluno
+      description: Remove a foto do storage e zera `photoUrl` no perfil. Requer persona **STUDENT**.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Foto removida (`photoUrl` null).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfilePhotoResponse'
+        '401':
+          description: Não autorizado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Requer persona STUDENT.
           content:
             application/json:
               schema:

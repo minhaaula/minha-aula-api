@@ -7,7 +7,8 @@ export class Dependent {
         public readonly birthDate: Date | null,
         public readonly relationship: string | null,
         public readonly createdAt: Date,
-        private _deletedAt: Date | null = null
+        private _deletedAt: Date | null = null,
+        private _photoStorageKey: string | null = null
     ) {}
 
     static create(params: {
@@ -19,6 +20,7 @@ export class Dependent {
         relationship?: string | null;
         createdAt?: Date;
         deletedAt?: Date | null;
+        photoStorageKey?: string | null;
     }) {
         const userId = params.userId.trim();
         if (!userId) throw new Error('User id is required');
@@ -36,8 +38,18 @@ export class Dependent {
             birthDate,
             relationship,
             params.createdAt ?? new Date(),
-            params.deletedAt ?? null
+            params.deletedAt ?? null,
+            params.photoStorageKey?.trim() || null
         );
+    }
+
+    get photoStorageKey(): string | null {
+        return this._photoStorageKey;
+    }
+
+    applyPhotoStorageKey(key: string | null): void {
+        const trimmed = key?.trim();
+        this._photoStorageKey = trimmed && trimmed.length > 0 ? trimmed : null;
     }
 
     get cpf(): string | null {

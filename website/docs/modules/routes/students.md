@@ -9,7 +9,7 @@ App do **aluno / responsável** (**persona STUDENT**): perfil, cursos, pagamento
 
 > Referência técnica completa: [Swagger UI](pathname:///docs) · [OpenAPI JSON](pathname:///docs/openapi.json)
 
-## Endpoints (22)
+## Endpoints (24)
 
 ### `GET` `/students`
 
@@ -146,6 +146,28 @@ Retorna os dados completos do estudante autenticado, incluindo informações pes
 **Funcionalidade:**
 
 Permite atualizar os dados pessoais do estudante autenticado. Todos os campos são opcionais - apenas os campos enviados serão atualizados. Requer persona STUDENT.
+
+---
+
+### `POST` `/students/me/profile-photo`
+
+**Resumo:** Enviar ou atualizar foto de perfil do aluno
+
+**Funcionalidade:**
+
+Faz upload da foto de perfil do estudante autenticado (substitui a anterior, se existir).
+Aceita apenas **JPG** e **PNG** (máx. 5MB). Campo multipart `image`.
+Retorna URL assinada acessível publicamente (validade de 7 dias). Requer persona **STUDENT**.
+
+---
+
+### `DELETE` `/students/me/profile-photo`
+
+**Resumo:** Remover foto de perfil do aluno
+
+**Funcionalidade:**
+
+Remove a foto do storage e zera `photoUrl` no perfil. Requer persona **STUDENT**.
 
 ---
 

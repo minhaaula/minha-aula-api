@@ -9,7 +9,7 @@ CRUD de **dependentes** do responsável autenticado (STUDENT).
 
 > Referência técnica completa: [Swagger UI](pathname:///docs) · [OpenAPI JSON](pathname:///docs/openapi.json)
 
-## Endpoints (4)
+## Endpoints (6)
 
 ### `GET` `/dependents`
 
@@ -28,6 +28,25 @@ Retorna todos os dependentes cadastrados pelo usuário autenticado. Requer perso
 **Funcionalidade:**
 
 Disponível apenas para usuários com persona STUDENT.
+
+---
+
+### `POST` `/dependents/\{dependentId\}/profile-photo`
+
+**Resumo:** Enviar ou atualizar foto de perfil do dependente
+
+**Funcionalidade:**
+
+Upload da foto do dependente (apenas o responsável autenticado). JPG/PNG, máx. 5MB, campo `image`.
+Substitui foto anterior. Retorna URL assinada (7 dias).
+
+---
+
+### `DELETE` `/dependents/\{dependentId\}/profile-photo`
+
+**Resumo:** Remover foto de perfil do dependente
+
+**Funcionalidade:** ver detalhes e parâmetros no [Swagger](pathname:///docs) (tag correspondente).
 
 ---
 

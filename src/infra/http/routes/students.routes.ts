@@ -24,6 +24,9 @@ import type { RegisterPushToken } from '../../../app/use-cases/register-push-tok
 import type { UnregisterPushToken } from '../../../app/use-cases/unregister-push-token';
 import type { ListEnrollmentTimeline } from '../../../app/use-cases/list-enrollment-timeline';
 import { parseEnrollmentTimelineQuery } from '../../../app/use-cases/list-enrollment-timeline';
+import { buildStudentProfilePhotoRoutes } from './students/profile-photo.routes';
+import type { UploadStudentProfilePhoto } from '../../../app/use-cases/upload-student-profile-photo';
+import type { RemoveStudentProfilePhoto } from '../../../app/use-cases/remove-student-profile-photo';
 import { requirePersona } from '../middlewares/require-persona';
 import { UserPersonaEnum } from '../../../domain/value-objects/user-persona';
 import { AuthenticatedRequest } from '../middlewares/auth';
@@ -54,6 +57,8 @@ export function studentsRouter(deps: {
     registerPushToken?: RegisterPushToken;
     unregisterPushToken?: UnregisterPushToken;
     listEnrollmentTimeline?: ListEnrollmentTimeline;
+    uploadStudentProfilePhoto?: UploadStudentProfilePhoto;
+    removeStudentProfilePhoto?: RemoveStudentProfilePhoto;
 }) {
     const r = Router();
 
@@ -154,6 +159,17 @@ export function studentsRouter(deps: {
     });
 
     const requireStudent = requirePersona(UserPersonaEnum.STUDENT);
+
+    if (deps.uploadStudentProfilePhoto && deps.removeStudentProfilePhoto) {
+        r.use(
+            '/me/profile-photo',
+            requireStudent,
+            buildStudentProfilePhotoRoutes({
+                uploadStudentProfilePhoto: deps.uploadStudentProfilePhoto,
+                removeStudentProfilePhoto: deps.removeStudentProfilePhoto
+            })
+        );
+    }
 
     if (deps.getMyProfile) {
         r.get('/me', requireStudent, asyncHandler(async (req, res) => {

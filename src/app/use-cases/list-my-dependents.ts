@@ -1,4 +1,6 @@
 import { DependentRepository } from '../../ports/repositories/dependent.repo';
+import type { StorageProviderPort } from '../../ports/providers/storage-provider.port';
+import { resolveProfilePhotoUrl } from '../../shared/profile-photo';
 
 export interface DependentListItem {
     id: string;
@@ -7,11 +9,13 @@ export interface DependentListItem {
     birthDate: Date | null;
     relationship: string | null;
     createdAt: Date;
+    photoUrl: string | null;
 }
 
 export class ListMyDependents {
     constructor(
-        private readonly dependents: DependentRepository
+        private readonly dependents: DependentRepository,
+        private readonly storage?: StorageProviderPort
     ) {}
 
     async exec(input: { userId: string }): Promise<{ dependents: DependentListItem[] }> {
@@ -22,14 +26,19 @@ export class ListMyDependents {
 
         const dependentsList = await this.dependents.findByUserIds([userId]);
 
-        const dependents: DependentListItem[] = dependentsList.map((dep) => ({
-            id: dep.id,
-            fullName: dep.fullName,
-            cpf: dep.cpf,
-            birthDate: dep.birthDate,
-            relationship: dep.relationship,
-            createdAt: dep.createdAt
-        }));
+        const dependents: DependentListItem[] = await Promise.all(
+            dependentsList.map(async (dep) => ({
+                id: dep.id,
+                fullName: dep.fullName,
+                cpf: dep.cpf,
+                birthDate: dep.birthDate,
+                relationship: dep.relationship,
+                createdAt: dep.createdAt,
+                photoUrl: this.storage
+                    ? await resolveProfilePhotoUrl(this.storage, dep.photoStorageKey)
+                    : dep.photoStorageKey
+            }))
+        );
 
         return { dependents };
     }

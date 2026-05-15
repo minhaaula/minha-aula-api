@@ -3579,6 +3579,16 @@ components:
         - kind
         - occurredAt
         - payload
+    ProfilePhotoResponse:
+      type: object
+      properties:
+        photoUrl:
+          type: string
+          nullable: true
+          format: uri
+          description: URL acessível da foto (assinada no storage externo) ou null após remoção
+      required:
+        - photoUrl
     EnrollmentTimelinePageResponse:
       type: object
       properties:

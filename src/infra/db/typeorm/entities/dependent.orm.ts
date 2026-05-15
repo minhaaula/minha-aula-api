@@ -18,6 +18,8 @@ export class DependentOrm {
 
     @Column('varchar', { length: 64, nullable: true }) relationship!: string | null;
 
+    @Column('varchar', { length: 500, name: 'photo_url', nullable: true }) photoUrl!: string | null;
+
     @CreateDateColumn({ name: 'created_at', type: 'datetime', default: () => 'CURRENT_TIMESTAMP' }) createdAt!: Date;
 
     @Column('datetime', { name: 'deleted_at', nullable: true }) deletedAt!: Date | null;

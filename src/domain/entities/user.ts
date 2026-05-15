@@ -16,7 +16,8 @@ export class User {
         public readonly createdAt: Date,
         public readonly active: boolean,
         public readonly deactivationReason: string | null,
-        public readonly deactivationDescription: string | null
+        public readonly deactivationDescription: string | null,
+        private _photoStorageKey: string | null = null
     ) {}
 
     static create(params: {
@@ -33,6 +34,7 @@ export class User {
         active?: boolean;
         deactivationReason?: string | null;
         deactivationDescription?: string | null;
+        photoStorageKey?: string | null;
     }) {
         if (!(params.birthDate instanceof Date) || Number.isNaN(params.birthDate.getTime())) {
             throw new Error('Invalid birth date');
@@ -61,8 +63,18 @@ export class User {
             params.createdAt ?? new Date(),
             params.active ?? true,
             params.deactivationReason ?? null,
-            params.deactivationDescription ?? null
+            params.deactivationDescription ?? null,
+            params.photoStorageKey?.trim() || null
         );
+    }
+
+    get photoStorageKey(): string | null {
+        return this._photoStorageKey;
+    }
+
+    applyPhotoStorageKey(key: string | null): void {
+        const trimmed = key?.trim();
+        this._photoStorageKey = trimmed && trimmed.length > 0 ? trimmed : null;
     }
 
     get passwordHash() {

@@ -9,7 +9,7 @@ App do **aluno / responsável**: perfil, dependentes, cursos, pagamentos, pedido
 
 ## Funcionalidades principais
 
-- **Perfil e dependentes** — CRUD de dependentes vinculados ao responsável.
+- **Perfil e dependentes** — CRUD de dependentes vinculados ao responsável; foto de perfil (`POST`/`DELETE` `/students/me/profile-photo` e `/dependents/{dependentId}/profile-photo`).
 - **Cursos e pagamentos** — listagem de matrículas, cobranças, geração de PIX quando disponível.
 - **Pedidos de matrícula** — listar solicitações; **aceitar** ou **rejeitar** pedido criado pela escola (aprovação cria matrícula e cobranças conforme regras).
 - **Timeline por matrícula** — `GET /students/enrollments/{enrollmentId}/timeline` no hub do curso; histórico completo (matrícula, promoções, certificados, marcos), inclusive após desmatrícula.

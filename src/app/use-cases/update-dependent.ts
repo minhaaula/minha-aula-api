@@ -89,7 +89,8 @@ export class UpdateDependent {
             birthDate,
             relationship,
             createdAt: dependent.createdAt,
-            deletedAt: dependent.deletedAt
+            deletedAt: dependent.deletedAt,
+            photoStorageKey: dependent.photoStorageKey
         });
 
         await this.dependents.save(updated);

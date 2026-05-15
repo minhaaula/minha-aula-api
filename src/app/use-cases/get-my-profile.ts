@@ -1,5 +1,7 @@
 import { UserRepository } from '../../ports/repositories/user.repo';
 import { DependentRepository } from '../../ports/repositories/dependent.repo';
+import type { StorageProviderPort } from '../../ports/providers/storage-provider.port';
+import { resolveProfilePhotoUrl } from '../../shared/profile-photo';
 
 export interface StudentProfile {
     id: string;
@@ -18,19 +20,22 @@ export interface StudentProfile {
         zipCode: string;
     };
     createdAt: Date;
+    photoUrl: string | null;
     dependents: Array<{
         id: string;
         fullName: string;
         cpf: string | null;
         birthDate: Date | null;
         relationship: string | null;
+        photoUrl: string | null;
     }>;
 }
 
 export class GetMyProfile {
     constructor(
         private readonly users: UserRepository,
-        private readonly dependents: DependentRepository
+        private readonly dependents: DependentRepository,
+        private readonly storage?: StorageProviderPort
     ) {}
 
     async exec(input: { userId: string }): Promise<StudentProfile | null> {
@@ -45,6 +50,10 @@ export class GetMyProfile {
         }
 
         const dependentsList = await this.dependents.findByUserIds([userId]);
+
+        const photoUrl = this.storage
+            ? await resolveProfilePhotoUrl(this.storage, user.photoStorageKey)
+            : user.photoStorageKey;
 
         const addressPrimitives = user.address.toPrimitives();
         return {
@@ -64,13 +73,19 @@ export class GetMyProfile {
                 zipCode: addressPrimitives.zipCode
             },
             createdAt: user.createdAt,
-            dependents: dependentsList.map((dep) => ({
-                id: dep.id,
-                fullName: dep.fullName,
-                cpf: dep.cpf,
-                birthDate: dep.birthDate,
-                relationship: dep.relationship
-            }))
+            photoUrl,
+            dependents: await Promise.all(
+                dependentsList.map(async (dep) => ({
+                    id: dep.id,
+                    fullName: dep.fullName,
+                    cpf: dep.cpf,
+                    birthDate: dep.birthDate,
+                    relationship: dep.relationship,
+                    photoUrl: this.storage
+                        ? await resolveProfilePhotoUrl(this.storage, dep.photoStorageKey)
+                        : dep.photoStorageKey
+                }))
+            )
         };
     }
 }
