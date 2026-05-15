@@ -116,6 +116,16 @@ import { loadTwilioContentSidsFromEnv } from '../../infra/whatsapp/twilio-conten
 import { ConsumeSchoolActionOtp } from '../../app/use-cases/consume-school-action-otp';
 import { RequestSchoolActionOtp } from '../../app/use-cases/request-school-action-otp';
 import { VerifySchoolActionOtp } from '../../app/use-cases/verify-school-action-otp';
+import { EnrollmentProgressRepositoryAdapter } from '../../infra/db/typeorm/enrollment-progress-repository.adapter';
+import { ListSchoolStudentLevels } from '../../app/use-cases/list-school-student-levels';
+import { CreateSchoolStudentLevel } from '../../app/use-cases/create-school-student-level';
+import { ListSchoolCertificateTemplates } from '../../app/use-cases/list-school-certificate-templates';
+import { CreateSchoolCertificateTemplate } from '../../app/use-cases/create-school-certificate-template';
+import { GetEnrollmentProgressOverview } from '../../app/use-cases/get-enrollment-progress-overview';
+import { RecordEnrollmentLevelPromotion } from '../../app/use-cases/record-enrollment-level-promotion';
+import { AppendEnrollmentTimelineEvent } from '../../app/use-cases/append-enrollment-timeline-event';
+import { IssueEnrollmentPromotionCertificate } from '../../app/use-cases/issue-enrollment-promotion-certificate';
+import { ListEnrollmentTimeline } from '../../app/use-cases/list-enrollment-timeline';
 
 export type SchoolsModuleDeps = {
     schoolsRepo: SchoolRepositoryAdapter;
@@ -465,6 +475,17 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         ? new ReadAllSchoolNotifications(deps.notificationsRepo)
         : undefined;
 
+    const enrollmentProgressRepo = new EnrollmentProgressRepositoryAdapter();
+    const listSchoolStudentLevels = new ListSchoolStudentLevels(enrollmentProgressRepo);
+    const createSchoolStudentLevel = new CreateSchoolStudentLevel(enrollmentProgressRepo);
+    const listSchoolCertificateTemplates = new ListSchoolCertificateTemplates(enrollmentProgressRepo);
+    const createSchoolCertificateTemplate = new CreateSchoolCertificateTemplate(enrollmentProgressRepo);
+    const getEnrollmentProgressOverview = new GetEnrollmentProgressOverview(enrollmentProgressRepo);
+    const recordEnrollmentLevelPromotion = new RecordEnrollmentLevelPromotion(enrollmentProgressRepo, deps.enrollmentsRepo);
+    const appendEnrollmentTimelineEvent = new AppendEnrollmentTimelineEvent(enrollmentProgressRepo);
+    const issueEnrollmentPromotionCertificate = new IssueEnrollmentPromotionCertificate(enrollmentProgressRepo);
+    const listEnrollmentTimeline = new ListEnrollmentTimeline(enrollmentProgressRepo);
+
     // Montar routers prontos
     const schoolsRouterInstance = schoolsRouter({
         createSchool,
@@ -538,7 +559,16 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         syncSchoolSubaccountStatus,
         resendSchoolAsaasBankAccount,
         requestSchoolActionOtp,
-        verifySchoolActionOtp
+        verifySchoolActionOtp,
+        listSchoolStudentLevels,
+        createSchoolStudentLevel,
+        listSchoolCertificateTemplates,
+        createSchoolCertificateTemplate,
+        getEnrollmentProgressOverview,
+        recordEnrollmentLevelPromotion,
+        appendEnrollmentTimelineEvent,
+        issueEnrollmentPromotionCertificate,
+        listEnrollmentTimeline
     });
 
     const asaasWebhookRouterInstance = asaasWebhookRouter({

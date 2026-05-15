@@ -27,11 +27,7 @@ Endpoint de leitura para seleção de escolas por alunos.
 
 **Funcionalidade:**
 
-Cria uma escola e o usuário responsável. O cadastro exige confirmação por **OTP no WhatsApp** do responsável (`ownerWhatsapp` e token de verificação retornado pelo fluxo `/schools/verification/*`, quando habilitado).
-
-O **CNPJ** é **opcional**: informe 14 dígitos para pessoa jurídica; omita ou use `null` para **pessoa física** — nesse caso o **CPF do titular** é usado na cobrança do plano e na integração Asaas (subconta como pessoa física). Para PF é **obrigatório** enviar também **`ownerBirthDate`** no formato **YYYY-MM-DD** (data de nascimento do titular), pois o Asaas exige CPF + data de nascimento na criação da subconta (`birthDate`).
-
-Se um token Bearer de uma escola já existente for enviado, essa escola será definida como proprietária.
+Cria uma escola e o usuário responsável. Exige verificação do WhatsApp do responsável (`ownerWhatsapp` + `ownerWhatsappVerificationToken` após fluxo de OTP). O campo **cnpj** é opcional: use CNPJ (14 dígitos) para pessoa jurídica; omita ou envie `null` para pessoa física — nesse caso o CPF do titular (`ownerCpf`) é usado na cobrança do plano e na subconta Asaas, e **`ownerBirthDate`** (YYYY-MM-DD) é **obrigatório**: é persistido e enviado ao Asaas como data de nascimento na criação da subconta (`birthDate`). Se um token Bearer de uma escola já existente for enviado, essa escola será definida como proprietária.
 
 ---
 

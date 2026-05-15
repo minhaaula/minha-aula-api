@@ -14,7 +14,7 @@ export class Enrollment {
         public readonly updatedAt: Date,
         private readonly _fullAmountCents: number | null,
         private readonly _paymentDueDay: number | null,
-        private readonly _currentSchoolStudentLevelId: string | null = null
+        private _currentSchoolStudentLevelId: string | null = null
     ) {}
 
     static createForUser(params: {
@@ -111,6 +111,11 @@ export class Enrollment {
 
     get currentSchoolStudentLevelId(): string | null {
         return this._currentSchoolStudentLevelId;
+    }
+
+    /** Atualiza o ponteiro do nível atual desta matrícula (uso em promoções). */
+    applyCurrentSchoolStudentLevel(levelId: string | null): void {
+        this._currentSchoolStudentLevelId = Enrollment.normalizeCurrentLevelId(levelId);
     }
 
     private static normalizeCurrentLevelId(value: unknown): string | null {

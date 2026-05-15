@@ -9,39 +9,7 @@ Autenticação de **usuários** (não escola). Personas incluem STUDENT, ADMIN, 
 
 > Referência técnica completa: [Swagger UI](pathname:///docs) · [OpenAPI JSON](pathname:///docs/openapi.json)
 
-**WhatsApp (Twilio Verify):** cadastro e “esqueci minha senha” exigem confirmação por código enviado ao WhatsApp (servidor com `TWILIO_*` configurado). Não existe mais `POST /auth/password/request` (reset só por e-mail).
-
 ## Endpoints (8)
-
-### `POST` `/auth/verification/request`
-
-**Resumo:** Solicitar código no WhatsApp (cadastro ou recuperação de senha)
-
-**Funcionalidade:**
-
-Corpo com `purpose`: `signup` (e `phone`) ou `user_password_reset` (e **cpf**). Inicia verificação Twilio Verify; em caso de sucesso retorna `challengeId` para o passo seguinte.
-
----
-
-### `POST` `/auth/verification/verify`
-
-**Resumo:** Validar código recebido no WhatsApp
-
-**Funcionalidade:**
-
-Envia `challengeId` e `code`. Para `signup`, a resposta inclui `phoneVerificationToken` para usar em `POST /auth/register`. Para recuperação de senha, inclui `resetToken` para `POST /auth/password/reset`.
-
----
-
-### `POST` `/auth/register`
-
-**Resumo:** Registrar um novo usuário
-
-**Funcionalidade:**
-
-Exige `phoneVerificationToken` obtido após o fluxo de verificação do WhatsApp (mesmo telefone em `phone`). Cadastra estudantes, administradores etc. Para persona **STUDENT**, após o cadastro o sistema pode enfileirar email de boas-vindas e notificação in-app (`GET /students/notifications`, `metadata.kind` = `WELCOME`).
-
----
 
 ### `POST` `/auth/login`
 
@@ -51,17 +19,6 @@ Exige `phoneVerificationToken` obtido após o fluxo de verificação do WhatsApp
 
 Autentica um usuário e retorna um access token (validade curta) e um refresh token (validade de 30 dias).
 O refresh token deve ser usado para obter novos access tokens quando o atual expirar.
-
----
-
-### `POST` `/auth/refresh`
-
-**Resumo:** Obter novo access token usando refresh token
-
-**Funcionalidade:**
-
-Gera um novo access token válido a partir de um refresh token.
-O refresh token deve ter sido obtido no login e tem validade de 30 dias.
 
 ---
 
@@ -79,7 +36,8 @@ O refresh token deve ter sido obtido no login e tem validade de 30 dias.
 
 **Funcionalidade:**
 
-Redefine a senha usando o `resetToken` retornado por `POST /auth/verification/verify` após o fluxo com `user_password_reset` (não é mais obtido por e-mail neste passo).
+Redefine a senha do usuário (estudante, admin, etc.) usando o `resetToken` retornado por
+`POST /auth/verification/verify` após o fluxo com `purpose` `user_password_reset` (código no WhatsApp).
 
 ---
 
@@ -92,3 +50,57 @@ Redefine a senha usando o `resetToken` retornado por `POST /auth/verification/ve
 Verifica se um token de reset de senha é válido e retorna informações sobre ele
 
 ---
+
+### `POST` `/auth/refresh`
+
+**Resumo:** Obter novo access token usando refresh token
+
+**Funcionalidade:**
+
+Gera um novo access token válido a partir de um refresh token.
+O refresh token deve ter sido obtido no login e tem validade de 30 dias.
+
+---
+
+### `POST` `/auth/register`
+
+**Resumo:** Registrar um novo usuário
+
+**Funcionalidade:**
+
+Cadastra um novo usuário no sistema (estudantes, administradores, etc.).
+
+**Obrigatório:** antes, concluir `POST /auth/verification/request` (purpose `signup`) e `POST /auth/verification/verify`
+e enviar o `phoneVerificationToken` retornado. O campo `phone` deste cadastro deve corresponder ao telefone validado.
+
+Para persona **STUDENT**, após o cadastro o sistema enfileira email de boas-vindas (fila/worker) e grava uma notificação in-app de boas-vindas (`GET /students/notifications`, `metadata.kind` = `WELCOME`).
+
+---
+
+### `POST` `/auth/verification/request`
+
+**Resumo:** Solicitar código no WhatsApp (cadastro ou esqueci minha senha)
+
+**Funcionalidade:**
+
+Inicia uma verificação via **Twilio Verify** (canal WhatsApp). Requer variáveis de ambiente da Twilio no servidor.
+
+- **signup:** envia código para o telefone informado. Resposta `201` com `challengeId` quando o envio foi iniciado.
+- **user_password_reset:** envia código para o telefone **cadastrado** do usuário com o **CPF** informado (se existir).
+  Resposta `200` com mensagem genérica quando o CPF não existe ou não há telefone — sem vazar existência de conta.
+
+---
+
+### `POST` `/auth/verification/verify`
+
+**Resumo:** Validar código do WhatsApp
+
+**Funcionalidade:**
+
+Confirma o código recebido no WhatsApp.
+
+- **signup:** resposta inclui `phoneVerificationToken` (curta validade) — envie em `POST /auth/register` no campo homônimo.
+- **user_password_reset:** resposta inclui `resetToken` para `POST /auth/password/reset`.
+
+---
+

@@ -327,7 +327,7 @@ No modelo persistido, `cnpj` pode ser **null** quando a escola opera como **pess
 
 ### Níveis, promoções, certificados e timeline por matrícula
 
-O banco inclui tabelas opcionais ligadas à **matrícula** (catálogo de níveis por escola, histórico de promoções, certificados emitidos por promoção, templates de certificado e eventos de timeline). Não existe nível “global do aluno”: o estado vigente e o histórico referem-se sempre a `enrollment_id`. Detalhes, diagrama e políticas de FK: [modelo-niveis-certificados-timeline-matricula.md](./modelo-niveis-certificados-timeline-matricula.md).
+O banco inclui tabelas opcionais ligadas à **matrícula** (catálogo de níveis por escola, histórico de promoções, certificados emitidos por promoção, templates de certificado e eventos de timeline). Não existe nível “global do aluno”: o estado vigente e o histórico referem-se sempre a `enrollment_id`. Detalhes, diagrama e políticas de FK: [modelo-niveis-certificados-timeline-matricula.md](./modelo-niveis-certificados-timeline-matricula.md). Exemplos de chamadas HTTP (**curl**) para escola autenticada: [curls-niveis-certificados-timeline-matricula.md](./curls-niveis-certificados-timeline-matricula.md).
 
 ## Módulos e Rotas
 

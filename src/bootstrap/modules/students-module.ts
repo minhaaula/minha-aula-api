@@ -46,6 +46,8 @@ import { ReadStudentNotification } from '../../app/use-cases/read-student-notifi
 import { PushTokenRepositoryAdapter } from '../../infra/db/typeorm/push-token-repository.adapter';
 import { RegisterPushToken } from '../../app/use-cases/register-push-token';
 import { UnregisterPushToken } from '../../app/use-cases/unregister-push-token';
+import { EnrollmentProgressRepositoryAdapter } from '../../infra/db/typeorm/enrollment-progress-repository.adapter';
+import { ListEnrollmentTimeline } from '../../app/use-cases/list-enrollment-timeline';
 
 import { StorageProviderPort } from '../../ports/providers/storage-provider.port';
 import { SchoolImageRepositoryAdapter } from '../../infra/db/typeorm/school-image-repository.adapter';
@@ -197,6 +199,9 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
         ? new UnregisterPushToken(deps.pushTokensRepo)
         : undefined;
 
+    const enrollmentProgressRepo = new EnrollmentProgressRepositoryAdapter();
+    const listEnrollmentTimeline = new ListEnrollmentTimeline(enrollmentProgressRepo);
+
     const studentsRouterInstance = studentsRouter({
         listStudents,
         getStudentDirectoryEntry,
@@ -219,7 +224,8 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
         readAllNotifications,
         readStudentNotification,
         registerPushToken,
-        unregisterPushToken
+        unregisterPushToken,
+        listEnrollmentTimeline
     });
 
     const listMyDependents = new ListMyDependents(deps.dependentsRepo);

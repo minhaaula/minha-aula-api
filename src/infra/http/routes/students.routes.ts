@@ -22,6 +22,8 @@ import { ReadAllNotifications } from '../../../app/use-cases/read-all-notificati
 import { ReadStudentNotification } from '../../../app/use-cases/read-student-notification';
 import type { RegisterPushToken } from '../../../app/use-cases/register-push-token';
 import type { UnregisterPushToken } from '../../../app/use-cases/unregister-push-token';
+import type { ListEnrollmentTimeline } from '../../../app/use-cases/list-enrollment-timeline';
+import { parseEnrollmentTimelineQuery } from '../../../app/use-cases/list-enrollment-timeline';
 import { requirePersona } from '../middlewares/require-persona';
 import { UserPersonaEnum } from '../../../domain/value-objects/user-persona';
 import { AuthenticatedRequest } from '../middlewares/auth';
@@ -51,6 +53,7 @@ export function studentsRouter(deps: {
     readStudentNotification?: ReadStudentNotification;
     registerPushToken?: RegisterPushToken;
     unregisterPushToken?: UnregisterPushToken;
+    listEnrollmentTimeline?: ListEnrollmentTimeline;
 }) {
     const r = Router();
 
@@ -613,6 +616,29 @@ export function studentsRouter(deps: {
                 userId: authReq.user.sub,
                 token: data.token
             });
+            res.json(result);
+        }));
+    }
+
+    if (deps.listEnrollmentTimeline) {
+        r.get('/enrollments/:enrollmentId/timeline', requireStudent, asyncHandler(async (req, res) => {
+            const authReq = req as AuthenticatedRequest;
+            if (!authReq.user?.sub) {
+                return res.status(401).json({ error: 'Não autorizado', code: 'UNAUTHORIZED' });
+            }
+            const params = z.object({ enrollmentId: z.string().uuid() }).parse(req.params);
+            const pagination = parseEnrollmentTimelineQuery(req.query);
+            const result = await deps.listEnrollmentTimeline!.execForStudent({
+                ownerUserId: authReq.user.sub,
+                enrollmentId: params.enrollmentId,
+                ...pagination
+            });
+            if (!result) {
+                return res.status(404).json({
+                    error: 'Matrícula não encontrada para este usuário',
+                    code: 'NOT_FOUND'
+                });
+            }
             res.json(result);
         }));
     }

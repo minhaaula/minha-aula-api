@@ -9,7 +9,7 @@ Painel administrativo (**persona ADMIN**). Gestão de escolas, planos, categoria
 
 > Referência técnica completa: [Swagger UI](pathname:///docs) · [OpenAPI JSON](pathname:///docs/openapi.json)
 
-## Endpoints (36)
+## Endpoints (48)
 
 ### `GET` `/admin/categories`
 
@@ -68,6 +68,81 @@ Requer autenticação com persona ADMIN.
 
 ---
 
+### `GET` `/admin/coupons`
+
+**Resumo:** Listar cupons de desconto (planos SaaS)
+
+**Funcionalidade:**
+
+Lista todos os cupons de desconto cadastrados para faturas de assinatura de plano das escolas.
+Os cupons são globais (não vinculados a uma escola específica no banco).
+
+Requer autenticação com persona ADMIN.
+
+---
+
+### `POST` `/admin/coupons`
+
+**Resumo:** Criar cupom de desconto
+
+**Funcionalidade:**
+
+Cria um cupom de desconto percentual para uso em faturas de plano de assinatura (escola).
+O código é normalizado em maiúsculas e deve ser único.
+
+Requer autenticação com persona ADMIN.
+
+---
+
+### `POST` `/admin/coupons/validate`
+
+**Resumo:** Validar cupom de desconto (admin)
+
+**Funcionalidade:**
+
+Verifica se um código de cupom existe e está ativo e dentro da validade.
+Não exige persona ADMIN; qualquer usuário autenticado pode chamar (útil para testes no painel).
+
+Requer apenas autenticação (Bearer).
+
+---
+
+### `GET` `/admin/crons`
+
+**Resumo:** Listar CRONs (BullMQ repeatable) com última execução
+
+**Funcionalidade:**
+
+Retorna a lista de CRONs (jobs repetitivos) cadastrados no BullMQ, incluindo
+a última execução registrada em banco (`cron_logs`) e o próximo agendamento.
+Requer autenticação com persona ADMIN.
+Se REDIS_HOST não estiver configurado, retorna 503.
+
+---
+
+### `GET` `/admin/crons/\{id\}/logs`
+
+**Resumo:** Listar histórico de execuções de um CRON
+
+**Funcionalidade:**
+
+Retorna o histórico paginado de execuções do CRON (persistido em `cron_logs`).
+Requer autenticação com persona ADMIN.
+
+---
+
+### `POST` `/admin/crons/\{id\}/run`
+
+**Resumo:** Executar um CRON manualmente (enqueue)
+
+**Funcionalidade:**
+
+Enfileira uma execução imediata do CRON/job no BullMQ (outbox). Retorna 202.
+Requer autenticação com persona ADMIN.
+Se REDIS_HOST não estiver configurado, retorna 503.
+
+---
+
 ### `GET` `/admin/dashboard`
 
 **Resumo:** Obter dados consolidados do dashboard
@@ -107,6 +182,54 @@ Marca uma fatura de plano da escola como paga manualmente (dar baixa).
 Use quando o pagamento foi confirmado fora do sistema ou para corrigir status.
 Só é possível dar baixa em faturas com status ISSUED ou FAILED.
 Requer autenticação com persona ADMIN.
+
+---
+
+### `GET` `/admin/job-logs`
+
+**Resumo:** Listar histórico de execução de jobs (worker)
+
+**Funcionalidade:**
+
+Retorna registros persistidos quando jobs da fila **outbox** concluem com sucesso ou falham
+(inclui push, emails, crons enfileirados, etc.). Complementa GET /admin/queue/jobs, que mostra
+o estado **ao vivo** no Redis. Filtros opcionais por status, nome do job e intervalo de `finishedAt`.
+A resposta inclui `summary` com totais de concluídos e falhas no mesmo recorte de datas (ignora o filtro `status`).
+Requer persona ADMIN. É necessário ter executado a migração que cria `job_execution_logs`.
+
+---
+
+### `GET` `/admin/job-logs/\{id\}`
+
+**Resumo:** Detalhe de um registro de execução de job
+
+**Funcionalidade:**
+
+Retorna um registro por UUID (inclui mensagem/stack em falhas e resumo em sucesso).
+
+---
+
+### `GET` `/admin/jobs`
+
+**Resumo:** Listar jobs da fila (BullMQ)
+
+**Funcionalidade:**
+
+Mesmo payload de GET /admin/queue/jobs, mas agrupado na sessão de Observabilidade.
+Requer autenticação com persona ADMIN.
+Se REDIS_HOST não estiver configurado, retorna 503.
+
+---
+
+### `POST` `/admin/jobs/\{id\}/retry`
+
+**Resumo:** Retry manual de um job falhado (BullMQ)
+
+**Funcionalidade:**
+
+Executa retry de um job por ID, apenas quando o estado atual for `failed`.
+Requer autenticação com persona ADMIN.
+Se REDIS_HOST não estiver configurado, retorna 503.
 
 ---
 
@@ -182,7 +305,7 @@ Se REDIS_HOST não estiver configurado, retorna 503.
 **Funcionalidade:**
 
 Retorna as escolas cadastradas com informações do plano de assinatura atual e seu status.
-Suporta filtros por nome, status, mensalidade, CNPJ (escolas sem CNPJ não casam no filtro por CNPJ), CPF do titular, conta Asaas, onboardingUrl,
+Suporta filtros por nome, status, mensalidade, CNPJ, CPF do titular, conta Asaas, onboardingUrl,
 primeiro pagamento e onboarding concluído. Requer autenticação com persona ADMIN.
 
 ---
@@ -213,9 +336,8 @@ Requer autenticação com persona ADMIN.
 
 Atualiza dados cadastrais e de configuração de uma escola.
 
-- Permite alterar nome, email, telefone e CNPJ (opcional; pode ser omitido ou limpo para cadastro como pessoa física)
-- Permite atualizar informações do responsável, incluindo **`ownerBirthDate`** (YYYY-MM-DD), necessária para escolas sem CNPJ quando for criar/recriar subconta Asaas como PF
-- Listagem e detalhe expõem **`ownerBirthDate`** quando cadastrada
+- Permite alterar nome, email, telefone e CNPJ
+- Permite atualizar informações do responsável
 - Permite ajustar `incomeValue` e links públicos da escola
 - Retorna sempre a visão administrativa completa da escola após a atualização
 
@@ -337,6 +459,32 @@ Esta rota é apenas de visualização para o painel administrativo.
 **Funcionalidade:**
 
 Retorna o plano de assinatura atual e o histórico de planos de uma escola.
+
+Requer autenticação com persona ADMIN.
+
+---
+
+### `GET` `/admin/schools/\{schoolId\}/plans/coupons`
+
+**Resumo:** Listar cupons (contexto escola / planos)
+
+**Funcionalidade:**
+
+Mesmo retorno de `GET /admin/coupons`, precedido da verificação de que a escola existe.
+A listagem continua global (todos os cupons); o `schoolId` na URL apenas contextualiza o fluxo e retorna 404 se a escola não existir.
+
+Requer autenticação com persona ADMIN.
+
+---
+
+### `POST` `/admin/schools/\{schoolId\}/plans/coupons`
+
+**Resumo:** Criar cupom (contexto escola / planos)
+
+**Funcionalidade:**
+
+Mesmo comportamento de `POST /admin/coupons`, com verificação prévia de que a escola existe.
+O cupom criado é global e pode ser usado em faturas de plano de qualquer escola (desde que o código seja informado na emissão).
 
 Requer autenticação com persona ADMIN.
 

@@ -1472,6 +1472,73 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /students/enrollments/{enrollmentId}/timeline:
+    get:
+      tags:
+        - Students
+      summary: Timeline agregada da matrícula (aluno/responsável)
+      description: |
+        Retorna a linha do tempo da matrícula no app dos pais: matrícula, promoções de nível,
+        certificados emitidos e marcos customizados da escola, em ordem cronológica.
+
+        **Visibilidade do aluno:** histórico **completo**, inclusive após desmatrícula (`CANCELLED` ou `COMPLETED`).
+        A escola, na rota homônoma sob `/schools/...`, vê apenas o período em que a matrícula esteve ativa.
+
+        Requer persona **STUDENT** e que a matrícula pertença ao usuário autenticado (`owner_user_id`).
+
+        Paginação: `limit` (1–100, padrão 30), `offset`, `order` (`asc` | `desc`, padrão `asc`).
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: enrollmentId
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 30
+        - in: query
+          name: offset
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - in: query
+          name: order
+          required: false
+          schema:
+            type: string
+            enum:
+              - asc
+              - desc
+            default: asc
+      responses:
+        '200':
+          description: Timeline paginada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnrollmentTimelinePageResponse'
+        '401':
+          description: Não autorizado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Matrícula não encontrada para este usuário.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /students/schools/{schoolId}:
     get:
       tags:

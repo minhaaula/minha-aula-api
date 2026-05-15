@@ -4,7 +4,20 @@ Este documento descreve a estrutura persistida para **níveis por matrícula**, 
 
 Implementação TypeORM sob `src/infra/db/typeorm/entities/` e migration `src/infra/db/typeorm/migrations/1000000000075-enrollment-levels-certificates-timeline.ts`.
 
-> Não há rotas HTTP públicas específicas deste modelo neste repositório; a documentação OpenAPI não foi estendida para isso até existirem endpoints estáveis.
+Exemplos **curl** das rotas da escola: [curls-niveis-certificados-timeline-matricula.md](./curls-niveis-certificados-timeline-matricula.md) (JWT persona escola).
+
+Especificação OpenAPI: rotas em `docs/schools.yaml` e `docs/students.yaml` (mescladas em `/docs` e `/docs/openapi.json`).
+
+## Timeline agregada (API)
+
+| Persona | Rota | Visibilidade |
+|---------|------|----------------|
+| Escola | `GET /schools/enrollments/{enrollmentId}/timeline` | Eventos entre `enrolledAt` e o fim do período ativo (`updatedAt` se `CANCELLED`/`COMPLETED`) |
+| Aluno | `GET /students/enrollments/{enrollmentId}/timeline` | Histórico completo da matrícula, inclusive após desmatrícula |
+
+Tipos retornados em `kind`: `ENROLLMENT`, `LEVEL_PROMOTION`, `CERTIFICATE`, `CUSTOM_MILESTONE` (marcos em `enrollment_timeline_events`; escola cria via `POST .../timeline-events`).
+
+Paginação: query `limit`, `offset`, `order` (`asc` \| `desc`).
 
 ## Princípios
 

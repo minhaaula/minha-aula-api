@@ -9,7 +9,7 @@ Gestão da **escola** autenticada (**persona SCHOOL**): perfil, cursos, turmas, 
 
 > Referência técnica completa: [Swagger UI](pathname:///docs) · [OpenAPI JSON](pathname:///docs/openapi.json)
 
-## Endpoints (57)
+## Endpoints (80)
 
 ### `POST` `/schools`
 
@@ -40,6 +40,7 @@ Retorna todas as contas bancárias cadastradas para a escola autenticada.
 **Funcionalidade:**
 
 Adiciona uma nova conta bancária para a escola autenticada.
+Requer um OTP previamente validado em `/schools/security/otp/verify` para a finalidade `BANK_ACCOUNT_CHANGE`.
 
 ---
 
@@ -50,6 +51,7 @@ Adiciona uma nova conta bancária para a escola autenticada.
 **Funcionalidade:**
 
 Atualiza os dados de uma conta bancária existente da escola autenticada.
+Requer um OTP previamente validado em `/schools/security/otp/verify` para a finalidade `BANK_ACCOUNT_CHANGE`.
 
 ---
 
@@ -60,6 +62,7 @@ Atualiza os dados de uma conta bancária existente da escola autenticada.
 **Funcionalidade:**
 
 Remove uma conta bancária da escola autenticada.
+Requer um OTP previamente validado em `/schools/security/otp/verify` para a finalidade `BANK_ACCOUNT_CHANGE`.
 
 ---
 
@@ -70,6 +73,27 @@ Remove uma conta bancária da escola autenticada.
 **Funcionalidade:**
 
 Retorna as categorias de cursos e suas respectivas subcategorias para auxiliar na criação de cursos.
+
+---
+
+### `GET` `/schools/certificate-templates`
+
+**Resumo:** Listar templates de certificado da escola
+
+**Funcionalidade:**
+
+Retorna os modelos de certificado configurados para a escola (`logicalTemplateId` único por escola).
+Requer persona **SCHOOL**.
+
+---
+
+### `POST` `/schools/certificate-templates`
+
+**Resumo:** Criar template de certificado
+
+**Funcionalidade:**
+
+Cadastra um modelo de certificado. `layoutConfig` é JSON livre para evolução de layout sem alterar schema.
 
 ---
 
@@ -206,6 +230,17 @@ base para cálculo de descontos.
 
 ---
 
+### `DELETE` `/schools/courses/\{courseId\}/classes/\{classId\}/enrollments/\{enrollmentId\}`
+
+**Resumo:** Desmatricular aluno da turma
+
+**Funcionalidade:**
+
+Cancela a matrícula (status `CANCELLED`). As cobranças financeiras existentes
+(boletos, PIX, mensalidades abertas ou atrasadas) **não são removidas nem alteradas**.
+
+---
+
 ### `GET` `/schools/courses/\{courseId\}/classes/\{classId\}/requests`
 
 **Resumo:** Listar solicitações de matrícula de uma turma
@@ -239,6 +274,67 @@ Retorna as solicitações de matrícula da turma, pendentes por padrão.
 **Funcionalidade:**
 
 Retorna métricas, histórico de receita, pagamentos em atraso e matrículas recentes para a escola autenticada.
+
+---
+
+### `GET` `/schools/enrollments/\{enrollmentId\}/progress`
+
+**Resumo:** Visão de progresso da matrícula
+
+**Funcionalidade:**
+
+Retorna nível atual, histórico de promoções e eventos de timeline da matrícula na escola autenticada.
+O nível é **por matrícula**, não global ao aluno. Use `timelineLimit` para limitar eventos (padrão 50, máx. 200).
+
+---
+
+### `POST` `/schools/enrollments/\{enrollmentId\}/promotions`
+
+**Resumo:** Registrar promoção de nível na matrícula
+
+**Funcionalidade:**
+
+Registra uma promoção e atualiza o nível atual da matrícula (`currentSchoolStudentLevelId`).
+`toLevelId` é obrigatório. Se `fromLevelId` for omitido, a origem é o nível atual da matrícula (ou vazio na primeira promoção).
+Snapshots de rótulo e ordem são gravados no histórico.
+
+---
+
+### `POST` `/schools/enrollments/\{enrollmentId\}/promotions/\{promotionId\}/certificates`
+
+**Resumo:** Registrar certificado emitido para uma promoção
+
+**Funcionalidade:**
+
+Associa um certificado a uma promoção já registrada. **No máximo um** certificado por promoção.
+`documentUrl` pode ser `null` até o arquivo estar disponível.
+
+---
+
+### `GET` `/schools/enrollments/\{enrollmentId\}/timeline`
+
+**Resumo:** Timeline agregada da matrícula (escola)
+
+**Funcionalidade:**
+
+Retorna eventos da matrícula em ordem cronológica, agregando matrícula, promoções de nível,
+certificados e marcos customizados (`enrollment_timeline_events`).
+
+**Visibilidade da escola:** apenas eventos entre `enrolledAt` e o encerramento da matrícula
+(`updatedAt` quando status `CANCELLED` ou `COMPLETED`). Eventos fora desse intervalo não são retornados.
+
+Paginação via `limit` (1–100, padrão 30), `offset` e `order` (`asc` ou `desc`, padrão `asc`).
+
+---
+
+### `POST` `/schools/enrollments/\{enrollmentId\}/timeline-events`
+
+**Resumo:** Adicionar marco customizado na timeline da matrícula
+
+**Funcionalidade:**
+
+Insere um marco customizado em `enrollment_timeline_events`. O `eventType` padrão é `CUSTOM_MILESTONE`
+(subtipos opcionais podem ir em `payload`). `occurredAt` é opcional (ISO-8601); se omitido, usa a hora do servidor.
 
 ---
 
@@ -284,6 +380,17 @@ Payload: data (data do pagamento) e observacao (opcional).
 
 ---
 
+### `POST` `/schools/finance/charges/\{chargeId\}/pix`
+
+**Resumo:** Gerar PIX para cobrança (mensalidade/matrícula)
+
+**Funcionalidade:**
+
+Gera o PIX (Asaas) sob demanda para uma cobrança da escola (tipos permitidos: TUITION e ENROLLMENT).
+Se o PIX já tiver sido gerado anteriormente, retorna o PIX já existente.
+
+---
+
 ### `GET` `/schools/finance/summary`
 
 **Resumo:** Obter resumo financeiro da escola
@@ -312,7 +419,8 @@ Retorna o histórico de saques realizados pela escola, com opção de filtrar po
 
 Solicita um saque do valor disponível na conta Asaas da escola para uma conta bancária pessoal cadastrada.
 O saque será processado usando a API key da conta Asaas da escola.
-Requer persona SCHOOL e que a escola tenha conta Asaas configurada com API key.
+Requer persona SCHOOL, que a escola tenha conta Asaas configurada com API key e um OTP previamente validado
+em `/schools/security/otp/verify` para a finalidade `WITHDRAWAL`.
 
 ---
 
@@ -340,6 +448,36 @@ Faz upload de uma imagem para a escola autenticada. A imagem é armazenada no bu
 - Tamanho máximo: 5MB
 - A imagem é armazenada na pasta `schools/\{schoolId\}/images/\{category\}/`
 - Categorias disponíveis: GALLERY (padrão), LOGO, BANNER, COVER, OTHER
+
+---
+
+### `GET` `/schools/kyc/asaas-account-status`
+
+**Resumo:** Consultar situação cadastral (KYC) da subconta no Asaas
+
+**Funcionalidade:**
+
+Consulta diretamente o status cadastral da subconta da escola no Asaas (GET /v3/myAccount/status),
+retornando os status por etapa:
+- `commercialInfo`
+- `bankAccountInfo`
+- `documentation`
+- `general`
+
+Quando todas as etapas estiverem `APPROVED`, a API marca `onboardingCompletedAt` no cadastro da escola.
+
+---
+
+### `POST` `/schools/kyc/bank-account/resend`
+
+**Resumo:** Reenviar dados bancários para o Asaas (KYC)
+
+**Funcionalidade:**
+
+Reenvia/sincroniza os dados bancários da escola para o Asaas no contexto da subconta autenticada.
+Use quando `bankAccountInfo` estiver `REJECTED`/`PENDING` e a escola precisar reenviar após corrigir os dados.
+
+**Requer OTP** (purpose `BANK_ACCOUNT_CHANGE`).
 
 ---
 
@@ -373,6 +511,22 @@ O `documentGroupId` e o `type` vêm da lista retornada em GET /schools/kyc/docum
 A escola só pode enviar documentos da própria conta. Requer autenticação com persona SCHOOL.
 Tipos aceitos: IDENTIFICATION, IDENTIFICATION_SELFIE, MINUTES_OF_ELECTION, SOCIAL_CONTRACT, OTHER.
 Arquivos: PDF ou imagem (JPEG/PNG), até 10MB.
+
+---
+
+### `POST` `/schools/kyc/resend`
+
+**Resumo:** Reenviar (sincronizar) KYC após reprovação/pendência
+
+**Funcionalidade:**
+
+Endpoint para o frontend “reprocessar” o KYC quando houver reprovação/pendência no Asaas.
+
+Ele executa:
+- sincronização de documentos pendentes + `onboardingUrl` (quando disponível)
+- consulta do status cadastral (commercialInfo, bankAccountInfo, documentation, general)
+
+Requer autenticação com persona SCHOOL.
 
 ---
 
@@ -438,6 +592,49 @@ Cria uma notificação do tipo CLASS e enfileira um job de push (FCM) para todos
 
 ---
 
+### `GET` `/schools/notifications/preferences`
+
+**Resumo:** Obter preferências de notificação da escola
+
+**Funcionalidade:**
+
+Retorna as preferências globais de notificação da escola autenticada (toggles por canal).
+Requer autenticação com persona SCHOOL e contexto de escola resolvido.
+
+---
+
+### `PUT` `/schools/notifications/preferences`
+
+**Resumo:** Atualizar preferências de notificação da escola
+
+**Funcionalidade:**
+
+Atualiza (parcialmente) as preferências globais de notificação da escola autenticada.
+Quando um canal é desabilitado, o backend deixa de enfileirar envios daquele canal
+para eventos associados à escola (inclui notificações enviadas pela escola para alunos).
+
+---
+
+### `PUT` `/schools/notifications/read-all`
+
+**Resumo:** Marcar todas as notificações como lidas
+
+**Funcionalidade:**
+
+Marca todas as notificações não lidas da escola autenticada como lidas de uma vez (in-app). Aplica a notificações cujo `schoolId` é o da escola no token/contexto (inclui `scope` SCHOOL e CLASS). Retorna o número de notificações que foram marcadas como lidas.
+
+---
+
+### `PUT` `/schools/notifications/\{notificationId\}/read`
+
+**Resumo:** Marcar uma notificação como lida
+
+**Funcionalidade:**
+
+Marca uma notificação da escola autenticada como lida (in-app). Aplica a notificações cujo `schoolId` é o da escola no token/contexto (inclui `scope` SCHOOL e CLASS). Se já estiver lida, retorna o mesmo `readAt` (idempotente). Se o ID não existir ou não pertencer à escola, retorna 404.
+
+---
+
 ### `PATCH` `/schools/password`
 
 **Resumo:** Alterar senha da escola logada
@@ -454,13 +651,15 @@ Permite que uma escola autenticada altere sua própria senha
 
 **Funcionalidade:**
 
-Envia código via Twilio Verify (WhatsApp) para o telefone da escola associado ao e-mail do proprietário. A rota `POST /schools/password/request` (só e-mail) foi descontinuada.
+Inicia verificação por **Twilio Verify** (WhatsApp) para o telefone da escola associado ao e-mail do proprietário.
+Em seguida use `POST /schools/password/otp/verify` e, com o `resetToken`, `POST /schools/password/reset`.
+A rota antiga `POST /schools/password/request` (envio só por e-mail) foi descontinuada.
 
 ---
 
 ### `POST` `/schools/password/otp/verify`
 
-**Resumo:** Validar código do WhatsApp
+**Resumo:** Validar código do WhatsApp (reset de senha da escola)
 
 **Funcionalidade:**
 
@@ -474,7 +673,8 @@ Retorna `resetToken` para usar em `POST /schools/password/reset`.
 
 **Funcionalidade:**
 
-Redefine a senha da escola usando o `resetToken` obtido após `otp/verify`.
+Redefine a senha da escola usando o `resetToken` retornado por `POST /schools/password/otp/verify`
+(fluxo com código no WhatsApp).
 
 ---
 
@@ -517,8 +717,10 @@ Retorna os totais consolidados de mensalidades dos alunos da escola para um mês
 
 **Funcionalidade:**
 
-Retorna apenas os pagamentos com status PAID de todos os alunos matriculados na escola.
-Não requer filtro de mês e ano, permitindo buscar todos os pagamentos pagos.
+Retorna apenas os pagamentos com status PAID de todos os alunos matriculados na escola,
+excluindo pagamentos dados como baixa manual pela escola (marcados como MANUAL).
+Inclui cobranças com método PIX ou BOLETO e registros antigos vinculados ao Asaas (asaasPaymentId).
+Não requer filtro de mês e ano, permitindo buscar todos os pagamentos pagos elegíveis.
 Suporta paginação e filtro opcional por nome do aluno.
 
 ---
@@ -564,6 +766,17 @@ Emite uma nova fatura para o plano ativo da escola. Caso já exista uma fatura p
 
 ---
 
+### `POST` `/schools/plan/invoices/\{invoiceId\}/pix`
+
+**Resumo:** Obter/gerar PIX de uma fatura do plano (por invoiceId)
+
+**Funcionalidade:**
+
+Retorna `pixQrCode` e `pixCopiaECola` para uma fatura do plano da escola (informada por `invoiceId`).
+Se a fatura ainda não tiver PIX persistido, o backend consulta o Asaas via `providerRef` e salva o PIX na invoice.
+
+---
+
 ### `GET` `/schools/plans`
 
 **Resumo:** Listar planos disponíveis para escolas
@@ -571,6 +784,28 @@ Emite uma nova fatura para o plano ativo da escola. Caso já exista uma fatura p
 **Funcionalidade:**
 
 Retorna todos os planos de assinatura ativos que podem ser contratados pelas escolas.
+
+---
+
+### `POST` `/schools/security/otp/request`
+
+**Resumo:** Solicitar OTP para ação sensível da escola
+
+**Funcionalidade:**
+
+Gera e envia um código OTP via WhatsApp para o telefone cadastrado da escola.
+Esse código deve ser validado antes de operações sensíveis, como saque e alteração de conta bancária.
+
+---
+
+### `POST` `/schools/security/otp/verify`
+
+**Resumo:** Validar OTP para ação sensível da escola
+
+**Funcionalidade:**
+
+Valida o código OTP recebido via WhatsApp e habilita o uso do `challengeId`
+em uma única operação sensível compatível com a finalidade do desafio.
 
 ---
 
@@ -587,6 +822,28 @@ Retorna todos os planos de assinatura ativos que podem ser contratados pelas esc
 **Resumo:** Cancelar uma sessão de aula
 
 **Funcionalidade:** ver detalhes e parâmetros no [Swagger](pathname:///docs) (tag correspondente).
+
+---
+
+### `GET` `/schools/student-levels`
+
+**Resumo:** Listar níveis (faixas/graus) da escola
+
+**Funcionalidade:**
+
+Retorna o catálogo de níveis configurados para a escola autenticada, ordenados por `sortOrder`.
+Usado para promoções de matrícula e certificados. Requer persona **SCHOOL** (contexto da escola no JWT).
+
+---
+
+### `POST` `/schools/student-levels`
+
+**Resumo:** Criar nível da escola
+
+**Funcionalidade:**
+
+Cadastra um nível no catálogo da escola. `sortOrder` deve ser **único por escola**;
+`templateCode` é opcional e também único por escola quando informado.
 
 ---
 
@@ -620,9 +877,14 @@ Retorna os detalhes completos de um aluno vinculado à escola, incluindo:
 - Dados do aluno (nome, email, telefone, CPF, data de nascimento)
 - Dados do responsável (se o aluno for um dependente)
 - Lista de cursos e turmas em que está matriculado na escola
-- Cobranças (pendentes e pagas) do aluno na escola (paidCharges)
+
+As cobranças (pendentes e pagas) estão em `GET /schools/students/\{studentId\}/paid-charges` (paginado)
 
 **Importante:** A rota só retorna dados se o aluno estiver vinculado à escola através de matrículas ativas.
+
+Na listagem (`GET /schools/students`), use o campo **`detailsStudentId`** no path desta rota para abrir a ficha do aluno matriculado (para matrícula de dependente, é o UUID do dependente; `student.id` na listagem é sempre o titular).
+
+Alternativa: `studentId` = UUID do responsável e query **`dependentId`** = UUID do dependente (mesmo efeito que usar só o UUID do dependente em `studentId`).
 
 ---
 
@@ -639,6 +901,19 @@ apenas se houver matrícula ativa na escola logada.
 - `overdueTotalCents`: status OVERDUE ou em aberto com data de vencimento já passada.
 - `paidTotalCents`: cobranças pagas.
 - `grandTotalCents`: soma de todas as cobranças do aluno na escola, **incluindo canceladas**.
+
+---
+
+### `GET` `/schools/students/\{studentId\}/paid-charges`
+
+**Resumo:** Listar cobranças do aluno na escola (paginado)
+
+**Funcionalidade:**
+
+Retorna as cobranças financeiras do aluno na escola (pendentes e pagas), com paginação.
+Cobranças canceladas não são incluídas. Ordenação: data de pagamento (mais recentes primeiro), depois vencimento.
+
+Use os mesmos `studentId` e `dependentId` que em `GET /schools/students/\{studentId\}` (ficha do aluno).
 
 ---
 

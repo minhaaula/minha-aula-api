@@ -443,6 +443,7 @@ payments-api/
 │   ├── openapi.yaml      # Especificação OpenAPI
 │   ├── arquitetura.md    # Documentação de arquitetura
 │   ├── modelo-niveis-certificados-timeline-matricula.md  # Modelo níveis/certificados por matrícula
+│   ├── curls-niveis-certificados-timeline-matricula.md     # Exemplos cURL dessas rotas
 │   └── *.yaml            # Documentação por módulo
 ├── scripts/              # Scripts utilitários
 └── docker/               # Configuração Docker
@@ -460,6 +461,7 @@ http://localhost:3000/docs
 
 - `docs/openapi.yaml` - Especificação principal
 - `docs/modelo-niveis-certificados-timeline-matricula.md` - Níveis, certificados e timeline por matrícula (dados)
+- `docs/curls-niveis-certificados-timeline-matricula.md` - cURL das rotas de progresso/certificado (escola)
 - `docs/auth.yaml` - Autenticação
 - `docs/admin.yaml` - Operações administrativas
 - `docs/schools.yaml` - Gestão de escolas

@@ -72,6 +72,16 @@ import type { GetSchoolNotificationPreferences } from '../../../app/use-cases/ge
 import type { UpdateSchoolNotificationPreferences } from '../../../app/use-cases/update-school-notification-preferences';
 import type { ReadSchoolNotification } from '../../../app/use-cases/read-school-notification';
 import type { ReadAllSchoolNotifications } from '../../../app/use-cases/read-all-school-notifications';
+import { buildEnrollmentProgressRoutes } from './schools/enrollment-progress.routes';
+import type { ListSchoolStudentLevels } from '../../../app/use-cases/list-school-student-levels';
+import type { CreateSchoolStudentLevel } from '../../../app/use-cases/create-school-student-level';
+import type { ListSchoolCertificateTemplates } from '../../../app/use-cases/list-school-certificate-templates';
+import type { CreateSchoolCertificateTemplate } from '../../../app/use-cases/create-school-certificate-template';
+import type { GetEnrollmentProgressOverview } from '../../../app/use-cases/get-enrollment-progress-overview';
+import type { RecordEnrollmentLevelPromotion } from '../../../app/use-cases/record-enrollment-level-promotion';
+import type { AppendEnrollmentTimelineEvent } from '../../../app/use-cases/append-enrollment-timeline-event';
+import type { IssueEnrollmentPromotionCertificate } from '../../../app/use-cases/issue-enrollment-promotion-certificate';
+import type { ListEnrollmentTimeline } from '../../../app/use-cases/list-enrollment-timeline';
 
 export type SchoolsRouterDeps = {
     createSchool: CreateSchool;
@@ -146,6 +156,15 @@ export type SchoolsRouterDeps = {
     resendSchoolAsaasBankAccount?: import('../../../app/use-cases/resend-school-asaas-bank-account').ResendSchoolAsaasBankAccount;
     requestSchoolActionOtp?: RequestSchoolActionOtp;
     verifySchoolActionOtp?: VerifySchoolActionOtp;
+    listSchoolStudentLevels?: ListSchoolStudentLevels;
+    createSchoolStudentLevel?: CreateSchoolStudentLevel;
+    listSchoolCertificateTemplates?: ListSchoolCertificateTemplates;
+    createSchoolCertificateTemplate?: CreateSchoolCertificateTemplate;
+    getEnrollmentProgressOverview?: GetEnrollmentProgressOverview;
+    recordEnrollmentLevelPromotion?: RecordEnrollmentLevelPromotion;
+    appendEnrollmentTimelineEvent?: AppendEnrollmentTimelineEvent;
+    issueEnrollmentPromotionCertificate?: IssueEnrollmentPromotionCertificate;
+    listEnrollmentTimeline?: ListEnrollmentTimeline;
 };
 
 export function schoolsRouter(deps: SchoolsRouterDeps) {
@@ -267,6 +286,36 @@ export function schoolsRouter(deps: SchoolsRouterDeps) {
             requestSchoolActionOtp: deps.requestSchoolActionOtp,
             verifySchoolActionOtp: deps.verifySchoolActionOtp
         }, guards));
+    }
+
+    if (
+        deps.listSchoolStudentLevels &&
+        deps.createSchoolStudentLevel &&
+        deps.listSchoolCertificateTemplates &&
+        deps.createSchoolCertificateTemplate &&
+        deps.getEnrollmentProgressOverview &&
+        deps.recordEnrollmentLevelPromotion &&
+        deps.appendEnrollmentTimelineEvent &&
+        deps.issueEnrollmentPromotionCertificate &&
+        deps.listEnrollmentTimeline
+    ) {
+        router.use(
+            '/',
+            buildEnrollmentProgressRoutes(
+                {
+                    listSchoolStudentLevels: deps.listSchoolStudentLevels,
+                    createSchoolStudentLevel: deps.createSchoolStudentLevel,
+                    listSchoolCertificateTemplates: deps.listSchoolCertificateTemplates,
+                    createSchoolCertificateTemplate: deps.createSchoolCertificateTemplate,
+                    getEnrollmentProgressOverview: deps.getEnrollmentProgressOverview,
+                    recordEnrollmentLevelPromotion: deps.recordEnrollmentLevelPromotion,
+                    appendEnrollmentTimelineEvent: deps.appendEnrollmentTimelineEvent,
+                    issueEnrollmentPromotionCertificate: deps.issueEnrollmentPromotionCertificate,
+                    listEnrollmentTimeline: deps.listEnrollmentTimeline
+                },
+                guards
+            )
+        );
     }
 
     if (deps.getSchoolPendingDocuments || deps.syncSchoolSubaccountStatus) {

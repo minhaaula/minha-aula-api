@@ -13,6 +13,13 @@ info:
     (totais líquidos em centavos: pendentes, em atraso, pagos; requer Bearer da escola).
 
     **Escola — cobranças do aluno (paginação):** `GET /schools/students/{studentId}/paid-charges` (query `limit`, `offset`, opcional `dependentId`; mesma semântica de `studentId` que em detalhes do aluno).
+
+    **Escola — progresso da matrícula (níveis, promoções, certificados, timeline):** catálogo em `/schools/student-levels` e `/schools/certificate-templates`;
+    timeline paginada em `GET /schools/enrollments/{enrollmentId}/timeline` (visão restrita ao período ativo da matrícula);
+    visão consolidada em `GET /schools/enrollments/{enrollmentId}/progress`; promoções, marcos customizados e certificados nas rotas sob `/schools/enrollments/{enrollmentId}/…`.
+    Requer persona SCHOOL (contexto da escola no token). Modelo de dados: `docs/modelo-niveis-certificados-timeline-matricula.md`.
+
+    **Aluno — timeline por matrícula:** `GET /students/enrollments/{enrollmentId}/timeline` (histórico completo, inclusive após desmatrícula; requer persona STUDENT e matrícula do titular/dependente).
 servers:
   - url: http://localhost:3000
     description: Ambiente local
@@ -3255,3 +3262,392 @@ components:
       required:
         - documents
         - onboardingUrl
+    SchoolStudentLevel:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        label:
+          type: string
+          example: Faixa Branca
+        templateCode:
+          type: string
+          nullable: true
+          maxLength: 64
+          description: Código opcional único por escola (ex. identificador de layout).
+        sortOrder:
+          type: integer
+          minimum: 0
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - label
+        - sortOrder
+        - createdAt
+        - updatedAt
+    SchoolStudentLevelsListResponse:
+      type: object
+      properties:
+        levels:
+          type: array
+          items:
+            $ref: '#/components/schemas/SchoolStudentLevel'
+      required:
+        - levels
+    CreateSchoolStudentLevelInput:
+      type: object
+      required:
+        - label
+        - sortOrder
+      properties:
+        label:
+          type: string
+          minLength: 1
+        sortOrder:
+          type: integer
+          minimum: 0
+        templateCode:
+          type: string
+          nullable: true
+          maxLength: 64
+    SchoolCertificateTemplate:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        logicalTemplateId:
+          type: string
+          maxLength: 64
+          description: Identificador lógico único por escola.
+        layoutConfig:
+          type: object
+          nullable: true
+          additionalProperties: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - logicalTemplateId
+        - createdAt
+        - updatedAt
+    SchoolCertificateTemplatesListResponse:
+      type: object
+      properties:
+        templates:
+          type: array
+          items:
+            $ref: '#/components/schemas/SchoolCertificateTemplate'
+      required:
+        - templates
+    CreateSchoolCertificateTemplateInput:
+      type: object
+      required:
+        - name
+        - logicalTemplateId
+      properties:
+        name:
+          type: string
+          minLength: 1
+        logicalTemplateId:
+          type: string
+          minLength: 1
+          maxLength: 64
+        layoutConfig:
+          type: object
+          nullable: true
+          additionalProperties: true
+    EnrollmentProgressCurrentLevel:
+      type: object
+      nullable: true
+      properties:
+        id:
+          type: string
+          format: uuid
+        label:
+          type: string
+        sortOrder:
+          type: integer
+        templateCode:
+          type: string
+          nullable: true
+      required:
+        - id
+        - label
+        - sortOrder
+    EnrollmentLevelPromotionItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        fromLevelId:
+          type: string
+          format: uuid
+          nullable: true
+        toLevelId:
+          type: string
+          format: uuid
+          nullable: true
+        fromLevelLabelSnapshot:
+          type: string
+          nullable: true
+        toLevelLabelSnapshot:
+          type: string
+          nullable: true
+        fromLevelSortOrderSnapshot:
+          type: integer
+          nullable: true
+        toLevelSortOrderSnapshot:
+          type: integer
+          nullable: true
+        promotedAt:
+          type: string
+          format: date-time
+        notes:
+          type: string
+          nullable: true
+        createdByUserId:
+          type: string
+          format: uuid
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - promotedAt
+        - createdAt
+    EnrollmentTimelineEventItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        eventType:
+          type: string
+          maxLength: 64
+        payload:
+          type: object
+          nullable: true
+          additionalProperties: true
+        occurredAt:
+          type: string
+          format: date-time
+        actorUserId:
+          type: string
+          format: uuid
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - eventType
+        - occurredAt
+        - createdAt
+    EnrollmentProgressOverview:
+      type: object
+      properties:
+        enrollmentId:
+          type: string
+          format: uuid
+        currentSchoolStudentLevelId:
+          type: string
+          format: uuid
+          nullable: true
+        currentLevel:
+          $ref: '#/components/schemas/EnrollmentProgressCurrentLevel'
+        promotions:
+          type: array
+          items:
+            $ref: '#/components/schemas/EnrollmentLevelPromotionItem'
+        timeline:
+          type: array
+          items:
+            $ref: '#/components/schemas/EnrollmentTimelineEventItem'
+      required:
+        - enrollmentId
+        - promotions
+        - timeline
+    RecordEnrollmentLevelPromotionInput:
+      type: object
+      required:
+        - toLevelId
+      properties:
+        toLevelId:
+          type: string
+          format: uuid
+        fromLevelId:
+          type: string
+          format: uuid
+          nullable: true
+        notes:
+          type: string
+          maxLength: 4096
+          nullable: true
+    RecordEnrollmentLevelPromotionResponse:
+      type: object
+      properties:
+        promotionId:
+          type: string
+          format: uuid
+        enrollmentId:
+          type: string
+          format: uuid
+        promotedAt:
+          type: string
+          format: date-time
+        currentSchoolStudentLevelId:
+          type: string
+          format: uuid
+      required:
+        - promotionId
+        - enrollmentId
+        - promotedAt
+        - currentSchoolStudentLevelId
+    AppendEnrollmentTimelineEventInput:
+      type: object
+      required:
+        - eventType
+      properties:
+        eventType:
+          type: string
+          minLength: 1
+          maxLength: 64
+        payload:
+          type: object
+          nullable: true
+          additionalProperties: true
+        occurredAt:
+          type: string
+          format: date-time
+          nullable: true
+    AppendEnrollmentTimelineEventResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        enrollmentId:
+          type: string
+          format: uuid
+        eventType:
+          type: string
+        occurredAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - enrollmentId
+        - eventType
+        - occurredAt
+    EnrollmentTimelineItem:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Identificador estável (ex. promotion:uuid, enrollment:uuid).
+        kind:
+          type: string
+          enum:
+            - ENROLLMENT
+            - LEVEL_PROMOTION
+            - CERTIFICATE
+            - CUSTOM_MILESTONE
+        occurredAt:
+          type: string
+          format: date-time
+        payload:
+          type: object
+          additionalProperties: true
+      required:
+        - id
+        - kind
+        - occurredAt
+        - payload
+    EnrollmentTimelinePageResponse:
+      type: object
+      properties:
+        enrollmentId:
+          type: string
+          format: uuid
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/EnrollmentTimelineItem'
+        total:
+          type: integer
+          minimum: 0
+        limit:
+          type: integer
+        offset:
+          type: integer
+        order:
+          type: string
+          enum:
+            - asc
+            - desc
+      required:
+        - enrollmentId
+        - items
+        - total
+        - limit
+        - offset
+        - order
+    IssueEnrollmentPromotionCertificateInput:
+      type: object
+      required:
+        - certificateTemplateId
+      properties:
+        certificateTemplateId:
+          type: string
+          format: uuid
+        documentUrl:
+          type: string
+          nullable: true
+          maxLength: 2048
+        metadata:
+          type: object
+          nullable: true
+          additionalProperties: true
+    IssueEnrollmentPromotionCertificateResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        enrollmentId:
+          type: string
+          format: uuid
+        promotionId:
+          type: string
+          format: uuid
+        certificateTemplateId:
+          type: string
+          format: uuid
+        issuedAt:
+          type: string
+          format: date-time
+        logicalTemplateId:
+          type: string
+      required:
+        - id
+        - enrollmentId
+        - promotionId
+        - certificateTemplateId
+        - issuedAt
+        - logicalTemplateId

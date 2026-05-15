@@ -9,7 +9,7 @@ App do **aluno / responsável** (**persona STUDENT**): perfil, cursos, pagamento
 
 > Referência técnica completa: [Swagger UI](pathname:///docs) · [OpenAPI JSON](pathname:///docs/openapi.json)
 
-## Endpoints (20)
+## Endpoints (22)
 
 ### `GET` `/students`
 
@@ -111,6 +111,24 @@ Permite ao estudante rejeitar um pedido de matrícula pendente criado para ele o
 
 ---
 
+### `GET` `/students/enrollments/\{enrollmentId\}/timeline`
+
+**Resumo:** Timeline agregada da matrícula (aluno/responsável)
+
+**Funcionalidade:**
+
+Retorna a linha do tempo da matrícula no app dos pais: matrícula, promoções de nível,
+certificados emitidos e marcos customizados da escola, em ordem cronológica.
+
+**Visibilidade do aluno:** histórico **completo**, inclusive após desmatrícula (`CANCELLED` ou `COMPLETED`).
+A escola, na rota homônoma sob `/schools/...`, vê apenas o período em que a matrícula esteve ativa.
+
+Requer persona **STUDENT** e que a matrícula pertença ao usuário autenticado (`owner_user_id`).
+
+Paginação: `limit` (1–100, padrão 30), `offset`, `order` (`asc` | `desc`, padrão `asc`).
+
+---
+
 ### `GET` `/students/me`
 
 **Resumo:** Obter dados do estudante logado
@@ -151,13 +169,23 @@ Marca todas as notificações não lidas do aluno autenticado como lidas de uma 
 
 ---
 
+### `PUT` `/students/notifications/\{notificationId\}/read`
+
+**Resumo:** Marcar uma notificação como lida
+
+**Funcionalidade:**
+
+Marca uma notificação do aluno autenticado como lida (in-app). Só aplica a notificações cujo `userId` é o próprio aluno (ex.: `scope` USER). Se já estiver lida, retorna o mesmo `readAt` (idempotente). Se o ID não existir ou não pertencer ao aluno, retorna 404. Requer persona STUDENT.
+
+---
+
 ### `GET` `/students/payments`
 
 **Resumo:** Listar pagamentos do estudante
 
 **Funcionalidade:**
 
-Retorna os pagamentos (cobranças financeiras) do usuário logado e seus dependentes. Inclui tipo da transação (mensalidade/matrícula), data de pagamento, desconto, valor líquido, logo da escola e observação quando for pagamento manual. Requer persona STUDENT.
+Retorna os pagamentos (cobranças financeiras) do usuário logado e seus dependentes. Inclui tipo da transação (mensalidade/matrícula), campo `description` para exibição (ex.: "Mensalidade de Fevereiro de 2026"), data de pagamento, desconto, valor líquido, logo da escola e observação quando for pagamento manual. Requer persona STUDENT.
 
 ---
 

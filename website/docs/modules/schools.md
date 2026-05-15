@@ -12,6 +12,7 @@ Gestão da **escola**: cadastro, cursos, turmas, alunos, financeiro (cobranças,
 - **Escola** — perfil, imagens, bancos, saques, cupons quando aplicável.
 - **Cursos e turmas** — CRUD, preços, categorias.
 - **Matrícula direta** — `POST` em enrollments matricula aluno ou dependente na turma; dispara email de confirmação e notificação in-app ao aluno.
+- **Progresso da matrícula** — níveis por escola, promoções, certificados e timeline por matrícula (módulo opcional; ver rotas `/schools/student-levels`, `/schools/certificate-templates` e `/schools/enrollments/{enrollmentId}/…`). Modelo: `docs/modelo-niveis-certificados-timeline-matricula.md`.
 - **Solicitações de matrícula** — a escola pode abrir pedido para o aluno (`responsible-requests`); o aluno recebe email, push e notificação no app.
 - **Financeiro** — cobranças de mensalidade e taxas, PIX/boleto conforme Asaas.
 - **Webhooks Asaas** — rotas em `/integrations/asaas` (token configurável).

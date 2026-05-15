@@ -600,6 +600,381 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /schools/student-levels:
+    get:
+      tags:
+        - Schools
+      summary: Listar níveis (faixas/graus) da escola
+      description: |
+        Retorna o catálogo de níveis configurados para a escola autenticada, ordenados por `sortOrder`.
+        Usado para promoções de matrícula e certificados. Requer persona **SCHOOL** (contexto da escola no JWT).
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Lista de níveis da escola.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchoolStudentLevelsListResponse'
+        '403':
+          description: Usuário não autorizado ou sem contexto de escola.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags:
+        - Schools
+      summary: Criar nível da escola
+      description: |
+        Cadastra um nível no catálogo da escola. `sortOrder` deve ser **único por escola**;
+        `templateCode` é opcional e também único por escola quando informado.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSchoolStudentLevelInput'
+      responses:
+        '201':
+          description: Nível criado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchoolStudentLevel'
+        '400':
+          description: Validação ou conflito de unicidade (`sortOrder` / `templateCode`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado ou sem contexto de escola.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /schools/certificate-templates:
+    get:
+      tags:
+        - Schools
+      summary: Listar templates de certificado da escola
+      description: |
+        Retorna os modelos de certificado configurados para a escola (`logicalTemplateId` único por escola).
+        Requer persona **SCHOOL**.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Lista de templates.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchoolCertificateTemplatesListResponse'
+        '403':
+          description: Usuário não autorizado ou sem contexto de escola.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags:
+        - Schools
+      summary: Criar template de certificado
+      description: |
+        Cadastra um modelo de certificado. `layoutConfig` é JSON livre para evolução de layout sem alterar schema.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSchoolCertificateTemplateInput'
+      responses:
+        '201':
+          description: Template criado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchoolCertificateTemplate'
+        '400':
+          description: Validação ou `logicalTemplateId` duplicado na escola.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado ou sem contexto de escola.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /schools/enrollments/{enrollmentId}/timeline:
+    get:
+      tags:
+        - Schools
+      summary: Timeline agregada da matrícula (escola)
+      description: |
+        Retorna eventos da matrícula em ordem cronológica, agregando matrícula, promoções de nível,
+        certificados e marcos customizados (`enrollment_timeline_events`).
+
+        **Visibilidade da escola:** apenas eventos entre `enrolledAt` e o encerramento da matrícula
+        (`updatedAt` quando status `CANCELLED` ou `COMPLETED`). Eventos fora desse intervalo não são retornados.
+
+        Paginação via `limit` (1–100, padrão 30), `offset` e `order` (`asc` ou `desc`, padrão `asc`).
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: enrollmentId
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 30
+        - in: query
+          name: offset
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - in: query
+          name: order
+          required: false
+          schema:
+            type: string
+            enum:
+              - asc
+              - desc
+            default: asc
+      responses:
+        '200':
+          description: Timeline paginada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnrollmentTimelinePageResponse'
+        '403':
+          description: Usuário não autorizado ou sem contexto de escola.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Matrícula não encontrada nesta escola.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /schools/enrollments/{enrollmentId}/progress:
+    get:
+      tags:
+        - Schools
+      summary: Visão de progresso da matrícula
+      description: |
+        Retorna nível atual, histórico de promoções e eventos de timeline da matrícula na escola autenticada.
+        O nível é **por matrícula**, não global ao aluno. Use `timelineLimit` para limitar eventos (padrão 50, máx. 200).
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: enrollmentId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: UUID da matrícula.
+        - in: query
+          name: timelineLimit
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+          description: Quantidade máxima de eventos de timeline retornados.
+      responses:
+        '200':
+          description: Visão consolidada do progresso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnrollmentProgressOverview'
+        '403':
+          description: Usuário não autorizado ou sem contexto de escola.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Matrícula não encontrada nesta escola.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /schools/enrollments/{enrollmentId}/promotions:
+    post:
+      tags:
+        - Schools
+      summary: Registrar promoção de nível na matrícula
+      description: |
+        Registra uma promoção e atualiza o nível atual da matrícula (`currentSchoolStudentLevelId`).
+        `toLevelId` é obrigatório. Se `fromLevelId` for omitido, a origem é o nível atual da matrícula (ou vazio na primeira promoção).
+        Snapshots de rótulo e ordem são gravados no histórico.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: enrollmentId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecordEnrollmentLevelPromotionInput'
+      responses:
+        '201':
+          description: Promoção registrada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecordEnrollmentLevelPromotionResponse'
+        '400':
+          description: Erro de validação.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado ou sem contexto de escola.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Matrícula ou nível não encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /schools/enrollments/{enrollmentId}/timeline-events:
+    post:
+      tags:
+        - Schools
+      summary: Adicionar marco customizado na timeline da matrícula
+      description: |
+        Insere um marco customizado em `enrollment_timeline_events`. O `eventType` padrão é `CUSTOM_MILESTONE`
+        (subtipos opcionais podem ir em `payload`). `occurredAt` é opcional (ISO-8601); se omitido, usa a hora do servidor.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: enrollmentId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AppendEnrollmentTimelineEventInput'
+      responses:
+        '201':
+          description: Evento criado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppendEnrollmentTimelineEventResponse'
+        '400':
+          description: Erro de validação.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado ou sem contexto de escola.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Matrícula não encontrada nesta escola.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /schools/enrollments/{enrollmentId}/promotions/{promotionId}/certificates:
+    post:
+      tags:
+        - Schools
+      summary: Registrar certificado emitido para uma promoção
+      description: |
+        Associa um certificado a uma promoção já registrada. **No máximo um** certificado por promoção.
+        `documentUrl` pode ser `null` até o arquivo estar disponível.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: enrollmentId
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: path
+          name: promotionId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssueEnrollmentPromotionCertificateInput'
+      responses:
+        '201':
+          description: Certificado registrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueEnrollmentPromotionCertificateResponse'
+        '400':
+          description: Validação ou certificado já existente para a promoção.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado ou sem contexto de escola.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Matrícula, promoção ou template não encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /schools/payments:
     get:
       tags:
