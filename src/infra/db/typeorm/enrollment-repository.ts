@@ -378,7 +378,8 @@ export class EnrollmentRepositoryAdapter implements EnrollmentRepository {
                 enrolledAt: row.enrolledAt,
                 updatedAt: row.updatedAt,
                 fullAmountCents: row.fullAmountCents,
-                paymentDueDay: row.paymentDueDay
+                paymentDueDay: row.paymentDueDay,
+                currentSchoolStudentLevelId: row.currentSchoolStudentLevelId
             });
         }
         return Enrollment.createForDependent({
@@ -390,7 +391,8 @@ export class EnrollmentRepositoryAdapter implements EnrollmentRepository {
             enrolledAt: row.enrolledAt,
             updatedAt: row.updatedAt,
             fullAmountCents: row.fullAmountCents,
-            paymentDueDay: row.paymentDueDay
+            paymentDueDay: row.paymentDueDay,
+            currentSchoolStudentLevelId: row.currentSchoolStudentLevelId
         });
     }
 
@@ -405,6 +407,7 @@ export class EnrollmentRepositoryAdapter implements EnrollmentRepository {
         row.status = enrollment.status;
         row.fullAmountCents = enrollment.fullAmountCents;
         row.paymentDueDay = enrollment.paymentDueDay;
+        row.currentSchoolStudentLevelId = enrollment.currentSchoolStudentLevelId;
         row.enrolledAt = enrollment.enrolledAt;
         row.updatedAt = new Date();
         return row;

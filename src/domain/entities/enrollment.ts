@@ -13,7 +13,8 @@ export class Enrollment {
         public readonly enrolledAt: Date,
         public readonly updatedAt: Date,
         private readonly _fullAmountCents: number | null,
-        private readonly _paymentDueDay: number | null
+        private readonly _paymentDueDay: number | null,
+        private readonly _currentSchoolStudentLevelId: string | null = null
     ) {}
 
     static createForUser(params: {
@@ -26,6 +27,7 @@ export class Enrollment {
         updatedAt?: Date;
         fullAmountCents?: number | null;
         paymentDueDay?: number | null;
+        currentSchoolStudentLevelId?: string | null;
     }) {
         const courseClassId = params.courseClassId.trim();
         const ownerUserId = params.ownerUserId.trim();
@@ -33,6 +35,7 @@ export class Enrollment {
         if (!courseClassId || !ownerUserId || !studentUserId) throw new Error('Invalid enrollment identifiers');
         const fullAmountCents = Enrollment.normalizeFullAmountCents(params.fullAmountCents);
         const paymentDueDay = Enrollment.normalizePaymentDueDay(params.paymentDueDay);
+        const currentSchoolStudentLevelId = Enrollment.normalizeCurrentLevelId(params.currentSchoolStudentLevelId);
         return new Enrollment(
             params.id,
             courseClassId,
@@ -44,7 +47,8 @@ export class Enrollment {
             params.enrolledAt ?? new Date(),
             params.updatedAt ?? new Date(),
             fullAmountCents,
-            paymentDueDay
+            paymentDueDay,
+            currentSchoolStudentLevelId
         );
     }
 
@@ -58,6 +62,7 @@ export class Enrollment {
         updatedAt?: Date;
         fullAmountCents?: number | null;
         paymentDueDay?: number | null;
+        currentSchoolStudentLevelId?: string | null;
     }) {
         const courseClassId = params.courseClassId.trim();
         const ownerUserId = params.ownerUserId.trim();
@@ -65,6 +70,7 @@ export class Enrollment {
         if (!courseClassId || !ownerUserId || !dependentId) throw new Error('Invalid enrollment identifiers');
         const fullAmountCents = Enrollment.normalizeFullAmountCents(params.fullAmountCents);
         const paymentDueDay = Enrollment.normalizePaymentDueDay(params.paymentDueDay);
+        const currentSchoolStudentLevelId = Enrollment.normalizeCurrentLevelId(params.currentSchoolStudentLevelId);
         return new Enrollment(
             params.id,
             courseClassId,
@@ -76,7 +82,8 @@ export class Enrollment {
             params.enrolledAt ?? new Date(),
             params.updatedAt ?? new Date(),
             fullAmountCents,
-            paymentDueDay
+            paymentDueDay,
+            currentSchoolStudentLevelId
         );
     }
 
@@ -100,6 +107,17 @@ export class Enrollment {
 
     get paymentDueDay(): number {
         return this._paymentDueDay ?? 10; // Padrão: dia 10
+    }
+
+    get currentSchoolStudentLevelId(): string | null {
+        return this._currentSchoolStudentLevelId;
+    }
+
+    private static normalizeCurrentLevelId(value: unknown): string | null {
+        if (value === undefined || value === null) return null;
+        if (typeof value !== 'string') throw new Error('Invalid enrollment current level id');
+        const trimmed = value.trim();
+        return trimmed.length ? trimmed : null;
     }
 
     private static normalizeFullAmountCents(value: unknown): number | null {

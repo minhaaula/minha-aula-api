@@ -4,6 +4,10 @@ import { UserOrm } from './user.orm';
 import { DependentOrm } from './dependent.orm';
 import { PaymentOrm } from './payment.orm';
 import { EnrollmentRequestOrm } from './enrollment-request.orm';
+import { SchoolStudentLevelOrm } from './school-student-level.orm';
+import { EnrollmentLevelPromotionOrm } from './enrollment-level-promotion.orm';
+import { EnrollmentPromotionCertificateOrm } from './enrollment-promotion-certificate.orm';
+import { EnrollmentTimelineEventOrm } from './enrollment-timeline-event.orm';
 
 export type EnrollmentStatus = 'PENDING' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
 export type EnrollmentStudentType = 'USER' | 'DEPENDENT';
@@ -38,6 +42,17 @@ export class EnrollmentOrm {
 
     @UpdateDateColumn({ name: 'updated_at', type: 'datetime', default: () => 'CURRENT_TIMESTAMP' }) updatedAt!: Date;
 
+    /**
+     * Nível atual opcional nesta matrícula; `null` quando a escola não usa o módulo de níveis ou ainda não houve promoção.
+     * Não existe estado de nível fora da matrícula.
+     */
+    @Column('char', { length: 36, name: 'current_school_student_level_id', nullable: true })
+    currentSchoolStudentLevelId!: string | null;
+
+    @ManyToOne(() => SchoolStudentLevelOrm, { nullable: true, onDelete: 'SET NULL' })
+    @JoinColumn({ name: 'current_school_student_level_id' })
+    currentSchoolStudentLevel!: SchoolStudentLevelOrm | null;
+
     @ManyToOne(() => CourseClassOrm, (courseClass) => courseClass.enrollments, { onDelete: 'CASCADE' })
     @JoinColumn({ name: 'course_class_id' })
     courseClass!: CourseClassOrm;
@@ -59,4 +74,13 @@ export class EnrollmentOrm {
 
     @OneToMany(() => EnrollmentRequestOrm, (request) => request.resultingEnrollment)
     originatingRequests!: EnrollmentRequestOrm[];
+
+    @OneToMany(() => EnrollmentLevelPromotionOrm, (promotion) => promotion.enrollment)
+    levelPromotions!: EnrollmentLevelPromotionOrm[];
+
+    @OneToMany(() => EnrollmentPromotionCertificateOrm, (cert) => cert.enrollment)
+    promotionCertificates!: EnrollmentPromotionCertificateOrm[];
+
+    @OneToMany(() => EnrollmentTimelineEventOrm, (event) => event.enrollment)
+    timelineEvents!: EnrollmentTimelineEventOrm[];
 }

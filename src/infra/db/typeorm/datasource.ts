@@ -36,6 +36,11 @@ import { SchoolActionOtpOrm } from './entities/school-action-otp.orm';
 import { AuthPhoneOtpChallengeOrm } from './entities/auth-phone-otp-challenge.orm';
 import { CronLogOrm } from './entities/cron-log.orm';
 import { EventLogOrm } from './entities/event-log.orm';
+import { SchoolStudentLevelOrm } from './entities/school-student-level.orm';
+import { SchoolCertificateTemplateOrm } from './entities/school-certificate-template.orm';
+import { EnrollmentLevelPromotionOrm } from './entities/enrollment-level-promotion.orm';
+import { EnrollmentPromotionCertificateOrm } from './entities/enrollment-promotion-certificate.orm';
+import { EnrollmentTimelineEventOrm } from './entities/enrollment-timeline-event.orm';
 
 export const AppDataSource = new DataSource({
     type: 'mysql',
@@ -78,7 +83,12 @@ export const AppDataSource = new DataSource({
         SchoolActionOtpOrm,
         AuthPhoneOtpChallengeOrm,
         CronLogOrm,
-        EventLogOrm
+        EventLogOrm,
+        SchoolStudentLevelOrm,
+        SchoolCertificateTemplateOrm,
+        EnrollmentLevelPromotionOrm,
+        EnrollmentPromotionCertificateOrm,
+        EnrollmentTimelineEventOrm
     ],
     synchronize: false,
     // Em dev (`ts-node` em `src/...`) usa `*.ts`; após build (`node` em `dist/...`) usa `*.js`.

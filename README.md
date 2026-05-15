@@ -442,6 +442,7 @@ payments-api/
 ├── docs/                 # Documentação
 │   ├── openapi.yaml      # Especificação OpenAPI
 │   ├── arquitetura.md    # Documentação de arquitetura
+│   ├── modelo-niveis-certificados-timeline-matricula.md  # Modelo níveis/certificados por matrícula
 │   └── *.yaml            # Documentação por módulo
 ├── scripts/              # Scripts utilitários
 └── docker/               # Configuração Docker
@@ -458,6 +459,7 @@ http://localhost:3000/docs
 ### Arquivos de Documentação
 
 - `docs/openapi.yaml` - Especificação principal
+- `docs/modelo-niveis-certificados-timeline-matricula.md` - Níveis, certificados e timeline por matrícula (dados)
 - `docs/auth.yaml` - Autenticação
 - `docs/admin.yaml` - Operações administrativas
 - `docs/schools.yaml` - Gestão de escolas

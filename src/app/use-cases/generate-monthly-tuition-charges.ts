@@ -119,6 +119,7 @@ export class GenerateMonthlyTuitionCharges {
           updatedAt: row.updatedAt,
           fullAmountCents: row.fullAmountCents,
           paymentDueDay: row.paymentDueDay,
+          currentSchoolStudentLevelId: row.currentSchoolStudentLevelId,
         });
       }
       return Enrollment.createForDependent({
@@ -131,6 +132,7 @@ export class GenerateMonthlyTuitionCharges {
         updatedAt: row.updatedAt,
         fullAmountCents: row.fullAmountCents,
         paymentDueDay: row.paymentDueDay,
+        currentSchoolStudentLevelId: row.currentSchoolStudentLevelId,
       });
     });
 

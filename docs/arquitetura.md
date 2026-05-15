@@ -325,6 +325,10 @@ erDiagram
 
 No modelo persistido, `cnpj` pode ser **null** quando a escola opera como **pessoa física** (sem CNPJ). Nesse caso o cadastro público exige **`ownerBirthDate`** (YYYY-MM-DD) para integração com a subconta Asaas.
 
+### Níveis, promoções, certificados e timeline por matrícula
+
+O banco inclui tabelas opcionais ligadas à **matrícula** (catálogo de níveis por escola, histórico de promoções, certificados emitidos por promoção, templates de certificado e eventos de timeline). Não existe nível “global do aluno”: o estado vigente e o histórico referem-se sempre a `enrollment_id`. Detalhes, diagrama e políticas de FK: [modelo-niveis-certificados-timeline-matricula.md](./modelo-niveis-certificados-timeline-matricula.md).
+
 ## Módulos e Rotas
 
 ```mermaid
