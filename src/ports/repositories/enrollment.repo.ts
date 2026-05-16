@@ -17,6 +17,8 @@ export type MyCourseData = {
     schoolName: string;
     studentName: string;
     schedule: Array<{ day: string; start: string; end: string }>;
+    /** Indica se o curso está ativo na escola (`courses.is_active`). */
+    active: boolean;
 };
 
 export type AdminStudentListFilters = {

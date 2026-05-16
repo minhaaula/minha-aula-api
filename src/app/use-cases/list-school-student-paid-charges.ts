@@ -1,5 +1,6 @@
 import { UserRepository } from '../../ports/repositories/user.repo';
 import { DependentRepository } from '../../ports/repositories/dependent.repo';
+import type { SelectQueryBuilder } from 'typeorm';
 import { AppDataSource } from '../../infra/db/typeorm/datasource';
 import { EnrollmentOrm } from '../../infra/db/typeorm/entities/enrollment.orm';
 import { SchoolFinancialChargeOrm } from '../../infra/db/typeorm/entities/school-financial-charge.orm';
@@ -178,7 +179,7 @@ export class ListSchoolStudentPaidCharges {
     }
 
     private async fetchSortedPaidChargesPage(
-        base: ReturnType<typeof AppDataSource.getRepository<SchoolFinancialChargeOrm>['createQueryBuilder']>,
+        base: SelectQueryBuilder<SchoolFinancialChargeOrm>,
         limit: number,
         offset: number
     ): Promise<{ rows: SchoolStudentPaidChargeItem[]; total: number }> {
@@ -203,7 +204,10 @@ export class ListSchoolStudentPaidCharges {
             ])
             .getRawMany();
 
-        const sorted = sortSchoolChargesByDisplayStatusAndDueDate(charges.map((row: any) => this.mapRow(row)));
+        const items: SchoolStudentPaidChargeItem[] = charges.map((row: Record<string, unknown>) =>
+            this.mapRow(row)
+        );
+        const sorted = sortSchoolChargesByDisplayStatusAndDueDate(items);
         return {
             rows: sorted.slice(offset, offset + limit),
             total: sorted.length

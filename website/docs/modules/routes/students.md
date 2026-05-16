@@ -51,7 +51,7 @@ Requer persona STUDENT e a mensalidade deve pertencer ao estudante autenticado.
 
 **Funcionalidade:**
 
-Retorna todos os cursos ativos do usuário logado e seus dependentes, incluindo informações do curso, escola, aluno, categoria, subcategoria, cidade e horários da turma. Requer persona STUDENT.
+Retorna os cursos das matrículas ativas do usuário e dos dependentes (**ativos e inativos** na escola), com curso, escola, aluno, categoria, subcategoria, cidade, horários da turma e o campo **`active`** (`true` se o curso está ativo na escola, `false` se foi desativado). Requer persona STUDENT.
 
 ---
 

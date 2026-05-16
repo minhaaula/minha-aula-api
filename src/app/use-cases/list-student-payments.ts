@@ -18,6 +18,7 @@ export type PaymentTransactionType = 'Mensalidade' | 'Matrícula' | 'Outros';
 export interface StudentPaymentRecord {
     chargeId: string;
     courseName: string;
+    schoolName: string;
     studentName: string;
     /** Texto para exibição (ex.: "Mensalidade de Fevereiro de 2026"). */
     description: string;
@@ -95,6 +96,7 @@ export class ListStudentPayments {
         const payments: StudentPaymentRecord[] = paymentsData.map((data) => ({
             chargeId: data.chargeId,
             courseName: data.courseName,
+            schoolName: data.schoolName,
             studentName: data.studentName,
             description: this.buildPaymentDescription(data),
             amountCents: data.amountCents,

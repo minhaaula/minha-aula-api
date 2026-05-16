@@ -27,6 +27,7 @@ function makePayment(
         status,
         chargeType: overrides?.chargeType ?? 'TUITION',
         schoolId: overrides?.schoolId ?? 'school-1',
+        schoolName: overrides?.schoolName ?? 'Escola Teste',
         paidAt: overrides?.paidAt ?? (status === 'PAID' ? dueDate : null),
         paidObservation: overrides?.paidObservation ?? null,
         ...overrides
@@ -94,6 +95,7 @@ describe('ListStudentPayments use case', () => {
 
         expect(result.payments).toHaveLength(2);
         expect(result.payments[0].courseName).toBe('Inglês Básico');
+        expect(result.payments[0].schoolName).toBe('Escola Teste');
         expect(result.payments[0].description).toMatch(/^Mensalidade de .+ de \d{4}$/);
         expect(result.payments[0].studentName).toBe('João Silva');
         expect(result.payments[0].amountCents).toBe(50000);

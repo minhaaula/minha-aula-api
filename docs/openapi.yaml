@@ -12,7 +12,9 @@ info:
     **Escola (persona SCHOOL) — consolidado financeiro do aluno:** `GET /schools/students/{studentId}/financial-summary`
     (totais líquidos em centavos: pendentes, em atraso, pagos; requer Bearer da escola).
 
-    **Escola — cobranças do aluno (paginação):** `GET /schools/students/{studentId}/paid-charges` (query `limit`, `offset`, opcional `dependentId`; mesma semântica de `studentId` que em detalhes do aluno).
+    **Escola — cobranças do aluno (paginação):** `GET /schools/students/{studentId}/paid-charges` (query `limit`, `offset`, opcional `dependentId`; ordenação Atrasado → Pendente → demais, depois vencimento).
+
+    **Aluno — meus cursos:** `GET /students/courses` inclui matrículas ativas com cursos ativos e inativos na escola; cada item traz `active` (boolean).
 
     **Escola — progresso da matrícula (níveis, promoções, certificados, timeline):** catálogo em `/schools/student-levels` e `/schools/certificate-templates`;
     timeline paginada em `GET /schools/enrollments/{enrollmentId}/timeline` (visão restrita ao período ativo da matrícula);
@@ -1087,10 +1089,9 @@ components:
           minLength: 3
           maxLength: 50
           description: >-
-            Código do cupom de desconto a ser aplicado na fatura. 
-            Se o cupom tiver duração maior que 1 mês (durationMonths > 1), 
-            serão geradas múltiplas faturas automaticamente, uma para cada mês 
-            até o limite da duração do cupom ou até a data de validade do cupom.
+            Código do cupom de desconto na fatura do ciclo atual. O desconto é
+            reaplicado automaticamente nas próximas emissões até esgotar
+            `durationMonths` ou `validUntil` do cupom (uma fatura por chamada).
       example:
         dueDate: '2024-07-15T00:00:00.000Z'
         description: Assinatura Minha Aula - Julho
@@ -1382,7 +1383,9 @@ components:
           nullable: true
           minLength: 3
           maxLength: 50
-          description: Código do cupom de desconto a ser aplicado na fatura.
+          description: >-
+            Código do cupom na primeira fatura (seleção do plano). O desconto é
+            reaplicado nas renovações seguintes até esgotar `durationMonths`.
     AssignSchoolPlanResponse:
       type: object
       description: Resposta ao selecionar um plano. Inclui os dados do plano e a fatura PIX gerada para pagamento imediato.
@@ -1877,8 +1880,9 @@ components:
         paidCharges:
           type: array
           description: >-
-            Cobranças do aluno na escola (pendentes e pagas), ordenadas por data de pagamento (mais recentes primeiro)
-            e depois por vencimento. Cobranças canceladas não são incluídas.
+            Cobranças do aluno na escola (pendentes e pagas), ordenadas por status de exibição
+            (Atrasado, Pendente, demais) e depois por data de vencimento (mais recente primeiro).
+            Cobranças canceladas não são incluídas.
           items:
             $ref: '#/components/schemas/SchoolStudentPaidChargeItem'
         pagination:

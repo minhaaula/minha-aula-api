@@ -15,6 +15,8 @@ export interface MyCourseRecord {
     subcategory: string | null;
     city: string | null;
     schedule: Array<{ day: string; start: string; end: string }>;
+    /** Curso ativo na escola (`courses.is_active`). */
+    active: boolean;
 }
 
 export class ListMyCourses {
@@ -92,7 +94,8 @@ export class ListMyCourses {
                 category: catInfo.category,
                 subcategory: catInfo.subcategory,
                 city: city,
-                schedule: data.schedule
+                schedule: data.schedule,
+                active: data.active
             };
         });
 

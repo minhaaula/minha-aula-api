@@ -476,7 +476,8 @@ paths:
       summary: Listar cobranças do aluno na escola (paginado)
       description: |
         Retorna as cobranças financeiras do aluno na escola (pendentes e pagas), com paginação.
-        Cobranças canceladas não são incluídas. Ordenação: data de pagamento (mais recentes primeiro), depois vencimento.
+        Cobranças canceladas não são incluídas. Ordenação: **Atrasado** primeiro, depois **Pendente**,
+        depois demais status; dentro de cada grupo, por data de vencimento (mais recente primeiro).
 
         Use os mesmos `studentId` e `dependentId` que em `GET /schools/students/{studentId}` (ficha do aluno).
       security:
@@ -3167,10 +3168,11 @@ paths:
         endpoint apenas quando precisar gerar ou reenviar uma cobrança; para
         listar faturas existentes utilize o GET correspondente.
         
-        **Cupons de desconto:** Se um `couponCode` for fornecido e o cupom tiver
-        `durationMonths > 1`, o sistema gerará automaticamente múltiplas faturas
-        (uma para cada mês) até o limite da duração do cupom ou até a data de
-        validade do cupom. Todas as faturas geradas terão o desconto aplicado.
+        **Cupons de desconto:** Cada chamada emite **uma** fatura do ciclo. Com `couponCode`,
+        o desconto é aplicado na fatura atual se o cupom ainda tiver meses disponíveis
+        (`durationMonths`) e estiver dentro de `validUntil`. Nas renovações seguintes,
+        o mesmo cupom é reaplicado automaticamente (sem enviar o código novamente)
+        até esgotar a duração — não são geradas várias faturas de uma só vez.
       security:
         - bearerAuth: []
       x-codeSamples:

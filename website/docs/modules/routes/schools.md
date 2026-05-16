@@ -775,7 +775,7 @@ Retorna todas as faturas associadas ao plano atual da escola, incluindo os statu
 **Funcionalidade:**
 
 Emite uma nova fatura para o plano ativo da escola. Caso já exista uma fatura para a mesma data de vencimento, ela é reutilizada. Use este endpoint apenas quando precisar gerar ou reenviar uma cobrança; para listar faturas existentes utilize o GET correspondente.
-**Cupons de desconto:** Se um `couponCode` for fornecido e o cupom tiver `durationMonths > 1`, o sistema gerará automaticamente múltiplas faturas (uma para cada mês) até o limite da duração do cupom ou até a data de validade do cupom. Todas as faturas geradas terão o desconto aplicado.
+**Cupons de desconto:** Cada chamada emite **uma** fatura do ciclo. Com `couponCode`, o desconto é aplicado na fatura atual enquanto o cupom tiver meses disponíveis (`durationMonths`) e estiver dentro de `validUntil`. Nas renovações seguintes, o cupom é reaplicado automaticamente até esgotar a duração.
 
 ---
 
@@ -954,7 +954,7 @@ apenas se houver matrícula ativa na escola logada.
 **Funcionalidade:**
 
 Retorna as cobranças financeiras do aluno na escola (pendentes e pagas), com paginação.
-Cobranças canceladas não são incluídas. Ordenação: data de pagamento (mais recentes primeiro), depois vencimento.
+Cobranças canceladas não são incluídas. Ordenação: **Atrasado** → **Pendente** → demais; dentro de cada grupo, por data de vencimento (mais recente primeiro).
 
 Use os mesmos `studentId` e `dependentId` que em `GET /schools/students/\{studentId\}` (ficha do aluno).
 

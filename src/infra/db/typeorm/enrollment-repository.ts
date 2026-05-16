@@ -178,11 +178,10 @@ export class EnrollmentRepositoryAdapter implements EnrollmentRepository {
             .leftJoin('course.school', 'school')
             .where('enrollment.ownerUserId = :userId', { userId })
             .andWhere('enrollment.status = :status', { status: 'ACTIVE' })
-            .andWhere('course.isActive = :isActive', { isActive: true })
-            .andWhere('courseClass.isActive = :isActive', { isActive: true })
             .select([
                 'course.id AS courseId',
                 'course.name AS courseName',
+                'course.isActive AS courseIsActive',
                 'school.id AS schoolId',
                 'school.name AS schoolName',
                 'COALESCE(studentUser.fullName, dependent.fullName) AS studentName',
@@ -209,7 +208,8 @@ export class EnrollmentRepositoryAdapter implements EnrollmentRepository {
                 schoolId: row.schoolId,
                 schoolName: row.schoolName,
                 studentName: row.studentName,
-                schedule: schedule
+                schedule,
+                active: Boolean(row.courseIsActive)
             };
         });
     }

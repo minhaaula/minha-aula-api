@@ -39,6 +39,7 @@ export class SchoolFinancialChargeRepositoryAdapter implements SchoolFinancialCh
         const queryBuilder = this.repo
             .createQueryBuilder('charge')
             .leftJoin('charge.course', 'course')
+            .leftJoin('charge.school', 'school')
             .leftJoin('charge.student', 'studentUser')
             .leftJoin('charge.dependent', 'dependent')
             .where('charge.ownerUserId = :ownerUserId', { ownerUserId })
@@ -56,6 +57,7 @@ export class SchoolFinancialChargeRepositoryAdapter implements SchoolFinancialCh
             'charge.chargeType AS chargeType',
             'charge.description AS description',
             'charge.schoolId AS schoolId',
+            'school.name AS schoolName',
             'charge.paidAt AS paidAt',
             'charge.paidObservation AS paidObservation'
         ])
@@ -93,6 +95,7 @@ export class SchoolFinancialChargeRepositoryAdapter implements SchoolFinancialCh
             status: row.status as SchoolFinancialChargeStatus,
             chargeType: row.chargeType,
             schoolId: row.schoolId,
+            schoolName: row.schoolName ?? '',
             paidAt: row.paidAt ? new Date(row.paidAt) : null,
             paidObservation: row.paidObservation ?? null
         }));

@@ -4839,7 +4839,9 @@ components:
         durationMonths:
           type: integer
           minimum: 1
-          description: Quantidade de meses em que o desconto se aplica (ex. geração de faturas recorrentes).
+          description: >-
+            Quantidade de ciclos de fatura do plano em que o desconto se aplica
+            (uma fatura por ciclo; reaplicado automaticamente até esgotar este limite).
         isActive:
           type: boolean
           description: Se omitido, assume `true`.

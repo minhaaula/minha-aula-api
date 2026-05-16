@@ -512,7 +512,12 @@ paths:
       tags:
         - Students
       summary: Listar meus cursos
-      description: Retorna todos os cursos ativos do usuário logado e seus dependentes, incluindo informações do curso, escola, aluno, categoria, subcategoria, cidade e horários da turma. Requer persona STUDENT.
+      description: |
+        Retorna os cursos das matrículas ativas do usuário logado e dos seus dependentes
+        (inclui cursos **ativos e inativos** na escola), com informações do curso, escola,
+        aluno, categoria, subcategoria, cidade e horários da turma.
+        O campo `active` indica se o curso está ativo na escola (`courses.is_active`).
+        Requer persona STUDENT.
       security:
         - bearerAuth: []
       responses:
@@ -557,6 +562,9 @@ paths:
                           type: string
                           nullable: true
                           description: Cidade da escola
+                        active:
+                          type: boolean
+                          description: Indica se o curso está ativo na escola (`true`) ou foi desativado (`false`)
                         schedule:
                           type: array
                           description: Horários da turma (dia da semana e horários)
@@ -590,6 +598,7 @@ paths:
                         - category
                         - subcategory
                         - city
+                        - active
                         - schedule
                 required:
                   - courses
@@ -735,7 +744,7 @@ paths:
         Retorna os pagamentos (cobranças financeiras) do usuário logado e seus dependentes.
         Inclui tipo da transação (mensalidade/matrícula), campo `description` para exibição
         (ex.: "Mensalidade de Fevereiro de 2026"), data de pagamento, desconto, valor líquido,
-        logo da escola e observação quando for pagamento manual. Requer persona STUDENT.
+        nome e logo da escola e observação quando for pagamento manual. Requer persona STUDENT.
       security:
         - bearerAuth: []
       parameters:
@@ -772,6 +781,9 @@ paths:
                         courseName:
                           type: string
                           description: Nome do curso
+                        schoolName:
+                          type: string
+                          description: Nome da escola
                         studentName:
                           type: string
                           description: Nome do aluno (usuário ou dependente)
@@ -820,6 +832,7 @@ paths:
                       required:
                         - chargeId
                         - courseName
+                        - schoolName
                         - studentName
                         - description
                         - amountCents

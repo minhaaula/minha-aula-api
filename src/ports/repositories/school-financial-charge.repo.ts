@@ -18,6 +18,7 @@ export type StudentPaymentInfo = {
     status: SchoolFinancialChargeStatus;
     chargeType: SchoolFinancialChargeType;
     schoolId: string;
+    schoolName: string;
     paidAt: Date | null;
     paidObservation: string | null;
 };
