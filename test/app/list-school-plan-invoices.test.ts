@@ -47,6 +47,10 @@ class InvoiceRepo implements SchoolPlanInvoiceRepository {
         return this.items.filter((item) => item.financeId === financeId);
     }
 
+    async countByFinanceIdAndDiscountCouponId(): Promise<number> {
+        return 0;
+    }
+
     async save(invoice: SchoolPlanInvoice): Promise<void> {
         this.items.push(invoice);
     }

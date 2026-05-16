@@ -93,6 +93,21 @@ export class SchoolPlanInvoiceRepositoryAdapter implements SchoolPlanInvoiceRepo
         return rows.map((row) => this.toDomain(row));
     }
 
+    async countByFinanceIdAndDiscountCouponId(
+        financeId: string,
+        discountCouponId: string
+    ): Promise<number> {
+        const normalizedFinanceId = financeId.trim();
+        const normalizedCouponId = discountCouponId.trim();
+        if (!normalizedFinanceId || !normalizedCouponId) return 0;
+        return this.repo.count({
+            where: {
+                financeId: normalizedFinanceId,
+                discountCouponId: normalizedCouponId
+            }
+        });
+    }
+
     async findBySchoolId(schoolId: string): Promise<SchoolPlanInvoice[]> {
         const normalized = schoolId.trim();
         if (!normalized) return [];

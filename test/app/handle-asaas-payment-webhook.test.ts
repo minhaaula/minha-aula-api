@@ -32,6 +32,38 @@ class InMemoryInvoiceRepo implements SchoolPlanInvoiceRepository {
         return Array.from(this.items.values()).find((item) => item.externalReference === normalized) ?? null;
     }
 
+    async findById(): Promise<SchoolPlanInvoice | null> {
+        return null;
+    }
+
+    async hasSchoolAnyPaidInvoice(): Promise<boolean> {
+        return false;
+    }
+
+    async getSchoolIdsWithPaidInvoice(): Promise<Set<string>> {
+        return new Set();
+    }
+
+    async findByFinanceId(): Promise<SchoolPlanInvoice[]> {
+        return [];
+    }
+
+    async countByFinanceIdAndDiscountCouponId(): Promise<number> {
+        return 0;
+    }
+
+    async findPaidWithoutReceiptUrl(): Promise<SchoolPlanInvoice[]> {
+        return [];
+    }
+
+    async findIssuedWithProviderRef(): Promise<SchoolPlanInvoice[]> {
+        return [];
+    }
+
+    async findIssuedByDueDateRange(): Promise<SchoolPlanInvoice[]> {
+        return [];
+    }
+
     async save(invoice: SchoolPlanInvoice): Promise<void> {
         this.items.set(invoice.id, invoice);
     }

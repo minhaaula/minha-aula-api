@@ -1,5 +1,7 @@
 import { describe, expect, it, vi, afterEach } from 'vitest';
 import { IssueSchoolPlanInvoice } from '../../src/app/use-cases/issue-school-plan-invoice';
+import { DiscountCoupon } from '../../src/domain/entities/discount-coupon';
+import { DiscountCouponRepository } from '../../src/ports/repositories/discount-coupon.repo';
 import { SchoolRepository } from '../../src/ports/repositories/school.repo';
 import { School } from '../../src/domain/entities/school';
 import { PostalAddress } from '../../src/domain/value-objects/postal-address';
@@ -27,6 +29,35 @@ class InMemorySchoolRepository implements SchoolRepository {
 
     seed(school: School) {
         this.items.set(school.id, school);
+    }
+}
+
+class InMemoryCouponRepository implements DiscountCouponRepository {
+    private readonly items = new Map<string, DiscountCoupon>();
+
+    async save(coupon: DiscountCoupon): Promise<void> {
+        this.items.set(coupon.id, coupon);
+    }
+
+    async findByCode(code: string): Promise<DiscountCoupon | null> {
+        const normalized = code.trim().toUpperCase();
+        return Array.from(this.items.values()).find((c) => c.code === normalized) ?? null;
+    }
+
+    async findById(id: string): Promise<DiscountCoupon | null> {
+        return this.items.get(id) ?? null;
+    }
+
+    async findAll(): Promise<DiscountCoupon[]> {
+        return Array.from(this.items.values());
+    }
+
+    async delete(id: string): Promise<void> {
+        this.items.delete(id);
+    }
+
+    seed(coupon: DiscountCoupon) {
+        this.items.set(coupon.id, coupon);
     }
 }
 
@@ -58,12 +89,58 @@ class InMemoryInvoiceRepository implements SchoolPlanInvoiceRepository {
         );
     }
 
+    async findById(): Promise<SchoolPlanInvoice | null> {
+        return null;
+    }
+
+    async hasSchoolAnyPaidInvoice(): Promise<boolean> {
+        return false;
+    }
+
+    async getSchoolIdsWithPaidInvoice(): Promise<Set<string>> {
+        return new Set();
+    }
+
+    async findByProviderRef(): Promise<SchoolPlanInvoice | null> {
+        return null;
+    }
+
+    async findByExternalReference(): Promise<SchoolPlanInvoice | null> {
+        return null;
+    }
+
+    async findByFinanceId(financeId: string): Promise<SchoolPlanInvoice[]> {
+        return Array.from(this.items.values()).filter((item) => item.financeId === financeId);
+    }
+
+    async countByFinanceIdAndDiscountCouponId(financeId: string, discountCouponId: string): Promise<number> {
+        return Array.from(this.items.values()).filter(
+            (item) => item.financeId === financeId && item.discountCouponId === discountCouponId
+        ).length;
+    }
+
+    async findPaidWithoutReceiptUrl(): Promise<SchoolPlanInvoice[]> {
+        return [];
+    }
+
+    async findIssuedWithProviderRef(): Promise<SchoolPlanInvoice[]> {
+        return [];
+    }
+
+    async findIssuedByDueDateRange(): Promise<SchoolPlanInvoice[]> {
+        return [];
+    }
+
     async save(invoice: SchoolPlanInvoice): Promise<void> {
         this.items.set(invoice.id, invoice);
     }
 
     seed(invoice: SchoolPlanInvoice) {
         this.items.set(invoice.id, invoice);
+    }
+
+    all() {
+        return Array.from(this.items.values());
     }
 }
 
@@ -292,5 +369,65 @@ describe('IssueSchoolPlanInvoice', () => {
         expect(provider.boletoCalls).toHaveLength(0);
         expect(result.invoice.id).toBe(existingInvoice.id);
         expect(result.finance.nextDueAt?.toISOString().slice(0, 10)).toBe('2024-03-01');
+    });
+
+    it('issues only one invoice when coupon has durationMonths > 1', async () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date('2026-05-16T10:00:00Z'));
+
+        const schoolsRepo = new InMemorySchoolRepository();
+        const financesRepo = new InMemoryFinanceRepository();
+        const invoicesRepo = new InMemoryInvoiceRepository();
+        const couponsRepo = new InMemoryCouponRepository();
+        const provider = new TestPaymentProvider();
+
+        const school = createSchool();
+        const plan = createPlan();
+        const finance = SchoolPlanFinance.create({
+            id: 'finance-coupon',
+            schoolId: school.id,
+            plan,
+            status: 'ACTIVE',
+            isPaid: false,
+            lastPaymentAt: null,
+            nextDueAt: new Date('2026-05-17T00:00:00Z'),
+            notes: null,
+            createdAt: new Date('2026-05-01T00:00:00Z'),
+            updatedAt: new Date('2026-05-01T00:00:00Z')
+        });
+
+        couponsRepo.seed(
+            DiscountCoupon.create({
+                id: 'coupon-1',
+                code: 'PROMO3',
+                percentage: 50,
+                validUntil: new Date('2026-12-31T23:59:59Z'),
+                durationMonths: 3
+            })
+        );
+
+        schoolsRepo.seed(school);
+        financesRepo.seed(finance);
+
+        const useCase = new IssueSchoolPlanInvoice(
+            schoolsRepo,
+            financesRepo,
+            invoicesRepo,
+            provider,
+            couponsRepo
+        );
+
+        const result = await useCase.exec({
+            schoolId: school.id,
+            generatePix: true,
+            couponCode: 'PROMO3'
+        });
+
+        expect(result.alreadyExists).toBe(false);
+        expect(invoicesRepo.all()).toHaveLength(1);
+        expect(provider.pixCalls).toHaveLength(1);
+        expect(provider.boletoCalls).toHaveLength(0);
+        expect(result.invoice.discountCouponId).toBe('coupon-1');
+        expect(result.invoice.amountCents).toBe(7500);
     });
 });

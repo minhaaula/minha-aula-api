@@ -156,6 +156,14 @@ class InMemoryInvoiceRepo implements SchoolPlanInvoiceRepository {
         return [];
     }
 
+    async countByFinanceIdAndDiscountCouponId(): Promise<number> {
+        return 0;
+    }
+
+    async findIssuedByDueDateRange(): Promise<SchoolPlanInvoice[]> {
+        return [];
+    }
+
     async findPaidWithoutReceiptUrl(_limit: number): Promise<SchoolPlanInvoice[]> {
         return [];
     }

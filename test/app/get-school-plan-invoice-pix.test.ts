@@ -13,6 +13,7 @@ class InMemoryInvoiceRepo implements SchoolPlanInvoiceRepository {
     async findByProviderRef() { return null; }
     async findByExternalReference() { return null; }
     async findByFinanceId() { return []; }
+    async countByFinanceIdAndDiscountCouponId() { return 0; }
     async findPaidWithoutReceiptUrl() { return []; }
     async findIssuedWithProviderRef() { return []; }
     async findIssuedByDueDateRange() { return []; }

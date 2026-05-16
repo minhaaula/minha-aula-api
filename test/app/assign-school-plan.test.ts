@@ -89,6 +89,48 @@ class InMemoryInvoiceRepository implements SchoolPlanInvoiceRepository {
         );
     }
 
+    async findById(): Promise<SchoolPlanInvoice | null> {
+        return null;
+    }
+
+    async hasSchoolAnyPaidInvoice(): Promise<boolean> {
+        return false;
+    }
+
+    async getSchoolIdsWithPaidInvoice(): Promise<Set<string>> {
+        return new Set();
+    }
+
+    async findByProviderRef(): Promise<SchoolPlanInvoice | null> {
+        return null;
+    }
+
+    async findByExternalReference(): Promise<SchoolPlanInvoice | null> {
+        return null;
+    }
+
+    async findByFinanceId(financeId: string): Promise<SchoolPlanInvoice[]> {
+        return Array.from(this.items.values()).filter((item) => item.financeId === financeId);
+    }
+
+    async countByFinanceIdAndDiscountCouponId(financeId: string, discountCouponId: string): Promise<number> {
+        return Array.from(this.items.values()).filter(
+            (item) => item.financeId === financeId && item.discountCouponId === discountCouponId
+        ).length;
+    }
+
+    async findPaidWithoutReceiptUrl(): Promise<SchoolPlanInvoice[]> {
+        return [];
+    }
+
+    async findIssuedWithProviderRef(): Promise<SchoolPlanInvoice[]> {
+        return [];
+    }
+
+    async findIssuedByDueDateRange(): Promise<SchoolPlanInvoice[]> {
+        return [];
+    }
+
     async save(invoice: SchoolPlanInvoice): Promise<void> {
         this.items.set(invoice.id, invoice);
     }

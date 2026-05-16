@@ -45,6 +45,8 @@ export interface SchoolPlanInvoiceRepository {
     findByProviderRef(providerRef: string): Promise<SchoolPlanInvoice | null>;
     findByExternalReference(externalReference: string): Promise<SchoolPlanInvoice | null>;
     findByFinanceId(financeId: string): Promise<SchoolPlanInvoice[]>;
+    /** Quantidade de faturas do financeiro que já usaram o cupom informado. */
+    countByFinanceIdAndDiscountCouponId(financeId: string, discountCouponId: string): Promise<number>;
     findBySchoolId?(schoolId: string): Promise<SchoolPlanInvoice[]>;
     findPaidWithoutReceiptUrl(limit: number): Promise<SchoolPlanInvoice[]>;
     findIssuedWithProviderRef(limit: number, daysAgo?: number): Promise<SchoolPlanInvoice[]>;
