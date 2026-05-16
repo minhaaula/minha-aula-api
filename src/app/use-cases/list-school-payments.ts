@@ -7,6 +7,7 @@ import { DependentRepository } from '../../ports/repositories/dependent.repo';
 import { equalUuid } from '../../shared/normalize-uuid';
 import { formatSchoolChargeDescriptionForSchoolUi } from '../../shared/format-school-charge-description';
 import { isOpenChargeCalendarOverdue } from '../../shared/billing-due-date';
+import { sortSchoolChargesByDisplayStatusAndDueDate } from '../../shared/school-charge-list-order';
 import { SchoolFinancialChargeStatus } from '../../domain/entities/school-financial-charge';
 import type { ListSchoolPaymentsInput, SchoolPaymentRecord, SchoolPaymentStatusDisplay } from '../types/payment.types';
 
@@ -239,23 +240,7 @@ export class ListSchoolPayments {
             });
         }
 
-        const statusRank = (item: SchoolPaymentRecord): number => {
-            // Ordenação pedida: Atrasado primeiro, depois Pendente, depois os demais
-            if (item.statusDisplay === 'Atrasado') return 0;
-            if (item.statusDisplay === 'Pendente') return 1;
-            return 2;
-        };
-
-        return results.sort((a, b) => {
-            const byStatus = statusRank(a) - statusRank(b);
-            if (byStatus !== 0) return byStatus;
-
-            // Mesmo grupo de status: vencimento mais recente (data mais “à frente”) primeiro
-            const byDueDate = b.dueDate.getTime() - a.dueDate.getTime();
-            if (byDueDate !== 0) return byDueDate;
-
-            return b.createdAt.getTime() - a.createdAt.getTime();
-        });
+        return sortSchoolChargesByDisplayStatusAndDueDate(results);
     }
 
     private async resolveCourses(

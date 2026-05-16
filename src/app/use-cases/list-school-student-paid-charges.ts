@@ -9,6 +9,7 @@ import { AppError, ErrorCode } from '../../shared/errors';
 import { equalUuid } from '../../shared/normalize-uuid';
 import { formatSchoolChargeDescriptionForSchoolUi } from '../../shared/format-school-charge-description';
 import { isOpenChargeCalendarOverdue } from '../../shared/billing-due-date';
+import { sortSchoolChargesByDisplayStatusAndDueDate } from '../../shared/school-charge-list-order';
 
 export type SchoolStudentPaidChargeItem = {
     id: string;
@@ -154,34 +155,7 @@ export class ListSchoolStudentPaidCharges {
             .andWhere('charge.studentUserId = :userId', { userId })
             .andWhere('charge.status NOT IN (:...excludedStatuses)', { excludedStatuses: ['CANCELLED'] });
 
-        const total = await base.clone().getCount();
-
-        const charges = await base
-            .select([
-                'charge.id AS charge_id',
-                'charge.amountCents AS charge_amount_cents',
-                'charge.discountCents AS charge_discount_cents',
-                'charge.discountReason AS charge_discount_reason',
-                'charge.netAmountCents AS charge_net_amount_cents',
-                'charge.providerNetAmountCents AS charge_provider_net_amount_cents',
-                'charge.description AS charge_description',
-                'charge.chargeType AS charge_charge_type',
-                'charge.dueDate AS charge_due_date',
-                'charge.paidAt AS charge_paid_at',
-                'charge.paymentMethod AS charge_payment_method',
-                'charge.status AS charge_status',
-                'course.id AS course_id',
-                'course.name AS course_name',
-                'class.id AS class_id',
-                'class.label AS class_label'
-            ])
-            .orderBy('charge.paidAt', 'DESC')
-            .addOrderBy('charge.dueDate', 'DESC')
-            .skip(offset)
-            .take(limit)
-            .getRawMany();
-
-        return { rows: charges.map((row: any) => this.mapRow(row)), total };
+        return this.fetchSortedPaidChargesPage(base, limit, offset);
     }
 
     private async findPaidChargesPageForDependent(
@@ -200,8 +174,14 @@ export class ListSchoolStudentPaidCharges {
             .andWhere('charge.dependentId = :dependentId', { dependentId })
             .andWhere('charge.status NOT IN (:...excludedStatuses)', { excludedStatuses: ['CANCELLED'] });
 
-        const total = await base.clone().getCount();
+        return this.fetchSortedPaidChargesPage(base, limit, offset);
+    }
 
+    private async fetchSortedPaidChargesPage(
+        base: ReturnType<typeof AppDataSource.getRepository<SchoolFinancialChargeOrm>['createQueryBuilder']>,
+        limit: number,
+        offset: number
+    ): Promise<{ rows: SchoolStudentPaidChargeItem[]; total: number }> {
         const charges = await base
             .select([
                 'charge.id AS charge_id',
@@ -221,13 +201,13 @@ export class ListSchoolStudentPaidCharges {
                 'class.id AS class_id',
                 'class.label AS class_label'
             ])
-            .orderBy('charge.paidAt', 'DESC')
-            .addOrderBy('charge.dueDate', 'DESC')
-            .skip(offset)
-            .take(limit)
             .getRawMany();
 
-        return { rows: charges.map((row: any) => this.mapRow(row)), total };
+        const sorted = sortSchoolChargesByDisplayStatusAndDueDate(charges.map((row: any) => this.mapRow(row)));
+        return {
+            rows: sorted.slice(offset, offset + limit),
+            total: sorted.length
+        };
     }
 
     private mapRow(row: any): SchoolStudentPaidChargeItem {
