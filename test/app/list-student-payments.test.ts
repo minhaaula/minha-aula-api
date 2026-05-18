@@ -28,6 +28,7 @@ function makePayment(
         chargeType: overrides?.chargeType ?? 'TUITION',
         schoolId: overrides?.schoolId ?? 'school-1',
         schoolName: overrides?.schoolName ?? 'Escola Teste',
+        discountReason: overrides?.discountReason ?? null,
         paidAt: overrides?.paidAt ?? (status === 'PAID' ? dueDate : null),
         paidObservation: overrides?.paidObservation ?? null,
         ...overrides
@@ -290,6 +291,28 @@ describe('ListStudentPayments use case', () => {
         const result = await useCase.exec({ userId });
 
         expect(result.payments[0].description).toBe('Mensalidade de Fevereiro de 2026');
+    });
+
+    it('returns discount month progress when charge has discount reason', async () => {
+        const repo = new InMemoryFinancialChargeRepository();
+        const userId = 'user-1';
+        const futureDue = new Date();
+        futureDue.setFullYear(futureDue.getFullYear() + 1);
+
+        repo.seedPayments(userId, [
+            makePayment('charge-1', 'Inglês', 'João Silva', 100_000, futureDue, 'OPEN', {
+                discountCents: 10_000,
+                netAmountCents: 90_000,
+                discountReason: 'Desconto aplicado (2 de 10 meses)'
+            })
+        ]);
+
+        const useCase = new ListStudentPayments(repo);
+        const result = await useCase.exec({ userId });
+
+        expect(result.payments[0].discountMonthsLabel).toBe('2 de 10');
+        expect(result.payments[0].discountMonthIndex).toBe(2);
+        expect(result.payments[0].discountMonthsTotal).toBe(10);
     });
 
     it('returns type matricula, discount, netAmountCents and paidObservation', async () => {

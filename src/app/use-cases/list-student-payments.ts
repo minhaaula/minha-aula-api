@@ -5,6 +5,7 @@ import { SchoolImageCategory } from '../../domain/value-objects/school-image-cat
 import type { StorageProviderPort } from '../../ports/providers/storage-provider.port';
 import { formatEnrollmentChargeDescription } from '../../shared/format-school-charge-description';
 import { isOpenChargeCalendarOverdue } from '../../shared/billing-due-date';
+import { parseDiscountMonthProgress } from '../../shared/parse-discount-month-progress';
 
 export interface ListStudentPaymentsInput {
     userId: string;
@@ -24,6 +25,10 @@ export interface StudentPaymentRecord {
     description: string;
     amountCents: number;
     discountCents: number | null;
+    /** Ex.: "1 de 2" — mês atual do desconto na matrícula; null se não houver desconto. */
+    discountMonthsLabel: string | null;
+    discountMonthIndex: number | null;
+    discountMonthsTotal: number | null;
     netAmountCents: number;
     providerNetAmountCents: number | null;
     dueDate: Date;
@@ -93,7 +98,9 @@ export class ListStudentPayments {
             );
         }
 
-        const payments: StudentPaymentRecord[] = paymentsData.map((data) => ({
+        const payments: StudentPaymentRecord[] = paymentsData.map((data) => {
+            const discountProgress = parseDiscountMonthProgress(data.discountReason, data.discountCents);
+            return {
             chargeId: data.chargeId,
             courseName: data.courseName,
             schoolName: data.schoolName,
@@ -101,6 +108,9 @@ export class ListStudentPayments {
             description: this.buildPaymentDescription(data),
             amountCents: data.amountCents,
             discountCents: data.discountCents,
+            discountMonthsLabel: discountProgress?.label ?? null,
+            discountMonthIndex: discountProgress?.current ?? null,
+            discountMonthsTotal: discountProgress?.total ?? null,
             netAmountCents: data.netAmountCents,
             providerNetAmountCents: data.providerNetAmountCents ?? null,
             dueDate: data.dueDate,
@@ -109,7 +119,8 @@ export class ListStudentPayments {
             type: this.mapChargeTypeToDisplay(data.chargeType),
             schoolLogo: this.schoolImages && this.storage ? (logoMap.get(data.schoolId) ?? null) : null,
             paidObservation: data.paidObservation
-        }));
+        };
+        });
 
         return { payments };
     }

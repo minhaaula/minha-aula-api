@@ -10,6 +10,8 @@ export type StudentPaymentInfo = {
     amountCents: number;
     /** Desconto em centavos, ou null se não houver. */
     discountCents: number | null;
+    /** Motivo do desconto (ex.: "Desconto aplicado (1 de 3 meses)"). */
+    discountReason: string | null;
     /** Valor líquido em centavos (amountCents - discountCents). */
     netAmountCents: number;
     /** Líquido retornado pelo provedor (ex.: Asaas `netValue`), em centavos. */

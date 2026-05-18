@@ -50,6 +50,7 @@ export class SchoolFinancialChargeRepositoryAdapter implements SchoolFinancialCh
             'COALESCE(studentUser.fullName, dependent.fullName) AS studentName',
             'charge.amountCents AS amountCents',
             'charge.discountCents AS discountCents',
+            'charge.discountReason AS discountReason',
             'charge.netAmountCents AS netAmountCents',
             'charge.providerNetAmountCents AS providerNetAmountCents',
             'charge.dueDate AS dueDate',
@@ -86,6 +87,7 @@ export class SchoolFinancialChargeRepositoryAdapter implements SchoolFinancialCh
             rawDescription: row.description ?? null,
             amountCents: row.amountCents ?? 0,
             discountCents: row.discountCents ?? null,
+            discountReason: row.discountReason ?? null,
             netAmountCents: row.netAmountCents ?? row.amountCents ?? 0,
             providerNetAmountCents:
                 row.providerNetAmountCents !== undefined && row.providerNetAmountCents !== null

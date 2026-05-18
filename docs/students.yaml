@@ -799,6 +799,18 @@ paths:
                           format: int64
                           nullable: true
                           description: Desconto em centavos, ou null se não houver
+                        discountMonthsLabel:
+                          type: string
+                          nullable: true
+                          description: Progresso do desconto na matrícula (ex. "1 de 2", "3 de 10"); null sem desconto
+                        discountMonthIndex:
+                          type: integer
+                          nullable: true
+                          description: Mês atual do desconto (1-based); null sem desconto estruturado
+                        discountMonthsTotal:
+                          type: integer
+                          nullable: true
+                          description: Total de meses com desconto; null sem desconto estruturado
                         netAmountCents:
                           type: integer
                           format: int64
