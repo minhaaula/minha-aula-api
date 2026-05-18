@@ -42,6 +42,13 @@ export type AdminStudentChargeItem = {
     paidAt: Date | null;
 };
 
+export type StudentPaidTotalByYear = {
+    year: number;
+    /** Soma de `netAmountCents` das cobranças pagas no ano (por `paidAt`). */
+    totalPaidCents: number;
+    paymentCount: number;
+};
+
 export type PaidChargeSummary = {
     id: string;
     netAmountCents: number;
@@ -63,6 +70,8 @@ export interface SchoolFinancialChargeRepository {
         /** Filtra por ano civil: `paidAt` se isPaid=true, senão `dueDate`. */
         year?: number;
     }): Promise<StudentPaymentInfo[]>;
+    /** Totais pagos agrupados por ano civil (`paidAt`), do titular e dependentes. */
+    getPaidTotalsByYearForOwnerUserId?(ownerUserId: string): Promise<StudentPaidTotalByYear[]>;
     findPaidChargesBySchoolId?(schoolId: string): Promise<PaidChargeSummary[]>;
     findLastTuitionCharge?(enrollmentId: string, courseClassId: string, ownerUserId: string, studentUserId: string | null, dependentId: string | null): Promise<SchoolFinancialCharge | null>;
     findTuitionChargesForMonth?(courseClassId: string, ownerUserId: string, studentUserId: string | null, dependentId: string | null, year: number, month: number): Promise<SchoolFinancialCharge[]>;

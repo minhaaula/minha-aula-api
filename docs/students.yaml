@@ -893,6 +893,56 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /students/payments/paid-totals-by-year:
+    get:
+      tags:
+        - Students
+      summary: Totais pagos por ano
+      description: >
+        Retorna a soma dos valores já pagos (`netAmountCents`) agrupados por ano civil,
+        com base na data de pagamento (`paidAt`). Inclui cobranças do usuário logado e
+        de seus dependentes. Ordenado do ano mais recente para o mais antigo.
+        Requer persona STUDENT.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Totais pagos por ano.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  totalsByYear:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        year:
+                          type: integer
+                          description: Ano civil do pagamento
+                          example: 2025
+                        totalPaidCents:
+                          type: integer
+                          format: int64
+                          description: Soma dos valores líquidos pagos no ano (centavos)
+                          example: 120000
+                        paymentCount:
+                          type: integer
+                          description: Quantidade de pagamentos no ano
+                          example: 4
+                      required:
+                        - year
+                        - totalPaidCents
+                        - paymentCount
+                required:
+                  - totalsByYear
+        '401':
+          description: Não autorizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /students/payments/{paymentId}:
     get:
       tags:

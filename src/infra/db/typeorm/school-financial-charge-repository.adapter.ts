@@ -1,6 +1,6 @@
 import { Between } from 'typeorm';
 import { AppDataSource } from './datasource';
-import { SchoolFinancialChargeRepository, StudentPaymentInfo, PaidChargeSummary, AdminStudentChargeItem } from '../../../ports/repositories/school-financial-charge.repo';
+import { SchoolFinancialChargeRepository, StudentPaymentInfo, StudentPaidTotalByYear, PaidChargeSummary, AdminStudentChargeItem } from '../../../ports/repositories/school-financial-charge.repo';
 import { SchoolFinancialCharge, SchoolFinancialChargeStatus, SchoolFinancialChargeType } from '../../../domain/entities/school-financial-charge';
 import { SchoolFinancialChargeOrm } from './entities/school-financial-charge.orm';
 
@@ -112,6 +112,26 @@ export class SchoolFinancialChargeRepositoryAdapter implements SchoolFinancialCh
             schoolName: row.schoolName ?? '',
             paidAt: row.paidAt ? new Date(row.paidAt) : null,
             paidObservation: row.paidObservation ?? null
+        }));
+    }
+
+    async getPaidTotalsByYearForOwnerUserId(ownerUserId: string): Promise<StudentPaidTotalByYear[]> {
+        const rows = await this.repo
+            .createQueryBuilder('charge')
+            .select('YEAR(charge.paidAt)', 'year')
+            .addSelect('SUM(charge.netAmountCents)', 'totalPaidCents')
+            .addSelect('COUNT(charge.id)', 'paymentCount')
+            .where('charge.ownerUserId = :ownerUserId', { ownerUserId })
+            .andWhere('charge.status = :paidStatus', { paidStatus: 'PAID' })
+            .andWhere('charge.paidAt IS NOT NULL')
+            .groupBy('YEAR(charge.paidAt)')
+            .orderBy('year', 'DESC')
+            .getRawMany();
+
+        return rows.map((row) => ({
+            year: Number(row.year),
+            totalPaidCents: Number(row.totalPaidCents ?? 0),
+            paymentCount: Number(row.paymentCount ?? 0)
         }));
     }
 

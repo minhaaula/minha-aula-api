@@ -5,6 +5,7 @@ import { GetStudentDirectoryEntry } from '../../../app/use-cases/get-student-dir
 import { ListMyCourses } from '../../../app/use-cases/list-my-courses';
 import { ListAllCourses } from '../../../app/use-cases/list-all-courses';
 import { ListStudentPayments } from '../../../app/use-cases/list-student-payments';
+import { ListStudentPaidTotalsByYear } from '../../../app/use-cases/list-student-paid-totals-by-year';
 import { GetStudentPaymentDetails } from '../../../app/use-cases/get-student-payment-details';
 import { GetMyProfile } from '../../../app/use-cases/get-my-profile';
 import { ListMyEnrollmentRequests } from '../../../app/use-cases/list-my-enrollment-requests';
@@ -39,6 +40,7 @@ export function studentsRouter(deps: {
     listMyCourses?: ListMyCourses;
     listAllCourses?: ListAllCourses;
     listStudentPayments?: ListStudentPayments;
+    listStudentPaidTotalsByYear?: ListStudentPaidTotalsByYear;
     getStudentPaymentDetails?: GetStudentPaymentDetails;
     getMyProfile?: GetMyProfile;
     listMyEnrollmentRequests?: ListMyEnrollmentRequests;
@@ -309,6 +311,23 @@ export function studentsRouter(deps: {
                 status: query.status,
                 isPaid: query.isPaid,
                 year: query.year
+            });
+            res.json(result);
+        }));
+    }
+
+    if (deps.listStudentPaidTotalsByYear) {
+        r.get('/payments/paid-totals-by-year', requireStudent, asyncHandler(async (req, res) => {
+            const authReq = req as AuthenticatedRequest;
+            if (!authReq.user?.sub) {
+                return res.status(401).json({
+                    error: 'Não autorizado',
+                    code: 'UNAUTHORIZED'
+                });
+            }
+
+            const result = await deps.listStudentPaidTotalsByYear!.exec({
+                userId: authReq.user.sub
             });
             res.json(result);
         }));

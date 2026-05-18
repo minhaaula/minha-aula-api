@@ -24,6 +24,7 @@ import { GetStudentDirectoryEntry } from '../../app/use-cases/get-student-direct
 import { ListMyCourses } from '../../app/use-cases/list-my-courses';
 import { ListAllCourses } from '../../app/use-cases/list-all-courses';
 import { ListStudentPayments } from '../../app/use-cases/list-student-payments';
+import { ListStudentPaidTotalsByYear } from '../../app/use-cases/list-student-paid-totals-by-year';
 import { GetStudentPaymentDetails } from '../../app/use-cases/get-student-payment-details';
 import { ListMyDependents } from '../../app/use-cases/list-my-dependents';
 import { DeleteDependent } from '../../app/use-cases/delete-dependent';
@@ -102,6 +103,7 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
         ? new ListAllCourses(deps.coursesRepo, deps.categoriesRepo, schoolImagesRepo, deps.storageProvider, deps.schoolReviewsRepo)
         : undefined;
     const listStudentPayments = new ListStudentPayments(deps.financialChargesRepo, schoolImagesRepo, deps.storageProvider);
+    const listStudentPaidTotalsByYear = new ListStudentPaidTotalsByYear(deps.financialChargesRepo);
     const getStudentPaymentDetails = new GetStudentPaymentDetails(
         deps.financialChargesRepo,
         deps.usersRepo,
@@ -228,6 +230,7 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
         listMyCourses,
         listAllCourses,
         listStudentPayments,
+        listStudentPaidTotalsByYear,
         getStudentPaymentDetails,
         listMyEnrollmentRequests,
         listSchoolCourses,
