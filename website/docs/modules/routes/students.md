@@ -61,7 +61,7 @@ Retorna os cursos das matrículas ativas do usuário e dos dependentes (**ativos
 
 **Funcionalidade:**
 
-Retorna todos os cursos ativos cadastrados no sistema, com informações do curso, escola (incluindo cidade e estado), categoria, subcategoria, média de avaliação da escola (1 a 5, quando houver) e quantidade total de avaliações da escola. Permite filtrar por nome do curso, categoria, subcategoria e cidade da escola. Esta rota é pública e não requer autenticação.
+Retorna todos os cursos ativos cadastrados no sistema, com informações do curso, escola (logo, **capa** — categoria COVER, cidade e estado), categoria, subcategoria, média de avaliação da escola (1 a 5, quando houver) e quantidade total de avaliações da escola. Permite filtrar por nome do curso, categoria, subcategoria e cidade da escola. Esta rota é pública e não requer autenticação.
 
 ---
 

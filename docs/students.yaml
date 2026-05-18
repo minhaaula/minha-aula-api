@@ -679,6 +679,11 @@ paths:
                           format: uri
                           nullable: true
                           description: URL assinada do logo da escola (quando existir). Válida por 1 hora.
+                        schoolCover:
+                          type: string
+                          format: uri
+                          nullable: true
+                          description: URL assinada da imagem de capa da escola (categoria COVER). Válida por 1 hora.
                         courseDescription:
                           type: string
                           nullable: true
@@ -714,6 +719,7 @@ paths:
                         - schoolName
                         - schoolId
                         - schoolLogo
+                        - schoolCover
                         - courseDescription
                         - category
                         - subcategory

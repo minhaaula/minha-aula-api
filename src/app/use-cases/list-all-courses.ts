@@ -17,6 +17,8 @@ export interface CourseListItem {
     schoolName: string;
     schoolId: string;
     schoolLogo: string | null;
+    /** URL da imagem de capa da escola (categoria COVER), quando existir. */
+    schoolCover: string | null;
     courseDescription: string | null;
     category: string | null;
     subcategory: string | null;
@@ -63,30 +65,35 @@ export class ListAllCourses {
             : [];
         const categoriesMap = new Map(categoriesData.map(c => [c.courseId, c]));
 
-        // Buscar logos das escolas (se disponíveis)
+        const schoolIds = [...new Set(coursesData.map((d) => d.schoolId))];
+
         const logoMap = new Map<string, string | null>();
-        if (this.schoolImages && this.storage) {
-            const schoolIds = [...new Set(coursesData.map((d) => d.schoolId))];
+        const coverMap = new Map<string, string | null>();
+        if (this.schoolImages && this.storage && schoolIds.length > 0) {
             await Promise.all(
                 schoolIds.map(async (schoolId) => {
                     try {
-                        const logos = await this.schoolImages!.findBySchoolId(schoolId, SchoolImageCategory.LOGO);
-                        const logo = logos[0];
-                        if (logo) {
-                            const url = await this.storage!.getFileUrl(logo.key, 3600);
-                            logoMap.set(schoolId, url);
-                        } else {
-                            logoMap.set(schoolId, null);
-                        }
+                        const images = await this.schoolImages!.findBySchoolId(schoolId);
+                        const logoImage = images.find((img) => img.category === SchoolImageCategory.LOGO);
+                        const coverImage = images.find((img) => img.category === SchoolImageCategory.COVER);
+
+                        logoMap.set(
+                            schoolId,
+                            logoImage ? await this.storage!.getFileUrl(logoImage.key, 3600) : null
+                        );
+                        coverMap.set(
+                            schoolId,
+                            coverImage ? await this.storage!.getFileUrl(coverImage.key, 3600) : null
+                        );
                     } catch {
                         logoMap.set(schoolId, null);
+                        coverMap.set(schoolId, null);
                     }
                 })
             );
         }
 
         // Média e quantidade de avaliações por escola
-        const schoolIds = [...new Set(coursesData.map((d) => d.schoolId))];
         const ratingMap = new Map<string, number>();
         const reviewCountMap = new Map<string, number>();
         if (this.schoolReviews?.getAverageRatingBySchoolIds && schoolIds.length > 0) {
@@ -106,6 +113,7 @@ export class ListAllCourses {
                 schoolName: data.schoolName,
                 schoolId: data.schoolId,
                 schoolLogo: this.schoolImages && this.storage ? (logoMap.get(data.schoolId) ?? null) : null,
+                schoolCover: this.schoolImages && this.storage ? (coverMap.get(data.schoolId) ?? null) : null,
                 courseDescription: data.courseDescription,
                 category: catInfo.category,
                 subcategory: catInfo.subcategory,
