@@ -273,7 +273,8 @@ export function studentsRouter(deps: {
     if (deps.listStudentPayments) {
         const paymentsQuerySchema = z.object({
             status: z.enum(['pendente', 'atrasado', 'pago']).optional(),
-            isPaid: z.union([z.boolean(), z.string().transform((val) => val === 'true')]).optional()
+            isPaid: z.union([z.boolean(), z.string().transform((val) => val === 'true')]).optional(),
+            year: z.coerce.number().int().min(2000).max(3000).optional()
         });
 
         r.get('/payments', requireStudent, asyncHandler(async (req, res) => {
@@ -297,13 +298,17 @@ export function studentsRouter(deps: {
 
             const query = paymentsQuerySchema.parse({
                 status: typeof req.query.status === 'string' ? req.query.status : undefined,
-                isPaid
+                isPaid,
+                year: typeof req.query.year === 'string' || typeof req.query.year === 'number'
+                    ? req.query.year
+                    : undefined
             });
 
             const result = await deps.listStudentPayments!.exec({
                 userId: authReq.user.sub,
                 status: query.status,
-                isPaid: query.isPaid
+                isPaid: query.isPaid,
+                year: query.year
             });
             res.json(result);
         }));

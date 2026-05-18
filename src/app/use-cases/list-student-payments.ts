@@ -11,6 +11,8 @@ export interface ListStudentPaymentsInput {
     userId: string;
     status?: 'pendente' | 'atrasado' | 'pago';
     isPaid?: boolean;
+    /** Ano civil: filtra por `paidAt` se isPaid=true, senão por `dueDate`. */
+    year?: number;
 }
 
 /** Tipo da transação para exibição (capitalizado para o cliente). */
@@ -70,7 +72,8 @@ export class ListStudentPayments {
         // Se isPaid foi especificado, não usar statusFilter para evitar conflito
         const paymentsData = await this.financialCharges.findByOwnerUserId(userId, {
             status: input.isPaid !== undefined ? undefined : statusFilter,
-            isPaid: input.isPaid
+            isPaid: input.isPaid,
+            year: input.year
         });
 
         if (paymentsData.length === 0) {

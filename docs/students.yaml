@@ -767,6 +767,17 @@ paths:
           schema:
             type: boolean
           description: Filtrar apenas pagos (true) ou apenas em aberto (false). Quando true, retorna apenas pagamentos com status 'pago'. Quando false, retorna apenas pagamentos pendentes ou em atraso.
+        - in: query
+          name: year
+          required: false
+          schema:
+            type: integer
+            minimum: 2000
+            maximum: 3000
+          description: >-
+            Filtrar por ano civil. Com `isPaid=true`, usa o ano de `paidAt` (data do pagamento).
+            Com `isPaid=false` ou sem `isPaid`, usa o ano de `dueDate` (vencimento).
+          example: 2025
       responses:
         '200':
           description: Lista de pagamentos do estudante.

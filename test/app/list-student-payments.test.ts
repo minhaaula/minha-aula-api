@@ -53,6 +53,7 @@ class InMemoryFinancialChargeRepository implements SchoolFinancialChargeReposito
     async findByOwnerUserId(ownerUserId: string, filters?: {
         status?: SchoolFinancialChargeStatus;
         isPaid?: boolean;
+        year?: number;
     }): Promise<StudentPaymentInfo[]> {
         const allPayments = this.items.get(ownerUserId) || [];
         
@@ -66,6 +67,13 @@ class InMemoryFinancialChargeRepository implements SchoolFinancialChargeReposito
                     return false;
                 }
                 if (!filters.isPaid && payment.status === 'PAID') {
+                    return false;
+                }
+            }
+
+            if (filters?.year !== undefined) {
+                const refDate = filters.isPaid === true ? payment.paidAt : payment.dueDate;
+                if (!refDate || refDate.getFullYear() !== filters.year) {
                     return false;
                 }
             }
@@ -167,6 +175,30 @@ describe('ListStudentPayments use case', () => {
         expect(result.payments).toHaveLength(1);
         expect(result.payments[0].status).toBe('pago');
         expect(result.payments[0].courseName).toBe('Matemática');
+    });
+
+    it('filters paid payments by year using paidAt', async () => {
+        const repo = new InMemoryFinancialChargeRepository();
+        const userId = 'user-1';
+
+        repo.seedPayments(userId, [
+            makePayment('charge-1', 'Inglês', 'João Silva', 50000, new Date('2024-02-01'), 'PAID', {
+                paidAt: new Date('2024-03-15')
+            }),
+            makePayment('charge-2', 'Matemática', 'João Silva', 60000, new Date('2025-01-01'), 'PAID', {
+                paidAt: new Date('2025-06-10')
+            }),
+            makePayment('charge-3', 'História', 'João Silva', 45000, new Date('2025-02-01'), 'PAID', {
+                paidAt: new Date('2024-11-20')
+            })
+        ]);
+
+        const useCase = new ListStudentPayments(repo);
+        const result = await useCase.exec({ userId, isPaid: true, year: 2025 });
+
+        expect(result.payments).toHaveLength(1);
+        expect(result.payments[0].chargeId).toBe('charge-2');
+        expect(result.payments[0].paidAt).toEqual(new Date('2025-06-10'));
     });
 
     it('filters payments by isPaid true (only paid)', async () => {

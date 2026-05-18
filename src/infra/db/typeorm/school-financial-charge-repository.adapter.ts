@@ -35,6 +35,7 @@ export class SchoolFinancialChargeRepositoryAdapter implements SchoolFinancialCh
     async findByOwnerUserId(ownerUserId: string, filters?: {
         status?: SchoolFinancialChargeStatus;
         isPaid?: boolean;
+        year?: number;
     }): Promise<StudentPaymentInfo[]> {
         const queryBuilder = this.repo
             .createQueryBuilder('charge')
@@ -76,6 +77,17 @@ export class SchoolFinancialChargeRepositoryAdapter implements SchoolFinancialCh
         } else if (filters?.status) {
             // Aplicar filtro de status apenas se isPaid não foi especificado
             queryBuilder.andWhere('charge.status = :status', { status: filters.status });
+        }
+
+        if (filters?.year !== undefined) {
+            const year = filters.year;
+            if (filters.isPaid === true) {
+                queryBuilder
+                    .andWhere('charge.paidAt IS NOT NULL')
+                    .andWhere('YEAR(charge.paidAt) = :filterYear', { filterYear: year });
+            } else {
+                queryBuilder.andWhere('YEAR(charge.dueDate) = :filterYear', { filterYear: year });
+            }
         }
 
         const results = await queryBuilder.getRawMany();

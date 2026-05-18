@@ -60,6 +60,8 @@ export interface SchoolFinancialChargeRepository {
     findByOwnerUserId?(ownerUserId: string, filters?: {
         status?: SchoolFinancialChargeStatus;
         isPaid?: boolean;
+        /** Filtra por ano civil: `paidAt` se isPaid=true, senão `dueDate`. */
+        year?: number;
     }): Promise<StudentPaymentInfo[]>;
     findPaidChargesBySchoolId?(schoolId: string): Promise<PaidChargeSummary[]>;
     findLastTuitionCharge?(enrollmentId: string, courseClassId: string, ownerUserId: string, studentUserId: string | null, dependentId: string | null): Promise<SchoolFinancialCharge | null>;
