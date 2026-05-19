@@ -181,8 +181,17 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
 
     const passwordHasher = new ScryptPasswordHasher();
     const tokenProvider = new HmacTokenProvider(authTokenSecret);
-    const parsedTtl = Number(process.env.AUTH_TOKEN_TTL ?? 3600);
-    const tokenTtl = Number.isFinite(parsedTtl) && parsedTtl > 0 ? parsedTtl : 3600;
+    /** Access token: STUDENT (auth) e SCHOOL — padrão 24h. */
+    const AUTH_TOKEN_TTL_STUDENT_SCHOOL_SECONDS = 24 * 60 * 60;
+    const parsedClientTtl = Number(process.env.AUTH_TOKEN_TTL ?? AUTH_TOKEN_TTL_STUDENT_SCHOOL_SECONDS);
+    const clientTokenTtl =
+        Number.isFinite(parsedClientTtl) && parsedClientTtl > 0
+            ? parsedClientTtl
+            : AUTH_TOKEN_TTL_STUDENT_SCHOOL_SECONDS;
+    /** Access token ADMIN — padrão 1h (independente do app aluno/escola). */
+    const parsedAdminTtl = Number(process.env.ADMIN_AUTH_TOKEN_TTL ?? 3600);
+    const adminTokenTtl =
+        Number.isFinite(parsedAdminTtl) && parsedAdminTtl > 0 ? parsedAdminTtl : 3600;
     const authMiddleware = makeAuthMiddleware(tokenProvider);
 
     // Configurar email provider
@@ -318,7 +327,7 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
                     usersRepo,
                     passwordHasher,
                     tokenProvider,
-                    tokenTtl,
+                    tokenTtl: clientTokenTtl,
                     activeModules: selected,
                     schoolsRepo,
                     emailProvider,
@@ -356,7 +365,7 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
                     chargeDueReminderRepo: chargeDueReminderRepoForAdmin,
                     passwordHasher,
                     tokenProvider,
-                    tokenTtl,
+                    tokenTtl: adminTokenTtl,
                     asaasProvider: asaasProviderForAdmin,
                     notificationsRepo
                 }, ctx);
@@ -394,7 +403,7 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
                     classSessionsRepo,
                     passwordHasher,
                     tokenProvider,
-                    tokenTtl,
+                    tokenTtl: clientTokenTtl,
                     paymentProvider,
                     financialChargesRepo,
                     bankAccountsRepo,
