@@ -46,6 +46,9 @@ export enum ErrorCode {
     INVALID_CREDENTIALS = 'INVALID_CREDENTIALS',
     ACCOUNT_DEACTIVATED = 'ACCOUNT_DEACTIVATED',
     ACCOUNT_ALREADY_DEACTIVATED = 'ACCOUNT_ALREADY_DEACTIVATED',
+    SCHOOL_ALREADY_DELETED = 'SCHOOL_ALREADY_DELETED',
+    CANNOT_DELETE_ADMIN_USER = 'CANNOT_DELETE_ADMIN_USER',
+    CANNOT_DELETE_USER_WITH_ACTIVE_SCHOOL = 'CANNOT_DELETE_USER_WITH_ACTIVE_SCHOOL',
     
     // Configuração (5000-5999)
     CONFIGURATION_ERROR = 'CONFIGURATION_ERROR',
@@ -122,6 +125,9 @@ export const ErrorMessages: Record<ErrorCode, string> = {
     [ErrorCode.INVALID_CREDENTIALS]: 'Credenciais inválidas',
     [ErrorCode.ACCOUNT_DEACTIVATED]: 'Conta desativada',
     [ErrorCode.ACCOUNT_ALREADY_DEACTIVATED]: 'Conta já está desativada',
+    [ErrorCode.SCHOOL_ALREADY_DELETED]: 'Escola já foi excluída',
+    [ErrorCode.CANNOT_DELETE_ADMIN_USER]: 'Não é permitido excluir usuário administrador',
+    [ErrorCode.CANNOT_DELETE_USER_WITH_ACTIVE_SCHOOL]: 'Usuário possui escola ativa vinculada. Exclua a escola antes.',
     
     // Configuração
     [ErrorCode.CONFIGURATION_ERROR]: 'Erro de configuração',

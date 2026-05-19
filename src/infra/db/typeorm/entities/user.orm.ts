@@ -24,6 +24,7 @@ export class UserOrm {
     @Column('tinyint', { name: 'active', default: 1 }) active!: number;
     @Column('varchar', { length: 64, name: 'deactivation_reason', nullable: true }) deactivationReason!: string | null;
     @Column('text', { name: 'deactivation_description', nullable: true }) deactivationDescription!: string | null;
+    @Column('datetime', { name: 'deleted_at', nullable: true }) deletedAt!: Date | null;
     @CreateDateColumn({ name: 'created_at', type: 'datetime', default: () => 'CURRENT_TIMESTAMP' }) createdAt!: Date;
 
     @OneToMany(() => SchoolOrm, (school) => school.ownerUser)

@@ -1,4 +1,5 @@
-import { Between } from 'typeorm';
+import { Between, IsNull } from 'typeorm';
+import { buildReleasedCnpj, buildReleasedCpf, buildReleasedEmail } from '../../../shared/soft-delete-identifiers';
 import { AppDataSource } from './datasource';
 import { SchoolRepository } from '../../../ports/repositories/school.repo';
 import { School } from '../../../domain/entities/school';
@@ -23,7 +24,7 @@ export class SchoolRepositoryAdapter implements SchoolRepository {
         const normalized = email.trim().toLowerCase();
         if (!normalized) return null;
         const row = await this.repo.findOne({
-            where: { email: normalized },
+            where: { email: normalized, deletedAt: IsNull() },
             relations: {
                 addresses: true
             }
@@ -35,7 +36,7 @@ export class SchoolRepositoryAdapter implements SchoolRepository {
         const digits = cnpj.replace(/\D/g, '');
         if (digits.length !== 14) return null;
         const row = await this.repo.findOne({
-            where: { cnpj: digits },
+            where: { cnpj: digits, deletedAt: IsNull() },
             relations: {
                 addresses: true
             }
@@ -47,7 +48,7 @@ export class SchoolRepositoryAdapter implements SchoolRepository {
         const normalized = userId.trim();
         if (!normalized) return null;
         const row = await this.repo.findOne({
-            where: { ownerUserId: normalized },
+            where: { ownerUserId: normalized, deletedAt: IsNull() },
             relations: {
                 addresses: true
             }
@@ -59,7 +60,7 @@ export class SchoolRepositoryAdapter implements SchoolRepository {
         const normalized = email.trim().toLowerCase();
         if (!normalized) return null;
         const row = await this.repo.findOne({
-            where: { ownerEmail: normalized },
+            where: { ownerEmail: normalized, deletedAt: IsNull() },
             relations: {
                 addresses: true
             }
@@ -81,6 +82,7 @@ export class SchoolRepositoryAdapter implements SchoolRepository {
 
     async findAll(): Promise<School[]> {
         const rows = await this.repo.find({
+            where: { deletedAt: IsNull() },
             relations: {
                 addresses: true
             },
@@ -89,12 +91,36 @@ export class SchoolRepositoryAdapter implements SchoolRepository {
         return rows.map((row) => this.toDomain(row));
     }
 
+    async softDeleteByAdmin(schoolId: string): Promise<void> {
+        const releasedEmail = buildReleasedEmail(schoolId);
+        const releasedCnpj = buildReleasedCnpj(schoolId);
+        const releasedOwnerEmail = buildReleasedEmail(`${schoolId}-owner`);
+        const releasedOwnerCpf = buildReleasedCpf(`${schoolId}-owner`);
+        await this.repo.update(schoolId, {
+            active: 0,
+            deletedAt: new Date(),
+            email: releasedEmail,
+            cnpj: releasedCnpj,
+            ownerEmail: releasedOwnerEmail,
+            ownerCpf: releasedOwnerCpf
+        });
+    }
+
+    async isDeleted(schoolId: string): Promise<boolean> {
+        const row = await this.repo.findOne({
+            where: { id: schoolId },
+            select: ['id', 'deletedAt']
+        });
+        return row?.deletedAt != null;
+    }
+
     async findWithAccountKeyWithoutOnboardingUrl(limit = 50): Promise<School[]> {
         const pendingGeneralStatuses = ['PENDING', 'AWAITING_APPROVAL'];
         const qb = this.repo
             .createQueryBuilder('s')
             .leftJoinAndSelect('s.addresses', 'addresses')
             .where('s.accountApiKey IS NOT NULL')
+            .andWhere('s.deleted_at IS NULL')
             .andWhere('(s.onboardingUrl IS NULL OR s.onboardingUrl = :empty)', { empty: '' })
             .andWhere(
                 "JSON_UNQUOTE(JSON_EXTRACT(s.accountStatusSnapshot, '$.general')) IN (:...pendingGeneralStatuses)",

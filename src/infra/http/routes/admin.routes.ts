@@ -43,6 +43,8 @@ import type { GetSchoolPendingDocuments } from '../../../app/use-cases/get-schoo
 import type { SyncSchoolSubaccountStatus } from '../../../app/use-cases/sync-school-subaccount-status';
 import type { ListAdminJobLogs } from '../../../app/use-cases/list-admin-job-logs';
 import type { GetAdminJobLog } from '../../../app/use-cases/get-admin-job-log';
+import type { AdminSoftDeleteUser } from '../../../app/use-cases/admin-soft-delete-user';
+import type { AdminSoftDeleteSchool } from '../../../app/use-cases/admin-soft-delete-school';
 import { AppError, ErrorCode } from '../../../shared/errors';
 import { connection, getOutboxQueueName } from '../../messaging/bullmq/queue-config';
 import { CronLogRepositoryAdapter } from '../../db/typeorm/cron-log-repository.adapter';
@@ -101,6 +103,8 @@ type AdminRouterDeps = {
     scheduleChargeDueReminders?: ScheduleChargeDueReminders;
     listAdminJobLogs?: ListAdminJobLogs;
     getAdminJobLog?: GetAdminJobLog;
+    adminSoftDeleteUser?: AdminSoftDeleteUser;
+    adminSoftDeleteSchool?: AdminSoftDeleteSchool;
     authMiddleware?: RequestHandler;
 };
 
@@ -155,6 +159,8 @@ export function adminRouter({
     scheduleChargeDueReminders,
     listAdminJobLogs,
     getAdminJobLog,
+    adminSoftDeleteUser,
+    adminSoftDeleteSchool,
     authMiddleware
 }: AdminRouterDeps) {
     const router = Router();
@@ -227,6 +233,44 @@ export function adminRouter({
         const payload = await getAdminSchoolDetails.exec({ schoolId });
         res.json(payload);
     }));
+
+    if (adminSoftDeleteSchool) {
+        router.delete('/schools/:schoolId', requireAuth, requireAdminPersona, asyncHandler(async (req, res) => {
+            const paramsSchema = z.object({ schoolId: z.string().uuid() });
+            const bodySchema = z.object({
+                deleteOwnerUser: z.boolean().optional(),
+                ownerDeletionDescription: z.string().max(2000).nullable().optional()
+            }).strict();
+
+            const { schoolId } = paramsSchema.parse(req.params);
+            const body = bodySchema.parse(req.body ?? {});
+
+            const result = await adminSoftDeleteSchool.exec({
+                schoolId,
+                deleteOwnerUser: body.deleteOwnerUser ?? false,
+                ownerDeletionDescription: body.ownerDeletionDescription ?? null
+            });
+            res.json(result);
+        }));
+    }
+
+    if (adminSoftDeleteUser) {
+        router.delete('/users/:userId', requireAuth, requireAdminPersona, asyncHandler(async (req, res) => {
+            const paramsSchema = z.object({ userId: z.string().uuid() });
+            const bodySchema = z.object({
+                description: z.string().max(2000).nullable().optional()
+            }).strict();
+
+            const { userId } = paramsSchema.parse(req.params);
+            const body = bodySchema.parse(req.body ?? {});
+
+            const result = await adminSoftDeleteUser.exec({
+                userId,
+                description: body.description ?? null
+            });
+            res.json(result);
+        }));
+    }
 
     if (getAdminSchoolFinancial) {
         router.get('/schools/:schoolId/financial', requireAuth, requireAdminPersona, asyncHandler(async (req, res) => {

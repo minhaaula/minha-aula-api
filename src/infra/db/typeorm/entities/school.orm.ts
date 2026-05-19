@@ -110,6 +110,10 @@ export class SchoolOrm {
 
     @CreateDateColumn({ name: 'created_at', type: 'datetime', default: () => 'CURRENT_TIMESTAMP' }) createdAt!: Date;
 
+    @Column('tinyint', { name: 'active', default: 1 }) active!: number;
+
+    @Column('datetime', { name: 'deleted_at', nullable: true }) deletedAt!: Date | null;
+
     @OneToMany(() => CourseOrm, (course) => course.school)
     courses!: CourseOrm[];
 

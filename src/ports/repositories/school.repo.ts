@@ -23,4 +23,8 @@ export interface SchoolRepository {
     countCreatedBefore?(date: Date): Promise<number>;
     /** Últimas escolas cadastradas (ordenadas por createdAt DESC). */
     findLatestCreated?(limit: number): Promise<Array<{ id: string; name: string; city: string | null; createdAt: Date }>>;
+    /** Soft delete administrativo: libera e-mail/CNPJ/dados do titular para novo cadastro. */
+    softDeleteByAdmin?(schoolId: string): Promise<void>;
+    /** Indica se a escola foi excluída logicamente. */
+    isDeleted?(schoolId: string): Promise<boolean>;
 }

@@ -48,6 +48,8 @@ import { ListAdminEnrollmentRequests } from '../../app/use-cases/list-admin-enro
 import { ListAdminStudentCharges } from '../../app/use-cases/list-admin-student-charges';
 import { ListAdminStudentCourses } from '../../app/use-cases/list-admin-student-courses';
 import { GetAdminStudentDetails } from '../../app/use-cases/get-admin-student-details';
+import { AdminSoftDeleteUser } from '../../app/use-cases/admin-soft-delete-user';
+import { AdminSoftDeleteSchool } from '../../app/use-cases/admin-soft-delete-school';
 import { ListAdminSchoolCourses } from '../../app/use-cases/list-admin-school-courses';
 import { SchoolWithdrawalRepositoryAdapter } from '../../infra/db/typeorm/school-withdrawal-repository.adapter';
 import { ScheduleChargeDueReminders } from '../../app/use-cases/schedule-charge-due-reminders';
@@ -256,6 +258,9 @@ export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext)
     const listAdminJobLogs = new ListAdminJobLogs(jobExecutionLogsRepo);
     const getAdminJobLog = new GetAdminJobLog(jobExecutionLogsRepo);
 
+    const adminSoftDeleteUser = new AdminSoftDeleteUser(deps.usersRepo, deps.schoolsRepo);
+    const adminSoftDeleteSchool = new AdminSoftDeleteSchool(deps.schoolsRepo, adminSoftDeleteUser);
+
     // Montar router pronto
     const router = adminRouter({
         getAdminStatus,
@@ -296,6 +301,8 @@ export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext)
         scheduleChargeDueReminders,
         listAdminJobLogs,
         getAdminJobLog,
+        adminSoftDeleteUser,
+        adminSoftDeleteSchool,
         authMiddleware: ctx.authMiddleware
     });
 

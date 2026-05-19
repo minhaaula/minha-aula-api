@@ -6,18 +6,24 @@ import { UserOrm } from './entities/user.orm';
 import { AppDataSource } from './datasource';
 import { PostalAddress } from '../../../domain/value-objects/postal-address';
 import { assertUserPersona } from '../../../domain/value-objects/user-persona';
+import { IsNull } from 'typeorm';
+import { buildReleasedCpf, buildReleasedEmail } from '../../../shared/soft-delete-identifiers';
 
 export class UserRepositoryAdapter implements UserRepository {
     private readonly repo = AppDataSource.getRepository(UserOrm);
 
     async findByEmail(email: string): Promise<User | null> {
-        const row = await this.repo.findOne({ where: { email: email.toLowerCase() } });
+        const row = await this.repo.findOne({
+            where: { email: email.toLowerCase(), deletedAt: IsNull() }
+        });
         return row ? this.toDomain(row) : null;
     }
 
     async findByCpf(cpf: string): Promise<User | null> {
         const sanitized = cpf.replace(/\D/g, '');
-        const row = await this.repo.findOne({ where: { cpf: sanitized } });
+        const row = await this.repo.findOne({
+            where: { cpf: sanitized, deletedAt: IsNull() }
+        });
         return row ? this.toDomain(row) : null;
     }
 
@@ -66,6 +72,27 @@ export class UserRepositoryAdapter implements UserRepository {
         });
     }
 
+    async softDeleteByAdmin(userId: string, description?: string | null): Promise<void> {
+        const releasedEmail = buildReleasedEmail(userId);
+        const releasedCpf = buildReleasedCpf(userId);
+        await this.repo.update(userId, {
+            active: 0,
+            deletedAt: new Date(),
+            deactivationReason: 'ADMIN_DELETED',
+            deactivationDescription: description?.trim() || null,
+            email: releasedEmail,
+            cpf: releasedCpf
+        });
+    }
+
+    async isDeletedByAdmin(userId: string): Promise<boolean> {
+        const row = await this.repo.findOne({
+            where: { id: userId },
+            select: ['id', 'deletedAt']
+        });
+        return row?.deletedAt != null;
+    }
+
     async countByPersona(persona: string): Promise<number> {
         const normalized = persona.trim();
         if (!normalized) return 0;
@@ -86,7 +113,8 @@ export class UserRepositoryAdapter implements UserRepository {
 
         const qb = this.repo
             .createQueryBuilder('user')
-            .where('user.persona = :persona', { persona: 'STUDENT' });
+            .where('user.persona = :persona', { persona: 'STUDENT' })
+            .andWhere('user.deleted_at IS NULL');
 
         if (schoolId) {
             qb.andWhere(

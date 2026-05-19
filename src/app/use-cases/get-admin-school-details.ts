@@ -22,6 +22,10 @@ export class GetAdminSchoolDetails {
             throw AppError.fromCode(ErrorCode.REQUIRED_FIELD, { field: 'schoolId' });
         }
 
+        if (this.schools.isDeleted && (await this.schools.isDeleted(schoolId))) {
+            throw AppError.fromCode(ErrorCode.SCHOOL_NOT_FOUND, { schoolId });
+        }
+
         let school = await this.schools.findById(schoolId);
         if (!school) {
             throw AppError.fromCode(ErrorCode.SCHOOL_NOT_FOUND, { schoolId });
