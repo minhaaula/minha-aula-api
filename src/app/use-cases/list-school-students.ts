@@ -11,6 +11,7 @@ import type { Enrollment } from '../../domain/entities/enrollment';
 import type { User } from '../../domain/entities/user';
 import type { Dependent } from '../../domain/entities/dependent';
 import { equalUuid } from '../../shared/normalize-uuid';
+import { isMinorByBirthDate } from '../../shared/is-minor-by-birth-date';
 
 type ListSchoolStudentsInput = {
     schoolId: string;
@@ -23,24 +24,33 @@ type ListSchoolStudentsInput = {
     outputFormat?: 'admin' | 'legacy';
 };
 
-/** Dados resumidos do dependente para listagem (nome, cpf, data nascimento, vínculo). */
-export type DependenteResumo = {
-    nome: string;
+export type AdminSchoolStudentResponsible = {
+    id: string;
+    fullName: string;
     cpf: string | null;
-    dataNascimento: Date | null;
-    vinculo: string | null;
+    birthDate: Date | null;
+    email: string;
+    phone: string;
 };
 
-/** Item da listagem admin: um titular (USER) com array de dependentes na mesma linha. */
+export type AdminSchoolStudentEnrollmentItem = {
+    enrollmentId: string;
+    status: Enrollment['status'];
+    enrolledAt: Date;
+    course: { id: string; name: string };
+    class: { id: string; label: string };
+};
+
+/** Item da listagem admin: um estudante matriculado (titular ou dependente) com cursos/turmas. */
 export type AdminSchoolStudentItem = {
-    cpf: string | null;
     studentId: string;
     studentName: string;
-    studentType: 'USER';
-    endereco: PostalAddressProps;
-    createdAt: Date;
-    countCursosVinculados: number;
-    dependentes: DependenteResumo[];
+    cpf: string | null;
+    birthDate: Date | null;
+    isDependent: boolean;
+    /** Responsável (titular) quando `isDependent` ou quando o estudante é menor de idade. */
+    responsible: AdminSchoolStudentResponsible | null;
+    enrollments: AdminSchoolStudentEnrollmentItem[];
 };
 
 /** Registro legado: uma matrícula com aluno/dependente, curso e turma (para rota da escola). */
@@ -137,51 +147,89 @@ export class ListSchoolStudents {
         const dependentsByOwner = await this.loadDependents(Array.from(owners.keys()));
 
         if (input.outputFormat === 'admin') {
-            const classById = new Map(classes.map((cls) => [cls.id, cls]));
-            const courseIdsByOwner = new Map<string, Set<string>>();
-            for (const e of enrollments) {
-                const cls = classById.get(e.courseClassId);
-                if (!cls) continue;
-                const set = courseIdsByOwner.get(e.ownerUserId) ?? new Set<string>();
-                set.add(cls.courseId);
-                courseIdsByOwner.set(e.ownerUserId, set);
+            const dependentById = new Map<string, Dependent>();
+            for (const list of dependentsByOwner.values()) {
+                for (const dep of list) dependentById.set(dep.id, dep);
             }
+            const courseById = new Map(courses.map((c) => [c.id, c]));
+            const classById = new Map(classes.map((cls) => [cls.id, cls]));
 
-            const results: AdminSchoolStudentItem[] = [];
-            const uniqueOwnerIds = Array.from(new Set(enrollments.map((e) => e.ownerUserId)));
+            type Aggregate = AdminSchoolStudentItem;
+            const byStudentKey = new Map<string, Aggregate>();
 
-            for (const ownerId of uniqueOwnerIds) {
-                const owner = owners.get(ownerId);
+            for (const enrollment of enrollments) {
+                const courseClass = classById.get(enrollment.courseClassId);
+                if (!courseClass) continue;
+                const course = courseById.get(courseClass.courseId);
+                if (!course) continue;
+
+                const owner = owners.get(enrollment.ownerUserId);
                 if (!owner) continue;
 
-                const deps = dependentsByOwner.get(ownerId) ?? [];
-                if (nameFilter) {
-                    const ownerMatches = owner.fullName.toLowerCase().includes(nameFilter);
-                    const dependentMatches = deps.some((d) => d.fullName.toLowerCase().includes(nameFilter));
-                    if (!ownerMatches && !dependentMatches) continue;
+                const isDependentEnrollment =
+                    enrollment.studentType === 'DEPENDENT' && Boolean(enrollment.dependentId);
+                const dependent =
+                    isDependentEnrollment && enrollment.dependentId
+                        ? dependentById.get(enrollment.dependentId)
+                        : null;
+
+                if (isDependentEnrollment && !dependent) continue;
+
+                const studentId = isDependentEnrollment
+                    ? dependent!.id
+                    : (enrollment.studentUserId ?? enrollment.ownerUserId);
+                const studentKey = isDependentEnrollment ? `dep:${studentId}` : `user:${studentId}`;
+
+                const studentName = isDependentEnrollment ? dependent!.fullName : owner.fullName;
+                const cpf = isDependentEnrollment ? dependent!.cpf : owner.cpf;
+                const birthDate = isDependentEnrollment ? dependent!.birthDate : owner.birthDate;
+                const isDependent = isDependentEnrollment;
+
+                const needsResponsible = isDependent || isMinorByBirthDate(birthDate);
+                const responsible: AdminSchoolStudentResponsible | null =
+                    needsResponsible && owner
+                        ? {
+                              id: owner.id,
+                              fullName: owner.fullName,
+                              cpf: owner.cpf,
+                              birthDate: owner.birthDate,
+                              email: owner.email.value,
+                              phone: owner.phone
+                          }
+                        : null;
+
+                const enrollmentItem: AdminSchoolStudentEnrollmentItem = {
+                    enrollmentId: enrollment.id,
+                    status: enrollment.status,
+                    enrolledAt: enrollment.enrolledAt,
+                    course: { id: course.id, name: course.name },
+                    class: { id: courseClass.id, label: courseClass.label }
+                };
+
+                const existing = byStudentKey.get(studentKey);
+                if (!existing) {
+                    byStudentKey.set(studentKey, {
+                        studentId,
+                        studentName,
+                        cpf,
+                        birthDate,
+                        isDependent,
+                        responsible,
+                        enrollments: [enrollmentItem]
+                    });
+                    continue;
                 }
 
-                const dependentes: DependenteResumo[] = deps
-                    .slice()
-                    .sort((a, b) => (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0))
-                    .map((dep) => ({
-                        nome: dep.fullName,
-                        cpf: dep.cpf,
-                        dataNascimento: dep.birthDate,
-                        vinculo: dep.relationship
-                    }));
+                existing.enrollments.push(enrollmentItem);
+            }
 
-                const countCursosVinculados = courseIdsByOwner.get(ownerId)?.size ?? 0;
+            let results = Array.from(byStudentKey.values());
 
-                results.push({
-                    cpf: owner.cpf,
-                    studentId: owner.id,
-                    studentName: owner.fullName,
-                    studentType: 'USER',
-                    endereco: owner.address.toPrimitives(),
-                    createdAt: owner.createdAt,
-                    countCursosVinculados,
-                    dependentes
+            if (nameFilter) {
+                results = results.filter((row) => {
+                    const studentMatches = row.studentName.toLowerCase().includes(nameFilter);
+                    const responsibleMatches = row.responsible?.fullName.toLowerCase().includes(nameFilter) ?? false;
+                    return studentMatches || responsibleMatches;
                 });
             }
 
