@@ -37,6 +37,7 @@ import type { ListAdminStudentCharges } from '../../../app/use-cases/list-admin-
 import type { ScheduleChargeDueReminders } from '../../../app/use-cases/schedule-charge-due-reminders';
 import type { AdminMarkInvoicePaid } from '../../../app/use-cases/admin-mark-invoice-paid';
 import type { AdminMarkChargePaid } from '../../../app/use-cases/admin-mark-charge-paid';
+import type { AdminDeleteCharge } from '../../../app/use-cases/admin-delete-charge';
 import type { SyncSchoolOnboardingDocuments } from '../../../app/use-cases/sync-school-onboarding-documents';
 import type { AdminUploadSchoolOnboardingDocument } from '../../../app/use-cases/admin-upload-school-onboarding-document';
 import type { GetSchoolPendingDocuments } from '../../../app/use-cases/get-school-pending-documents';
@@ -96,6 +97,7 @@ type AdminRouterDeps = {
     listAdminStudentCharges?: ListAdminStudentCharges;
     adminMarkInvoicePaid?: AdminMarkInvoicePaid;
     adminMarkChargePaid?: AdminMarkChargePaid;
+    adminDeleteCharge?: AdminDeleteCharge;
     syncSchoolOnboardingDocuments?: SyncSchoolOnboardingDocuments;
     adminUploadSchoolOnboardingDocument?: AdminUploadSchoolOnboardingDocument;
     getSchoolPendingDocuments?: GetSchoolPendingDocuments;
@@ -152,6 +154,7 @@ export function adminRouter({
     listAdminStudentCharges,
     adminMarkInvoicePaid,
     adminMarkChargePaid,
+    adminDeleteCharge,
     syncSchoolOnboardingDocuments,
     adminUploadSchoolOnboardingDocument,
     getSchoolPendingDocuments,
@@ -647,6 +650,15 @@ export function adminRouter({
             const body = markChargePaidBodySchema.parse(req.body ?? {});
             const paidAt = body.paidAt ? new Date(body.paidAt) : undefined;
             const result = await adminMarkChargePaid.exec({ chargeId, paidAt });
+            res.json(result);
+        }));
+    }
+
+    if (adminDeleteCharge) {
+        router.delete('/charges/:chargeId', requireAuth, requireAdminPersona, asyncHandler(async (req, res) => {
+            const paramsSchema = z.object({ chargeId: z.string().uuid() });
+            const { chargeId } = paramsSchema.parse(req.params);
+            const result = await adminDeleteCharge.exec({ chargeId });
             res.json(result);
         }));
     }

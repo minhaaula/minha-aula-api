@@ -56,6 +56,7 @@ import { ScheduleChargeDueReminders } from '../../app/use-cases/schedule-charge-
 import { NotifyStudentUser } from '../../app/use-cases/notify-student-user';
 import { AdminMarkInvoicePaid } from '../../app/use-cases/admin-mark-invoice-paid';
 import { AdminMarkChargePaid } from '../../app/use-cases/admin-mark-charge-paid';
+import { AdminDeleteCharge } from '../../app/use-cases/admin-delete-charge';
 import { SyncSchoolOnboardingDocuments } from '../../app/use-cases/sync-school-onboarding-documents';
 import { AdminUploadSchoolOnboardingDocument } from '../../app/use-cases/admin-upload-school-onboarding-document';
 import { GetSchoolPendingDocuments } from '../../app/use-cases/get-school-pending-documents';
@@ -208,6 +209,11 @@ export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext)
         deps.schoolsRepo,
         deps.asaasProvider
     );
+    const adminDeleteCharge = new AdminDeleteCharge(
+        deps.financialChargesRepo,
+        deps.schoolsRepo,
+        deps.asaasProvider
+    );
 
     const syncSchoolOnboardingDocuments = deps.asaasProvider
         ? new SyncSchoolOnboardingDocuments(deps.schoolsRepo, deps.asaasProvider)
@@ -294,6 +300,7 @@ export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext)
         listAdminEnrollmentRequests,
         adminMarkInvoicePaid,
         adminMarkChargePaid,
+        adminDeleteCharge,
         syncSchoolOnboardingDocuments,
         adminUploadSchoolOnboardingDocument,
         getSchoolPendingDocuments,
