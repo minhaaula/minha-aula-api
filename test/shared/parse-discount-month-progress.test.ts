@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { parseDiscountMonthProgress } from '../../src/shared/parse-discount-month-progress';
+import {
+    formatDiscountMonthsLabel,
+    parseDiscountMonthProgress
+} from '../../src/shared/parse-discount-month-progress';
 
 describe('parseDiscountMonthProgress', () => {
     it('parses "1 de 3 meses" from discount reason', () => {
@@ -19,5 +22,15 @@ describe('parseDiscountMonthProgress', () => {
 
     it('returns null when reason has no progress pattern', () => {
         expect(parseDiscountMonthProgress('Bolsa parcial', 500)).toBeNull();
+    });
+
+    it('formatDiscountMonthsLabel appends meses', () => {
+        const progress = parseDiscountMonthProgress('Desconto aplicado (1 de 2 meses)', 1000);
+        expect(formatDiscountMonthsLabel(progress)).toBe('1 de 2 meses');
+    });
+
+    it('formatDiscountMonthsLabel uses singular mês', () => {
+        const progress = parseDiscountMonthProgress('Desconto aplicado (1 de 1 meses)', 1000);
+        expect(formatDiscountMonthsLabel(progress)).toBe('1 de 1 mês');
     });
 });

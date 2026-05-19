@@ -216,6 +216,7 @@ describe('GenerateTuitionPix', () => {
         expect(result.amountCents).toBe(35000);
         expect(result.courseName).toBe('Curso de Inglês');
         expect(result.status).toBe('OPEN');
+        expect(result.discountMonthsLabel).toBeNull();
 
         // Verificar se o provider foi chamado
         expect(provider.callCount).toBe(1);
@@ -702,6 +703,56 @@ describe('GenerateTuitionPix', () => {
         expect(result.paymentProviderRef).toBe('asaas-pix-school');
         expect(result.pixCopiaECola).toBe('pix-school-payload');
         expect(provider.callCount).toBe(1);
+    });
+
+    it('returns discountMonthsLabel when charge has enrollment discount', async () => {
+        const charges = new InMemoryCharges();
+        const users = new InMemoryUsers();
+        const schools = new InMemorySchools();
+        const courses = new InMemoryCourses();
+
+        const user = makeUser('user-disc');
+        users.seed(user);
+        const school = makeSchool('school-disc');
+        schools.seed(school);
+        const course = makeCourse('course-disc', school.id);
+        courses.seed(course);
+
+        const charge = SchoolFinancialCharge.create({
+            id: 'charge-disc',
+            schoolId: school.id,
+            ownerUserId: user.id,
+            studentUserId: user.id,
+            dependentId: null,
+            courseId: course.id,
+            courseClassId: 'class-1',
+            chargeType: 'TUITION',
+            description: 'Mensalidade',
+            amountCents: 10000,
+            discountCents: 2000,
+            discountReason: 'Desconto aplicado (1 de 2 meses)',
+            dueDate: new Date('2024-08-01')
+        });
+        charge.markAsSynced({
+            paymentId: 'asaas-existing',
+            invoiceUrl: 'https://asaas.com/i',
+            payload: { pixCopiaECola: 'pix-code' }
+        });
+        charges.seed(charge);
+
+        const provider = new FakePixProvider({ providerRef: 'asaas-existing', dueDate: new Date('2024-08-01') });
+        const useCase = new GenerateTuitionPix(charges, users, schools, courses, provider);
+
+        const result = await useCase.exec({
+            chargeId: charge.id,
+            requester: { id: user.id, persona: UserPersonaEnum.STUDENT }
+        });
+
+        expect(result.discountMonthsLabel).toBe('1 de 2 meses');
+        expect(result.discountMonthIndex).toBe(1);
+        expect(result.discountMonthsTotal).toBe(2);
+        expect(result.discountCents).toBe(2000);
+        expect(provider.callCount).toBe(0);
     });
 
     it('rejeita escola quando schoolId do requester não coincide com a cobrança', async () => {

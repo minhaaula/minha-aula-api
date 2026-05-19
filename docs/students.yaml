@@ -1235,6 +1235,18 @@ paths:
                     format: uri
                     nullable: true
                     description: URL do logo da escola
+                  discountMonthsLabel:
+                    type: string
+                    nullable: true
+                    description: Progresso do desconto na matrícula (ex. "1 de 2 meses"); null sem desconto
+                  discountMonthIndex:
+                    type: integer
+                    nullable: true
+                    description: Mês atual do desconto (1-based); null sem desconto estruturado
+                  discountMonthsTotal:
+                    type: integer
+                    nullable: true
+                    description: Total de meses com desconto; null sem desconto estruturado
                 required:
                   - chargeId
                   - paymentProviderRef
@@ -1245,6 +1257,9 @@ paths:
                   - netAmountCents
                   - courseName
                   - schoolLogo
+                  - discountMonthsLabel
+                  - discountMonthIndex
+                  - discountMonthsTotal
         '400':
           description: Erro na requisição. ID da mensalidade inválido, mensalidade não é do tipo TUITION ou status não permite geração de PIX.
           content:

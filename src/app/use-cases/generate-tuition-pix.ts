@@ -11,6 +11,11 @@ import { Money } from '../../domain/value-objects/money';
 import { SchoolFinancialChargeStatus } from '../../domain/entities/school-financial-charge';
 import { UserPersonaEnum } from '../../domain/value-objects/user-persona';
 import { log } from '../../shared/logger';
+import {
+    formatDiscountMonthsLabel,
+    parseDiscountMonthProgress
+} from '../../shared/parse-discount-month-progress';
+import type { SchoolFinancialCharge } from '../../domain/entities/school-financial-charge';
 
 export interface GenerateTuitionPixInput {
     chargeId: string;
@@ -38,6 +43,10 @@ export interface GenerateTuitionPixOutput {
     courseName: string;
     /** URL do logo da escola, ou null. */
     schoolLogo: string | null;
+    /** Ex.: "1 de 2 meses" — progresso do desconto na matrícula. */
+    discountMonthsLabel: string | null;
+    discountMonthIndex: number | null;
+    discountMonthsTotal: number | null;
 }
 
 export class GenerateTuitionPix {
@@ -110,6 +119,7 @@ export class GenerateTuitionPix {
             }
 
             const schoolLogo = await this.getSchoolLogoUrl(charge.schoolId);
+            const discountFields = this.buildDiscountFields(charge);
 
             return {
                 chargeId: charge.id,
@@ -123,7 +133,8 @@ export class GenerateTuitionPix {
                 discountCents: charge.discountCents,
                 netAmountCents: charge.netAmountCents,
                 courseName: course.name,
-                schoolLogo
+                schoolLogo,
+                ...discountFields
             };
         }
 
@@ -189,6 +200,7 @@ export class GenerateTuitionPix {
         await this.charges.save(charge);
 
         const schoolLogo = await this.getSchoolLogoUrl(charge.schoolId);
+        const discountFields = this.buildDiscountFields(charge);
 
         return {
             chargeId: charge.id,
@@ -202,7 +214,21 @@ export class GenerateTuitionPix {
             discountCents: charge.discountCents,
             netAmountCents: charge.netAmountCents,
             courseName: course.name,
-            schoolLogo
+            schoolLogo,
+            ...discountFields
+        };
+    }
+
+    private buildDiscountFields(charge: SchoolFinancialCharge): {
+        discountMonthsLabel: string | null;
+        discountMonthIndex: number | null;
+        discountMonthsTotal: number | null;
+    } {
+        const progress = parseDiscountMonthProgress(charge.discountReason, charge.discountCents);
+        return {
+            discountMonthsLabel: formatDiscountMonthsLabel(progress),
+            discountMonthIndex: progress?.current ?? null,
+            discountMonthsTotal: progress?.total ?? null
         };
     }
 

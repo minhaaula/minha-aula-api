@@ -41,3 +41,12 @@ export function parseDiscountMonthProgress(
         total
     };
 }
+
+/** Texto para exibição com unidade (ex.: "1 de 2 meses", "1 de 1 mês"). */
+export function formatDiscountMonthsLabel(progress: DiscountMonthProgress | null): string | null {
+    if (!progress) {
+        return null;
+    }
+    const unit = progress.total === 1 ? 'mês' : 'meses';
+    return `${progress.current} de ${progress.total} ${unit}`;
+}
