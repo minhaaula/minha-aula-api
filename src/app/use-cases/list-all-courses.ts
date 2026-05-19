@@ -4,6 +4,7 @@ import { SchoolImageRepository } from '../../ports/repositories/school-image.rep
 import { SchoolReviewRepository } from '../../ports/repositories/school-review.repo';
 import { SchoolImageCategory } from '../../domain/value-objects/school-image-category';
 import type { StorageProviderPort } from '../../ports/providers/storage-provider.port';
+import { resolveSchoolCoverImage } from '../utils/resolve-school-cover-image';
 
 export interface ListAllCoursesInput {
     name?: string;
@@ -17,7 +18,7 @@ export interface CourseListItem {
     schoolName: string;
     schoolId: string;
     schoolLogo: string | null;
-    /** URL da imagem de capa da escola (categoria COVER), quando existir. */
+    /** URL da imagem de capa da escola (COVER ou BANNER), quando existir. */
     schoolCover: string | null;
     courseDescription: string | null;
     category: string | null;
@@ -75,7 +76,7 @@ export class ListAllCourses {
                     try {
                         const images = await this.schoolImages!.findBySchoolId(schoolId);
                         const logoImage = images.find((img) => img.category === SchoolImageCategory.LOGO);
-                        const coverImage = images.find((img) => img.category === SchoolImageCategory.COVER);
+                        const coverImage = resolveSchoolCoverImage(images);
 
                         logoMap.set(
                             schoolId,

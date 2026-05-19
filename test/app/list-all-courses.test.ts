@@ -3,6 +3,10 @@ import { ListAllCourses } from '../../src/app/use-cases/list-all-courses';
 import { CourseRepository } from '../../src/ports/repositories/course.repo';
 import { CategoryRepository } from '../../src/ports/repositories/category.repo';
 import type { SchoolReviewRepository } from '../../src/ports/repositories/school-review.repo';
+import type { SchoolImageRepository } from '../../src/ports/repositories/school-image.repo';
+import type { StorageProviderPort } from '../../src/ports/providers/storage-provider.port';
+import { SchoolImage } from '../../src/domain/entities/school-image';
+import { SchoolImageCategory } from '../../src/domain/value-objects/school-image-category';
 
 class InMemoryCourseRepository implements CourseRepository {
     private readonly items = new Map<string, any>();
@@ -359,6 +363,50 @@ describe('ListAllCourses use case', () => {
 
         expect(course1.schoolReviewsCount).toBe(10);
         expect(course2.schoolReviewsCount).toBe(10);
+    });
+
+    it('returns schoolCover URL from BANNER when COVER is absent', async () => {
+        const coursesRepo = new InMemoryCourseRepository();
+        const categoriesRepo = new InMemoryCategoryRepository();
+
+        coursesRepo.seedCourse({
+            courseId: 'course-1',
+            courseName: 'Curso',
+            courseDescription: null,
+            schoolId: 'school-1',
+            schoolName: 'Escola Iguape',
+            schoolCity: 'Iguape',
+            schoolState: 'SP'
+        });
+
+        const schoolImagesRepo: SchoolImageRepository = {
+            save: async () => {},
+            findBySchoolId: async () => [
+                SchoolImage.create({
+                    id: 'img-banner',
+                    schoolId: 'school-1',
+                    key: 'schools/school-1/banner.png',
+                    contentType: 'image/png',
+                    originalFileName: 'banner.png',
+                    category: SchoolImageCategory.BANNER
+                })
+            ],
+            findById: async () => null,
+            delete: async () => {}
+        };
+
+        const storage: StorageProviderPort = {
+            uploadFile: async () => 'k',
+            deleteFile: async () => {},
+            getFileUrl: async (key) => `https://cdn.example/${key}`
+        };
+
+        const useCase = new ListAllCourses(coursesRepo, categoriesRepo, schoolImagesRepo, storage);
+        const result = await useCase.exec({ city: 'Iguape' });
+
+        expect(result.courses).toHaveLength(1);
+        expect(result.courses[0].schoolCover).toBe('https://cdn.example/schools/school-1/banner.png');
+        expect(result.courses[0].schoolLogo).toBeNull();
     });
 
     it('returns schoolReviewsCount 0 when school has no reviews', async () => {
