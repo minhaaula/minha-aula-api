@@ -40,12 +40,11 @@ export class DeactivateStudentAccount {
             throw AppError.fromCode(ErrorCode.ACCOUNT_ALREADY_DEACTIVATED);
         }
 
-        const deactivate = this.users.deactivateAccount;
-        if (!deactivate) {
+        if (!this.users.deactivateAccount) {
             throw AppError.fromCode(ErrorCode.INTERNAL_ERROR);
         }
 
-        await deactivate(userId, motivo, descricao);
+        await this.users.deactivateAccount(userId, motivo, descricao);
 
         return { success: true };
     }
