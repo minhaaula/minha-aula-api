@@ -1326,6 +1326,40 @@ paths:
                           format: uri
                           nullable: true
                           description: URL da logo da escola (quando disponível)
+                        schoolAddress:
+                          type: object
+                          nullable: true
+                          description: Endereço principal da escola
+                          properties:
+                            street:
+                              type: string
+                            number:
+                              type: string
+                            complement:
+                              type: string
+                              nullable: true
+                            district:
+                              type: string
+                              nullable: true
+                            city:
+                              type: string
+                            state:
+                              type: string
+                            zipCode:
+                              type: string
+                        schoolWhatsapp:
+                          type: string
+                          nullable: true
+                          description: WhatsApp de contato da escola
+                        studentBirthDate:
+                          type: string
+                          format: date
+                          nullable: true
+                          description: Data de nascimento do aluno (usuário ou dependente)
+                        dependentRelationship:
+                          type: string
+                          nullable: true
+                          description: Parentesco do dependente (ex. filho, filha); null se o pedido for do próprio usuário
                         courseClassId:
                           type: string
                           format: uuid

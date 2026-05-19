@@ -8,6 +8,7 @@ import { DependentRepository } from '../../ports/repositories/dependent.repo';
 import { SchoolImageRepository } from '../../ports/repositories/school-image.repo';
 import { SchoolImageCategory } from '../../domain/value-objects/school-image-category';
 import type { StorageProviderPort } from '../../ports/providers/storage-provider.port';
+import type { PostalAddressOutput } from '../types/common.types';
 
 export interface MyEnrollmentRequest {
     id: string;
@@ -42,6 +43,14 @@ export interface MyEnrollmentRequest {
     createdAt: Date;
     studentName: string | null;
     dependentName: string | null;
+    /** Endereço principal da escola. */
+    schoolAddress: PostalAddressOutput | null;
+    /** WhatsApp de contato da escola. */
+    schoolWhatsapp: string | null;
+    /** Data de nascimento do aluno (ISO YYYY-MM-DD). */
+    studentBirthDate: string | null;
+    /** Parentesco do dependente (ex.: filho, filha); null quando o pedido é do próprio usuário. */
+    dependentRelationship: string | null;
 }
 
 export class ListMyEnrollmentRequests {
@@ -166,7 +175,15 @@ export class ListMyEnrollmentRequests {
                 enrollmentId: req.request.enrollmentId,
                 createdAt: req.request.createdAt,
                 studentName: req.studentName,
-                dependentName: req.dependentName
+                dependentName: req.dependentName,
+                schoolAddress: req.schoolAddress ?? null,
+                schoolWhatsapp: req.schoolWhatsapp ?? null,
+                studentBirthDate: req.studentBirthDate
+                    ? req.studentBirthDate.toISOString().slice(0, 10)
+                    : null,
+                dependentRelationship: req.request.requestedForDependentId
+                    ? (req.dependentRelationship ?? null)
+                    : null
             };
         });
 

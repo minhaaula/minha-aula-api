@@ -229,6 +229,74 @@ describe('ListMyEnrollmentRequests use case', () => {
         expect(result.requests[0].id).toBe('req-1');
     });
 
+    it('includes school address, whatsapp, student birth date and dependent relationship', async () => {
+        const repo = new InMemoryEnrollmentRequestRepository();
+        const dependents = new InMemoryDependentsRepository();
+        const userId = 'user-1';
+
+        repo.seed([
+            makeRequestWithDetails(
+                makeEnrollmentRequest('req-user', userId, 'PENDING'),
+                'Curso',
+                'Turma',
+                'João',
+                null,
+                {
+                    schoolAddress: {
+                        street: 'Rua A',
+                        number: '10',
+                        complement: null,
+                        district: 'Centro',
+                        city: 'Santos',
+                        state: 'SP',
+                        zipCode: '11010000'
+                    },
+                    schoolWhatsapp: '13999998888',
+                    studentBirthDate: new Date('1995-05-20'),
+                    dependentRelationship: null
+                }
+            ),
+            makeRequestWithDetails(
+                makeEnrollmentRequest('req-dep', userId, 'PENDING', 'dep-1'),
+                'Curso',
+                'Turma',
+                'João',
+                'Maria',
+                {
+                    schoolWhatsapp: '13988887777',
+                    studentBirthDate: new Date('2015-03-10'),
+                    dependentRelationship: 'Filha'
+                }
+            )
+        ]);
+
+        dependents.seed([
+            Dependent.create({
+                id: 'dep-1',
+                userId,
+                fullName: 'Maria',
+                cpf: '52998224725',
+                birthDate: new Date('2015-03-10'),
+                relationship: 'Filha'
+            })
+        ]);
+
+        const useCase = new ListMyEnrollmentRequests(repo, dependents);
+        const result = await useCase.exec({ userId });
+
+        expect(result.requests).toHaveLength(2);
+        const userReq = result.requests.find((r) => r.id === 'req-user');
+        expect(userReq?.schoolAddress?.city).toBe('Santos');
+        expect(userReq?.schoolWhatsapp).toBe('13999998888');
+        expect(userReq?.studentBirthDate).toBe('1995-05-20');
+        expect(userReq?.dependentRelationship).toBeNull();
+
+        const depReq = result.requests.find((r) => r.id === 'req-dep');
+        expect(depReq?.studentBirthDate).toBe('2015-03-10');
+        expect(depReq?.dependentRelationship).toBe('Filha');
+        expect(depReq?.dependentName).toBe('Maria');
+    });
+
     it('includes course and class labels', async () => {
         const repo = new InMemoryEnrollmentRequestRepository();
         const dependents = new InMemoryDependentsRepository();

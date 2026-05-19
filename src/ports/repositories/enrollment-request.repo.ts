@@ -2,6 +2,16 @@ import { EnrollmentRequest, EnrollmentRequestStatus } from '../../domain/entitie
 
 export type ScheduleEntry = { day: string; start: string; end: string };
 
+export type EnrollmentRequestSchoolAddress = {
+    street: string;
+    number: string;
+    complement?: string | null;
+    district?: string | null;
+    city: string;
+    state: string;
+    zipCode: string;
+};
+
 export interface EnrollmentRequestWithDetails {
     request: EnrollmentRequest;
     courseClassLabel: string | null;
@@ -14,6 +24,14 @@ export interface EnrollmentRequestWithDetails {
     monthlyPriceCents?: number | null;
     /** Horários da turma (dia, início, fim). */
     schedule?: ScheduleEntry[] | null;
+    /** Endereço principal da escola (quando carregado). */
+    schoolAddress?: EnrollmentRequestSchoolAddress | null;
+    /** WhatsApp de contato da escola (`owner_whatsapp`). */
+    schoolWhatsapp?: string | null;
+    /** Data de nascimento do aluno (usuário ou dependente). */
+    studentBirthDate?: Date | null;
+    /** Parentesco do dependente (quando o pedido é para dependente). */
+    dependentRelationship?: string | null;
 }
 
 export type AdminEnrollmentRequestItem = EnrollmentRequestWithDetails & { schoolName: string };

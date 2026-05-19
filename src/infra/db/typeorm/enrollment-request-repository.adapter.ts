@@ -61,6 +61,7 @@ export class EnrollmentRequestRepositoryAdapter implements EnrollmentRequestRepo
             .innerJoinAndSelect('courseClass.course', 'course')
             .innerJoinAndSelect('request.requestedFor', 'student')
             .innerJoinAndSelect('request.school', 'school')
+            .leftJoinAndSelect('school.addresses', 'schoolAddresses')
             .leftJoinAndSelect('request.dependent', 'dependent');
 
         if (params.schoolId) {
@@ -112,16 +113,39 @@ export class EnrollmentRequestRepositoryAdapter implements EnrollmentRequestRepo
         }
 
         const rows = await qb.getMany();
-        return rows.map((row) => ({
-            request: this.toDomain(row),
-            courseClassLabel: row.courseClass?.label ?? null,
-            courseLabel: row.courseClass?.course?.name ?? null,
-            studentName: row.requestedFor.fullName,
-            dependentName: row.dependent?.fullName ?? null,
-            schoolName: row.school?.name ?? null,
-            monthlyPriceCents: row.courseClass?.monthlyPriceCents ?? null,
-            schedule: Array.isArray(row.courseClass?.schedule) ? row.courseClass.schedule : null
-        }));
+        return rows.map((row) => {
+            const mainAddress = row.school?.addresses?.[0];
+            const schoolAddress = mainAddress
+                ? {
+                    street: mainAddress.street,
+                    number: mainAddress.number,
+                    complement: mainAddress.complement ?? null,
+                    district: mainAddress.district ?? null,
+                    city: mainAddress.city,
+                    state: mainAddress.state,
+                    zipCode: mainAddress.zipCode
+                }
+                : null;
+            const isDependent = row.dependent != null;
+            const studentBirthDate = isDependent
+                ? (row.dependent?.birthDate ? new Date(row.dependent.birthDate) : null)
+                : (row.requestedFor?.birthDate ? new Date(row.requestedFor.birthDate) : null);
+
+            return {
+                request: this.toDomain(row),
+                courseClassLabel: row.courseClass?.label ?? null,
+                courseLabel: row.courseClass?.course?.name ?? null,
+                studentName: row.requestedFor.fullName,
+                dependentName: row.dependent?.fullName ?? null,
+                schoolName: row.school?.name ?? null,
+                monthlyPriceCents: row.courseClass?.monthlyPriceCents ?? null,
+                schedule: Array.isArray(row.courseClass?.schedule) ? row.courseClass.schedule : null,
+                schoolAddress,
+                schoolWhatsapp: row.school?.ownerWhatsapp?.trim() || null,
+                studentBirthDate,
+                dependentRelationship: row.dependent?.relationship?.trim() || null
+            };
+        });
     }
 
     async findManyForAdmin(params: {
