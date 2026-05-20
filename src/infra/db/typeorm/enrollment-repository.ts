@@ -8,6 +8,15 @@ import {
 import { Enrollment } from '../../../domain/entities/enrollment';
 import { EnrollmentOrm } from './entities/enrollment.orm';
 
+function formatAdminStudentBirthDate(value: unknown): string | null {
+    if (value == null) return null;
+    if (value instanceof Date) {
+        return Number.isNaN(value.getTime()) ? null : value.toISOString().slice(0, 10);
+    }
+    const parsed = new Date(String(value));
+    return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString().slice(0, 10);
+}
+
 export class EnrollmentRepositoryAdapter implements EnrollmentRepository {
     private readonly repo = AppDataSource.getRepository(EnrollmentOrm);
 
@@ -252,6 +261,7 @@ export class EnrollmentRepositoryAdapter implements EnrollmentRepository {
         const name = filters.name?.trim() || null;
         const cpfRaw = filters.cpf?.trim() || null;
         const cpfDigits = cpfRaw ? cpfRaw.replace(/\D/g, '') : null;
+        const city = filters.city?.trim() || null;
         const safeLimit = Math.min(Math.max(limit, 1), 100);
         const safeOffset = Math.max(0, offset);
 
@@ -278,6 +288,9 @@ export class EnrollmentRepositoryAdapter implements EnrollmentRepository {
                 { cpfDigits }
             );
         }
+        if (city) {
+            qb.andWhere('LOWER(studentUser.addressCity) LIKE LOWER(:cityPattern)', { cityPattern: `%${city}%` });
+        }
 
         const countQb = this.repo
             .createQueryBuilder('enrollment')
@@ -300,6 +313,9 @@ export class EnrollmentRepositoryAdapter implements EnrollmentRepository {
                 { cpfDigits }
             );
         }
+        if (city) {
+            countQb.andWhere('LOWER(studentUser.addressCity) LIKE LOWER(:cityPattern)', { cityPattern: `%${city}%` });
+        }
 
         const totalCount = await countQb
             .select('COUNT(DISTINCT enrollment.studentUserId)', 'cnt')
@@ -311,6 +327,7 @@ export class EnrollmentRepositoryAdapter implements EnrollmentRepository {
                 'studentUser.id AS studentId',
                 'studentUser.fullName AS studentName',
                 'studentUser.cpf AS cpf',
+                'studentUser.birthDate AS birthDate',
                 'studentUser.addressStreet AS addressStreet',
                 'studentUser.addressNumber AS addressNumber',
                 'studentUser.addressComplement AS addressComplement',
@@ -327,6 +344,7 @@ export class EnrollmentRepositoryAdapter implements EnrollmentRepository {
             .groupBy('studentUser.id')
             .addGroupBy('studentUser.fullName')
             .addGroupBy('studentUser.cpf')
+            .addGroupBy('studentUser.birthDate')
             .addGroupBy('studentUser.addressStreet')
             .addGroupBy('studentUser.addressNumber')
             .addGroupBy('studentUser.addressComplement')
@@ -335,7 +353,7 @@ export class EnrollmentRepositoryAdapter implements EnrollmentRepository {
             .addGroupBy('studentUser.addressState')
             .addGroupBy('studentUser.addressZipCode')
             .addGroupBy('studentUser.createdAt')
-            .orderBy('studentUser.fullName', 'ASC')
+            .orderBy('studentUser.createdAt', 'DESC')
             .skip(safeOffset)
             .take(safeLimit)
             .getRawMany();
@@ -345,6 +363,7 @@ export class EnrollmentRepositoryAdapter implements EnrollmentRepository {
             studentId: row.studentId,
             studentName: row.studentName ?? '',
             studentType: 'USER' as const,
+            birthDate: formatAdminStudentBirthDate(row.birthDate),
             endereco: {
                 street: row.addressStreet ?? '',
                 number: row.addressNumber ?? '',

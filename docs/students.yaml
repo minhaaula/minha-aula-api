@@ -625,8 +625,14 @@ paths:
       tags:
         - Students
       summary: Listar todos os cursos cadastrados no sistema
-      description: Retorna todos os cursos ativos cadastrados no sistema, com informações do curso, escola (incluindo cidade e estado), categoria, subcategoria, média de avaliação da escola (1 a 5, quando houver) e quantidade total de avaliações da escola. Permite filtrar por nome do curso, categoria, subcategoria e cidade da escola. Esta rota é pública e não requer autenticação.
+      description: Retorna todos os cursos ativos cadastrados no sistema, com informações do curso, escola (incluindo cidade e estado), categoria, subcategoria, média de avaliação da escola (1 a 5, quando houver) e quantidade total de avaliações da escola. Permite filtrar por nome do curso, nome da escola (`search`), categoria, subcategoria e cidade da escola. Esta rota é pública e não requer autenticação.
       parameters:
+        - in: query
+          name: search
+          required: false
+          schema:
+            type: string
+          description: Busca por nome do curso ou nome da escola (contém, case-insensitive).
         - in: query
           name: name
           required: false

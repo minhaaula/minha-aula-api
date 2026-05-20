@@ -7,6 +7,7 @@ export type ListAllStudentsInput = {
     name?: string | null;
     schoolId?: string | null;
     cpf?: string | null;
+    city?: string | null;
     limit?: number;
     offset?: number;
 };
@@ -24,7 +25,8 @@ export class ListAllStudents {
         const filters: AdminStudentListFilters = {
             name: input.name ?? null,
             schoolId: input.schoolId ?? null,
-            cpf: input.cpf ?? null
+            cpf: input.cpf ?? null,
+            city: input.city ?? null
         };
 
         const findFromUsers = this.users?.findStudentsPaginatedForAdmin;

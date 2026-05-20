@@ -9,6 +9,15 @@ import { assertUserPersona } from '../../../domain/value-objects/user-persona';
 import { IsNull } from 'typeorm';
 import { buildReleasedCpf, buildReleasedEmail } from '../../../shared/soft-delete-identifiers';
 
+function formatBirthDate(value: unknown): string | null {
+    if (value == null) return null;
+    if (value instanceof Date) {
+        return Number.isNaN(value.getTime()) ? null : value.toISOString().slice(0, 10);
+    }
+    const parsed = new Date(String(value));
+    return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString().slice(0, 10);
+}
+
 export class UserRepositoryAdapter implements UserRepository {
     private readonly repo = AppDataSource.getRepository(UserOrm);
 
@@ -108,6 +117,7 @@ export class UserRepositoryAdapter implements UserRepository {
         const name = filters.name?.trim() || null;
         const cpfRaw = filters.cpf?.trim() || null;
         const cpfDigits = cpfRaw ? cpfRaw.replace(/\D/g, '') : null;
+        const city = filters.city?.trim() || null;
         const safeLimit = Math.min(Math.max(limit, 1), 100);
         const safeOffset = Math.max(0, offset);
 
@@ -133,6 +143,9 @@ export class UserRepositoryAdapter implements UserRepository {
                 cpfDigits
             });
         }
+        if (city) {
+            qb.andWhere('LOWER(user.address_city) LIKE LOWER(:cityPattern)', { cityPattern: `%${city}%` });
+        }
 
         const total = await qb.getCount();
         const rows = await qb
@@ -140,6 +153,7 @@ export class UserRepositoryAdapter implements UserRepository {
                 'user.id AS studentId',
                 'user.full_name AS studentName',
                 'user.cpf AS cpf',
+                'user.birth_date AS birthDate',
                 'user.address_street AS addressStreet',
                 'user.address_number AS addressNumber',
                 'user.address_complement AS addressComplement',
@@ -153,7 +167,7 @@ export class UserRepositoryAdapter implements UserRepository {
                 `(SELECT COUNT(*) FROM enrollments e WHERE e.student_user_id = user.id AND e.status = 'ACTIVE')`,
                 'courseCount'
             )
-            .orderBy('user.full_name', 'ASC')
+            .orderBy('user.created_at', 'DESC')
             .skip(safeOffset)
             .take(safeLimit)
             .getRawMany();
@@ -163,6 +177,7 @@ export class UserRepositoryAdapter implements UserRepository {
             studentId: row.studentId,
             studentName: row.studentName ?? '',
             studentType: 'USER' as const,
+            birthDate: formatBirthDate(row.birthDate),
             endereco: {
                 street: row.addressStreet ?? '',
                 number: row.addressNumber ?? '',

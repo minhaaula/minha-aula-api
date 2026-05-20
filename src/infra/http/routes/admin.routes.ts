@@ -529,6 +529,7 @@ export function adminRouter({
             name: z.string().trim().min(1).optional(),
             schoolId: z.string().uuid().optional(),
             cpf: z.string().trim().min(1).optional(),
+            city: z.string().trim().min(1).optional(),
             limit: z.coerce.number().int().positive().max(100).optional(),
             offset: z.coerce.number().int().min(0).optional()
         });
@@ -537,6 +538,7 @@ export function adminRouter({
                 name: typeof req.query.name === 'string' ? req.query.name : undefined,
                 schoolId: typeof req.query.schoolId === 'string' ? req.query.schoolId : undefined,
                 cpf: typeof req.query.cpf === 'string' ? req.query.cpf : undefined,
+                city: typeof req.query.city === 'string' ? req.query.city : undefined,
                 limit: req.query.limit,
                 offset: req.query.offset
             });
@@ -544,6 +546,7 @@ export function adminRouter({
                 name: query.name,
                 schoolId: query.schoolId,
                 cpf: query.cpf,
+                city: query.city,
                 limit: query.limit,
                 offset: query.offset
             });

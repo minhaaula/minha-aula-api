@@ -1532,6 +1532,73 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /schools/finance/charges/{chargeId}:
+    delete:
+      tags:
+        - Schools
+      summary: Excluir cobrança em aberto
+      description: |
+        Cancela uma cobrança da escola autenticada.
+        Status permitidos: PENDING_SYNC, OPEN, OVERDUE, FAILED. Não permite cobrança já paga (PAID).
+        Se existir `asaasPaymentId`, tenta remover a cobrança no Asaas antes do cancelamento local.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: chargeId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID da cobrança
+      responses:
+        '200':
+          description: Cobrança cancelada.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  chargeId:
+                    type: string
+                    format: uuid
+                  status:
+                    type: string
+                    enum: [CANCELLED]
+                  cancelledAt:
+                    type: string
+                    format: date-time
+                  alreadyCancelled:
+                    type: boolean
+                required:
+                  - chargeId
+                  - status
+                  - cancelledAt
+                  - alreadyCancelled
+        '400':
+          description: Cobrança paga ou status não permite exclusão.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Não autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário sem permissão de escola.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Cobrança não encontrada na escola.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /schools/finance/charges/{chargeId}/mark-paid:
     post:
       tags:

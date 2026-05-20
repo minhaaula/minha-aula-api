@@ -25,6 +25,8 @@ export type AdminStudentListFilters = {
     schoolId?: string | null;
     name?: string | null;
     cpf?: string | null;
+    /** Cidade do endereço do titular (contém, case insensitive). */
+    city?: string | null;
 };
 
 /** Item de dependente na listagem admin (dentro do titular). */
@@ -41,6 +43,8 @@ export type AdminStudentListItem = {
     studentId: string;
     studentName: string;
     studentType: 'USER';
+    /** Data de nascimento do titular (YYYY-MM-DD). */
+    birthDate: string | null;
     endereco: {
         street: string;
         number: string;

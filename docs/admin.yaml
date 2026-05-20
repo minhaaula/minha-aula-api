@@ -665,6 +665,57 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /admin/charges/{chargeId}:
+    delete:
+      tags:
+        - Admin
+      summary: Excluir cobrança em aberto (aluno)
+      description: |
+        Cancela uma cobrança de aluno (`school_financial_charges`) em qualquer escola.
+        Status permitidos: PENDING_SYNC, OPEN, OVERDUE, FAILED. Não permite cobrança já paga (PAID).
+        Se existir `asaasPaymentId`, tenta remover a cobrança no Asaas antes do cancelamento local.
+        Requer persona ADMIN.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: chargeId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID da cobrança (SchoolFinancialCharge)
+      responses:
+        '200':
+          description: Cobrança cancelada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminDeleteChargeResponse'
+        '400':
+          description: Cobrança paga ou status não permite exclusão.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Usuário não autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado (requer persona ADMIN).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Cobrança não encontrada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /admin/schools:
     get:
       tags:
@@ -1838,10 +1889,9 @@ paths:
         - Admin
       summary: Listar todos os estudantes do sistema
       description: |
-        Retorna a lista de titulares (alunos USER) do sistema, paginada e com filtros por nome, escola e CPF.
-        Cada item traz apenas os campos cpf, studentId, studentName, studentType (USER), endereco, createdAt,
-        countCursos (quantidade de cursos/turmas vinculados) e um array dependentes (id, nome, cpf, dataNascimento, vinculo)
-        para exibir os dependentes na mesma linha do titular.
+        Retorna titulares (persona STUDENT) paginados, ordenados por `createdAt` decrescente (cadastro mais recente primeiro).
+        Filtros: nome, escola (`schoolId`), CPF e cidade do endereço do titular.
+        Cada item inclui `birthDate`, endereço, `countCursos` e array `dependentes` (id, nome, cpf, dataNascimento, vinculo).
       security:
         - bearerAuth: []
       parameters:
@@ -1865,6 +1915,12 @@ paths:
             type: string
           description: Filtrar por CPF do estudante (aceita com ou sem formatação).
         - in: query
+          name: city
+          required: false
+          schema:
+            type: string
+          description: Filtrar pela cidade do endereço do titular (contém, case-insensitive).
+        - in: query
           name: limit
           required: false
           schema:
@@ -1883,7 +1939,7 @@ paths:
           description: Quantidade de registros a pular (paginação).
       responses:
         '200':
-          description: Lista de estudantes retornada com sucesso.
+          description: Lista de estudantes retornada com sucesso (ordenada por createdAt DESC).
           content:
             application/json:
               schema:
@@ -2054,9 +2110,9 @@ paths:
         - Admin
       summary: Listar alunos de uma escola
       description: |
-        Retorna a lista de titulares (alunos USER) matriculados na escola, cada um
-        com um array de dependentes (nome, cpf, data nascimento, vínculo) na mesma linha.
-        Campos por aluno: cpf, studentId, studentName, studentType, endereco, createdAt, dependentes.
+        Retorna um item por estudante matriculado na escola (titular ou dependente), com cursos/turmas em `enrollments`.
+        Inclui `birthDate`, `isDependent` e `responsible` (titular) quando o aluno é dependente ou menor de idade.
+        Ordenação alfabética por nome do estudante. Filtros por nome (aluno ou responsável), curso e turma.
 
         Esta rota é apenas de visualização para o painel administrativo.
       security:
@@ -2125,6 +2181,73 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /admin/schools/{schoolId}/courses/{courseId}/classes/{classId}/enrollments/{enrollmentId}:
+    delete:
+      tags:
+        - Admin
+      summary: Desmatricular aluno de turma
+      description: |
+        Cancela a matrícula (`enrollment` → status CANCELLED) de um aluno ou dependente na turma informada.
+        Não remove cobranças financeiras já geradas. Matrículas já canceladas ou concluídas retornam erro de validação.
+        Requer persona ADMIN.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: schoolId
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: path
+          name: courseId
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: path
+          name: classId
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: path
+          name: enrollmentId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Matrícula cancelada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminUnenrollStudentResponse'
+        '400':
+          description: Matrícula já cancelada/encerrada ou status inválido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Usuário não autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado (requer persona ADMIN).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Escola, curso, turma ou matrícula não encontrados.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /admin/students/{studentId}/courses:
     get:
       tags:
@@ -2177,10 +2300,9 @@ paths:
         - Admin
       summary: Listar mensalidades do aluno (todas as escolas)
       description: |
-        Retorna todas as cobranças (mensalidades) do aluno em todos os cursos e escolas.
-        Rota apenas por studentId (sem schoolId). Quando studentId é o titular (USER), inclui
-        as cobranças desse usuário e as cobranças de todos os seus dependentes. Quando studentId
-        é um dependente, retorna apenas as cobranças daquele dependente.
+        Retorna cobranças (mensalidades e taxas) separadas por titular e dependentes.
+        Quando `studentId` é o titular (USER): `titular.charges` (cobranças do usuário) e `dependents[]` (cada dependente com suas cobranças).
+        Quando `studentId` é um dependente: `titular` é `null` e `dependents` contém um único grupo com as cobranças daquele dependente.
       security:
         - bearerAuth: []
       parameters:
@@ -3433,6 +3555,11 @@ components:
                 type: string
                 enum: ['USER']
                 description: Sempre USER (titular)
+              birthDate:
+                type: string
+                format: date
+                nullable: true
+                description: Data de nascimento do titular (YYYY-MM-DD)
               endereco:
                 type: object
                 description: Endereço do titular
@@ -3489,6 +3616,7 @@ components:
               - studentId
               - studentName
               - studentType
+              - birthDate
               - endereco
               - createdAt
               - countCursos
@@ -3868,92 +3996,95 @@ components:
         - schoolId
         - summary
         - consolidatedByMonth
+    AdminSchoolStudentListItem:
+      type: object
+      description: Estudante matriculado na escola (titular ou dependente) com turmas vinculadas
+      properties:
+        studentId:
+          type: string
+          format: uuid
+        studentName:
+          type: string
+        cpf:
+          type: string
+          nullable: true
+        birthDate:
+          type: string
+          format: date
+          nullable: true
+          description: Data de nascimento (YYYY-MM-DD)
+        isDependent:
+          type: boolean
+          description: true quando a matrícula é de dependente
+        responsible:
+          type: object
+          nullable: true
+          description: Titular/responsável (quando isDependent ou menor de idade)
+          properties:
+            id:
+              type: string
+              format: uuid
+            fullName:
+              type: string
+            cpf:
+              type: string
+              nullable: true
+            birthDate:
+              type: string
+              format: date
+              nullable: true
+            email:
+              type: string
+            phone:
+              type: string
+        enrollments:
+          type: array
+          description: Matrículas ativas do estudante na escola
+          items:
+            type: object
+            properties:
+              enrollmentId:
+                type: string
+                format: uuid
+              status:
+                type: string
+              enrolledAt:
+                type: string
+                format: date-time
+              course:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  name:
+                    type: string
+              class:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  label:
+                    type: string
+            required:
+              - enrollmentId
+              - status
+              - enrolledAt
+              - course
+              - class
+      required:
+        - studentId
+        - studentName
+        - isDependent
+        - enrollments
     AdminSchoolStudentsListResponse:
       type: object
       properties:
         students:
           type: array
-          description: Lista de titulares (alunos USER) com dependentes na mesma linha
           items:
-            type: object
-            properties:
-              cpf:
-                type: string
-                nullable: true
-                description: CPF do titular
-              studentId:
-                type: string
-                format: uuid
-                description: ID do aluno (titular)
-              studentName:
-                type: string
-                description: Nome do titular
-              studentType:
-                type: string
-                enum: ['USER']
-                description: Tipo do aluno (titular)
-              endereco:
-                type: object
-                description: Endereço do titular
-                properties:
-                  street:
-                    type: string
-                  number:
-                    type: string
-                  complement:
-                    type: string
-                    nullable: true
-                  district:
-                    type: string
-                    nullable: true
-                  city:
-                    type: string
-                  state:
-                    type: string
-                  zipCode:
-                    type: string
-                required:
-                  - street
-                  - number
-                  - city
-                  - state
-                  - zipCode
-              createdAt:
-                type: string
-                format: date-time
-                description: Data de criação do cadastro
-              countCursosVinculados:
-                type: integer
-                description: Quantidade de cursos distintos em que o titular (ou dependentes) está matriculado na escola
-              dependentes:
-                type: array
-                description: Dependentes vinculados ao titular (nome, cpf, data nascimento, vínculo)
-                items:
-                  type: object
-                  properties:
-                    nome:
-                      type: string
-                    cpf:
-                      type: string
-                      nullable: true
-                    dataNascimento:
-                      type: string
-                      format: date
-                      nullable: true
-                    vinculo:
-                      type: string
-                      nullable: true
-                  required:
-                    - nome
-            required:
-              - cpf
-              - studentId
-              - studentName
-              - studentType
-              - endereco
-              - createdAt
-              - countCursosVinculados
-              - dependentes
+            $ref: '#/components/schemas/AdminSchoolStudentListItem'
         pagination:
           type: object
           description: Metadados de paginação
@@ -4265,74 +4396,144 @@ components:
         - enrollments
         - paidCharges
         - dependents
-    AdminStudentChargesListResponse:
+    AdminStudentChargeItem:
       type: object
-      description: Lista de mensalidades do aluno em todas as escolas
       properties:
+        id:
+          type: string
+          format: uuid
+        school:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            name:
+              type: string
+        course:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            name:
+              type: string
+        class:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            label:
+              type: string
+        amountCents:
+          type: integer
+        discountCents:
+          type: integer
+          nullable: true
+        discountReason:
+          type: string
+          nullable: true
+        netAmountCents:
+          type: integer
+        description:
+          type: string
+          nullable: true
+        chargeType:
+          type: string
+        dueDate:
+          type: string
+          format: date
+        status:
+          type: string
+          description: PENDING_SYNC, OPEN, OVERDUE, PAID, CANCELLED, FAILED
+        paidAt:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+        - id
+        - school
+        - course
+        - class
+        - amountCents
+        - netAmountCents
+        - dueDate
+        - status
+    AdminStudentChargesPersonGroup:
+      type: object
+      properties:
+        studentId:
+          type: string
+          format: uuid
+        studentName:
+          type: string
+        cpf:
+          type: string
+          nullable: true
+        birthDate:
+          type: string
+          format: date
+          nullable: true
+        relationship:
+          type: string
+          nullable: true
+          description: Vínculo (apenas em dependentes)
         charges:
           type: array
-          description: Cobranças (mensalidades) do aluno em todos os cursos e escolas
           items:
-            type: object
-            properties:
-              id:
-                type: string
-                format: uuid
-              school:
-                type: object
-                properties:
-                  id:
-                    type: string
-                    format: uuid
-                  name:
-                    type: string
-              course:
-                type: object
-                properties:
-                  id:
-                    type: string
-                    format: uuid
-                  name:
-                    type: string
-              class:
-                type: object
-                properties:
-                  id:
-                    type: string
-                    format: uuid
-                  label:
-                    type: string
-              amountCents:
-                type: integer
-              discountCents:
-                type: integer
-                nullable: true
-              netAmountCents:
-                type: integer
-              description:
-                type: string
-                nullable: true
-              dueDate:
-                type: string
-                format: date
-              status:
-                type: string
-                description: PENDING_SYNC, OPEN, OVERDUE, PAID, CANCELLED, FAILED
-              paidAt:
-                type: string
-                format: date-time
-                nullable: true
-            required:
-              - id
-              - school
-              - course
-              - class
-              - amountCents
-              - netAmountCents
-              - dueDate
-              - status
+            $ref: '#/components/schemas/AdminStudentChargeItem'
       required:
+        - studentId
+        - studentName
         - charges
+    AdminStudentChargesListResponse:
+      type: object
+      description: Cobranças do titular e dos dependentes (todas as escolas)
+      properties:
+        titular:
+          allOf:
+            - $ref: '#/components/schemas/AdminStudentChargesPersonGroup'
+          nullable: true
+          description: Cobranças do titular; null quando a consulta é por ID de dependente
+        dependents:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminStudentChargesPersonGroup'
+      required:
+        - dependents
+    AdminDeleteChargeResponse:
+      type: object
+      properties:
+        chargeId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [CANCELLED]
+        cancelledAt:
+          type: string
+          format: date-time
+        alreadyCancelled:
+          type: boolean
+          description: true quando a cobrança já estava cancelada (idempotente)
+      required:
+        - chargeId
+        - status
+        - cancelledAt
+        - alreadyCancelled
+    AdminUnenrollStudentResponse:
+      type: object
+      properties:
+        enrollmentId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [CANCELLED]
+      required:
+        - enrollmentId
+        - status
     AdminSchoolStudentPaymentsResponse:
       type: object
       properties:
