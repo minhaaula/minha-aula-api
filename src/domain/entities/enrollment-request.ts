@@ -178,4 +178,5 @@ export class EnrollmentRequest {
         this._decidedByUserId = decidedByUserId;
         this._notes = params.notes?.trim() || null;
     }
+
 }

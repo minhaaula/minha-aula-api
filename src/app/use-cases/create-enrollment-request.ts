@@ -45,11 +45,8 @@ export class CreateEnrollmentRequest {
             courseClass.id
         );
 
-        // Verificar se já existe matrícula
+        // Verificar se já existe matrícula ativa/pendente
         await this.ensureNoExistingEnrollment(courseClass.id, user.id, dependentId);
-
-        // Verificar se já existe solicitação
-        await this.ensureNoExistingRequest(courseClass.id, user.id, dependentId);
 
         // Normalizar valores monetários
         const discountCents = this.normalizeAmount(input.discount, 'discount');
@@ -66,7 +63,21 @@ export class CreateEnrollmentRequest {
             'first monthly payment date'
         );
 
-        // Criar solicitação
+        if (this.requests.findPendingByCourseClassAndTarget) {
+            const pending = await this.requests.findPendingByCourseClassAndTarget({
+                courseClassId: courseClass.id,
+                userId: user.id,
+                dependentId
+            });
+            if (pending) {
+                throw AppError.fromCode(ErrorCode.ENROLLMENT_REQUEST_ALREADY_EXISTS, {
+                    courseClassId: courseClass.id,
+                    userId: user.id,
+                    dependentId
+                });
+            }
+        }
+
         const request = EnrollmentRequest.create({
             id: Uuid(),
             schoolId: school.id,
@@ -255,26 +266,6 @@ export class CreateEnrollmentRequest {
             throw AppError.fromCode(ErrorCode.ALREADY_ENROLLED, {
                 courseClassId,
                 userId
-            });
-        }
-    }
-
-    private async ensureNoExistingRequest(
-        courseClassId: string,
-        userId: string,
-        dependentId: string | null
-    ): Promise<void> {
-        const existingRequest = await this.requests.findByCourseClassAndTarget({
-            courseClassId,
-            userId,
-            dependentId
-        });
-
-        if (existingRequest) {
-            throw AppError.fromCode(ErrorCode.ENROLLMENT_REQUEST_ALREADY_EXISTS, {
-                courseClassId,
-                userId,
-                dependentId
             });
         }
     }

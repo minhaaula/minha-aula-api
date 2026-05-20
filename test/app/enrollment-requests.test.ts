@@ -140,13 +140,24 @@ class InMemoryRequests implements EnrollmentRequestRepository {
     private readonly studentDocuments = new Map<string, string>();
     async findById(id: string) { return this.items.get(id) ?? null; }
     async findByCourseClassAndTarget(params: { courseClassId: string; userId: string; dependentId: string | null; }) {
-        const blockingStatuses: EnrollmentRequestStatus[] = ['PENDING', 'APPROVED'];
+        return this.findLatestApprovedByCourseClassAndTarget(params);
+    }
+    async findPendingByCourseClassAndTarget(params: { courseClassId: string; userId: string; dependentId: string | null; }) {
         return Array.from(this.items.values()).find((request) =>
             request.courseClassId === params.courseClassId &&
             request.requestedForUserId === params.userId &&
             request.requestedForDependentId === params.dependentId &&
-            blockingStatuses.includes(request.status)
+            request.status === 'PENDING'
         ) ?? null;
+    }
+    async findLatestApprovedByCourseClassAndTarget(params: { courseClassId: string; userId: string; dependentId: string | null; }) {
+        const matches = Array.from(this.items.values()).filter((request) =>
+            request.courseClassId === params.courseClassId &&
+            request.requestedForUserId === params.userId &&
+            request.requestedForDependentId === params.dependentId &&
+            request.status === 'APPROVED'
+        );
+        return matches.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0] ?? null;
     }
     async findMany(params: {
         schoolId?: string;
@@ -569,6 +580,46 @@ describe('CreateEnrollmentRequest', () => {
         });
 
         expect(result.status).toBe('PENDING');
+    });
+
+    it('creates new request row when previous APPROVED exists after unenroll', async () => {
+        const schools = new InMemorySchools();
+        const courses = new InMemoryCourses();
+        const classes = new InMemoryClasses();
+        const users = new InMemoryUsers();
+        const dependents = new InMemoryDependents();
+        const enrollments = new InMemoryEnrollments();
+        const requests = new InMemoryRequests();
+
+        const { school, course, courseClass } = setupCourseStructure();
+        schools.seed(school);
+        courses.seed(course);
+        classes.seed(courseClass);
+        const user = makeUser('user-approved-reopen');
+        users.seed(user);
+
+        const approved = EnrollmentRequest.create({
+            id: 'req-approved-old',
+            schoolId: school.id,
+            courseClassId: courseClass.id,
+            requestedForUserId: user.id,
+            firstMonthlyPaymentDate: new Date('2024-01-01')
+        });
+        (approved as any)._status = 'APPROVED';
+        (approved as any)._enrollmentId = 'enroll-old';
+        requests.seed(approved);
+
+        const useCase = new CreateEnrollmentRequest(schools, courses, classes, users, dependents, enrollments, requests);
+        const result = await useCase.exec({
+            schoolId: school.id,
+            courseClassId: courseClass.id,
+            requestedForUserId: user.id,
+            firstMonthlyPaymentDate: '2024-05-01'
+        });
+
+        expect(result.id).not.toBe('req-approved-old');
+        expect(result.status).toBe('PENDING');
+        expect(result.enrollmentId).toBeNull();
     });
 
     it('allows new request when previous request was cancelled', async () => {

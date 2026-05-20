@@ -12,7 +12,7 @@ export type EnrollmentRequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CAN
 @Index('idx_enrollment_requests_class', ['courseClassId'])
 @Index('idx_enrollment_requests_user', ['requestedForUserId'])
 @Index('idx_enrollment_requests_status', ['status'])
-@Index('uq_enrollment_requests_course_target', ['courseClassId', 'requestedForUserId', 'requestedForDependentId'], { unique: true })
+@Index('uq_enrollment_requests_active_pending_target', ['activePendingTargetKey'], { unique: true })
 export class EnrollmentRequestOrm {
     @PrimaryColumn('char', { length: 36 }) id!: string;
 
@@ -23,6 +23,10 @@ export class EnrollmentRequestOrm {
     @Column('char', { length: 36, name: 'requested_for_user_id' }) requestedForUserId!: string;
 
     @Column('char', { length: 36, name: 'requested_for_dependent_id', nullable: true }) requestedForDependentId!: string | null;
+
+    /** Chave única parcial: preenchida apenas enquanto status = PENDING. */
+    @Column('varchar', { length: 110, name: 'active_pending_target_key', nullable: true })
+    activePendingTargetKey!: string | null;
 
     @Column('enum', { enum: ['PENDING', 'APPROVED', 'REJECTED', 'CANCELLED'], default: 'PENDING' }) status!: EnrollmentRequestStatus;
 

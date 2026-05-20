@@ -6,6 +6,7 @@ import {
 } from '../../../ports/repositories/enrollment-request.repo';
 import { EnrollmentRequest, EnrollmentRequestStatus } from '../../../domain/entities/enrollment-request';
 import { EnrollmentRequestOrm } from './entities/enrollment-request.orm';
+import { computeEnrollmentRequestActivePendingKey } from './enrollment-request-active-slot-key';
 
 /** Inclui variantes legadas (ex.: CANCELED) quando a lista pede CANCELLED. */
 function expandEnrollmentStatusIn(statuses: EnrollmentRequestStatus[]): string[] {
@@ -28,10 +29,39 @@ export class EnrollmentRequestRepositoryAdapter implements EnrollmentRequestRepo
     }
 
     async findByCourseClassAndTarget(params: { courseClassId: string; userId: string; dependentId: string | null; }): Promise<EnrollmentRequest | null> {
+        return this.findLatestApprovedByCourseClassAndTarget(params);
+    }
+
+    async findPendingByCourseClassAndTarget(params: {
+        courseClassId: string;
+        userId: string;
+        dependentId: string | null;
+    }): Promise<EnrollmentRequest | null> {
         const qb = this.repo.createQueryBuilder('request')
             .where('request.courseClassId = :courseClassId', { courseClassId: params.courseClassId })
             .andWhere('request.requestedForUserId = :userId', { userId: params.userId })
-            .andWhere('request.status IN (:...statuses)', { statuses: ['PENDING', 'APPROVED'] });
+            .andWhere('request.status = :status', { status: 'PENDING' });
+
+        if (params.dependentId) {
+            qb.andWhere('request.requestedForDependentId = :dependentId', { dependentId: params.dependentId });
+        } else {
+            qb.andWhere('request.requestedForDependentId IS NULL');
+        }
+
+        const row = await qb.getOne();
+        return row ? this.toDomain(row) : null;
+    }
+
+    async findLatestApprovedByCourseClassAndTarget(params: {
+        courseClassId: string;
+        userId: string;
+        dependentId: string | null;
+    }): Promise<EnrollmentRequest | null> {
+        const qb = this.repo.createQueryBuilder('request')
+            .where('request.courseClassId = :courseClassId', { courseClassId: params.courseClassId })
+            .andWhere('request.requestedForUserId = :userId', { userId: params.userId })
+            .andWhere('request.status = :status', { status: 'APPROVED' })
+            .orderBy('request.createdAt', 'DESC');
 
         if (params.dependentId) {
             qb.andWhere('request.requestedForDependentId = :dependentId', { dependentId: params.dependentId });
@@ -275,6 +305,12 @@ export class EnrollmentRequestRepositoryAdapter implements EnrollmentRequestRepo
         row.firstMonthlyPaymentDate = request.firstMonthlyPaymentDate.toISOString().slice(0, 10);
         row.enrollmentId = request.enrollmentId;
         row.createdAt = request.createdAt;
+        row.activePendingTargetKey = computeEnrollmentRequestActivePendingKey({
+            courseClassId: request.courseClassId,
+            status: request.status,
+            requestedForUserId: request.requestedForUserId,
+            requestedForDependentId: request.requestedForDependentId
+        });
         return row;
     }
 }

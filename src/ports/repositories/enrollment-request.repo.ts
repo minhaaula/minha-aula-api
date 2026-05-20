@@ -38,7 +38,11 @@ export type AdminEnrollmentRequestItem = EnrollmentRequestWithDetails & { school
 
 export interface EnrollmentRequestRepository {
     findById(id: string): Promise<EnrollmentRequest | null>;
+    /** Última solicitação APPROVED (ex.: desconto em mensalidades). */
     findByCourseClassAndTarget(params: { courseClassId: string; userId: string; dependentId: string | null; }): Promise<EnrollmentRequest | null>;
+    findLatestApprovedByCourseClassAndTarget(params: { courseClassId: string; userId: string; dependentId: string | null; }): Promise<EnrollmentRequest | null>;
+    /** Solicitação PENDING em aberto (bloqueia nova solicitação duplicada). */
+    findPendingByCourseClassAndTarget(params: { courseClassId: string; userId: string; dependentId: string | null; }): Promise<EnrollmentRequest | null>;
     findMany(params: {
         schoolId?: string;
         courseClassId?: string;

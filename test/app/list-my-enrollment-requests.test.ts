@@ -17,6 +17,14 @@ class InMemoryEnrollmentRequestRepository implements EnrollmentRequestRepository
         return null;
     }
 
+    async findPendingByCourseClassAndTarget(): Promise<EnrollmentRequest | null> {
+        return null;
+    }
+
+    async findLatestApprovedByCourseClassAndTarget(): Promise<EnrollmentRequest | null> {
+        return null;
+    }
+
     async findMany(params: {
         schoolId?: string;
         courseClassId?: string;
