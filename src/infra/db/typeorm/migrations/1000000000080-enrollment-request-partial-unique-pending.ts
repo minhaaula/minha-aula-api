@@ -28,14 +28,32 @@ export class EnrollmentRequestPartialUniquePending1000000000080 implements Migra
         return Array.isArray(rows) && rows.length > 0;
     }
 
-    public async up(queryRunner: QueryRunner): Promise<void> {
-        const newUniqueReady =
-            (await queryRunner.hasColumn('enrollment_requests', 'active_pending_target_key')) &&
-            (await this.indexExists(queryRunner, 'enrollment_requests', 'uq_enrollment_requests_active_pending_target'));
-
-        if (newUniqueReady) {
+    private async ensureIndex(
+        queryRunner: QueryRunner,
+        tableName: string,
+        indexName: string,
+        columnsSql: string
+    ): Promise<void> {
+        if (await this.indexExists(queryRunner, tableName, indexName)) {
             return;
         }
+        await queryRunner.query(`CREATE INDEX ${indexName} ON ${tableName} (${columnsSql})`);
+    }
+
+    public async up(queryRunner: QueryRunner): Promise<void> {
+        const fullyMigrated =
+            (await queryRunner.hasColumn('enrollment_requests', 'active_pending_target_key')) &&
+            (await this.indexExists(queryRunner, 'enrollment_requests', 'uq_enrollment_requests_active_pending_target')) &&
+            !(await this.indexExists(queryRunner, 'enrollment_requests', 'uq_enrollment_requests_course_target'));
+
+        if (fullyMigrated) {
+            return;
+        }
+
+        // FKs usam o UNIQUE antigo como índice — criar índices dedicados antes do DROP.
+        await this.ensureIndex(queryRunner, 'enrollment_requests', 'idx_enrollment_requests_class', 'course_class_id');
+        await this.ensureIndex(queryRunner, 'enrollment_requests', 'idx_enrollment_requests_user', 'requested_for_user_id');
+        await this.ensureIndex(queryRunner, 'enrollment_requests', 'idx_enrollment_requests_dependent', 'requested_for_dependent_id');
 
         if (await this.indexExists(queryRunner, 'enrollment_requests', 'uq_enrollment_requests_course_target')) {
             await queryRunner.query(`ALTER TABLE enrollment_requests DROP INDEX uq_enrollment_requests_course_target`);
