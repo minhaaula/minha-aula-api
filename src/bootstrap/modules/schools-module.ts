@@ -70,6 +70,7 @@ import { GetEnrollmentRequest } from '../../app/use-cases/get-enrollment-request
 import { CreateSchoolCharge } from '../../app/use-cases/create-school-charge';
 import { GetSchoolFinancialSummary } from '../../app/use-cases/get-school-financial-summary';
 import { SchoolMarkChargePaid } from '../../app/use-cases/school-mark-charge-paid';
+import { SchoolDeleteCharge } from '../../app/use-cases/school-delete-charge';
 import { GetSchoolDashboard } from '../../app/use-cases/get-school-dashboard';
 import { ListSchoolWithdrawals } from '../../app/use-cases/list-school-withdrawals';
 import { RequestSchoolWithdrawal } from '../../app/use-cases/request-school-withdrawal';
@@ -387,6 +388,11 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         deps.schoolsRepo,
         deps.paymentProvider
     );
+    const schoolDeleteCharge = new SchoolDeleteCharge(
+        deps.financialChargesRepo,
+        deps.schoolsRepo,
+        deps.paymentProvider
+    );
     const getSchoolFinancialSummary = new GetSchoolFinancialSummary(deps.financialChargesRepo);
     const getSchoolBalance = asaasProvider
         ? new GetSchoolBalance(deps.schoolsRepo, asaasProvider)
@@ -523,6 +529,7 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         listSchoolWithdrawals,
         requestSchoolWithdrawal,
         schoolMarkChargePaid,
+        schoolDeleteCharge,
         generateTuitionPix,
         scheduleClassSession,
         listClassSessions,

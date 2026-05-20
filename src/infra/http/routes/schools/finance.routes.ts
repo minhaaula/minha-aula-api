@@ -8,6 +8,7 @@ import type { RequestSchoolWithdrawal } from '../../../../app/use-cases/request-
 import type { GetSchoolBalance } from '../../../../app/use-cases/get-school-balance';
 import type { SchoolRouteGuards } from './guards';
 import type { SchoolMarkChargePaid } from '../../../../app/use-cases/school-mark-charge-paid';
+import type { SchoolDeleteCharge } from '../../../../app/use-cases/school-delete-charge';
 import type { SchoolContextRequest } from '../../middlewares/resolve-school-context';
 import type { SchoolFinancialCharge } from '../../../../domain/entities/school-financial-charge';
 import type { GenerateTuitionPix } from '../../../../app/use-cases/generate-tuition-pix';
@@ -70,6 +71,7 @@ type FinanceRoutesDeps = {
     requestSchoolWithdrawal?: RequestSchoolWithdrawal;
     getSchoolBalance?: GetSchoolBalance;
     schoolMarkChargePaid?: SchoolMarkChargePaid;
+    schoolDeleteCharge?: SchoolDeleteCharge;
     generateTuitionPix?: GenerateTuitionPix;
 };
 
@@ -124,6 +126,20 @@ export function buildFinanceRoutes(deps: FinanceRoutesDeps, guards: SchoolRouteG
                 chargeId: params.chargeId,
                 data: body.data,
                 observacao: body.observacao ?? null
+            });
+
+            res.json(result);
+        }));
+    }
+
+    if (deps.schoolDeleteCharge) {
+        router.delete('/charges/:chargeId', ...protectedMiddleware, asyncHandler(async (req, res) => {
+            const schoolId = (req as SchoolContextRequest).schoolId as string;
+            const params = z.object({ chargeId: z.string().uuid() }).parse(req.params);
+
+            const result = await deps.schoolDeleteCharge!.exec({
+                schoolId,
+                chargeId: params.chargeId
             });
 
             res.json(result);

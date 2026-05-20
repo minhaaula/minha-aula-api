@@ -126,6 +126,7 @@ export type SchoolsRouterDeps = {
     requestSchoolWithdrawal?: import('../../../app/use-cases/request-school-withdrawal').RequestSchoolWithdrawal;
     getSchoolBalance?: import('../../../app/use-cases/get-school-balance').GetSchoolBalance;
     schoolMarkChargePaid?: import('../../../app/use-cases/school-mark-charge-paid').SchoolMarkChargePaid;
+    schoolDeleteCharge?: import('../../../app/use-cases/school-delete-charge').SchoolDeleteCharge;
     generateTuitionPix?: GenerateTuitionPix;
     getSchoolPlanInvoicePix?: GetSchoolPlanInvoicePix;
     listSchoolBankAccounts?: ListSchoolBankAccounts;
@@ -225,7 +226,16 @@ export function schoolsRouter(deps: SchoolsRouterDeps) {
         }, guards));
     }
 
-    if (deps.createSchoolCharge || deps.getSchoolFinancialSummary || deps.listSchoolWithdrawals || deps.requestSchoolWithdrawal || deps.getSchoolBalance || deps.schoolMarkChargePaid || deps.generateTuitionPix) {
+    if (
+        deps.createSchoolCharge ||
+        deps.getSchoolFinancialSummary ||
+        deps.listSchoolWithdrawals ||
+        deps.requestSchoolWithdrawal ||
+        deps.getSchoolBalance ||
+        deps.schoolMarkChargePaid ||
+        deps.schoolDeleteCharge ||
+        deps.generateTuitionPix
+    ) {
         router.use('/finance', buildFinanceRoutes({
             createSchoolCharge: deps.createSchoolCharge,
             getSchoolFinancialSummary: deps.getSchoolFinancialSummary,
@@ -233,6 +243,7 @@ export function schoolsRouter(deps: SchoolsRouterDeps) {
             requestSchoolWithdrawal: deps.requestSchoolWithdrawal,
             getSchoolBalance: deps.getSchoolBalance,
             schoolMarkChargePaid: deps.schoolMarkChargePaid,
+            schoolDeleteCharge: deps.schoolDeleteCharge,
             generateTuitionPix: deps.generateTuitionPix
         }, guards));
     }
