@@ -5,12 +5,12 @@ import { UserRepository } from '../../ports/repositories/user.repo';
 import { DependentRepository } from '../../ports/repositories/dependent.repo';
 import { EnrollmentRepository } from '../../ports/repositories/enrollment.repo';
 import { OutboxRepository } from '../../ports/repositories/outbox.repo';
-import { Enrollment } from '../../domain/entities/enrollment';
 import { Uuid } from '../../shared/uuid';
 import { equalUuid } from '../../shared/normalize-uuid';
 import { AppError, ErrorCode } from '../../shared/errors';
 import type { EnrollStudentInput, EnrollStudentOutput } from '../types/enrollment.types';
 import type { NotifyStudentUser } from './notify-student-user';
+import { Enrollment } from '../../domain/entities/enrollment';
 
 export class EnrollStudent {
     constructor(
@@ -46,7 +46,6 @@ export class EnrollStudent {
         // Verificar se usuário já está matriculado (se não for dependente)
         await this.ensureNoExistingEnrollment(courseClass.id, owner.id, dependentId);
 
-        // Criar matrícula com valor cheio do curso
         const enrollment = this.createEnrollment(courseClass.id, owner.id, dependentId, course.monthlyPriceCents);
 
         await this.enrollments.save(enrollment);
@@ -204,7 +203,6 @@ export class EnrollStudent {
         dependentId: string | null,
         fullAmountCents: number | null
     ): Enrollment {
-        // Valor padrão: dia 10 (pode ser configurável no futuro)
         const paymentDueDay = 10;
 
         if (dependentId) {

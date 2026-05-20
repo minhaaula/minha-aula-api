@@ -152,11 +152,19 @@ class InMemoryEnrollmentRepository implements EnrollmentRepository {
     }
 
     async findByClassAndUser(classId: string, userId: string): Promise<Enrollment | null> {
-        return Array.from(this.items.values()).find((enrollment) => enrollment.courseClassId === classId && enrollment.studentUserId === userId) ?? null;
+        return Array.from(this.items.values()).find((enrollment) =>
+            enrollment.courseClassId === classId &&
+            enrollment.studentUserId === userId &&
+            (enrollment.status === 'ACTIVE' || enrollment.status === 'PENDING')
+        ) ?? null;
     }
 
     async findByClassAndDependent(classId: string, dependentId: string): Promise<Enrollment | null> {
-        return Array.from(this.items.values()).find((enrollment) => enrollment.courseClassId === classId && enrollment.dependentId === dependentId) ?? null;
+        return Array.from(this.items.values()).find((enrollment) =>
+            enrollment.courseClassId === classId &&
+            enrollment.dependentId === dependentId &&
+            (enrollment.status === 'ACTIVE' || enrollment.status === 'PENDING')
+        ) ?? null;
     }
 
     async findActiveByClassIds(classIds: string[]): Promise<Enrollment[]> {

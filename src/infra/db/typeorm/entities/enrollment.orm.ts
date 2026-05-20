@@ -17,8 +17,8 @@ export type EnrollmentStudentType = 'USER' | 'DEPENDENT';
 @Index('idx_enrollments_owner', ['ownerUserId'])
 @Index('idx_enrollments_student_user', ['studentUserId'])
 @Index('idx_enrollments_dependent', ['dependentId'])
-@Index('uq_enrollments_class_student_user', ['courseClassId', 'studentUserId'], { unique: true })
-@Index('uq_enrollments_class_dependent', ['courseClassId', 'dependentId'], { unique: true })
+@Index('uq_enrollments_active_class_student_user', ['activeClassStudentUserKey'], { unique: true })
+@Index('uq_enrollments_active_class_dependent', ['activeClassDependentKey'], { unique: true })
 export class EnrollmentOrm {
     @PrimaryColumn('char', { length: 36 }) id!: string;
 
@@ -31,6 +31,32 @@ export class EnrollmentOrm {
     @Column('char', { length: 36, name: 'student_user_id', nullable: true }) studentUserId!: string | null;
 
     @Column('char', { length: 36, name: 'dependent_id', nullable: true }) dependentId!: string | null;
+
+    /** Chave única gerada só para matrículas ACTIVE/PENDING (titular). */
+    @Column({
+        type: 'varchar',
+        length: 73,
+        name: 'active_class_student_user_key',
+        nullable: true,
+        insert: false,
+        update: false,
+        asExpression: `IF(status IN ('ACTIVE','PENDING') AND student_user_id IS NOT NULL, CONCAT(course_class_id, '|', student_user_id), NULL)`,
+        generatedType: 'STORED'
+    })
+    activeClassStudentUserKey!: string | null;
+
+    /** Chave única gerada só para matrículas ACTIVE/PENDING (dependente). */
+    @Column({
+        type: 'varchar',
+        length: 73,
+        name: 'active_class_dependent_key',
+        nullable: true,
+        insert: false,
+        update: false,
+        asExpression: `IF(status IN ('ACTIVE','PENDING') AND dependent_id IS NOT NULL, CONCAT(course_class_id, '|', dependent_id), NULL)`,
+        generatedType: 'STORED'
+    })
+    activeClassDependentKey!: string | null;
 
     @Column('enum', { enum: ['PENDING', 'ACTIVE', 'COMPLETED', 'CANCELLED'], default: 'ACTIVE' }) status!: EnrollmentStatus;
 

@@ -1,3 +1,4 @@
+import { In } from 'typeorm';
 import { AppDataSource } from './datasource';
 import {
     EnrollmentRepository,
@@ -17,6 +18,8 @@ function formatAdminStudentBirthDate(value: unknown): string | null {
     return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString().slice(0, 10);
 }
 
+const BLOCKING_ENROLLMENT_STATUSES = ['ACTIVE', 'PENDING'] as const;
+
 export class EnrollmentRepositoryAdapter implements EnrollmentRepository {
     private readonly repo = AppDataSource.getRepository(EnrollmentOrm);
 
@@ -26,12 +29,24 @@ export class EnrollmentRepositoryAdapter implements EnrollmentRepository {
     }
 
     async findByClassAndUser(classId: string, userId: string): Promise<Enrollment | null> {
-        const row = await this.repo.findOne({ where: { courseClassId: classId, studentUserId: userId } });
+        const row = await this.repo.findOne({
+            where: {
+                courseClassId: classId,
+                studentUserId: userId,
+                status: In([...BLOCKING_ENROLLMENT_STATUSES])
+            }
+        });
         return row ? this.toDomain(row) : null;
     }
 
     async findByClassAndDependent(classId: string, dependentId: string): Promise<Enrollment | null> {
-        const row = await this.repo.findOne({ where: { courseClassId: classId, dependentId } });
+        const row = await this.repo.findOne({
+            where: {
+                courseClassId: classId,
+                dependentId,
+                status: In([...BLOCKING_ENROLLMENT_STATUSES])
+            }
+        });
         return row ? this.toDomain(row) : null;
     }
 

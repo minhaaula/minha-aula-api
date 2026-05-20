@@ -68,6 +68,7 @@ export type AdminStudentListResult = {
 
 export interface EnrollmentRepository {
     findById(id: string): Promise<Enrollment | null>;
+    /** Matrícula ativa ou pendente na turma (bloqueia nova solicitação/matriculação). */
     findByClassAndUser(classId: string, userId: string): Promise<Enrollment | null>;
     findByClassAndDependent(classId: string, dependentId: string): Promise<Enrollment | null>;
     findActiveByClassIds(classIds: string[]): Promise<Enrollment[]>;

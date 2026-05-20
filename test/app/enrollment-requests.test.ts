@@ -105,14 +105,25 @@ class InMemoryDependents implements DependentRepository {
     seed(dep: Dependent) { this.items.set(dep.id, dep); }
 }
 
+const isBlockingEnrollment = (enrollment: Enrollment) =>
+    enrollment.status === 'ACTIVE' || enrollment.status === 'PENDING';
+
 class InMemoryEnrollments implements EnrollmentRepository {
     private readonly items = new Map<string, Enrollment>();
     async findById(id: string) { return this.items.get(id) ?? null; }
     async findByClassAndUser(classId: string, userId: string) {
-        return Array.from(this.items.values()).find((enrollment) => enrollment.courseClassId === classId && enrollment.studentUserId === userId) ?? null;
+        return Array.from(this.items.values()).find((enrollment) =>
+            enrollment.courseClassId === classId &&
+            enrollment.studentUserId === userId &&
+            isBlockingEnrollment(enrollment)
+        ) ?? null;
     }
     async findByClassAndDependent(classId: string, dependentId: string) {
-        return Array.from(this.items.values()).find((enrollment) => enrollment.courseClassId === classId && enrollment.dependentId === dependentId) ?? null;
+        return Array.from(this.items.values()).find((enrollment) =>
+            enrollment.courseClassId === classId &&
+            enrollment.dependentId === dependentId &&
+            isBlockingEnrollment(enrollment)
+        ) ?? null;
     }
     async findActiveByClassIds(classIds: string[]): Promise<Enrollment[]> {
         const lookup = new Set(classIds);
@@ -524,6 +535,42 @@ describe('CreateEnrollmentRequest', () => {
         })).rejects.toThrow('Já matriculado nesta turma');
     });
 
+    it('allows new request when previous enrollment was cancelled', async () => {
+        const schools = new InMemorySchools();
+        const courses = new InMemoryCourses();
+        const classes = new InMemoryClasses();
+        const users = new InMemoryUsers();
+        const dependents = new InMemoryDependents();
+        const enrollments = new InMemoryEnrollments();
+        const requests = new InMemoryRequests();
+
+        const { school, course, courseClass } = setupCourseStructure();
+        schools.seed(school);
+        courses.seed(course);
+        classes.seed(courseClass);
+        const user = makeUser('user-cancelled-enroll');
+        users.seed(user);
+
+        const cancelledEnrollment = Enrollment.createForUser({
+            id: 'enroll-cancelled',
+            courseClassId: courseClass.id,
+            ownerUserId: user.id,
+            studentUserId: user.id,
+            status: 'CANCELLED'
+        });
+        enrollments.seed(cancelledEnrollment);
+
+        const useCase = new CreateEnrollmentRequest(schools, courses, classes, users, dependents, enrollments, requests);
+        const result = await useCase.exec({
+            schoolId: school.id,
+            courseClassId: courseClass.id,
+            requestedForUserId: user.id,
+            firstMonthlyPaymentDate: '2024-04-01'
+        });
+
+        expect(result.status).toBe('PENDING');
+    });
+
     it('allows new request when previous request was cancelled', async () => {
         const schools = new InMemorySchools();
         const courses = new InMemoryCourses();
@@ -590,6 +637,41 @@ describe('ApproveEnrollmentRequest', () => {
         expect(enrollments.all()).toHaveLength(1);
         expect(enrollments.all()[0].studentUserId).toBe('user-1');
         expect(charges.all()).toHaveLength(0);
+    });
+
+    it('creates new enrollment row on approve when previous was cancelled', async () => {
+        const enrollments = new InMemoryEnrollments();
+        const requests = new InMemoryRequests();
+        const classes = new InMemoryClasses();
+        const courses = new InMemoryCourses();
+        const charges = new InMemoryCharges();
+        const { course, courseClass } = setupCourseStructure();
+        classes.seed(courseClass);
+        courses.seed(course);
+        const request = EnrollmentRequest.create({
+            id: 'req-reactivate',
+            schoolId: 'school-1',
+            courseClassId: 'class-1',
+            requestedForUserId: 'user-reactivate',
+            firstMonthlyPaymentDate: new Date('2024-02-01')
+        });
+        requests.seed(request);
+        enrollments.seed(Enrollment.createForUser({
+            id: 'enroll-old',
+            courseClassId: 'class-1',
+            ownerUserId: 'user-reactivate',
+            studentUserId: 'user-reactivate',
+            status: 'CANCELLED'
+        }));
+
+        const useCase = new ApproveEnrollmentRequest(requests, enrollments, classes, courses, charges);
+        const result = await useCase.exec({ requestId: request.id, approverUserId: 'user-reactivate' });
+
+        expect(result.status).toBe('APPROVED');
+        expect(result.enrollmentId).not.toBe('enroll-old');
+        const active = enrollments.all().filter((e) => e.status === 'ACTIVE');
+        expect(active).toHaveLength(1);
+        expect(enrollments.all()).toHaveLength(2);
     });
 
     it('validates ownership and existing enrollments', async () => {

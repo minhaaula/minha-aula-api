@@ -109,16 +109,27 @@ class InMemoryDependentRepository implements DependentRepository {
     }
 }
 
+const isBlockingEnrollment = (enrollment: Enrollment) =>
+    enrollment.status === 'ACTIVE' || enrollment.status === 'PENDING';
+
 class InMemoryEnrollmentRepository implements EnrollmentRepository {
     private readonly items = new Map<string, Enrollment>();
     async findById(id: string): Promise<Enrollment | null> {
         return this.items.get(id) ?? null;
     }
     async findByClassAndUser(classId: string, userId: string): Promise<Enrollment | null> {
-        return Array.from(this.items.values()).find((enrollment) => enrollment.courseClassId === classId && enrollment.studentUserId === userId) ?? null;
+        return Array.from(this.items.values()).find((enrollment) =>
+            enrollment.courseClassId === classId &&
+            enrollment.studentUserId === userId &&
+            isBlockingEnrollment(enrollment)
+        ) ?? null;
     }
     async findByClassAndDependent(classId: string, dependentId: string): Promise<Enrollment | null> {
-        return Array.from(this.items.values()).find((enrollment) => enrollment.courseClassId === classId && enrollment.dependentId === dependentId) ?? null;
+        return Array.from(this.items.values()).find((enrollment) =>
+            enrollment.courseClassId === classId &&
+            enrollment.dependentId === dependentId &&
+            isBlockingEnrollment(enrollment)
+        ) ?? null;
     }
     async findActiveByClassIds(classIds: string[]): Promise<Enrollment[]> {
         const lookup = new Set(classIds);
@@ -219,6 +230,39 @@ describe('EnrollStudent use case', () => {
         expect(result.studentType).toBe('DEPENDENT');
         expect(result.dependentId).toBe(dependent.id);
         expect(enrollments.all()).toHaveLength(1);
+    });
+
+    it('creates new enrollment row when previous was cancelled', async () => {
+        const courses = new InMemoryCourseRepository();
+        const classes = new InMemoryCourseClassRepository();
+        const users = new InMemoryUserRepository();
+        const dependents = new InMemoryDependentRepository();
+        const enrollments = new InMemoryEnrollmentRepository();
+        courses.seed(makeCourse());
+        classes.seed(makeClass());
+        const student = makeStudent('student-reactivate', 'Aluno');
+        users.seed(student);
+        const cancelled = Enrollment.createForUser({
+            id: 'enroll-cancelled',
+            courseClassId: 'class-1',
+            ownerUserId: student.id,
+            studentUserId: student.id,
+            status: 'CANCELLED'
+        });
+        enrollments.seed(cancelled);
+
+        const useCase = new EnrollStudent(courses, classes, users, dependents, enrollments);
+        const result = await useCase.exec({
+            schoolId: 'school-1',
+            courseId: 'course-1',
+            classId: 'class-1',
+            studentUserId: student.id
+        });
+
+        expect(result.id).not.toBe('enroll-cancelled');
+        expect(result.status).toBe('ACTIVE');
+        expect(enrollments.all()).toHaveLength(2);
+        expect(enrollments.all().filter((e) => e.status === 'CANCELLED')).toHaveLength(1);
     });
 
     it('prevents duplicate enrollments for the same user', async () => {

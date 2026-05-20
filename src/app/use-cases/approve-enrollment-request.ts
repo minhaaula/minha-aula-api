@@ -71,7 +71,6 @@ export class ApproveEnrollmentRequest {
         // Preço da mensalidade pode estar no curso ou na turma
         const effectiveMonthlyPriceCents = course.monthlyPriceCents ?? courseClass.monthlyPriceCents;
 
-        // Criar matrícula com valor cheio (curso ou turma)
         const enrollment = this.createEnrollmentFromRequest(request, effectiveMonthlyPriceCents);
 
         // Criar cobrança de taxa de matrícula se aplicável
@@ -267,8 +266,6 @@ export class ApproveEnrollmentRequest {
 
     private createEnrollmentFromRequest(request: EnrollmentRequest, fullAmountCents: number | null): Enrollment {
         const enrollmentId = Uuid();
-        
-        // Extrair o dia de vencimento do firstMonthlyPaymentDate
         const paymentDueDay = getUtcDay(new Date(request.firstMonthlyPaymentDate));
 
         if (request.requestedForDependentId) {
