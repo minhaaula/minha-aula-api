@@ -38,6 +38,7 @@ import type { ScheduleChargeDueReminders } from '../../../app/use-cases/schedule
 import type { AdminMarkInvoicePaid } from '../../../app/use-cases/admin-mark-invoice-paid';
 import type { AdminMarkChargePaid } from '../../../app/use-cases/admin-mark-charge-paid';
 import type { AdminDeleteCharge } from '../../../app/use-cases/admin-delete-charge';
+import type { UnenrollStudentFromClass } from '../../../app/use-cases/unenroll-student-from-class';
 import type { SyncSchoolOnboardingDocuments } from '../../../app/use-cases/sync-school-onboarding-documents';
 import type { AdminUploadSchoolOnboardingDocument } from '../../../app/use-cases/admin-upload-school-onboarding-document';
 import type { GetSchoolPendingDocuments } from '../../../app/use-cases/get-school-pending-documents';
@@ -98,6 +99,7 @@ type AdminRouterDeps = {
     adminMarkInvoicePaid?: AdminMarkInvoicePaid;
     adminMarkChargePaid?: AdminMarkChargePaid;
     adminDeleteCharge?: AdminDeleteCharge;
+    unenrollStudentFromClass?: UnenrollStudentFromClass;
     syncSchoolOnboardingDocuments?: SyncSchoolOnboardingDocuments;
     adminUploadSchoolOnboardingDocument?: AdminUploadSchoolOnboardingDocument;
     getSchoolPendingDocuments?: GetSchoolPendingDocuments;
@@ -155,6 +157,7 @@ export function adminRouter({
     adminMarkInvoicePaid,
     adminMarkChargePaid,
     adminDeleteCharge,
+    unenrollStudentFromClass,
     syncSchoolOnboardingDocuments,
     adminUploadSchoolOnboardingDocument,
     getSchoolPendingDocuments,
@@ -449,6 +452,33 @@ export function adminRouter({
                 }
             });
         }));
+    }
+
+    if (unenrollStudentFromClass) {
+        const adminUnenrollParamsSchema = z.object({
+            schoolId: z.string().uuid(),
+            courseId: z.string().uuid(),
+            classId: z.string().uuid(),
+            enrollmentId: z.string().uuid()
+        });
+
+        router.delete(
+            '/schools/:schoolId/courses/:courseId/classes/:classId/enrollments/:enrollmentId',
+            requireAuth,
+            requireAdminPersona,
+            asyncHandler(async (req, res) => {
+                const { schoolId, courseId, classId, enrollmentId } = adminUnenrollParamsSchema.parse(req.params);
+
+                const result = await unenrollStudentFromClass.exec({
+                    schoolId,
+                    courseId,
+                    classId,
+                    enrollmentId
+                });
+
+                res.json(result);
+            })
+        );
     }
 
     // Cursos do aluno e dos dependentes (todas as escolas) – apenas studentId
