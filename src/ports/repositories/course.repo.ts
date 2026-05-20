@@ -25,7 +25,10 @@ export interface CourseRepository {
     save(course: Course): Promise<void>;
     findCategoriesByCourseIds?(courseIds: string[]): Promise<CourseCategoryInfo[]>;
     findAllWithFilters?(filters: {
+        /** Filtra por nome do curso (contém, case insensitive). */
         name?: string;
+        /** Busca textual: nome do curso ou da escola (contém, case insensitive). */
+        search?: string;
         categoryId?: string;
         subcategoryId?: string;
         city?: string;

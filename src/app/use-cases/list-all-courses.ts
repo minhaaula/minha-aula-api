@@ -7,7 +7,10 @@ import type { StorageProviderPort } from '../../ports/providers/storage-provider
 import { resolveSchoolCoverImage } from '../utils/resolve-school-cover-image';
 
 export interface ListAllCoursesInput {
+    /** Filtra por nome do curso (contém). */
     name?: string;
+    /** Busca por nome do curso ou da escola (contém). */
+    search?: string;
     categoryId?: string;
     subcategoryId?: string;
     city?: string;
@@ -50,6 +53,7 @@ export class ListAllCourses {
         // Buscar cursos com filtros
         const coursesData = await this.courses.findAllWithFilters({
             name: input.name?.trim(),
+            search: input.search?.trim(),
             categoryId: input.categoryId?.trim(),
             subcategoryId: input.subcategoryId?.trim(),
             city: input.city?.trim()

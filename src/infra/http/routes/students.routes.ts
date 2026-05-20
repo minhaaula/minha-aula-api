@@ -254,6 +254,7 @@ export function studentsRouter(deps: {
     if (deps.listAllCourses) {
         const allCoursesQuerySchema = z.object({
             name: z.string().trim().min(1).optional(),
+            search: z.string().trim().min(1).optional(),
             categoryId: z.string().trim().min(1).optional(),
             subcategoryId: z.string().trim().min(1).optional(),
             city: z.string().trim().min(1).optional()
@@ -262,6 +263,7 @@ export function studentsRouter(deps: {
         r.get('/courses/all', asyncHandler(async (req, res) => {
             const query = allCoursesQuerySchema.parse({
                 name: typeof req.query.name === 'string' ? req.query.name : undefined,
+                search: typeof req.query.search === 'string' ? req.query.search : undefined,
                 categoryId: typeof req.query.categoryId === 'string' ? req.query.categoryId : undefined,
                 subcategoryId: typeof req.query.subcategoryId === 'string' ? req.query.subcategoryId : undefined,
                 city: typeof req.query.city === 'string' ? req.query.city : undefined

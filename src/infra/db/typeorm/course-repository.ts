@@ -248,6 +248,7 @@ export class CourseRepositoryAdapter implements CourseRepository {
 
     async findAllWithFilters(filters: {
         name?: string;
+        search?: string;
         categoryId?: string;
         subcategoryId?: string;
         city?: string;
@@ -276,6 +277,13 @@ export class CourseRepositoryAdapter implements CourseRepository {
         // Filtro por nome do curso
         if (filters.name) {
             queryBuilder.andWhere('course.name LIKE :name', { name: `%${filters.name}%` });
+        }
+
+        // Busca por texto: nome do curso ou da escola
+        if (filters.search) {
+            queryBuilder.andWhere('(course.name LIKE :search OR school.name LIKE :search)', {
+                search: `%${filters.search}%`
+            });
         }
 
         // Filtro por cidade

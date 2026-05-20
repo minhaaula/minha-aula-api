@@ -30,6 +30,7 @@ class InMemoryCourseRepository implements CourseRepository {
 
     async findAllWithFilters(filters?: {
         name?: string;
+        search?: string;
         categoryId?: string;
         subcategoryId?: string;
         city?: string;
@@ -41,6 +42,15 @@ class InMemoryCourseRepository implements CourseRepository {
 
             if (filters?.name && !data.courseName.toLowerCase().includes(filters.name.toLowerCase())) {
                 matches = false;
+            }
+
+            if (filters?.search) {
+                const term = filters.search.toLowerCase();
+                const inCourse = data.courseName.toLowerCase().includes(term);
+                const inSchool = data.schoolName.toLowerCase().includes(term);
+                if (!inCourse && !inSchool) {
+                    matches = false;
+                }
             }
 
             if (filters?.categoryId && data.categoryId !== filters.categoryId) {
@@ -193,6 +203,39 @@ describe('ListAllCourses use case', () => {
 
         expect(result.courses).toHaveLength(1);
         expect(result.courses[0].courseName).toBe('Inglês Básico');
+    });
+
+    it('filters courses by search (course or school name)', async () => {
+        const coursesRepo = new InMemoryCourseRepository();
+        const categoriesRepo = new InMemoryCategoryRepository();
+
+        coursesRepo.seedCourse({
+            courseId: 'course-1',
+            courseName: 'Violão',
+            courseDescription: null,
+            schoolId: 'school-1',
+            schoolName: 'Academia Iguape',
+            schoolCity: 'Iguape'
+        });
+
+        coursesRepo.seedCourse({
+            courseId: 'course-2',
+            courseName: 'Piano',
+            courseDescription: null,
+            schoolId: 'school-2',
+            schoolName: 'Escola Central',
+            schoolCity: 'Iguape'
+        });
+
+        const useCase = new ListAllCourses(coursesRepo, categoriesRepo);
+
+        const bySchool = await useCase.exec({ search: 'iguape' });
+        expect(bySchool.courses).toHaveLength(1);
+        expect(bySchool.courses[0].schoolName).toBe('Academia Iguape');
+
+        const byCourse = await useCase.exec({ search: 'piano' });
+        expect(byCourse.courses).toHaveLength(1);
+        expect(byCourse.courses[0].courseName).toBe('Piano');
     });
 
     it('filters courses by category', async () => {
