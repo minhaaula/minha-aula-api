@@ -4,6 +4,7 @@ import { SchoolRepository } from '../../ports/repositories/school.repo';
 import { SchoolImageRepository } from '../../ports/repositories/school-image.repo';
 import { SchoolImageCategory } from '../../domain/value-objects/school-image-category';
 import type { StorageProviderPort } from '../../ports/providers/storage-provider.port';
+import type { MyCourseEnrollmentStatus } from '../../ports/repositories/enrollment.repo';
 
 export interface MyCourseRecord {
     courseName: string;
@@ -17,6 +18,8 @@ export interface MyCourseRecord {
     schedule: Array<{ day: string; start: string; end: string }>;
     /** Curso ativo na escola (`courses.is_active`). */
     active: boolean;
+    /** Status da matrícula (ex.: CANCELLED após desmatrícula). */
+    enrollmentStatus: MyCourseEnrollmentStatus;
 }
 
 export class ListMyCourses {
@@ -38,7 +41,7 @@ export class ListMyCourses {
             return { courses: [] };
         }
 
-        // Buscar todas as matrículas ativas do usuário e seus dependentes
+        // Matrículas do usuário e dependentes (ativas, canceladas e concluídas)
         const myCoursesData = await this.enrollments.findMyCourses(userId);
 
         if (myCoursesData.length === 0) {
@@ -95,7 +98,8 @@ export class ListMyCourses {
                 subcategory: catInfo.subcategory,
                 city: city,
                 schedule: data.schedule,
-                active: data.active
+                active: data.active,
+                enrollmentStatus: data.enrollmentStatus
             };
         });
 

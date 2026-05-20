@@ -513,10 +513,11 @@ paths:
         - Students
       summary: Listar meus cursos
       description: |
-        Retorna os cursos das matrículas ativas do usuário logado e dos seus dependentes
-        (inclui cursos **ativos e inativos** na escola), com informações do curso, escola,
-        aluno, categoria, subcategoria, cidade e horários da turma.
-        O campo `active` indica se o curso está ativo na escola (`courses.is_active`).
+        Retorna os cursos das matrículas do usuário logado e dos seus dependentes
+        (status `ACTIVE`, `CANCELLED` e `COMPLETED`), incluindo turmas após desmatrícula.
+        Inclui cursos **ativos e inativos** na escola (`courses.is_active`).
+        O campo `active` indica se o curso está ativo na escola; `enrollmentStatus` indica a matrícula
+        (`CANCELLED` = desmatriculado/inativo para o aluno).
         Requer persona STUDENT.
       security:
         - bearerAuth: []
@@ -565,6 +566,10 @@ paths:
                         active:
                           type: boolean
                           description: Indica se o curso está ativo na escola (`true`) ou foi desativado (`false`)
+                        enrollmentStatus:
+                          type: string
+                          enum: [PENDING, ACTIVE, COMPLETED, CANCELLED]
+                          description: Status da matrícula na turma (`CANCELLED` após desmatrícula)
                         schedule:
                           type: array
                           description: Horários da turma (dia da semana e horários)
@@ -599,6 +604,7 @@ paths:
                         - subcategory
                         - city
                         - active
+                        - enrollmentStatus
                         - schedule
                 required:
                   - courses

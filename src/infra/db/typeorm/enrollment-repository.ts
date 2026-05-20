@@ -201,7 +201,9 @@ export class EnrollmentRepositoryAdapter implements EnrollmentRepository {
             .leftJoin('courseClass.course', 'course')
             .leftJoin('course.school', 'school')
             .where('enrollment.ownerUserId = :userId', { userId })
-            .andWhere('enrollment.status = :status', { status: 'ACTIVE' })
+            .andWhere('enrollment.status IN (:...statuses)', {
+                statuses: ['ACTIVE', 'CANCELLED', 'COMPLETED']
+            })
             .select([
                 'course.id AS courseId',
                 'course.name AS courseName',
@@ -209,7 +211,8 @@ export class EnrollmentRepositoryAdapter implements EnrollmentRepository {
                 'school.id AS schoolId',
                 'school.name AS schoolName',
                 'COALESCE(studentUser.fullName, dependent.fullName) AS studentName',
-                'courseClass.schedule AS schedule'
+                'courseClass.schedule AS schedule',
+                'enrollment.status AS enrollmentStatus'
             ])
             .orderBy('enrollment.enrolledAt', 'DESC')
             .getRawMany();
@@ -233,7 +236,8 @@ export class EnrollmentRepositoryAdapter implements EnrollmentRepository {
                 schoolName: row.schoolName,
                 studentName: row.studentName,
                 schedule,
-                active: Boolean(row.courseIsActive)
+                active: Boolean(row.courseIsActive),
+                enrollmentStatus: row.enrollmentStatus as import('../../../ports/repositories/enrollment.repo').MyCourseEnrollmentStatus
             };
         });
     }

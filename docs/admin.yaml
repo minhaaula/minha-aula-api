@@ -672,7 +672,7 @@ paths:
       summary: Excluir cobrança em aberto (aluno)
       description: |
         Cancela uma cobrança de aluno (`school_financial_charges`) em qualquer escola.
-        Status permitidos: PENDING_SYNC, OPEN, OVERDUE, FAILED. Não permite cobrança já paga (PAID).
+        Status permitidos: PENDING_SYNC, OPEN, OVERDUE, FAILED. Não permite cobrança já paga (`PAID` ou com `paidAt`) — `400` / `CHARGE_ALREADY_PAID`.
         Se existir `asaasPaymentId`, tenta remover a cobrança no Asaas antes do cancelamento local.
         Requer persona ADMIN.
       security:

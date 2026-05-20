@@ -1539,7 +1539,7 @@ paths:
       summary: Excluir cobrança em aberto
       description: |
         Cancela uma cobrança da escola autenticada.
-        Status permitidos: PENDING_SYNC, OPEN, OVERDUE, FAILED. Não permite cobrança já paga (PAID).
+        Status permitidos: PENDING_SYNC, OPEN, OVERDUE, FAILED. Não permite cobrança já paga (`PAID` ou com `paidAt` preenchido) — retorna `400` com código `CHARGE_ALREADY_PAID`.
         Se existir `asaasPaymentId`, tenta remover a cobrança no Asaas antes do cancelamento local.
       security:
         - bearerAuth: []

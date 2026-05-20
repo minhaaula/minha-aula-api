@@ -55,12 +55,54 @@ describe('SchoolDeleteCharge', () => {
         await expect(useCase.exec({ schoolId: 'school-1', chargeId: 'charge-1' })).rejects.toBeInstanceOf(AppError);
     });
 
-    it('rejeita exclusão de cobrança paga', async () => {
+    it('rejeita exclusão de cobrança paga (status PAID)', async () => {
         const useCase = new SchoolDeleteCharge(
             { findById: vi.fn(async () => makeCharge('school-1', 'PAID')), save: vi.fn() } as never,
             { findById: vi.fn() } as never
         );
 
-        await expect(useCase.exec({ schoolId: 'school-1', chargeId: 'charge-1' })).rejects.toBeInstanceOf(AppError);
+        await expect(useCase.exec({ schoolId: 'school-1', chargeId: 'charge-1' })).rejects.toMatchObject({
+            code: 'CHARGE_ALREADY_PAID'
+        });
+    });
+
+    it('rejeita exclusão quando paidAt está preenchido mesmo com status OPEN', async () => {
+        const paidButOpen = makeCharge('school-1', 'OPEN');
+        const withPaidAt = SchoolFinancialCharge.restore({
+            id: paidButOpen.id,
+            schoolId: paidButOpen.schoolId,
+            ownerUserId: paidButOpen.ownerUserId,
+            studentUserId: paidButOpen.studentUserId,
+            dependentId: paidButOpen.dependentId,
+            courseId: paidButOpen.courseId,
+            courseClassId: paidButOpen.courseClassId,
+            chargeType: paidButOpen.chargeType,
+            description: paidButOpen.description,
+            amountCents: paidButOpen.amountCents,
+            discountCents: paidButOpen.discountCents,
+            discountReason: paidButOpen.discountReason,
+            netAmountCents: paidButOpen.netAmountCents,
+            providerNetAmountCents: paidButOpen.providerNetAmountCents,
+            dueDate: paidButOpen.dueDate,
+            status: 'OPEN',
+            asaasPaymentId: paidButOpen.asaasPaymentId,
+            asaasInvoiceUrl: paidButOpen.asaasInvoiceUrl,
+            asaasPayload: paidButOpen.asaasPayload,
+            paidAt: new Date('2026-03-01'),
+            paymentMethod: 'PIX',
+            paidObservation: null,
+            cancelledAt: null,
+            createdAt: paidButOpen.createdAt,
+            updatedAt: paidButOpen.updatedAt
+        });
+
+        const useCase = new SchoolDeleteCharge(
+            { findById: vi.fn(async () => withPaidAt), save: vi.fn() } as never,
+            { findById: vi.fn() } as never
+        );
+
+        await expect(useCase.exec({ schoolId: 'school-1', chargeId: 'charge-1' })).rejects.toMatchObject({
+            code: 'CHARGE_ALREADY_PAID'
+        });
     });
 });

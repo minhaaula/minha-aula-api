@@ -4,6 +4,7 @@ import type { AsaasProviderPort } from '../../ports/providers/asaas-port';
 import { SchoolFinancialCharge } from '../../domain/entities/school-financial-charge';
 import { AppError, ErrorCode } from '../../shared/errors';
 import { log } from '../../shared/logger';
+import { assertChargeDeletable } from '../utils/assert-charge-deletable';
 
 export interface AdminDeleteChargeInput {
     chargeId: string;
@@ -15,8 +16,6 @@ export interface AdminDeleteChargeOutput {
     cancelledAt: Date;
     alreadyCancelled: boolean;
 }
-
-const DELETABLE_STATUSES = new Set(['PENDING_SYNC', 'OPEN', 'OVERDUE', 'FAILED']);
 
 export class AdminDeleteCharge {
     constructor(
@@ -45,17 +44,7 @@ export class AdminDeleteCharge {
             };
         }
 
-        if (charge.status === 'PAID') {
-            throw AppError.fromCode(ErrorCode.BUSINESS_RULE_VIOLATION, {
-                reason: 'Não é possível excluir cobrança já paga'
-            });
-        }
-
-        if (!DELETABLE_STATUSES.has(charge.status)) {
-            throw AppError.fromCode(ErrorCode.BUSINESS_RULE_VIOLATION, {
-                reason: `Status atual (${charge.status}) não permite exclusão`
-            });
-        }
+        assertChargeDeletable(charge);
 
         if (charge.asaasPaymentId?.trim() && this.asaasProvider?.deletePayment) {
             await this.tryDeleteAsaasPayment(charge);

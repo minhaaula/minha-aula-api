@@ -10,6 +10,8 @@ export type EnrollmentWithDetails = {
     schoolName: string | null;
 };
 
+export type MyCourseEnrollmentStatus = 'PENDING' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
+
 export type MyCourseData = {
     courseId: string;
     courseName: string;
@@ -19,6 +21,8 @@ export type MyCourseData = {
     schedule: Array<{ day: string; start: string; end: string }>;
     /** Indica se o curso está ativo na escola (`courses.is_active`). */
     active: boolean;
+    /** Status da matrícula do aluno/dependente na turma. */
+    enrollmentStatus: MyCourseEnrollmentStatus;
 };
 
 export type AdminStudentListFilters = {

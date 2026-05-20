@@ -61,7 +61,9 @@ describe('AdminDeleteCharge', () => {
             { findById: vi.fn() } as never
         );
 
-        await expect(useCase.exec({ chargeId: 'charge-1' })).rejects.toBeInstanceOf(AppError);
+        await expect(useCase.exec({ chargeId: 'charge-1' })).rejects.toMatchObject({
+            code: 'CHARGE_ALREADY_PAID'
+        });
     });
 
     it('é idempotente quando já cancelada', async () => {

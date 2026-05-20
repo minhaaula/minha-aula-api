@@ -14,7 +14,7 @@ info:
 
     **Escola — cobranças do aluno (paginação):** `GET /schools/students/{studentId}/paid-charges` (query `limit`, `offset`, opcional `dependentId`; ordenação Atrasado → Pendente → demais, depois vencimento).
 
-    **Aluno — meus cursos:** `GET /students/courses` inclui matrículas ativas com cursos ativos e inativos na escola; cada item traz `active` (boolean).
+    **Aluno — meus cursos:** `GET /students/courses` inclui matrículas ACTIVE, CANCELLED e COMPLETED; `active` = curso na escola; `enrollmentStatus` = status da matrícula.
 
     **Escola — progresso da matrícula (níveis, promoções, certificados, timeline):** catálogo em `/schools/student-levels` e `/schools/certificate-templates`;
     timeline paginada em `GET /schools/enrollments/{enrollmentId}/timeline` (visão restrita ao período ativo da matrícula);

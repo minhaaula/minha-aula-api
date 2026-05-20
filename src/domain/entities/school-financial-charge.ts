@@ -208,6 +208,11 @@ export class SchoolFinancialCharge {
         return this._status;
     }
 
+    /** Cobrança quitada (status PAID ou data de pagamento registrada). */
+    isPaidSettled(): boolean {
+        return this._status === 'PAID' || this._paidAt != null;
+    }
+
     get asaasPaymentId() {
         return this._asaasPaymentId;
     }
