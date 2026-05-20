@@ -32,30 +32,12 @@ export class EnrollmentOrm {
 
     @Column('char', { length: 36, name: 'dependent_id', nullable: true }) dependentId!: string | null;
 
-    /** Chave única gerada só para matrículas ACTIVE/PENDING (titular). */
-    @Column({
-        type: 'varchar',
-        length: 73,
-        name: 'active_class_student_user_key',
-        nullable: true,
-        insert: false,
-        update: false,
-        asExpression: `IF(status IN ('ACTIVE','PENDING') AND student_user_id IS NOT NULL, CONCAT(course_class_id, '|', student_user_id), NULL)`,
-        generatedType: 'STORED'
-    })
+    /** Chave de unicidade parcial (ACTIVE/PENDING + titular); NULL quando cancelada/concluída. */
+    @Column('varchar', { length: 73, name: 'active_class_student_user_key', nullable: true })
     activeClassStudentUserKey!: string | null;
 
-    /** Chave única gerada só para matrículas ACTIVE/PENDING (dependente). */
-    @Column({
-        type: 'varchar',
-        length: 73,
-        name: 'active_class_dependent_key',
-        nullable: true,
-        insert: false,
-        update: false,
-        asExpression: `IF(status IN ('ACTIVE','PENDING') AND dependent_id IS NOT NULL, CONCAT(course_class_id, '|', dependent_id), NULL)`,
-        generatedType: 'STORED'
-    })
+    /** Chave de unicidade parcial (ACTIVE/PENDING + dependente); NULL quando cancelada/concluída. */
+    @Column('varchar', { length: 73, name: 'active_class_dependent_key', nullable: true })
     activeClassDependentKey!: string | null;
 
     @Column('enum', { enum: ['PENDING', 'ACTIVE', 'COMPLETED', 'CANCELLED'], default: 'ACTIVE' }) status!: EnrollmentStatus;

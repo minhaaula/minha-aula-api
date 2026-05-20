@@ -1,5 +1,6 @@
 import { In } from 'typeorm';
 import { AppDataSource } from './datasource';
+import { computeEnrollmentActiveSlotKeys } from './enrollment-active-slot-keys';
 import {
     EnrollmentRepository,
     EnrollmentWithDetails,
@@ -448,6 +449,14 @@ export class EnrollmentRepositoryAdapter implements EnrollmentRepository {
         row.currentSchoolStudentLevelId = enrollment.currentSchoolStudentLevelId;
         row.enrolledAt = enrollment.enrolledAt;
         row.updatedAt = new Date();
+        const slots = computeEnrollmentActiveSlotKeys({
+            courseClassId: enrollment.courseClassId,
+            status: enrollment.status,
+            studentUserId: enrollment.studentUserId,
+            dependentId: enrollment.dependentId
+        });
+        row.activeClassStudentUserKey = slots.activeClassStudentUserKey;
+        row.activeClassDependentKey = slots.activeClassDependentKey;
         return row;
     }
 }
