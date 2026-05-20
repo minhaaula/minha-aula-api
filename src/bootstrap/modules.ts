@@ -367,7 +367,8 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
                     tokenProvider,
                     tokenTtl: adminTokenTtl,
                     asaasProvider: asaasProviderForAdmin,
-                    notificationsRepo
+                    notificationsRepo,
+                    storageProvider
                 }, ctx);
                 mergeModuleResult(serverDeps, docFiles, result);
                 break;

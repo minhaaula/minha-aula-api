@@ -831,7 +831,7 @@ paths:
       summary: Obter detalhes completos de uma escola
       description: |
         Retorna os detalhes completos de uma escola para uso administrativo, incluindo:
-        - Dados cadastrais completos
+        - Dados cadastrais completos (inclui `schoolLogo` — URL do logo)
         - Informações do responsável
         - Receita estimada (`incomeValue`)
         - Informações do plano de assinatura atual (se houver)
@@ -3463,9 +3463,15 @@ components:
             hasCompletedFirstPayment:
               type: boolean
               description: True se a escola já tiver ao menos um pagamento concluído (invoice PAID). False indica que ainda é o primeiro pagamento ou que nunca pagou.
+            schoolLogo:
+              type: string
+              format: uri
+              nullable: true
+              description: URL do logo da escola (imagem categoria LOGO no storage)
           required:
             - incomeValue
             - hasCompletedFirstPayment
+            - schoolLogo
     AdminSchoolPlansResponse:
       type: object
       properties:

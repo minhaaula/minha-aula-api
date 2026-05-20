@@ -66,6 +66,9 @@ import { scheduleAllJobs } from '../../infra/messaging/bullmq/job-scheduler';
 import { startWorker } from '../../infra/messaging/bullmq/worker-manager';
 import { log } from '../../shared/logger';
 import { JobExecutionLogRepositoryAdapter } from '../../infra/db/typeorm/job-execution-log-repository.adapter';
+import { SchoolImageRepositoryAdapter } from '../../infra/db/typeorm/school-image-repository.adapter';
+import type { SchoolImageRepository } from '../../ports/repositories/school-image.repo';
+import type { StorageProviderPort } from '../../ports/providers/storage-provider.port';
 import { ListAdminJobLogs } from '../../app/use-cases/list-admin-job-logs';
 import { GetAdminJobLog } from '../../app/use-cases/get-admin-job-log';
 
@@ -95,6 +98,7 @@ type AdminModuleDeps = {
     tokenTtl: number;
     asaasProvider?: AsaasProviderPort;
     notificationsRepo?: NotificationRepository;
+    storageProvider?: StorageProviderPort;
 };
 
 export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext): ModuleBuildResult {
@@ -110,11 +114,14 @@ export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext)
         deps.planInvoicesRepo
     );
 
+    const schoolImagesRepo: SchoolImageRepository = new SchoolImageRepositoryAdapter();
     const getAdminSchoolDetails = new GetAdminSchoolDetails(
         deps.schoolsRepo,
         deps.planFinancesRepo,
         deps.planInvoicesRepo,
-        deps.asaasProvider
+        deps.asaasProvider,
+        schoolImagesRepo,
+        deps.storageProvider
     );
 
     const getAdminSchoolPlans = new GetAdminSchoolPlans(

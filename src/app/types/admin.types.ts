@@ -49,6 +49,8 @@ export interface SchoolWithPlanItem {
  * com campos adicionais relevantes para suporte e operação.
  */
 export interface AdminSchoolDetails extends SchoolWithPlanItem {
+    /** URL assinada do logo da escola (categoria LOGO), ou null se não houver. */
+    schoolLogo: string | null;
     incomeValue: number;
     ownerUserId: string | null;
     /**

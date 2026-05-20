@@ -1,10 +1,13 @@
 import { SchoolRepository } from '../../ports/repositories/school.repo';
 import { SchoolPlanFinanceRepository } from '../../ports/repositories/school-plan-finance.repo';
 import { SchoolPlanInvoiceRepository } from '../../ports/repositories/school-plan-invoice.repo';
+import type { SchoolImageRepository } from '../../ports/repositories/school-image.repo';
 import type { AsaasProviderPort } from '../../ports/providers/asaas-port';
+import type { StorageProviderPort } from '../../ports/providers/storage-provider.port';
 import { presentAdminSchoolAsaasAccountFromSchool } from '../presenters/admin-school-asaas-account.presenter';
 import { presentSchoolPlanFinance } from '../presenters/school-plan-finance.presenter';
 import type { AdminSchoolDetails } from '../types/admin.types';
+import { resolveSchoolLogoUrl } from '../utils/school-logo-url';
 import { AppError, ErrorCode } from '../../shared/errors';
 import { resolveSchoolProfileOnboarding } from './resolve-school-profile-onboarding';
 
@@ -13,7 +16,9 @@ export class GetAdminSchoolDetails {
         private readonly schools: SchoolRepository,
         private readonly planFinances: SchoolPlanFinanceRepository,
         private readonly planInvoices: SchoolPlanInvoiceRepository,
-        private readonly asaasProvider?: AsaasProviderPort
+        private readonly asaasProvider?: AsaasProviderPort,
+        private readonly schoolImages?: SchoolImageRepository,
+        private readonly storage?: StorageProviderPort | null
     ) {}
 
     async exec(input: { schoolId: string }): Promise<AdminSchoolDetails> {
@@ -56,9 +61,12 @@ export class GetAdminSchoolDetails {
                 : ('ACTIVE' as const);
         const paymentStatus = !plan ? null : (plan.status === 'ACTIVE' || plan.status === 'TRIAL' ? 'EM_DIA' : 'ATRASADO');
 
+        const schoolLogo = await resolveSchoolLogoUrl(school.id, this.schoolImages, this.storage);
+
         return {
             id: school.id,
             name: school.name,
+            schoolLogo,
             email: school.email,
             phone: school.phone,
             cnpj: school.cnpj,
