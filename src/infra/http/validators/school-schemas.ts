@@ -51,6 +51,7 @@ export const updateSchoolSchema = z.object({
     ownerWhatsapp: z.union([z.null(), phoneNumberSchema()]).optional(),
     ownerUserId: z.string().trim().min(1).nullable().optional(),
     ownerPassword: z.string().min(8).nullable().optional(),
+    ownerStudentAccessEnabled: z.boolean().optional(),
     incomeValue: z.number().int().positive().optional(),
     addresses: z.array(addressSchema).optional(),
     links: z.object({

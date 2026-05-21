@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ReadStudentNotification } from '../../src/app/use-cases/read-student-notification';
+import { ReadStudentNotification } from '../../src/app/use-cases/students/read-student-notification';
 import { NotificationRepository } from '../../src/ports/repositories/notification.repo';
 import { Notification } from '../../src/domain/entities/notification';
 import { AppError } from '../../src/shared/errors';

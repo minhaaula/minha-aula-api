@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { AdminDeleteCharge } from '../../src/app/use-cases/admin-delete-charge';
+import { AdminDeleteCharge } from '../../src/app/use-cases/admin/admin-delete-charge';
 import { SchoolFinancialCharge } from '../../src/domain/entities/school-financial-charge';
 import { AppError } from '../../src/shared/errors';
 

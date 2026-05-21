@@ -1,24 +1,24 @@
 import { ModuleBuildResult, ModuleSetupContext } from './types';
-import { RegisterUser } from '../../app/use-cases/register-user';
-import { LoginUser } from '../../app/use-cases/login-user';
-import { RefreshToken } from '../../app/use-cases/refresh-token';
+import { RegisterUser } from '../../app/use-cases/auth/register-user';
+import { LoginUser } from '../../app/use-cases/auth/login-user';
+import { RefreshToken } from '../../app/use-cases/auth/refresh-token';
 import { authRouter } from '../../infra/http/routes/auth.routes';
 import { ScryptPasswordHasher } from '../../infra/auth/scrypt-password-hasher';
 import { HmacTokenProvider } from '../../infra/auth/hmac-token-provider';
 import { UserRepositoryAdapter } from '../../infra/db/typeorm/user-repository.adapter';
 import { SchoolRepositoryAdapter } from '../../infra/db/typeorm/school-repository';
 import { MODULE_DOC_FILES, type ModuleName } from '../module-config';
-import { UpdateUserPassword } from '../../app/use-cases/update-user-password';
-import { ResetUserPassword } from '../../app/use-cases/reset-user-password';
-import { ValidatePasswordResetToken } from '../../app/use-cases/validate-password-reset-token';
+import { UpdateUserPassword } from '../../app/use-cases/auth/update-user-password';
+import { ResetUserPassword } from '../../app/use-cases/auth/reset-user-password';
+import { ValidatePasswordResetToken } from '../../app/use-cases/auth/validate-password-reset-token';
 import { PasswordResetTokenRepositoryAdapter } from '../../infra/db/typeorm/password-reset-token-repository.adapter';
 import { AuthPhoneOtpChallengeRepositoryAdapter } from '../../infra/db/typeorm/auth-phone-otp-challenge-repository.adapter';
 import { createTwilioVerifyFromEnv } from '../../infra/providers/twilio/create-twilio-verify-provider';
-import { RequestPhoneOtpChallenge } from '../../app/use-cases/request-phone-otp-challenge';
-import { VerifyPhoneOtpChallenge } from '../../app/use-cases/verify-phone-otp-challenge';
+import { RequestPhoneOtpChallenge } from '../../app/use-cases/auth/request-phone-otp-challenge';
+import { VerifyPhoneOtpChallenge } from '../../app/use-cases/auth/verify-phone-otp-challenge';
 import { EmailProviderPort } from '../../ports/providers/email-provider.port';
 import type { OutboxRepository } from '../../ports/repositories/outbox.repo';
-import type { NotifyStudentUser } from '../../app/use-cases/notify-student-user';
+import type { NotifyStudentUser } from '../../app/use-cases/shared/notify-student-user';
 
 export type AuthModuleDeps = {
     usersRepo: UserRepositoryAdapter;

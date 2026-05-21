@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { ListStudents } from '../../src/app/use-cases/list-students';
-import { GetStudentDirectoryEntry } from '../../src/app/use-cases/get-student-directory-entry';
+import { ListStudents } from '../../src/app/use-cases/students/list-students';
+import { GetStudentDirectoryEntry } from '../../src/app/use-cases/students/get-student-directory-entry';
 import { UserRepository } from '../../src/ports/repositories/user.repo';
 import { DependentRepository } from '../../src/ports/repositories/dependent.repo';
 import { CourseClassRepository } from '../../src/ports/repositories/course-class.repo';

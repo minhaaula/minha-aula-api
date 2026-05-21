@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { asyncHandler } from '../../utils/async-handler';
-import type { ValidateSchoolCoupon } from '../../../../app/use-cases/validate-school-coupon';
+import type { ValidateSchoolCoupon } from '../../../../app/use-cases/schools/validate-school-coupon';
 import { z } from 'zod';
 import type { SchoolRouteGuards } from './guards';
 

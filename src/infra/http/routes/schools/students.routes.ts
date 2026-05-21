@@ -1,14 +1,14 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { asyncHandler } from '../../utils/async-handler';
-import type { ListSchoolStudents } from '../../../../app/use-cases/list-school-students';
-import type { GetStudentDirectoryEntry } from '../../../../app/use-cases/get-student-directory-entry';
+import type { ListSchoolStudents } from '../../../../app/use-cases/schools/list-school-students';
+import type { GetStudentDirectoryEntry } from '../../../../app/use-cases/students/get-student-directory-entry';
 import type { SchoolRouteGuards } from './guards';
 import type { SchoolContextRequest } from '../../middlewares/resolve-school-context';
 
-import type { GetSchoolStudentDetails } from '../../../../app/use-cases/get-school-student-details';
-import type { ListSchoolStudentPaidCharges } from '../../../../app/use-cases/list-school-student-paid-charges';
-import type { ConsolidateSchoolStudentFinancial } from '../../../../app/use-cases/consolidate-school-student-financial';
+import type { GetSchoolStudentDetails } from '../../../../app/use-cases/schools/get-school-student-details';
+import type { ListSchoolStudentPaidCharges } from '../../../../app/use-cases/schools/list-school-student-paid-charges';
+import type { ConsolidateSchoolStudentFinancial } from '../../../../app/use-cases/schools/consolidate-school-student-financial';
 
 type StudentsRoutesDeps = {
     listSchoolStudents: ListSchoolStudents;

@@ -1,10 +1,10 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { CreateEnrollmentRequest } from '../../../app/use-cases/create-enrollment-request';
-import { ApproveEnrollmentRequest } from '../../../app/use-cases/approve-enrollment-request';
-import { ListEnrollmentRequests } from '../../../app/use-cases/list-enrollment-requests';
-import { GetEnrollmentRequest } from '../../../app/use-cases/get-enrollment-request';
-import { IssueEnrollmentFeeBoleto } from '../../../app/use-cases/issue-enrollment-fee-boleto';
+import { CreateEnrollmentRequest } from '../../../app/use-cases/enrollments/create-enrollment-request';
+import { ApproveEnrollmentRequest } from '../../../app/use-cases/enrollments/approve-enrollment-request';
+import { ListEnrollmentRequests } from '../../../app/use-cases/enrollments/list-enrollment-requests';
+import { GetEnrollmentRequest } from '../../../app/use-cases/enrollments/get-enrollment-request';
+import { IssueEnrollmentFeeBoleto } from '../../../app/use-cases/payments/issue-enrollment-fee-boleto';
 import { AuthenticatedRequest } from '../middlewares/auth';
 import { requirePersona } from '../middlewares/require-persona';
 import { UserPersonaEnum } from '../../../domain/value-objects/user-persona';

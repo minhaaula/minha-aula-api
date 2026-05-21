@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DeactivateStudentAccount } from '../../src/app/use-cases/deactivate-student-account';
+import { DeactivateStudentAccount } from '../../src/app/use-cases/students/deactivate-student-account';
 import { UserRepository } from '../../src/ports/repositories/user.repo';
 import { User } from '../../src/domain/entities/user';
 import { Email } from '../../src/domain/value-objects/email';

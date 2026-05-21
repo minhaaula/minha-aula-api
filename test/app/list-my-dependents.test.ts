@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ListMyDependents } from '../../src/app/use-cases/list-my-dependents';
+import { ListMyDependents } from '../../src/app/use-cases/students/list-my-dependents';
 import { DependentRepository } from '../../src/ports/repositories/dependent.repo';
 import { Dependent } from '../../src/domain/entities/dependent';
 

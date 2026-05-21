@@ -2,8 +2,8 @@ import { Router } from 'express';
 import { asyncHandler } from '../../utils/async-handler';
 import { AuthenticatedRequest } from '../../middlewares/auth';
 import { profilePhotoUpload } from '../../middlewares/profile-photo-upload';
-import type { UploadStudentProfilePhoto } from '../../../../app/use-cases/upload-student-profile-photo';
-import type { RemoveStudentProfilePhoto } from '../../../../app/use-cases/remove-student-profile-photo';
+import type { UploadStudentProfilePhoto } from '../../../../app/use-cases/students/upload-student-profile-photo';
+import type { RemoveStudentProfilePhoto } from '../../../../app/use-cases/students/remove-student-profile-photo';
 import { AppError } from '../../../../shared/errors';
 
 export type StudentProfilePhotoRoutesDeps = {

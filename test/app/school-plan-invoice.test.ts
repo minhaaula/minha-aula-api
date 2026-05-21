@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, afterEach } from 'vitest';
-import { IssueSchoolPlanInvoice } from '../../src/app/use-cases/issue-school-plan-invoice';
+import { IssueSchoolPlanInvoice } from '../../src/app/use-cases/schools/issue-school-plan-invoice';
 import { DiscountCoupon } from '../../src/domain/entities/discount-coupon';
 import { DiscountCouponRepository } from '../../src/ports/repositories/discount-coupon.repo';
 import { SchoolRepository } from '../../src/ports/repositories/school.repo';

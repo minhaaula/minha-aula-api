@@ -1,21 +1,21 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { asyncHandler } from '../../utils/async-handler';
-import type { CreateCourse } from '../../../../app/use-cases/create-course';
-import type { UpdateCourse } from '../../../../app/use-cases/update-course';
-import type { ListSchoolCourses } from '../../../../app/use-cases/list-school-courses';
-import type { GetSchoolCourse } from '../../../../app/use-cases/get-school-course';
-import type { CreateCourseClass } from '../../../../app/use-cases/create-course-class';
-import type { UpdateCourseClass } from '../../../../app/use-cases/update-course-class';
-import type { ListCourseClasses } from '../../../../app/use-cases/list-course-classes';
-import type { GetCourseClass } from '../../../../app/use-cases/get-course-class';
-import type { ScheduleClassSession } from '../../../../app/use-cases/schedule-class-session';
-import type { ListClassSessions } from '../../../../app/use-cases/list-class-sessions';
-import type { EnrollStudent } from '../../../../app/use-cases/enroll-student';
-import type { UnenrollStudentFromClass } from '../../../../app/use-cases/unenroll-student-from-class';
-import type { ListEnrollmentRequests } from '../../../../app/use-cases/list-enrollment-requests';
-import type { DeleteCourse } from '../../../../app/use-cases/delete-course';
-import type { DeleteCourseClass } from '../../../../app/use-cases/delete-course-class';
+import type { CreateCourse } from '../../../../app/use-cases/courses/create-course';
+import type { UpdateCourse } from '../../../../app/use-cases/courses/update-course';
+import type { ListSchoolCourses } from '../../../../app/use-cases/schools/list-school-courses';
+import type { GetSchoolCourse } from '../../../../app/use-cases/schools/get-school-course';
+import type { CreateCourseClass } from '../../../../app/use-cases/courses/create-course-class';
+import type { UpdateCourseClass } from '../../../../app/use-cases/courses/update-course-class';
+import type { ListCourseClasses } from '../../../../app/use-cases/courses/list-course-classes';
+import type { GetCourseClass } from '../../../../app/use-cases/courses/get-course-class';
+import type { ScheduleClassSession } from '../../../../app/use-cases/courses/schedule-class-session';
+import type { ListClassSessions } from '../../../../app/use-cases/courses/list-class-sessions';
+import type { EnrollStudent } from '../../../../app/use-cases/enrollments/enroll-student';
+import type { UnenrollStudentFromClass } from '../../../../app/use-cases/enrollments/unenroll-student-from-class';
+import type { ListEnrollmentRequests } from '../../../../app/use-cases/enrollments/list-enrollment-requests';
+import type { DeleteCourse } from '../../../../app/use-cases/courses/delete-course';
+import type { DeleteCourseClass } from '../../../../app/use-cases/courses/delete-course-class';
 import {
     classSessionsDateRangeSchema,
     courseClassParamsSchema,

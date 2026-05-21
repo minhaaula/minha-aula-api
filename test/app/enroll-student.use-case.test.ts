@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { EnrollStudent } from '../../src/app/use-cases/enroll-student';
+import { EnrollStudent } from '../../src/app/use-cases/enrollments/enroll-student';
 import { CourseRepository } from '../../src/ports/repositories/course.repo';
 import { CourseClassRepository } from '../../src/ports/repositories/course-class.repo';
 import { UserRepository } from '../../src/ports/repositories/user.repo';

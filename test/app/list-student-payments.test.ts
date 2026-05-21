@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ListStudentPayments } from '../../src/app/use-cases/list-student-payments';
+import { ListStudentPayments } from '../../src/app/use-cases/students/list-student-payments';
 import { SchoolFinancialChargeRepository, StudentPaymentInfo } from '../../src/ports/repositories/school-financial-charge.repo';
 import { SchoolFinancialChargeStatus } from '../../src/domain/entities/school-financial-charge';
 

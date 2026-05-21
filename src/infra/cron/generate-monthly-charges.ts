@@ -8,8 +8,8 @@ import { EnrollmentRequestRepositoryAdapter } from '../db/typeorm/enrollment-req
 import { NotificationRepositoryAdapter } from '../db/typeorm/notification-repository.adapter';
 import { SchoolRepositoryAdapter } from '../db/typeorm/school-repository';
 import { OutboxProducer } from '../messaging/bullmq/outbox-producer';
-import { NotifyStudentUser } from '../../app/use-cases/notify-student-user';
-import { GenerateMonthlyTuitionCharges } from '../../app/use-cases/generate-monthly-tuition-charges';
+import { NotifyStudentUser } from '../../app/use-cases/shared/notify-student-user';
+import { GenerateMonthlyTuitionCharges } from '../../app/use-cases/payments/generate-monthly-tuition-charges';
 import { log } from '../../shared/logger';
 
 export type GenerateMonthlyChargesResult = {

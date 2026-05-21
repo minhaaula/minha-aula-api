@@ -19,6 +19,7 @@ export class UserOrm {
     @Column('varchar', { length: 64, name: 'address_state' }) addressState!: string;
     @Column('varchar', { length: 16, name: 'address_zip_code' }) addressZipCode!: string;
     @Column('varchar', { length: 16 }) persona!: string;
+    @Column('tinyint', { name: 'student_access_enabled', default: 1 }) studentAccessEnabled!: number;
     @Column('varchar', { length: 255, name: 'password_hash' }) passwordHash!: string;
     @Column('varchar', { length: 500, name: 'photo_url', nullable: true }) photoUrl!: string | null;
     @Column('tinyint', { name: 'active', default: 1 }) active!: number;

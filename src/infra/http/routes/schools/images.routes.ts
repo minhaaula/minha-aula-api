@@ -3,8 +3,8 @@ import multer from 'multer';
 import { asyncHandler } from '../../utils/async-handler';
 import { SchoolContextRequest } from '../../middlewares/resolve-school-context';
 import { SchoolRouteGuards } from './guards';
-import type { UploadSchoolImage } from '../../../../app/use-cases/upload-school-image';
-import type { ListSchoolImages } from '../../../../app/use-cases/list-school-images';
+import type { UploadSchoolImage } from '../../../../app/use-cases/schools/upload-school-image';
+import type { ListSchoolImages } from '../../../../app/use-cases/schools/list-school-images';
 import { AppError, ErrorCode } from '../../../../shared/errors';
 
 export interface ImagesRoutesDeps {

@@ -1,16 +1,16 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { AddDependent } from '../../../app/use-cases/add-dependent';
-import { ListMyDependents } from '../../../app/use-cases/list-my-dependents';
-import { DeleteDependent } from '../../../app/use-cases/delete-dependent';
-import { UpdateDependent } from '../../../app/use-cases/update-dependent';
+import { AddDependent } from '../../../app/use-cases/students/add-dependent';
+import { ListMyDependents } from '../../../app/use-cases/students/list-my-dependents';
+import { DeleteDependent } from '../../../app/use-cases/students/delete-dependent';
+import { UpdateDependent } from '../../../app/use-cases/students/update-dependent';
 import { AuthenticatedRequest } from '../middlewares/auth';
 import { requirePersona } from '../middlewares/require-persona';
 import { UserPersonaEnum } from '../../../domain/value-objects/user-persona';
 import { asyncHandler } from '../utils/async-handler';
 import { profilePhotoUpload } from '../middlewares/profile-photo-upload';
-import type { UploadDependentProfilePhoto } from '../../../app/use-cases/upload-dependent-profile-photo';
-import type { RemoveDependentProfilePhoto } from '../../../app/use-cases/remove-dependent-profile-photo';
+import type { UploadDependentProfilePhoto } from '../../../app/use-cases/students/upload-dependent-profile-photo';
+import type { RemoveDependentProfilePhoto } from '../../../app/use-cases/students/remove-dependent-profile-photo';
 import { AppError } from '../../../shared/errors';
 
 export function dependentsRouter(deps: { 

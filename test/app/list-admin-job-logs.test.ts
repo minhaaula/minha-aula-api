@@ -5,7 +5,7 @@ import {
     JobExecutionLogRepository,
     JobExecutionLogSummaryFilter
 } from '../../src/ports/repositories/job-execution-log.repo';
-import { ListAdminJobLogs } from '../../src/app/use-cases/list-admin-job-logs';
+import { ListAdminJobLogs } from '../../src/app/use-cases/admin/list-admin-job-logs';
 import { Uuid } from '../../src/shared/uuid';
 
 class InMemoryJobExecutionLogRepository implements JobExecutionLogRepository {

@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { CreateSchoolBankAccount } from '../../src/app/use-cases/create-school-bank-account';
+import { CreateSchoolBankAccount } from '../../src/app/use-cases/schools/create-school-bank-account';
 import type { AsaasProviderPort, AsaasReceivingBankAccountInput } from '../../src/ports/providers/asaas-port';
 import { SchoolBankAccountRepository } from '../../src/ports/repositories/school-bank-account.repo';
 import { SchoolRepository } from '../../src/ports/repositories/school.repo';
 import { SchoolBankAccount } from '../../src/domain/entities/school-bank-account';
 import { School } from '../../src/domain/entities/school';
 import { Uuid } from '../../src/shared/uuid';
-import { ConsumeSchoolActionOtp } from '../../src/app/use-cases/consume-school-action-otp';
+import { ConsumeSchoolActionOtp } from '../../src/app/use-cases/shared/consume-school-action-otp';
 import { AppError, ErrorCode } from '../../src/shared/errors';
 
 class InMemorySchoolBankAccountRepository implements SchoolBankAccountRepository {

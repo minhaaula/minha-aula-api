@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { AppError, ErrorCode } from '../../src/shared/errors';
-import { RequestSchoolActionOtp } from '../../src/app/use-cases/request-school-action-otp';
-import { VerifySchoolActionOtp } from '../../src/app/use-cases/verify-school-action-otp';
-import { ConsumeSchoolActionOtp } from '../../src/app/use-cases/consume-school-action-otp';
+import { RequestSchoolActionOtp } from '../../src/app/use-cases/schools/request-school-action-otp';
+import { VerifySchoolActionOtp } from '../../src/app/use-cases/schools/verify-school-action-otp';
+import { ConsumeSchoolActionOtp } from '../../src/app/use-cases/shared/consume-school-action-otp';
 import { SchoolActionOtp } from '../../src/domain/entities/school-action-otp';
 import { School } from '../../src/domain/entities/school';
 import type {

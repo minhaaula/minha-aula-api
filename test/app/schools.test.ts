@@ -1,15 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { CreateSchool } from '../../src/app/use-cases/create-school';
-import { CreateCourse } from '../../src/app/use-cases/create-course';
-import { CreateCourseClass } from '../../src/app/use-cases/create-course-class';
-import { ListSchools } from '../../src/app/use-cases/list-schools';
-import { ListSchoolCourses } from '../../src/app/use-cases/list-school-courses';
-import { GetSchoolCourse } from '../../src/app/use-cases/get-school-course';
-import { ListCourseClasses } from '../../src/app/use-cases/list-course-classes';
-import { GetCourseClass } from '../../src/app/use-cases/get-course-class';
-import { GetSchoolProfile } from '../../src/app/use-cases/get-school-profile';
-import { UpdateSchool } from '../../src/app/use-cases/update-school';
-import { UpdateCourse } from '../../src/app/use-cases/update-course';
+import { CreateSchool } from '../../src/app/use-cases/schools/create-school';
+import { CreateCourse } from '../../src/app/use-cases/courses/create-course';
+import { CreateCourseClass } from '../../src/app/use-cases/courses/create-course-class';
+import { ListSchools } from '../../src/app/use-cases/admin/list-schools';
+import { ListSchoolCourses } from '../../src/app/use-cases/schools/list-school-courses';
+import { GetSchoolCourse } from '../../src/app/use-cases/schools/get-school-course';
+import { ListCourseClasses } from '../../src/app/use-cases/courses/list-course-classes';
+import { GetCourseClass } from '../../src/app/use-cases/courses/get-course-class';
+import { GetSchoolProfile } from '../../src/app/use-cases/schools/get-school-profile';
+import { UpdateSchool } from '../../src/app/use-cases/schools/update-school';
+import { UpdateCourse } from '../../src/app/use-cases/courses/update-course';
 import { SchoolRepository } from '../../src/ports/repositories/school.repo';
 import { CourseRepository } from '../../src/ports/repositories/course.repo';
 import { CategoryRepository } from '../../src/ports/repositories/category.repo';
@@ -19,7 +19,7 @@ import { Course } from '../../src/domain/entities/course';
 import { CourseClass } from '../../src/domain/entities/course-class';
 import { PostalAddress } from '../../src/domain/value-objects/postal-address';
 import { PasswordHasherPort } from '../../src/ports/providers/password-hasher.port';
-import { LoginSchool } from '../../src/app/use-cases/login-school';
+import { LoginSchool } from '../../src/app/use-cases/auth/login-school';
 import { TokenProviderPort } from '../../src/ports/providers/token-provider.port';
 import { equalUuid } from '../../src/shared/normalize-uuid';
 import { toE164Brazil } from '../../src/shared/phone-e164';
@@ -616,7 +616,7 @@ describe('School creation flow', () => {
                 throw new Error('getAccountStatus não deve ser chamado quando onboardingCompletedAt já existe');
             }
         };
-        const getProfile = new GetSchoolProfile(repo, undefined, undefined, undefined, undefined, undefined, boomAsaas as never);
+        const getProfile = new GetSchoolProfile(repo, undefined, undefined, undefined, undefined, undefined, undefined, boomAsaas as never);
         const doneAt = new Date('2026-01-01T12:00:00.000Z');
         const school = School.create({
             id: 'school-onb-done',
@@ -648,7 +648,7 @@ describe('School creation flow', () => {
                 throw new Error('getAccountStatus não deve ser chamado no fallback por snapshot');
             }
         };
-        const getProfile = new GetSchoolProfile(repo, undefined, undefined, undefined, undefined, undefined, boomAsaas as never);
+        const getProfile = new GetSchoolProfile(repo, undefined, undefined, undefined, undefined, undefined, undefined, boomAsaas as never);
 
         const school = School.create({
             id: 'school-onb-snapshot',
@@ -727,7 +727,7 @@ describe('School creation flow', () => {
         });
         finances.seed(finance);
 
-        const getProfile = new GetSchoolProfile(repo, undefined, undefined, undefined, finances);
+        const getProfile = new GetSchoolProfile(repo, undefined, undefined, undefined, undefined, finances);
         const profile = await getProfile.exec({ schoolId: school.id });
 
         expect(profile).not.toBeNull();

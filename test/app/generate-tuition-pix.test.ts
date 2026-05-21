@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { GenerateTuitionPix } from '../../src/app/use-cases/generate-tuition-pix';
+import { GenerateTuitionPix } from '../../src/app/use-cases/payments/generate-tuition-pix';
 import { SchoolFinancialChargeRepository } from '../../src/ports/repositories/school-financial-charge.repo';
 import { UserRepository } from '../../src/ports/repositories/user.repo';
 import { SchoolRepository } from '../../src/ports/repositories/school.repo';

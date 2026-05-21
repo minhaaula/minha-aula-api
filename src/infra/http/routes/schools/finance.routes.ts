@@ -1,17 +1,17 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { asyncHandler } from '../../utils/async-handler';
-import type { CreateSchoolCharge } from '../../../../app/use-cases/create-school-charge';
-import type { GetSchoolFinancialSummary } from '../../../../app/use-cases/get-school-financial-summary';
-import type { ListSchoolWithdrawals } from '../../../../app/use-cases/list-school-withdrawals';
-import type { RequestSchoolWithdrawal } from '../../../../app/use-cases/request-school-withdrawal';
-import type { GetSchoolBalance } from '../../../../app/use-cases/get-school-balance';
+import type { CreateSchoolCharge } from '../../../../app/use-cases/schools/create-school-charge';
+import type { GetSchoolFinancialSummary } from '../../../../app/use-cases/schools/get-school-financial-summary';
+import type { ListSchoolWithdrawals } from '../../../../app/use-cases/schools/list-school-withdrawals';
+import type { RequestSchoolWithdrawal } from '../../../../app/use-cases/schools/request-school-withdrawal';
+import type { GetSchoolBalance } from '../../../../app/use-cases/schools/get-school-balance';
 import type { SchoolRouteGuards } from './guards';
-import type { SchoolMarkChargePaid } from '../../../../app/use-cases/school-mark-charge-paid';
-import type { SchoolDeleteCharge } from '../../../../app/use-cases/school-delete-charge';
+import type { SchoolMarkChargePaid } from '../../../../app/use-cases/schools/school-mark-charge-paid';
+import type { SchoolDeleteCharge } from '../../../../app/use-cases/schools/school-delete-charge';
 import type { SchoolContextRequest } from '../../middlewares/resolve-school-context';
 import type { SchoolFinancialCharge } from '../../../../domain/entities/school-financial-charge';
-import type { GenerateTuitionPix } from '../../../../app/use-cases/generate-tuition-pix';
+import type { GenerateTuitionPix } from '../../../../app/use-cases/payments/generate-tuition-pix';
 import type { AuthenticatedRequest } from '../../middlewares/auth';
 import { UserPersonaEnum } from '../../../../domain/value-objects/user-persona';
 

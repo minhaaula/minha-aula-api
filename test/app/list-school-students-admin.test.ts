@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { ListSchoolStudents } from '../../src/app/use-cases/list-school-students';
+import { ListSchoolStudents } from '../../src/app/use-cases/schools/list-school-students';
 import { Course } from '../../src/domain/entities/course';
 import { CourseClass } from '../../src/domain/entities/course-class';
 import { Enrollment } from '../../src/domain/entities/enrollment';
@@ -96,7 +96,7 @@ describe('ListSchoolStudents — formato admin', () => {
         const result = await useCase.exec({ schoolId, outputFormat: 'admin' });
         expect(result.students).toHaveLength(1);
 
-        const row = result.students[0] as import('../../src/app/use-cases/list-school-students').AdminSchoolStudentItem;
+        const row = result.students[0] as import('../../src/app/use-cases/schools/list-school-students').AdminSchoolStudentItem;
         expect(row.studentId).toBe('dep-1');
         expect(row.isDependent).toBe(true);
         expect(row.birthDate).toEqual(dependent.birthDate);

@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { asyncHandler } from '../utils/async-handler';
-import type { ListSubscriptionPlans } from '../../../app/use-cases/list-subscription-plans';
+import type { ListSubscriptionPlans } from '../../../app/use-cases/catalog/list-subscription-plans';
 
 type LandingRoutesDeps = {
     listSubscriptionPlans?: ListSubscriptionPlans;

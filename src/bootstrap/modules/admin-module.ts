@@ -1,12 +1,12 @@
 import { ModuleBuildResult, ModuleSetupContext } from './types';
 import { adminRouter } from '../../infra/http/routes/admin.routes';
-import { GetAdminStatus } from '../../app/use-cases/get-admin-status';
-import { ListSchoolsWithPlans } from '../../app/use-cases/list-schools-with-plans';
-import { LoginAdmin } from '../../app/use-cases/login-admin';
-import { GetAdminDashboard } from '../../app/use-cases/get-admin-dashboard';
-import { CreateDiscountCoupon } from '../../app/use-cases/create-discount-coupon';
-import { ListDiscountCoupons } from '../../app/use-cases/list-discount-coupons';
-import { ValidateDiscountCoupon } from '../../app/use-cases/validate-discount-coupon';
+import { GetAdminStatus } from '../../app/use-cases/admin/get-admin-status';
+import { ListSchoolsWithPlans } from '../../app/use-cases/admin/list-schools-with-plans';
+import { LoginAdmin } from '../../app/use-cases/auth/login-admin';
+import { GetAdminDashboard } from '../../app/use-cases/admin/get-admin-dashboard';
+import { CreateDiscountCoupon } from '../../app/use-cases/admin/create-discount-coupon';
+import { ListDiscountCoupons } from '../../app/use-cases/admin/list-discount-coupons';
+import { ValidateDiscountCoupon } from '../../app/use-cases/admin/validate-discount-coupon';
 import { DiscountCouponRepositoryAdapter } from '../../infra/db/typeorm/discount-coupon-repository.adapter';
 import { MODULE_DOC_FILES, type ModuleName } from '../module-config';
 import type { SchoolRepository } from '../../ports/repositories/school.repo';
@@ -27,41 +27,41 @@ import type { OutboxRepository } from '../../ports/repositories/outbox.repo';
 import type { PasswordHasherPort } from '../../ports/providers/password-hasher.port';
 import type { TokenProviderPort } from '../../ports/providers/token-provider.port';
 import type { AsaasProviderPort } from '../../ports/providers/asaas-port';
-import { ResendSchoolAsaasAccount } from '../../app/use-cases/resend-school-asaas-account';
-import { GetAdminSchoolDetails } from '../../app/use-cases/get-admin-school-details';
-import { GetAdminSchoolPlans } from '../../app/use-cases/get-admin-school-plans';
-import { UpdateSchool } from '../../app/use-cases/update-school';
-import { ListAdminSubscriptionPlans } from '../../app/use-cases/list-admin-subscription-plans';
-import { CreateSubscriptionPlan } from '../../app/use-cases/create-subscription-plan';
-import { UpdateSubscriptionPlan } from '../../app/use-cases/update-subscription-plan';
-import { ListAdminCategories } from '../../app/use-cases/list-admin-categories';
-import { CreateCategory } from '../../app/use-cases/create-category';
-import { UpdateCategory } from '../../app/use-cases/update-category';
-import { ListSchoolStudents } from '../../app/use-cases/list-school-students';
-import { ListAllStudents } from '../../app/use-cases/list-all-students';
-import { GetAdminSchoolFinancial } from '../../app/use-cases/get-admin-school-financial';
-import { GetSchoolBalance } from '../../app/use-cases/get-school-balance';
-import { GetAdminSchoolBilling } from '../../app/use-cases/get-admin-school-billing';
-import { ListAdminSchoolInvoices } from '../../app/use-cases/list-admin-school-invoices';
-import { ListAdminPaymentHistory } from '../../app/use-cases/list-admin-payment-history';
-import { ListAdminEnrollmentRequests } from '../../app/use-cases/list-admin-enrollment-requests';
-import { ListAdminStudentCharges } from '../../app/use-cases/list-admin-student-charges';
-import { ListAdminStudentCourses } from '../../app/use-cases/list-admin-student-courses';
-import { GetAdminStudentDetails } from '../../app/use-cases/get-admin-student-details';
-import { AdminSoftDeleteUser } from '../../app/use-cases/admin-soft-delete-user';
-import { AdminSoftDeleteSchool } from '../../app/use-cases/admin-soft-delete-school';
-import { ListAdminSchoolCourses } from '../../app/use-cases/list-admin-school-courses';
+import { ResendSchoolAsaasAccount } from '../../app/use-cases/schools/resend-school-asaas-account';
+import { GetAdminSchoolDetails } from '../../app/use-cases/admin/get-admin-school-details';
+import { GetAdminSchoolPlans } from '../../app/use-cases/admin/get-admin-school-plans';
+import { UpdateSchool } from '../../app/use-cases/schools/update-school';
+import { ListAdminSubscriptionPlans } from '../../app/use-cases/admin/list-admin-subscription-plans';
+import { CreateSubscriptionPlan } from '../../app/use-cases/admin/create-subscription-plan';
+import { UpdateSubscriptionPlan } from '../../app/use-cases/admin/update-subscription-plan';
+import { ListAdminCategories } from '../../app/use-cases/admin/list-admin-categories';
+import { CreateCategory } from '../../app/use-cases/admin/create-category';
+import { UpdateCategory } from '../../app/use-cases/admin/update-category';
+import { ListSchoolStudents } from '../../app/use-cases/schools/list-school-students';
+import { ListAllStudents } from '../../app/use-cases/admin/list-all-students';
+import { GetAdminSchoolFinancial } from '../../app/use-cases/admin/get-admin-school-financial';
+import { GetSchoolBalance } from '../../app/use-cases/schools/get-school-balance';
+import { GetAdminSchoolBilling } from '../../app/use-cases/admin/get-admin-school-billing';
+import { ListAdminSchoolInvoices } from '../../app/use-cases/admin/list-admin-school-invoices';
+import { ListAdminPaymentHistory } from '../../app/use-cases/admin/list-admin-payment-history';
+import { ListAdminEnrollmentRequests } from '../../app/use-cases/admin/list-admin-enrollment-requests';
+import { ListAdminStudentCharges } from '../../app/use-cases/admin/list-admin-student-charges';
+import { ListAdminStudentCourses } from '../../app/use-cases/admin/list-admin-student-courses';
+import { GetAdminStudentDetails } from '../../app/use-cases/admin/get-admin-student-details';
+import { AdminSoftDeleteUser } from '../../app/use-cases/admin/admin-soft-delete-user';
+import { AdminSoftDeleteSchool } from '../../app/use-cases/admin/admin-soft-delete-school';
+import { ListAdminSchoolCourses } from '../../app/use-cases/admin/list-admin-school-courses';
 import { SchoolWithdrawalRepositoryAdapter } from '../../infra/db/typeorm/school-withdrawal-repository.adapter';
-import { ScheduleChargeDueReminders } from '../../app/use-cases/schedule-charge-due-reminders';
-import { NotifyStudentUser } from '../../app/use-cases/notify-student-user';
-import { AdminMarkInvoicePaid } from '../../app/use-cases/admin-mark-invoice-paid';
-import { AdminMarkChargePaid } from '../../app/use-cases/admin-mark-charge-paid';
-import { AdminDeleteCharge } from '../../app/use-cases/admin-delete-charge';
-import { UnenrollStudentFromClass } from '../../app/use-cases/unenroll-student-from-class';
-import { SyncSchoolOnboardingDocuments } from '../../app/use-cases/sync-school-onboarding-documents';
-import { AdminUploadSchoolOnboardingDocument } from '../../app/use-cases/admin-upload-school-onboarding-document';
-import { GetSchoolPendingDocuments } from '../../app/use-cases/get-school-pending-documents';
-import { SyncSchoolSubaccountStatus } from '../../app/use-cases/sync-school-subaccount-status';
+import { ScheduleChargeDueReminders } from '../../app/use-cases/payments/schedule-charge-due-reminders';
+import { NotifyStudentUser } from '../../app/use-cases/shared/notify-student-user';
+import { AdminMarkInvoicePaid } from '../../app/use-cases/admin/admin-mark-invoice-paid';
+import { AdminMarkChargePaid } from '../../app/use-cases/admin/admin-mark-charge-paid';
+import { AdminDeleteCharge } from '../../app/use-cases/admin/admin-delete-charge';
+import { UnenrollStudentFromClass } from '../../app/use-cases/enrollments/unenroll-student-from-class';
+import { SyncSchoolOnboardingDocuments } from '../../app/use-cases/schools/sync-school-onboarding-documents';
+import { AdminUploadSchoolOnboardingDocument } from '../../app/use-cases/admin/admin-upload-school-onboarding-document';
+import { GetSchoolPendingDocuments } from '../../app/use-cases/schools/get-school-pending-documents';
+import { SyncSchoolSubaccountStatus } from '../../app/use-cases/schools/sync-school-subaccount-status';
 import { scheduleAllJobs } from '../../infra/messaging/bullmq/job-scheduler';
 import { startWorker } from '../../infra/messaging/bullmq/worker-manager';
 import { log } from '../../shared/logger';
@@ -69,8 +69,8 @@ import { JobExecutionLogRepositoryAdapter } from '../../infra/db/typeorm/job-exe
 import { SchoolImageRepositoryAdapter } from '../../infra/db/typeorm/school-image-repository.adapter';
 import type { SchoolImageRepository } from '../../ports/repositories/school-image.repo';
 import type { StorageProviderPort } from '../../ports/providers/storage-provider.port';
-import { ListAdminJobLogs } from '../../app/use-cases/list-admin-job-logs';
-import { GetAdminJobLog } from '../../app/use-cases/get-admin-job-log';
+import { ListAdminJobLogs } from '../../app/use-cases/admin/list-admin-job-logs';
+import { GetAdminJobLog } from '../../app/use-cases/admin/get-admin-job-log';
 
 type AdminModuleDeps = {
     getActiveModules: () => readonly ModuleName[];
@@ -117,6 +117,7 @@ export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext)
     const schoolImagesRepo: SchoolImageRepository = new SchoolImageRepositoryAdapter();
     const getAdminSchoolDetails = new GetAdminSchoolDetails(
         deps.schoolsRepo,
+        deps.usersRepo,
         deps.planFinancesRepo,
         deps.planInvoicesRepo,
         deps.asaasProvider,
@@ -138,7 +139,8 @@ export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext)
 
     const updateSchool = new UpdateSchool(
         deps.schoolsRepo,
-        deps.passwordHasher
+        deps.passwordHasher,
+        deps.usersRepo
     );
 
     const loginAdmin = new LoginAdmin(

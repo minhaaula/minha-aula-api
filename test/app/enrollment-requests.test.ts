@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { CreateEnrollmentRequest } from '../../src/app/use-cases/create-enrollment-request';
-import { ApproveEnrollmentRequest } from '../../src/app/use-cases/approve-enrollment-request';
-import { ListEnrollmentRequests } from '../../src/app/use-cases/list-enrollment-requests';
-import { GetEnrollmentRequest } from '../../src/app/use-cases/get-enrollment-request';
-import { IssueEnrollmentFeeBoleto } from '../../src/app/use-cases/issue-enrollment-fee-boleto';
+import { CreateEnrollmentRequest } from '../../src/app/use-cases/enrollments/create-enrollment-request';
+import { ApproveEnrollmentRequest } from '../../src/app/use-cases/enrollments/approve-enrollment-request';
+import { ListEnrollmentRequests } from '../../src/app/use-cases/enrollments/list-enrollment-requests';
+import { GetEnrollmentRequest } from '../../src/app/use-cases/enrollments/get-enrollment-request';
+import { IssueEnrollmentFeeBoleto } from '../../src/app/use-cases/payments/issue-enrollment-fee-boleto';
 import { SchoolRepository } from '../../src/ports/repositories/school.repo';
 import { CourseRepository } from '../../src/ports/repositories/course.repo';
 import { CourseClassRepository } from '../../src/ports/repositories/course-class.repo';
@@ -24,7 +24,7 @@ import { SchoolFinancialChargeRepository } from '../../src/ports/repositories/sc
 import { SchoolFinancialCharge } from '../../src/domain/entities/school-financial-charge';
 import { PaymentProviderPort, CreateBoletoChargeInput } from '../../src/ports/providers/payment-provider.port';
 import { UserPersonaEnum } from '../../src/domain/value-objects/user-persona';
-import type { NotifyStudentUser } from '../../src/app/use-cases/notify-student-user';
+import type { NotifyStudentUser } from '../../src/app/use-cases/shared/notify-student-user';
 import type { OutboxRepository } from '../../src/ports/repositories/outbox.repo';
 
 class InMemorySchools implements SchoolRepository {

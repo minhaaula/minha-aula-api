@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { RecordEnrollmentLevelPromotion } from '../../src/app/use-cases/record-enrollment-level-promotion';
-import { DeleteSchoolStudentLevel } from '../../src/app/use-cases/delete-school-student-level';
+import { RecordEnrollmentLevelPromotion } from '../../src/app/use-cases/enrollments/record-enrollment-level-promotion';
+import { DeleteSchoolStudentLevel } from '../../src/app/use-cases/schools/delete-school-student-level';
 import { Enrollment } from '../../src/domain/entities/enrollment';
 import type { EnrollmentProgressRepository } from '../../src/ports/repositories/enrollment-progress.repo';
 import type { EnrollmentRepository } from '../../src/ports/repositories/enrollment.repo';

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ListMyEnrollmentRequests } from '../../src/app/use-cases/list-my-enrollment-requests';
+import { ListMyEnrollmentRequests } from '../../src/app/use-cases/enrollments/list-my-enrollment-requests';
 import { EnrollmentRequestRepository } from '../../src/ports/repositories/enrollment-request.repo';
 import { EnrollmentRequest, EnrollmentRequestStatus } from '../../src/domain/entities/enrollment-request';
 import { EnrollmentRequestWithDetails } from '../../src/ports/repositories/enrollment-request.repo';

@@ -53,6 +53,8 @@ export interface AdminSchoolDetails extends SchoolWithPlanItem {
     schoolLogo: string | null;
     incomeValue: number;
     ownerUserId: string | null;
+    /** Se o dono pode usar login de aluno (null sem owner_user_id). */
+    ownerStudentAccessEnabled: boolean | null;
     /**
      * Identificadores da conta no provedor de pagamentos (Asaas).
      * Podem ser nulos quando a conta ainda não foi criada/associada.

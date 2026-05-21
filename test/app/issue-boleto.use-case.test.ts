@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { IssueBoleto } from '../../src/app/use-cases/issue-boleto';
+import { IssueBoleto } from '../../src/app/use-cases/payments/issue-boleto';
 import { Money } from '../../src/domain/value-objects/money';
 import { CreateBoletoChargeInput, PaymentProviderPort } from '../../src/ports/providers/payment-provider.port';
 

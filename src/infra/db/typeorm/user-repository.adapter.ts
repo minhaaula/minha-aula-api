@@ -225,7 +225,8 @@ export class UserRepositoryAdapter implements UserRepository {
             active: row.active !== 0,
             deactivationReason: row.deactivationReason ?? null,
             deactivationDescription: row.deactivationDescription ?? null,
-            photoStorageKey: row.photoUrl ?? null
+            photoStorageKey: row.photoUrl ?? null,
+            studentAccessEnabled: normalizeStudentAccessEnabled(row.studentAccessEnabled)
         });
     }
 
@@ -246,6 +247,7 @@ export class UserRepositoryAdapter implements UserRepository {
         row.addressZipCode = user.address.zipCode;
         assertUserPersona(user.persona);
         row.persona = user.persona;
+        row.studentAccessEnabled = user.studentAccessEnabled ? 1 : 0;
         row.passwordHash = user.passwordHash;
         row.createdAt = user.createdAt;
         row.active = user.active ? 1 : 0;
@@ -254,6 +256,15 @@ export class UserRepositoryAdapter implements UserRepository {
         row.photoUrl = user.photoStorageKey;
         return row;
     }
+}
+
+function normalizeStudentAccessEnabled(value: unknown): boolean {
+    if (value === undefined || value === null) return true;
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'number') return value === 1;
+    if (typeof value === 'string') return value === '1';
+    if (Buffer.isBuffer(value) && value.length === 1) return value[0] === 1;
+    return true;
 }
 
 

@@ -5,8 +5,8 @@ import type { SchoolRepository } from '../../src/ports/repositories/school.repo'
 import { SchoolBankAccount } from '../../src/domain/entities/school-bank-account';
 import { School } from '../../src/domain/entities/school';
 import { Uuid } from '../../src/shared/uuid';
-import type { ConsumeSchoolActionOtp } from '../../src/app/use-cases/consume-school-action-otp';
-import { ResendSchoolAsaasBankAccount } from '../../src/app/use-cases/resend-school-asaas-bank-account';
+import type { ConsumeSchoolActionOtp } from '../../src/app/use-cases/shared/consume-school-action-otp';
+import { ResendSchoolAsaasBankAccount } from '../../src/app/use-cases/schools/resend-school-asaas-bank-account';
 import { AppError, ErrorCode } from '../../src/shared/errors';
 
 class InMemorySchoolBankAccountRepository implements SchoolBankAccountRepository {

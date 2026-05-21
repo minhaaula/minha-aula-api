@@ -4,9 +4,9 @@ import { asyncHandler } from '../../utils/async-handler';
 import { log } from '../../../../shared/logger';
 import { sanitizeForLogging } from '../../../../shared/log-sanitizer';
 import { webhookRateLimiter } from '../../middlewares/rate-limiter';
-import type { HandleAsaasPaymentWebhook } from '../../../../app/use-cases/handle-asaas-payment-webhook';
-import type { HandleAsaasAccountWebhook } from '../../../../app/use-cases/handle-asaas-account-webhook';
-import type { HandleAsaasTransferWebhook } from '../../../../app/use-cases/handle-asaas-transfer-webhook';
+import type { HandleAsaasPaymentWebhook } from '../../../../app/use-cases/payments/handle-asaas-payment-webhook';
+import type { HandleAsaasAccountWebhook } from '../../../../app/use-cases/payments/handle-asaas-account-webhook';
+import type { HandleAsaasTransferWebhook } from '../../../../app/use-cases/payments/handle-asaas-transfer-webhook';
 
 type AsaasWebhookDeps = {
     handleAsaasPaymentWebhook: HandleAsaasPaymentWebhook;

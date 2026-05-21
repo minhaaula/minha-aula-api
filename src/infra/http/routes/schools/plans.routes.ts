@@ -1,10 +1,10 @@
 import { Router } from 'express';
 import { asyncHandler } from '../../utils/async-handler';
-import type { AssignSchoolPlan } from '../../../../app/use-cases/assign-school-plan';
-import type { GetActiveSchoolPlan } from '../../../../app/use-cases/get-active-school-plan';
-import type { IssueSchoolPlanInvoice } from '../../../../app/use-cases/issue-school-plan-invoice';
-import type { ListSchoolPlanInvoices } from '../../../../app/use-cases/list-school-plan-invoices';
-import type { GetSchoolPlanInvoicePix } from '../../../../app/use-cases/get-school-plan-invoice-pix';
+import type { AssignSchoolPlan } from '../../../../app/use-cases/schools/assign-school-plan';
+import type { GetActiveSchoolPlan } from '../../../../app/use-cases/schools/get-active-school-plan';
+import type { IssueSchoolPlanInvoice } from '../../../../app/use-cases/schools/issue-school-plan-invoice';
+import type { ListSchoolPlanInvoices } from '../../../../app/use-cases/schools/list-school-plan-invoices';
+import type { GetSchoolPlanInvoicePix } from '../../../../app/use-cases/schools/get-school-plan-invoice-pix';
 import { assignSchoolPlanSchema, issuePlanInvoiceSchema } from '../../validators/school-schemas';
 import type { SchoolRouteGuards } from './guards';
 import type { SchoolContextRequest } from '../../middlewares/resolve-school-context';

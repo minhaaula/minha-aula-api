@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { ScheduleClassSession } from '../../src/app/use-cases/schedule-class-session';
-import { ListClassSessions } from '../../src/app/use-cases/list-class-sessions';
-import { CancelClassSession } from '../../src/app/use-cases/cancel-class-session';
+import { ScheduleClassSession } from '../../src/app/use-cases/courses/schedule-class-session';
+import { ListClassSessions } from '../../src/app/use-cases/courses/list-class-sessions';
+import { CancelClassSession } from '../../src/app/use-cases/courses/cancel-class-session';
 import { ClassSessionRepository } from '../../src/ports/repositories/class-session.repo';
 import { ClassSession } from '../../src/domain/entities/class-session';
 import { CourseRepository } from '../../src/ports/repositories/course.repo';

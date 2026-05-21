@@ -17,7 +17,8 @@ export class User {
         public readonly active: boolean,
         public readonly deactivationReason: string | null,
         public readonly deactivationDescription: string | null,
-        private _photoStorageKey: string | null = null
+        private _photoStorageKey: string | null = null,
+        private _studentAccessEnabled: boolean = true
     ) {}
 
     static create(params: {
@@ -35,6 +36,8 @@ export class User {
         deactivationReason?: string | null;
         deactivationDescription?: string | null;
         photoStorageKey?: string | null;
+        /** Permite login no app de aluno quando persona é SCHOOL. Default: true. */
+        studentAccessEnabled?: boolean;
     }) {
         if (!(params.birthDate instanceof Date) || Number.isNaN(params.birthDate.getTime())) {
             throw new Error('Invalid birth date');
@@ -64,8 +67,17 @@ export class User {
             params.active ?? true,
             params.deactivationReason ?? null,
             params.deactivationDescription ?? null,
-            params.photoStorageKey?.trim() || null
+            params.photoStorageKey?.trim() || null,
+            params.studentAccessEnabled ?? true
         );
+    }
+
+    get studentAccessEnabled(): boolean {
+        return this._studentAccessEnabled;
+    }
+
+    applyStudentAccessEnabled(enabled: boolean): void {
+        this._studentAccessEnabled = enabled;
     }
 
     get photoStorageKey(): string | null {

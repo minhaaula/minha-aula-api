@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ListAllCourses } from '../../src/app/use-cases/list-all-courses';
+import { ListAllCourses } from '../../src/app/use-cases/students/list-all-courses';
 import { CourseRepository } from '../../src/ports/repositories/course.repo';
 import { CategoryRepository } from '../../src/ports/repositories/category.repo';
 import type { SchoolReviewRepository } from '../../src/ports/repositories/school-review.repo';
