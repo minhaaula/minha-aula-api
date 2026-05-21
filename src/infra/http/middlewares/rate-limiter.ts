@@ -13,8 +13,8 @@ const DEFAULT_WINDOW_MS = 5 * 60 * 1000; // 5 min
 const DEFAULT_MAX = 2500;
 const AUTH_WINDOW_MS = 15 * 60 * 1000;
 const AUTH_MAX = 8;
-const REGISTRATION_WINDOW_MS = 60 * 60 * 1000; // 1 hora
-const REGISTRATION_MAX = 3;
+const REGISTRATION_WINDOW_MS = 5 * 60 * 1000; // 5 min
+const REGISTRATION_MAX = 20;
 const WEBHOOK_WINDOW_MS = 1 * 60 * 1000; // 1 min
 const WEBHOOK_MAX = 1000;
 
@@ -110,14 +110,14 @@ export const webhookRateLimiter = rateLimit({
 export const registrationRateLimiter = rateLimit({
   windowMs: env("RATE_LIMIT_REGISTRATION_WINDOW_MS", REGISTRATION_WINDOW_MS),
   max: env("RATE_LIMIT_REGISTRATION_MAX", REGISTRATION_MAX),
-  message: "Muitas tentativas de registro, tente novamente em 1 hora.",
+  message: "Muitas tentativas de registro, tente novamente em 5 minutos.",
   standardHeaders: true,
   legacyHeaders: false,
   handler: (req: Request, res: Response) => {
     res.status(429).json({
       error: "Muitas tentativas de registro",
       code: "RATE_LIMIT_EXCEEDED",
-      message: "Muitas tentativas de registro, tente novamente em 1 hora.",
+      message: "Muitas tentativas de registro, tente novamente em 5 minutos.",
     });
   },
 });
