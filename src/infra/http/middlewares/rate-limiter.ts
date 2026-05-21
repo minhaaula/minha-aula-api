@@ -13,8 +13,8 @@ const DEFAULT_WINDOW_MS = 5 * 60 * 1000; // 5 min
 const DEFAULT_MAX = 2500;
 const AUTH_WINDOW_MS = 15 * 60 * 1000;
 const AUTH_MAX = 8;
-const REGISTRATION_WINDOW_MS = 5 * 60 * 1000; // 5 min
-const REGISTRATION_MAX = 20;
+const REGISTRATION_WINDOW_MS = 3 * 60 * 1000; // 5 min
+const REGISTRATION_MAX = 100;
 const WEBHOOK_WINDOW_MS = 1 * 60 * 1000; // 1 min
 const WEBHOOK_MAX = 1000;
 
