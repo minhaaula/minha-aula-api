@@ -77,6 +77,8 @@ export enum ErrorCode {
     OTP_SEND_PENDING = 'OTP_SEND_PENDING',
     /** Alteração de perfil do aluno exige token emitido após verificação do WhatsApp. */
     STUDENT_PROFILE_NOT_VERIFIED = 'STUDENT_PROFILE_NOT_VERIFIED',
+    /** Usuário com persona SCHOOL não pode alterar identidade via rotas do aluno. */
+    SCHOOL_OWNER_STUDENT_PROFILE_FIELD_LOCKED = 'SCHOOL_OWNER_STUDENT_PROFILE_FIELD_LOCKED',
     
     // Sistema (7000-7999)
     INTERNAL_ERROR = 'INTERNAL_ERROR',
@@ -157,6 +159,8 @@ export const ErrorMessages: Record<ErrorCode, string> = {
     [ErrorCode.OTP_SEND_PENDING]: 'Aguarde alguns instantes. O código está sendo enviado ao WhatsApp.',
     [ErrorCode.STUDENT_PROFILE_NOT_VERIFIED]:
         'Confirme o código enviado ao WhatsApp antes de salvar as alterações do perfil',
+    [ErrorCode.SCHOOL_OWNER_STUDENT_PROFILE_FIELD_LOCKED]:
+        'Usuários com perfil de escola não podem alterar nome, CPF, data de nascimento nem sexo pelas rotas do aluno',
     
     // Sistema
     [ErrorCode.INTERNAL_ERROR]: 'Erro interno do servidor',

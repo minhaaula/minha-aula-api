@@ -7,6 +7,7 @@ import type { Gender } from '../../../domain/value-objects/gender';
 import { parseGender } from '../../../domain/value-objects/gender';
 import { AppError, ErrorCode } from '../../../shared/errors';
 import { toE164Brazil } from '../../../shared/phone-e164';
+import { assertSchoolPersonaCanUpdateStudentProfileFields } from './assert-school-persona-student-profile-fields';
 
 export interface UpdateStudentProfileInput {
     userId: string;
@@ -14,6 +15,8 @@ export interface UpdateStudentProfileInput {
     fullName?: string;
     email?: string;
     phone?: string;
+    cpf?: string | null;
+    birthDate?: string | null;
     address?: {
         street: string;
         number: string;
@@ -59,6 +62,19 @@ export class UpdateStudentProfile {
         const user = await this.users.findById(userId);
         if (!user) {
             throw new Error('User not found');
+        }
+
+        assertSchoolPersonaCanUpdateStudentProfileFields(user, {
+            fullName: input.fullName,
+            cpf: input.cpf,
+            birthDate: input.birthDate,
+            gender: input.gender
+        });
+
+        if (input.cpf !== undefined || input.birthDate !== undefined) {
+            throw AppError.fromCode(ErrorCode.NOT_ALLOWED, {
+                message: 'CPF e data de nascimento não podem ser alterados pelas rotas do aluno'
+            });
         }
 
         // Validar se o email já está em uso por outro usuário
