@@ -196,6 +196,30 @@ export class SchoolFinancialChargeRepositoryAdapter implements SchoolFinancialCh
         return row ? this.toDomain(row) : null;
     }
 
+    async findEarliestTuitionCharge(
+        courseClassId: string,
+        ownerUserId: string,
+        studentUserId: string | null,
+        dependentId: string | null
+    ): Promise<SchoolFinancialCharge | null> {
+        const queryBuilder = this.repo
+            .createQueryBuilder('charge')
+            .where('charge.courseClassId = :courseClassId', { courseClassId })
+            .andWhere('charge.ownerUserId = :ownerUserId', { ownerUserId })
+            .andWhere('charge.chargeType = :chargeType', { chargeType: 'TUITION' })
+            .andWhere('charge.status != :cancelledStatus', { cancelledStatus: 'CANCELLED' });
+
+        if (studentUserId) {
+            queryBuilder.andWhere('charge.studentUserId = :studentUserId', { studentUserId });
+        } else if (dependentId) {
+            queryBuilder.andWhere('charge.dependentId = :dependentId', { dependentId });
+        }
+
+        const row = await queryBuilder.orderBy('charge.dueDate', 'ASC').getOne();
+
+        return row ? this.toDomain(row) : null;
+    }
+
     async findTuitionChargesForMonth(
         courseClassId: string,
         ownerUserId: string,
