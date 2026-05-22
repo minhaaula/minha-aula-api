@@ -3,7 +3,7 @@ import { UserPersonaEnum } from '../../../domain/value-objects/user-persona';
 import { AppError, ErrorCode } from '../../../shared/errors';
 
 export const SCHOOL_PERSONA_STUDENT_PROFILE_ROUTES_MESSAGE =
-    'Usuários que também são donos de escola devem realizar alteração de dados pelo Painel da Escola.';
+    'Usuários que também são donos de escola, devem realizar alteração de dados pelo Painel da Escola.';
 
 /**
  * Impede qualquer alteração de perfil via rotas do app aluno quando o titular tem persona SCHOOL.

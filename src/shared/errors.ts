@@ -79,7 +79,7 @@ export enum ErrorCode {
     STUDENT_PROFILE_NOT_VERIFIED = 'STUDENT_PROFILE_NOT_VERIFIED',
     /** Usuário com persona SCHOOL não pode alterar identidade via rotas do aluno. @deprecated use SCHOOL_PERSONA_STUDENT_PROFILE_UPDATE_FORBIDDEN */
     SCHOOL_OWNER_STUDENT_PROFILE_FIELD_LOCKED = 'SCHOOL_OWNER_STUDENT_PROFILE_FIELD_LOCKED',
-    /** Persona SCHOOL não pode alterar cadastro via rotas do app aluno (KYC Asaas). */
+    /** Persona SCHOOL não pode alterar cadastro via rotas do app aluno — usar Painel da Escola. */
     SCHOOL_PERSONA_STUDENT_PROFILE_UPDATE_FORBIDDEN = 'SCHOOL_PERSONA_STUDENT_PROFILE_UPDATE_FORBIDDEN',
     
     // Sistema (7000-7999)
@@ -162,9 +162,9 @@ export const ErrorMessages: Record<ErrorCode, string> = {
     [ErrorCode.STUDENT_PROFILE_NOT_VERIFIED]:
         'Confirme o código enviado ao WhatsApp antes de salvar as alterações do perfil',
     [ErrorCode.SCHOOL_OWNER_STUDENT_PROFILE_FIELD_LOCKED]:
-        'Usuários com perfil de escola não podem alterar nome, CPF, data de nascimento nem sexo pelas rotas do aluno',
+        'Usuários que também são donos de escola, devem realizar alteração de dados pelo Painel da Escola.',
     [ErrorCode.SCHOOL_PERSONA_STUDENT_PROFILE_UPDATE_FORBIDDEN]:
-        'Usuários que também são donos de escola devem realizar alteração de dados pelo Painel da Escola.',
+        'Usuários que também são donos de escola, devem realizar alteração de dados pelo Painel da Escola.',
     
     // Sistema
     [ErrorCode.INTERNAL_ERROR]: 'Erro interno do servidor',
@@ -185,7 +185,10 @@ export class AppError extends Error {
     }
 
     static fromCode(code: ErrorCode, details?: Record<string, unknown>): AppError {
-        const message = ErrorMessages[code] || ErrorMessages[ErrorCode.INTERNAL_ERROR];
+        const override =
+            typeof details?.message === 'string' ? details.message : undefined;
+        const message =
+            override ?? ErrorMessages[code] ?? ErrorMessages[ErrorCode.INTERNAL_ERROR];
         return new AppError(code, message, details);
     }
 

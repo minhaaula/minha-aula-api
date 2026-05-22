@@ -6,6 +6,7 @@ import { PostalAddress } from '../../src/domain/value-objects/postal-address';
 import { UserPersonaEnum } from '../../src/domain/value-objects/user-persona';
 import type { UserRepository } from '../../src/ports/repositories/user.repo';
 import type { TokenProviderPort } from '../../src/ports/providers/token-provider.port';
+import { SCHOOL_PERSONA_STUDENT_PROFILE_ROUTES_MESSAGE } from '../../src/app/use-cases/students/assert-school-persona-student-profile-fields';
 import { AppError, ErrorCode } from '../../src/shared/errors';
 import { Uuid } from '../../src/shared/uuid';
 
@@ -83,7 +84,7 @@ const schoolPersonaForbidden = {
     code: ErrorCode.SCHOOL_PERSONA_STUDENT_PROFILE_UPDATE_FORBIDDEN
 };
 
-describe('Rotas de perfil do aluno — persona SCHOOL (KYC Asaas)', () => {
+describe('Rotas de perfil do aluno — persona SCHOOL', () => {
     it('bloqueia PUT mesmo com token OTP aparentemente válido (antes da verificação de OTP)', async () => {
         const users = new InMemoryUserRepository();
         const user = makeUser(UserPersonaEnum.SCHOOL);
@@ -96,7 +97,10 @@ describe('Rotas de perfil do aluno — persona SCHOOL (KYC Asaas)', () => {
                 profileUpdateVerificationToken: verificationTokenFor(user.id),
                 email: 'outro@escola.com'
             })
-        ).rejects.toMatchObject(schoolPersonaForbidden);
+        ).rejects.toMatchObject({
+            ...schoolPersonaForbidden,
+            message: SCHOOL_PERSONA_STUDENT_PROFILE_ROUTES_MESSAGE
+        });
     });
 
     it('bloqueia PUT de perfil para qualquer campo', async () => {
