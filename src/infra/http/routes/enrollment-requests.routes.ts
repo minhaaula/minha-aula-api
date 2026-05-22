@@ -12,7 +12,9 @@ import type { EnrollmentRequest, EnrollmentRequestStatus } from '../../../domain
 import type { EnrollmentRequestWithDetails } from '../../../ports/repositories/enrollment-request.repo';
 import {
     enrollmentTuitionExemptionFields,
-    refineEnrollmentTuitionExemption
+    optionalFirstMonthlyPaymentDateSchema,
+    refineEnrollmentTuitionExemption,
+    refineFirstMonthlyPaymentDateUnlessExempt
 } from '../validators/enrollment-exemption-schemas';
 
 /** Express pode entregar o mesmo parâmetro como string ou string[] (ex.: cliente duplicando query). */
@@ -255,7 +257,7 @@ export function enrollmentRequestsRouter(deps: {
                     schoolId: z.string().uuid().optional(),
                     enrollmentFeeAmount: z.coerce.number().min(0).optional(),
                     enrollmentFeeDueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-                    firstMonthlyPaymentDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+                    firstMonthlyPaymentDate: optionalFirstMonthlyPaymentDateSchema,
                     ...enrollmentTuitionExemptionFields
                 })
                 .superRefine((data, ctx) => {
@@ -269,6 +271,7 @@ export function enrollmentRequestsRouter(deps: {
                         }
                     }
                     refineEnrollmentTuitionExemption(data, ctx);
+                    refineFirstMonthlyPaymentDateUnlessExempt(data, ctx);
                 });
             const data = bodySchema.parse(req.body);
 
@@ -351,7 +354,7 @@ export function enrollmentRequestsRouter(deps: {
                     schoolId: z.string().uuid().optional(),
                     enrollmentFeeAmount: z.coerce.number().min(0).optional(),
                     enrollmentFeeDueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-                    firstMonthlyPaymentDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+                    firstMonthlyPaymentDate: optionalFirstMonthlyPaymentDateSchema,
                     ...enrollmentTuitionExemptionFields
                 })
                 .superRefine((data, ctx) => {
@@ -365,6 +368,7 @@ export function enrollmentRequestsRouter(deps: {
                         }
                     }
                     refineEnrollmentTuitionExemption(data, ctx);
+                    refineFirstMonthlyPaymentDateUnlessExempt(data, ctx);
                 });
 
             const data = bodySchema.parse(req.body);

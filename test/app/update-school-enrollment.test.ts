@@ -172,3 +172,29 @@ describe('UpdateSchoolEnrollment', () => {
         expect(restored.fullAmountCents).toBe(20000);
     });
 });
+
+describe('updateSchoolEnrollmentSchema', () => {
+    it('permite isenção sem firstMonthlyPaymentDate', async () => {
+        const { updateSchoolEnrollmentSchema } = await import(
+            '../../src/infra/http/validators/update-school-enrollment-schemas'
+        );
+        const parsed = updateSchoolEnrollmentSchema.parse({
+            tuitionExempt: true,
+            tuitionExemptionType: 'SCHOLARSHIP'
+        });
+        expect(parsed.tuitionExempt).toBe(true);
+        expect(parsed.firstMonthlyPaymentDate).toBeUndefined();
+    });
+
+    it('trata firstMonthlyPaymentDate vazio como ausente', async () => {
+        const { updateSchoolEnrollmentSchema } = await import(
+            '../../src/infra/http/validators/update-school-enrollment-schemas'
+        );
+        const parsed = updateSchoolEnrollmentSchema.parse({
+            tuitionExempt: true,
+            tuitionExemptionType: 'NONPROFIT',
+            firstMonthlyPaymentDate: ''
+        });
+        expect(parsed.firstMonthlyPaymentDate).toBeUndefined();
+    });
+});

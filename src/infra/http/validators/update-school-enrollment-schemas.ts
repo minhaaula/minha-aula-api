@@ -1,16 +1,14 @@
 import { z } from 'zod';
 import {
     enrollmentTuitionExemptionFields,
+    optionalFirstMonthlyPaymentDateSchema,
     refineEnrollmentTuitionExemption
 } from './enrollment-exemption-schemas';
 
 export const updateSchoolEnrollmentSchema = z
     .object({
         paymentDueDay: z.coerce.number().int().min(1).max(31).optional(),
-        firstMonthlyPaymentDate: z
-            .string()
-            .regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD')
-            .optional(),
+        firstMonthlyPaymentDate: optionalFirstMonthlyPaymentDateSchema,
         discountCents: z.number().int().min(0).nullable().optional(),
         discountMonths: z.number().int().min(1).nullable().optional(),
         clearDiscount: z.boolean().optional(),

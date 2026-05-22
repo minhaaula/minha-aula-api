@@ -3,6 +3,33 @@ import { TUITION_EXEMPTION_TYPES } from '../../../domain/value-objects/tuition-e
 
 const tuitionExemptionTypeSchema = z.enum(TUITION_EXEMPTION_TYPES);
 
+/** Data YYYY-MM-DD opcional; string vazia do front vira `undefined`. */
+export const optionalFirstMonthlyPaymentDateSchema = z.preprocess(
+    (val) => (val === '' || val === null || val === undefined ? undefined : val),
+    z
+        .string()
+        .regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD')
+        .optional()
+);
+
+/** Obrigatório apenas quando `tuitionExempt` não é true (pedido de matrícula / matrícula nova). */
+export function refineFirstMonthlyPaymentDateUnlessExempt(
+    data: { tuitionExempt?: boolean; firstMonthlyPaymentDate?: string },
+    ctx: z.RefinementCtx
+): void {
+    if (data.tuitionExempt === true) {
+        return;
+    }
+    if (!data.firstMonthlyPaymentDate) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['firstMonthlyPaymentDate'],
+            message:
+                'firstMonthlyPaymentDate é obrigatório quando a matrícula não é isenta (tuitionExempt true dispensa o campo)'
+        });
+    }
+}
+
 /** Campos opcionais de isenção de mensalidade (matrícula / pedido de matrícula). */
 export const enrollmentTuitionExemptionFields = {
     tuitionExempt: z.boolean().optional(),

@@ -11,6 +11,7 @@ import { Uuid } from '../../../shared/uuid';
 import { equalUuid } from '../../../shared/normalize-uuid';
 import { AppError, ErrorCode } from '../../../shared/errors';
 import { normalizeDateString } from '../../utils/date.utils';
+import type { TuitionExemptionType } from '../../../domain/value-objects/tuition-exemption-type';
 import type { CreateEnrollmentRequestInput } from '../../types/enrollment.types';
 import type { NotifyStudentUser } from '../shared/notify-student-user';
 
@@ -58,9 +59,9 @@ export class CreateEnrollmentRequest {
             input.enrollmentFeeDueDate,
             enrollmentFeeCents
         );
-        const firstMonthlyPaymentDate = normalizeDateString(
+        const firstMonthlyPaymentDate = this.resolveFirstMonthlyPaymentDate(
             input.firstMonthlyPaymentDate,
-            'first monthly payment date'
+            input.tuitionExemptionType ?? null
         );
 
         if (this.requests.findPendingByCourseClassAndTarget) {
@@ -269,6 +270,23 @@ export class CreateEnrollmentRequest {
                 userId
             });
         }
+    }
+
+    private resolveFirstMonthlyPaymentDate(
+        value: string | undefined,
+        tuitionExemptionType: TuitionExemptionType | null
+    ): Date {
+        const trimmed = value?.trim();
+        if (trimmed) {
+            return normalizeDateString(trimmed, 'first monthly payment date');
+        }
+        if (tuitionExemptionType) {
+            return normalizeDateString(new Date().toISOString().slice(0, 10), 'first monthly payment date');
+        }
+        throw AppError.fromCode(ErrorCode.VALIDATION_ERROR, {
+            message:
+                'firstMonthlyPaymentDate é obrigatório quando a matrícula não é isenta (com tuitionExempt true o campo é opcional)'
+        });
     }
 
     private normalizeAmount(value: number | null | undefined, fieldName: string): number | null {

@@ -14,7 +14,8 @@ export interface CreateEnrollmentRequestInput {
     discountMonths?: number | null;
     enrollmentFeeAmount?: number | null;
     enrollmentFeeDueDate?: string | null;
-    firstMonthlyPaymentDate: string;
+    /** Opcional quando há isenção (`tuitionExemptionType`); default = hoje no use case. */
+    firstMonthlyPaymentDate?: string;
     /** Quando `tuitionExempt` é true na criação do pedido. */
     tuitionExemptionType?: TuitionExemptionType | null;
     /** Quando a escola cria o pedido para o aluno (responsible-requests), dispara email, push e notificação in-app. */
