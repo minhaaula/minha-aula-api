@@ -49,12 +49,21 @@ export class EnrollStudent {
 
         const tuitionExemptionType = input.tuitionExemptionType ?? null;
         const monthlyPriceCents = tuitionExemptionType ? null : course.monthlyPriceCents;
+        const discountCents =
+            tuitionExemptionType || !input.discount
+                ? null
+                : Math.round(input.discount * 100);
+        const discountMonths =
+            tuitionExemptionType || !discountCents ? null : (input.discountMonths ?? null);
+
         const enrollment = this.createEnrollment(
             courseClass.id,
             owner.id,
             dependentId,
             monthlyPriceCents,
-            tuitionExemptionType
+            tuitionExemptionType,
+            discountCents,
+            discountMonths
         );
 
         await this.enrollments.save(enrollment);
@@ -213,7 +222,9 @@ export class EnrollStudent {
         ownerUserId: string,
         dependentId: string | null,
         fullAmountCents: number | null,
-        tuitionExemptionType: TuitionExemptionType | null
+        tuitionExemptionType: TuitionExemptionType | null,
+        discountCents: number | null,
+        discountMonths: number | null
     ): Enrollment {
         const paymentDueDay = 10;
 
@@ -225,7 +236,9 @@ export class EnrollStudent {
                 dependentId,
                 fullAmountCents,
                 paymentDueDay,
-                tuitionExemptionType
+                tuitionExemptionType,
+                discountCents,
+                discountMonths
             });
         }
 
@@ -236,7 +249,9 @@ export class EnrollStudent {
             studentUserId: ownerUserId,
             fullAmountCents,
             paymentDueDay,
-            tuitionExemptionType
+            tuitionExemptionType,
+            discountCents,
+            discountMonths
         });
     }
 }

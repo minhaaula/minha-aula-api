@@ -13,6 +13,8 @@ import type { ScheduleClassSession } from '../../../../app/use-cases/courses/sch
 import type { ListClassSessions } from '../../../../app/use-cases/courses/list-class-sessions';
 import type { EnrollStudent } from '../../../../app/use-cases/enrollments/enroll-student';
 import type { UnenrollStudentFromClass } from '../../../../app/use-cases/enrollments/unenroll-student-from-class';
+import type { UpdateSchoolEnrollment } from '../../../../app/use-cases/schools/update-school-enrollment';
+import { updateSchoolEnrollmentSchema } from '../../validators/update-school-enrollment-schemas';
 import type { ListEnrollmentRequests } from '../../../../app/use-cases/enrollments/list-enrollment-requests';
 import type { DeleteCourse } from '../../../../app/use-cases/courses/delete-course';
 import type { DeleteCourseClass } from '../../../../app/use-cases/courses/delete-course-class';
@@ -50,6 +52,7 @@ type CoursesRoutesDeps = {
     listClassSessions: ListClassSessions;
     enrollStudent?: EnrollStudent;
     unenrollStudentFromClass?: UnenrollStudentFromClass;
+    updateSchoolEnrollment?: UpdateSchoolEnrollment;
     listEnrollmentRequests?: ListEnrollmentRequests;
     deleteCourse?: DeleteCourse;
     deleteCourseClass?: DeleteCourseClass;
@@ -339,6 +342,35 @@ export function buildCoursesRoutes(deps: CoursesRoutesDeps, guards: SchoolRouteG
                     courseId,
                     classId,
                     enrollmentId
+                });
+
+                res.json(result);
+            })
+        );
+    }
+
+    if (deps.updateSchoolEnrollment) {
+        router.patch(
+            '/:courseId/classes/:classId/enrollments/:enrollmentId',
+            ...protectedMiddleware,
+            asyncHandler(async (req, res) => {
+                const { courseId, classId, enrollmentId } = courseClassEnrollmentParamsSchema.parse(req.params);
+                const schoolId = (req as SchoolContextRequest).schoolId as string;
+                const data = updateSchoolEnrollmentSchema.parse(req.body ?? {});
+
+                const result = await deps.updateSchoolEnrollment!.exec({
+                    schoolId,
+                    courseId,
+                    classId,
+                    enrollmentId,
+                    paymentDueDay: data.paymentDueDay,
+                    firstMonthlyPaymentDate: data.firstMonthlyPaymentDate,
+                    discountCents: data.clearDiscount ? null : data.discountCents,
+                    discountMonths: data.clearDiscount ? null : data.discountMonths,
+                    clearDiscount: data.clearDiscount,
+                    monthlyTuition: data.monthlyTuition,
+                    tuitionExemptionType: data.tuitionExemptionType ?? null,
+                    removeTuitionExemption: data.removeTuitionExemption
                 });
 
                 res.json(result);

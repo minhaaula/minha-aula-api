@@ -120,6 +120,8 @@ export class GenerateMonthlyTuitionCharges {
           fullAmountCents: row.fullAmountCents,
           paymentDueDay: row.paymentDueDay,
           tuitionExemptionType: row.tuitionExemptionType,
+          discountCents: row.discountCents ?? null,
+          discountMonths: row.discountMonths ?? null,
           currentSchoolStudentLevelId: row.currentSchoolStudentLevelId,
         });
       }
@@ -134,6 +136,8 @@ export class GenerateMonthlyTuitionCharges {
         fullAmountCents: row.fullAmountCents,
         paymentDueDay: row.paymentDueDay,
         tuitionExemptionType: row.tuitionExemptionType,
+        discountCents: row.discountCents ?? null,
+        discountMonths: row.discountMonths ?? null,
         currentSchoolStudentLevelId: row.currentSchoolStudentLevelId,
       });
     });
@@ -331,18 +335,17 @@ export class GenerateMonthlyTuitionCharges {
       };
     }
 
-    // Buscar enrollment request original para obter informações de desconto
-    let discountCents: number | null = null;
-    let discountMonths: number | null = null;
-    if (this.enrollmentRequests) {
+    let discountCents = enrollment.discountCents;
+    let discountMonths = enrollment.discountMonths;
+    if ((discountCents === null || discountMonths === null) && this.enrollmentRequests) {
       const request = await this.enrollmentRequests.findByCourseClassAndTarget({
         courseClassId: enrollment.courseClassId,
         userId: enrollment.ownerUserId,
         dependentId: enrollment.dependentId,
       });
       if (request && request.status === "APPROVED") {
-        discountCents = request.discountCents;
-        discountMonths = request.discountMonths;
+        discountCents = discountCents ?? request.discountCents;
+        discountMonths = discountMonths ?? request.discountMonths;
       }
     }
 

@@ -54,6 +54,10 @@ export class EnrollmentOrm {
 
     @Column('tinyint', { width: 2, name: 'payment_due_day', nullable: true }) paymentDueDay!: number | null;
 
+    @Column('int', { name: 'discount_cents', nullable: true }) discountCents!: number | null;
+
+    @Column('int', { name: 'discount_months', nullable: true }) discountMonths!: number | null;
+
     @CreateDateColumn({ name: 'enrolled_at', type: 'datetime', default: () => 'CURRENT_TIMESTAMP' }) enrolledAt!: Date;
 
     @UpdateDateColumn({ name: 'updated_at', type: 'datetime', default: () => 'CURRENT_TIMESTAMP' }) updatedAt!: Date;

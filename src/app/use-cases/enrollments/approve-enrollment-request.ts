@@ -278,7 +278,9 @@ export class ApproveEnrollmentRequest {
                 dependentId: request.requestedForDependentId,
                 fullAmountCents,
                 paymentDueDay,
-                tuitionExemptionType: request.tuitionExemptionType
+                tuitionExemptionType: request.tuitionExemptionType,
+                discountCents: request.discountCents,
+                discountMonths: request.discountMonths
             });
         }
 
@@ -289,7 +291,9 @@ export class ApproveEnrollmentRequest {
             studentUserId: request.requestedForUserId,
             fullAmountCents,
             paymentDueDay,
-            tuitionExemptionType: request.tuitionExemptionType
+            tuitionExemptionType: request.tuitionExemptionType,
+            discountCents: request.discountCents,
+            discountMonths: request.discountMonths
         });
     }
 
