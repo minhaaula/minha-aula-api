@@ -11,6 +11,7 @@ import { AppError, ErrorCode } from '../../../shared/errors';
 import type { EnrollStudentInput, EnrollStudentOutput } from '../../types/enrollment.types';
 import type { NotifyStudentUser } from '../shared/notify-student-user';
 import { Enrollment } from '../../../domain/entities/enrollment';
+import type { TuitionExemptionType } from '../../../domain/value-objects/tuition-exemption-type';
 
 export class EnrollStudent {
     constructor(
@@ -46,7 +47,15 @@ export class EnrollStudent {
         // Verificar se usuário já está matriculado (se não for dependente)
         await this.ensureNoExistingEnrollment(courseClass.id, owner.id, dependentId);
 
-        const enrollment = this.createEnrollment(courseClass.id, owner.id, dependentId, course.monthlyPriceCents);
+        const tuitionExemptionType = input.tuitionExemptionType ?? null;
+        const monthlyPriceCents = tuitionExemptionType ? null : course.monthlyPriceCents;
+        const enrollment = this.createEnrollment(
+            courseClass.id,
+            owner.id,
+            dependentId,
+            monthlyPriceCents,
+            tuitionExemptionType
+        );
 
         await this.enrollments.save(enrollment);
 
@@ -101,7 +110,9 @@ export class EnrollStudent {
             dependentId: enrollment.dependentId,
             status: enrollment.status,
             enrolledAt: enrollment.enrolledAt,
-            updatedAt: enrollment.updatedAt
+            updatedAt: enrollment.updatedAt,
+            monthlyTuition: enrollment.isTuitionExempt ? 'EXEMPT' : null,
+            tuitionExemptionType: enrollment.tuitionExemptionType
         };
     }
 
@@ -201,7 +212,8 @@ export class EnrollStudent {
         courseClassId: string,
         ownerUserId: string,
         dependentId: string | null,
-        fullAmountCents: number | null
+        fullAmountCents: number | null,
+        tuitionExemptionType: TuitionExemptionType | null
     ): Enrollment {
         const paymentDueDay = 10;
 
@@ -212,7 +224,8 @@ export class EnrollStudent {
                 ownerUserId,
                 dependentId,
                 fullAmountCents,
-                paymentDueDay
+                paymentDueDay,
+                tuitionExemptionType
             });
         }
 
@@ -222,7 +235,8 @@ export class EnrollStudent {
             ownerUserId,
             studentUserId: ownerUserId,
             fullAmountCents,
-            paymentDueDay
+            paymentDueDay,
+            tuitionExemptionType
         });
     }
 }

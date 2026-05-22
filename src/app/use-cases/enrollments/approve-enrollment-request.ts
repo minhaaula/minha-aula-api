@@ -68,8 +68,10 @@ export class ApproveEnrollmentRequest {
                 requestId: request.id
             });
         }
-        // Preço da mensalidade pode estar no curso ou na turma
-        const effectiveMonthlyPriceCents = course.monthlyPriceCents ?? courseClass.monthlyPriceCents;
+        // Preço da mensalidade pode estar no curso ou na turma (ignorado quando isento)
+        const effectiveMonthlyPriceCents = request.isTuitionExempt
+            ? null
+            : (course.monthlyPriceCents ?? courseClass.monthlyPriceCents);
 
         const enrollment = this.createEnrollmentFromRequest(request, effectiveMonthlyPriceCents);
 
@@ -114,9 +116,9 @@ export class ApproveEnrollmentRequest {
             }
         }
 
-        // Gerar primeira mensalidade sempre que houver valor (data do primeiro pagamento pode ser passada, atual ou futura)
+        // Gerar primeira mensalidade sempre que houver valor (não gera para aluno isento)
         let firstTuitionChargeId: string | null = null;
-        if (effectiveMonthlyPriceCents && effectiveMonthlyPriceCents > 0) {
+        if (!request.isTuitionExempt && effectiveMonthlyPriceCents && effectiveMonthlyPriceCents > 0) {
             try {
                 const firstTuitionCharge = await this.createFirstTuitionCharge(
                     enrollment,
@@ -275,7 +277,8 @@ export class ApproveEnrollmentRequest {
                 ownerUserId: request.requestedForUserId,
                 dependentId: request.requestedForDependentId,
                 fullAmountCents,
-                paymentDueDay
+                paymentDueDay,
+                tuitionExemptionType: request.tuitionExemptionType
             });
         }
 
@@ -285,7 +288,8 @@ export class ApproveEnrollmentRequest {
             ownerUserId: request.requestedForUserId,
             studentUserId: request.requestedForUserId,
             fullAmountCents,
-            paymentDueDay
+            paymentDueDay,
+            tuitionExemptionType: request.tuitionExemptionType
         });
     }
 

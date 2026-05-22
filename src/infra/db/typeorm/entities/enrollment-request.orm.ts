@@ -4,6 +4,7 @@ import { CourseClassOrm } from './course-class.orm';
 import { UserOrm } from './user.orm';
 import { DependentOrm } from './dependent.orm';
 import { EnrollmentOrm } from './enrollment.orm';
+import type { TuitionExemptionType } from '../../../../domain/value-objects/tuition-exemption-type';
 
 export type EnrollmentRequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
 
@@ -45,6 +46,13 @@ export class EnrollmentRequestOrm {
     @Column('date', { name: 'enrollment_fee_due_date', nullable: true }) enrollmentFeeDueDate!: string | null;
 
     @Column('date', { name: 'first_monthly_payment_date' }) firstMonthlyPaymentDate!: string;
+
+    @Column('enum', {
+        enum: ['EMPLOYEE', 'RELATIVE', 'SCHOLARSHIP', 'NONPROFIT'],
+        name: 'tuition_exemption_type',
+        nullable: true
+    })
+    tuitionExemptionType!: TuitionExemptionType | null;
 
     @Column('char', { length: 36, name: 'enrollment_id', nullable: true }) enrollmentId!: string | null;
 

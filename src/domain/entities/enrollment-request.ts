@@ -1,3 +1,5 @@
+import type { TuitionExemptionType } from '../value-objects/tuition-exemption-type';
+
 export type EnrollmentRequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
 
 export class EnrollmentRequest {
@@ -16,6 +18,7 @@ export class EnrollmentRequest {
         private _enrollmentFeeCents: number | null,
         private _enrollmentFeeDueDate: Date | null,
         private _firstMonthlyPaymentDate: Date,
+        private readonly _tuitionExemptionType: TuitionExemptionType | null,
         private _enrollmentId: string | null,
         public readonly createdAt: Date
     ) {}
@@ -32,6 +35,7 @@ export class EnrollmentRequest {
         enrollmentFeeCents?: number | null;
         enrollmentFeeDueDate?: Date | null;
         firstMonthlyPaymentDate: Date;
+        tuitionExemptionType?: TuitionExemptionType | null;
         createdAt?: Date;
     }) {
         const schoolId = params.schoolId.trim();
@@ -87,6 +91,16 @@ export class EnrollmentRequest {
             )
         );
 
+        let tuitionExemptionType: TuitionExemptionType | null = null;
+        if (params.tuitionExemptionType) {
+            const raw = params.tuitionExemptionType.trim().toUpperCase();
+            const allowed: TuitionExemptionType[] = ['EMPLOYEE', 'RELATIVE', 'SCHOLARSHIP', 'NONPROFIT'];
+            if (!allowed.includes(raw as TuitionExemptionType)) {
+                throw new Error('Invalid tuition exemption type');
+            }
+            tuitionExemptionType = raw as TuitionExemptionType;
+        }
+
         return new EnrollmentRequest(
             params.id,
             schoolId,
@@ -102,6 +116,7 @@ export class EnrollmentRequest {
             enrollmentFeeCents,
             enrollmentFeeDueDate,
             normalizedFirstMonthlyPaymentDate,
+            tuitionExemptionType,
             null,
             params.createdAt ?? new Date()
         );
@@ -141,6 +156,14 @@ export class EnrollmentRequest {
 
     get firstMonthlyPaymentDate() {
         return this._firstMonthlyPaymentDate;
+    }
+
+    get tuitionExemptionType() {
+        return this._tuitionExemptionType;
+    }
+
+    get isTuitionExempt() {
+        return this._tuitionExemptionType !== null;
     }
 
     get enrollmentId() {

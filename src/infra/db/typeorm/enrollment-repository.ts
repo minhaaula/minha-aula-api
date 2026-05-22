@@ -418,6 +418,7 @@ export class EnrollmentRepositoryAdapter implements EnrollmentRepository {
                 updatedAt: row.updatedAt,
                 fullAmountCents: row.fullAmountCents,
                 paymentDueDay: row.paymentDueDay,
+                tuitionExemptionType: row.tuitionExemptionType,
                 currentSchoolStudentLevelId: row.currentSchoolStudentLevelId
             });
         }
@@ -431,6 +432,7 @@ export class EnrollmentRepositoryAdapter implements EnrollmentRepository {
             updatedAt: row.updatedAt,
             fullAmountCents: row.fullAmountCents,
             paymentDueDay: row.paymentDueDay,
+            tuitionExemptionType: row.tuitionExemptionType,
             currentSchoolStudentLevelId: row.currentSchoolStudentLevelId
         });
     }
@@ -445,6 +447,7 @@ export class EnrollmentRepositoryAdapter implements EnrollmentRepository {
         row.dependentId = enrollment.dependentId;
         row.status = enrollment.status;
         row.fullAmountCents = enrollment.fullAmountCents;
+        row.tuitionExemptionType = enrollment.tuitionExemptionType;
         row.paymentDueDay = enrollment.paymentDueDay;
         row.currentSchoolStudentLevelId = enrollment.currentSchoolStudentLevelId;
         row.enrolledAt = enrollment.enrolledAt;

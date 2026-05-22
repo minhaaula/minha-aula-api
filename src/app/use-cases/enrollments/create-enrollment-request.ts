@@ -89,7 +89,8 @@ export class CreateEnrollmentRequest {
             discountMonths,
             enrollmentFeeCents,
             enrollmentFeeDueDate,
-            firstMonthlyPaymentDate
+            firstMonthlyPaymentDate,
+            tuitionExemptionType: input.tuitionExemptionType ?? null
         });
 
         await this.requests.save(request);

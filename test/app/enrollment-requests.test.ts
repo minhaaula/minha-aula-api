@@ -328,6 +328,35 @@ describe('CreateEnrollmentRequest', () => {
         expect(result.requestedForDependentId).toBeNull();
     });
 
+    it('creates a request with tuition exemption type', async () => {
+        const schools = new InMemorySchools();
+        const courses = new InMemoryCourses();
+        const classes = new InMemoryClasses();
+        const users = new InMemoryUsers();
+        const dependents = new InMemoryDependents();
+        const enrollments = new InMemoryEnrollments();
+        const requests = new InMemoryRequests();
+
+        const { school, course, courseClass } = setupCourseStructure({ monthlyPriceCents: 80_000 });
+        schools.seed(school);
+        courses.seed(course);
+        classes.seed(courseClass);
+        const user = makeUser('user-exempt-req');
+        users.seed(user);
+
+        const useCase = new CreateEnrollmentRequest(schools, courses, classes, users, dependents, enrollments, requests);
+        const result = await useCase.exec({
+            schoolId: school.id,
+            courseClassId: courseClass.id,
+            requestedForUserId: user.id,
+            firstMonthlyPaymentDate: '2024-02-01',
+            tuitionExemptionType: 'EMPLOYEE'
+        });
+
+        expect(result.tuitionExemptionType).toBe('EMPLOYEE');
+        expect(result.isTuitionExempt).toBe(true);
+    });
+
     it('when school initiates, enqueues enrollment email and WhatsApp solicitacao_matricula job', async () => {
         const schools = new InMemorySchools();
         const courses = new InMemoryCourses();
@@ -832,6 +861,41 @@ describe('ApproveEnrollmentRequest', () => {
         expect(tuitionCharge).toBeDefined();
         expect(tuitionCharge!.amountCents).toBe(100_000);
         expect(tuitionCharge!.discountCents).toBe(5000);
+    });
+
+    it('approves tuition-exempt request without creating tuition charges', async () => {
+        const enrollments = new InMemoryEnrollments();
+        const requests = new InMemoryRequests();
+        const classes = new InMemoryClasses();
+        const courses = new InMemoryCourses();
+        const charges = new InMemoryCharges();
+        const { course, courseClass } = setupCourseStructure({ monthlyPriceCents: 100_000 });
+        classes.seed(courseClass);
+        courses.seed(course);
+        const request = EnrollmentRequest.create({
+            id: 'req-exempt',
+            schoolId: 'school-1',
+            courseClassId: courseClass.id,
+            requestedForUserId: 'user-exempt',
+            enrollmentFeeCents: 15000,
+            enrollmentFeeDueDate: new Date('2024-01-20'),
+            firstMonthlyPaymentDate: new Date('2024-02-05'),
+            tuitionExemptionType: 'NONPROFIT'
+        });
+        requests.seed(request);
+
+        const useCase = new ApproveEnrollmentRequest(requests, enrollments, classes, courses, charges);
+        const approval = await useCase.exec({ requestId: request.id, approverUserId: 'user-exempt' });
+
+        expect(approval.firstTuitionChargeId).toBeNull();
+        expect(charges.all().every((c) => c.chargeType !== 'TUITION')).toBe(true);
+        expect(charges.all()).toHaveLength(1);
+        expect(charges.all()[0].chargeType).toBe('ENROLLMENT');
+
+        const enrollment = enrollments.all()[0];
+        expect(enrollment.isTuitionExempt).toBe(true);
+        expect(enrollment.tuitionExemptionType).toBe('NONPROFIT');
+        expect(enrollment.fullAmountCents).toBeNull();
     });
 
     it('does not apply discount to enrollment fee even when discount exceeds fee amount', async () => {

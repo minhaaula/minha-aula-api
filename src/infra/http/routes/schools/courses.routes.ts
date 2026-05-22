@@ -28,6 +28,10 @@ import {
     updateCourseSchema
 } from '../../validators/school-schemas';
 import type { SchoolRouteGuards } from './guards';
+import {
+    enrollmentTuitionExemptionFields,
+    refineEnrollmentTuitionExemption
+} from '../../validators/enrollment-exemption-schemas';
 import type { SchoolContextRequest } from '../../middlewares/resolve-school-context';
 import { mapCourseCategories } from './transformers';
 import type { EnrollmentRequest } from '../../../../domain/entities/enrollment-request';
@@ -275,23 +279,26 @@ export function buildCoursesRoutes(deps: CoursesRoutesDeps, guards: SchoolRouteG
     if (deps.enrollStudent) {
         router.post('/:courseId/classes/:classId/enrollments', ...protectedMiddleware, asyncHandler(async (req, res) => {
             const { courseId, classId } = courseClassParamsSchema.parse(req.params);
-            const bodySchema = z.object({
-                studentUserId: z.string().uuid(),
-                dependentId: z.string().uuid().optional(),
-                discont: z.coerce.number().min(0).optional(),
-                discountMonths: z.coerce.number().int().min(1).optional()
-            }).superRefine((data, ctx) => {
-                // Se há desconto, discountMonths é obrigatório
-                if (data.discont !== undefined && data.discont !== null && data.discont > 0) {
-                    if (!data.discountMonths || data.discountMonths < 1) {
-                        ctx.addIssue({
-                            code: z.ZodIssueCode.custom,
-                            path: ['discountMonths'],
-                            message: 'discountMonths é obrigatório quando há desconto (discont > 0)'
-                        });
+            const bodySchema = z
+                .object({
+                    studentUserId: z.string().uuid(),
+                    dependentId: z.string().uuid().optional(),
+                    discont: z.coerce.number().min(0).optional(),
+                    discountMonths: z.coerce.number().int().min(1).optional(),
+                    ...enrollmentTuitionExemptionFields
+                })
+                .superRefine((data, ctx) => {
+                    if (data.discont !== undefined && data.discont !== null && data.discont > 0) {
+                        if (!data.discountMonths || data.discountMonths < 1) {
+                            ctx.addIssue({
+                                code: z.ZodIssueCode.custom,
+                                path: ['discountMonths'],
+                                message: 'discountMonths é obrigatório quando há desconto (discont > 0)'
+                            });
+                        }
                     }
-                }
-            });
+                    refineEnrollmentTuitionExemption(data, ctx);
+                });
             const data = bodySchema.parse(req.body ?? {});
             const schoolId = (req as SchoolContextRequest).schoolId as string;
 
@@ -302,7 +309,9 @@ export function buildCoursesRoutes(deps: CoursesRoutesDeps, guards: SchoolRouteG
                 studentUserId: data.studentUserId,
                 dependentId: data.dependentId ?? null,
                 discount: data.discont ?? null,
-                discountMonths: data.discountMonths ?? null
+                discountMonths: data.discountMonths ?? null,
+                tuitionExemptionType:
+                    data.monthlyTuition === 'EXEMPT' ? (data.tuitionExemptionType ?? null) : null
             });
 
             res.status(201).json(enrollment);

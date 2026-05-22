@@ -8,6 +8,7 @@ import { SchoolStudentLevelOrm } from './school-student-level.orm';
 import { EnrollmentLevelPromotionOrm } from './enrollment-level-promotion.orm';
 import { EnrollmentPromotionCertificateOrm } from './enrollment-promotion-certificate.orm';
 import { EnrollmentTimelineEventOrm } from './enrollment-timeline-event.orm';
+import type { TuitionExemptionType } from '../../../../domain/value-objects/tuition-exemption-type';
 
 export type EnrollmentStatus = 'PENDING' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
 export type EnrollmentStudentType = 'USER' | 'DEPENDENT';
@@ -43,6 +44,13 @@ export class EnrollmentOrm {
     @Column('enum', { enum: ['PENDING', 'ACTIVE', 'COMPLETED', 'CANCELLED'], default: 'ACTIVE' }) status!: EnrollmentStatus;
 
     @Column('int', { name: 'full_amount_cents', nullable: true }) fullAmountCents!: number | null;
+
+    @Column('enum', {
+        enum: ['EMPLOYEE', 'RELATIVE', 'SCHOLARSHIP', 'NONPROFIT'],
+        name: 'tuition_exemption_type',
+        nullable: true
+    })
+    tuitionExemptionType!: TuitionExemptionType | null;
 
     @Column('tinyint', { width: 2, name: 'payment_due_day', nullable: true }) paymentDueDay!: number | null;
 

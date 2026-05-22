@@ -62,6 +62,7 @@ function buildEnrollmentRequestFromInput(input: any) {
         enrollmentFeeCents,
         enrollmentFeeDueDate: input.enrollmentFeeDueDate ? new Date(input.enrollmentFeeDueDate) : null,
         firstMonthlyPaymentDate: new Date(input.firstMonthlyPaymentDate),
+        tuitionExemptionType: input.tuitionExemptionType ?? null,
         createdAt: new Date('2026-01-01T00:00:00Z')
     });
 }
@@ -185,6 +186,84 @@ describe('enrollment-requests routes (HTTP)', () => {
             notes: 'Dependente',
             initiatedBySchool: true
         });
+    });
+
+    it('SCHOOL /responsible-requests: accepts monthlyTuition EXEMPT with tuitionExemptionType', async () => {
+        const exec = vi.fn(async (input: any) => buildEnrollmentRequestFromInput(input));
+
+        const app = buildTestApp({
+            userCtx: {
+                persona: 'SCHOOL',
+                sub: 'irrelevant-owner-00000000-0000-0000-0000-000000000000',
+                schoolId: '85a1acc4-9445-4951-944e-4c0fa9e31af4'
+            },
+            createEnrollmentRequestExec: exec
+        });
+
+        const res = await request(app)
+            .post('/enrollment-requests/schools/classes/2c91252e-6ac3-4080-b89f-28e71fa3bd5a/responsible-requests')
+            .send({
+                requestedForUserId: '550e8400-e29b-41d4-a716-446655440000',
+                firstMonthlyPaymentDate: '2026-03-19',
+                monthlyTuition: 'EXEMPT',
+                tuitionExemptionType: 'SCHOLARSHIP'
+            });
+
+        expect(res.status).toBe(201);
+        expect(res.body.monthlyTuition).toBe('EXEMPT');
+        expect(res.body.tuitionExemptionType).toBe('SCHOLARSHIP');
+        expect(exec.mock.calls[0][0]).toMatchObject({
+            tuitionExemptionType: 'SCHOLARSHIP',
+            initiatedBySchool: true
+        });
+    });
+
+    it('SCHOOL /responsible-requests: rejects EXEMPT without tuitionExemptionType', async () => {
+        const exec = vi.fn(async (input: any) => buildEnrollmentRequestFromInput(input));
+
+        const app = buildTestApp({
+            userCtx: {
+                persona: 'SCHOOL',
+                sub: 'irrelevant-owner-00000000-0000-0000-0000-000000000000',
+                schoolId: '85a1acc4-9445-4951-944e-4c0fa9e31af4'
+            },
+            createEnrollmentRequestExec: exec
+        });
+
+        const res = await request(app)
+            .post('/enrollment-requests/schools/classes/2c91252e-6ac3-4080-b89f-28e71fa3bd5a/responsible-requests')
+            .send({
+                requestedForUserId: '550e8400-e29b-41d4-a716-446655440000',
+                firstMonthlyPaymentDate: '2026-03-19',
+                monthlyTuition: 'EXEMPT'
+            });
+
+        expect(res.status).toBe(400);
+        expect(exec).toHaveBeenCalledTimes(0);
+    });
+
+    it('SCHOOL /responsible-requests: rejects tuitionExemptionType without monthlyTuition EXEMPT', async () => {
+        const exec = vi.fn(async (input: any) => buildEnrollmentRequestFromInput(input));
+
+        const app = buildTestApp({
+            userCtx: {
+                persona: 'SCHOOL',
+                sub: 'irrelevant-owner-00000000-0000-0000-0000-000000000000',
+                schoolId: '85a1acc4-9445-4951-944e-4c0fa9e31af4'
+            },
+            createEnrollmentRequestExec: exec
+        });
+
+        const res = await request(app)
+            .post('/enrollment-requests/schools/classes/2c91252e-6ac3-4080-b89f-28e71fa3bd5a/responsible-requests')
+            .send({
+                requestedForUserId: '550e8400-e29b-41d4-a716-446655440000',
+                firstMonthlyPaymentDate: '2026-03-19',
+                tuitionExemptionType: 'EMPLOYEE'
+            });
+
+        expect(res.status).toBe(400);
+        expect(exec).toHaveBeenCalledTimes(0);
     });
 });
 

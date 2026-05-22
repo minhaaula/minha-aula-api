@@ -1,3 +1,5 @@
+import type { TuitionExemptionType } from '../value-objects/tuition-exemption-type';
+
 export type EnrollmentStatus = 'PENDING' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
 export type EnrollmentStudentType = 'USER' | 'DEPENDENT';
 
@@ -14,6 +16,7 @@ export class Enrollment {
         public readonly updatedAt: Date,
         private readonly _fullAmountCents: number | null,
         private readonly _paymentDueDay: number | null,
+        private readonly _tuitionExemptionType: TuitionExemptionType | null,
         private _currentSchoolStudentLevelId: string | null = null
     ) {}
 
@@ -27,13 +30,17 @@ export class Enrollment {
         updatedAt?: Date;
         fullAmountCents?: number | null;
         paymentDueDay?: number | null;
+        tuitionExemptionType?: TuitionExemptionType | null;
         currentSchoolStudentLevelId?: string | null;
     }) {
         const courseClassId = params.courseClassId.trim();
         const ownerUserId = params.ownerUserId.trim();
         const studentUserId = params.studentUserId.trim();
         if (!courseClassId || !ownerUserId || !studentUserId) throw new Error('Invalid enrollment identifiers');
-        const fullAmountCents = Enrollment.normalizeFullAmountCents(params.fullAmountCents);
+        const tuitionExemptionType = Enrollment.normalizeTuitionExemptionType(params.tuitionExemptionType);
+        const fullAmountCents = Enrollment.normalizeFullAmountCents(
+            tuitionExemptionType ? null : params.fullAmountCents
+        );
         const paymentDueDay = Enrollment.normalizePaymentDueDay(params.paymentDueDay);
         const currentSchoolStudentLevelId = Enrollment.normalizeCurrentLevelId(params.currentSchoolStudentLevelId);
         return new Enrollment(
@@ -48,6 +55,7 @@ export class Enrollment {
             params.updatedAt ?? new Date(),
             fullAmountCents,
             paymentDueDay,
+            tuitionExemptionType,
             currentSchoolStudentLevelId
         );
     }
@@ -62,13 +70,17 @@ export class Enrollment {
         updatedAt?: Date;
         fullAmountCents?: number | null;
         paymentDueDay?: number | null;
+        tuitionExemptionType?: TuitionExemptionType | null;
         currentSchoolStudentLevelId?: string | null;
     }) {
         const courseClassId = params.courseClassId.trim();
         const ownerUserId = params.ownerUserId.trim();
         const dependentId = params.dependentId.trim();
         if (!courseClassId || !ownerUserId || !dependentId) throw new Error('Invalid enrollment identifiers');
-        const fullAmountCents = Enrollment.normalizeFullAmountCents(params.fullAmountCents);
+        const tuitionExemptionType = Enrollment.normalizeTuitionExemptionType(params.tuitionExemptionType);
+        const fullAmountCents = Enrollment.normalizeFullAmountCents(
+            tuitionExemptionType ? null : params.fullAmountCents
+        );
         const paymentDueDay = Enrollment.normalizePaymentDueDay(params.paymentDueDay);
         const currentSchoolStudentLevelId = Enrollment.normalizeCurrentLevelId(params.currentSchoolStudentLevelId);
         return new Enrollment(
@@ -83,6 +95,7 @@ export class Enrollment {
             params.updatedAt ?? new Date(),
             fullAmountCents,
             paymentDueDay,
+            tuitionExemptionType,
             currentSchoolStudentLevelId
         );
     }
@@ -109,6 +122,14 @@ export class Enrollment {
         return this._paymentDueDay ?? 10; // Padrão: dia 10
     }
 
+    get tuitionExemptionType(): TuitionExemptionType | null {
+        return this._tuitionExemptionType;
+    }
+
+    get isTuitionExempt(): boolean {
+        return this._tuitionExemptionType !== null;
+    }
+
     get currentSchoolStudentLevelId(): string | null {
         return this._currentSchoolStudentLevelId;
     }
@@ -123,6 +144,19 @@ export class Enrollment {
         if (typeof value !== 'string') throw new Error('Invalid enrollment current level id');
         const trimmed = value.trim();
         return trimmed.length ? trimmed : null;
+    }
+
+    private static normalizeTuitionExemptionType(value: unknown): TuitionExemptionType | null {
+        if (value === undefined || value === null) return null;
+        if (typeof value !== 'string') throw new Error('Invalid tuition exemption type');
+        const trimmed = value.trim();
+        if (!trimmed.length) return null;
+        const upper = trimmed.toUpperCase();
+        const allowed: TuitionExemptionType[] = ['EMPLOYEE', 'RELATIVE', 'SCHOLARSHIP', 'NONPROFIT'];
+        if (!allowed.includes(upper as TuitionExemptionType)) {
+            throw new Error('Invalid tuition exemption type');
+        }
+        return upper as TuitionExemptionType;
     }
 
     private static normalizeFullAmountCents(value: unknown): number | null {

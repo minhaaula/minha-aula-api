@@ -119,6 +119,7 @@ export class GenerateMonthlyTuitionCharges {
           updatedAt: row.updatedAt,
           fullAmountCents: row.fullAmountCents,
           paymentDueDay: row.paymentDueDay,
+          tuitionExemptionType: row.tuitionExemptionType,
           currentSchoolStudentLevelId: row.currentSchoolStudentLevelId,
         });
       }
@@ -132,6 +133,7 @@ export class GenerateMonthlyTuitionCharges {
         updatedAt: row.updatedAt,
         fullAmountCents: row.fullAmountCents,
         paymentDueDay: row.paymentDueDay,
+        tuitionExemptionType: row.tuitionExemptionType,
         currentSchoolStudentLevelId: row.currentSchoolStudentLevelId,
       });
     });
@@ -255,6 +257,16 @@ export class GenerateMonthlyTuitionCharges {
         studentName: "N/A",
         status: "error",
         reason: "Curso não encontrado",
+      };
+    }
+
+    if (enrollment.isTuitionExempt) {
+      return {
+        enrollmentId: enrollment.id,
+        courseName: course.name,
+        studentName: "N/A",
+        status: "skipped",
+        reason: "Aluno isento de mensalidade",
       };
     }
 
