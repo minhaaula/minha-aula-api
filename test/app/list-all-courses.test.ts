@@ -82,12 +82,18 @@ class InMemoryCourseRepository implements CourseRepository {
     }
 
     async findCategoriesByCourseIds(courseIds: string[]): Promise<any[]> {
-        return courseIds.map(courseId => {
-            const data = this.categoriesData.get(courseId) || { category: null, subcategory: null };
+        return courseIds.map((courseId) => {
+            const data = this.categoriesData.get(courseId) ?? {
+                category: null,
+                subcategory: null,
+                subcategories: [] as string[]
+            };
+            const subcategories = data.subcategories ?? (data.subcategory ? [data.subcategory] : []);
             return {
                 courseId,
                 category: data.category,
-                subcategory: data.subcategory
+                subcategory: subcategories[0] ?? null,
+                subcategories
             };
         });
     }
@@ -102,6 +108,7 @@ class InMemoryCourseRepository implements CourseRepository {
         schoolState?: string | null;
         categoryId?: string;
         subcategoryId?: string;
+        subcategories?: string[];
     }) {
         this.items.set(data.courseId, {
             courseName: data.courseName,
@@ -116,7 +123,19 @@ class InMemoryCourseRepository implements CourseRepository {
 
         this.categoriesData.set(data.courseId, {
             category: data.categoryId ? `Category-${data.categoryId}` : null,
-            subcategory: data.subcategoryId ? `Subcategory-${data.subcategoryId}` : null
+            subcategory: data.subcategoryId ? `Subcategory-${data.subcategoryId}` : null,
+            subcategories: data.subcategories ?? (data.subcategoryId ? [`Subcategory-${data.subcategoryId}`] : [])
+        });
+    }
+
+    setCourseCategories(
+        courseId: string,
+        data: { category: string | null; subcategories: string[] }
+    ) {
+        this.categoriesData.set(courseId, {
+            category: data.category,
+            subcategory: data.subcategories[0] ?? null,
+            subcategories: data.subcategories
         });
     }
 }
@@ -171,6 +190,7 @@ describe('ListAllCourses use case', () => {
         expect(result.courses[0].courseDescription).toBe('Curso de inglês para iniciantes');
         expect(result.courses[0].category).toBe('Category-cat-1');
         expect(result.courses[0].subcategory).toBe('Subcategory-sub-1');
+        expect(result.courses[0].subcategories).toEqual(['Subcategory-sub-1']);
         expect(result.courses[0].schoolCity).toBe('São Paulo');
         expect(result.courses[0].schoolState).toBeNull();
         expect(result.courses[0].schoolRatingAverage).toBeNull();
@@ -269,6 +289,31 @@ describe('ListAllCourses use case', () => {
         expect(result.courses[0].courseName).toBe('Inglês Básico');
     });
 
+    it('returns all subcategories when course has multiple', async () => {
+        const coursesRepo = new InMemoryCourseRepository();
+        const categoriesRepo = new InMemoryCategoryRepository();
+
+        coursesRepo.seedCourse({
+            courseId: 'course-multi',
+            courseName: 'Dança',
+            courseDescription: null,
+            schoolId: 'school-1',
+            schoolName: 'Academia Iguape',
+            schoolCity: 'Iguape'
+        });
+        coursesRepo.setCourseCategories('course-multi', {
+            category: 'Artes',
+            subcategories: ['Ballet', 'Jazz', 'Sapateado']
+        });
+
+        const useCase = new ListAllCourses(coursesRepo, categoriesRepo);
+        const result = await useCase.exec({ city: 'Iguape' });
+
+        expect(result.courses).toHaveLength(1);
+        expect(result.courses[0].subcategories).toEqual(['Ballet', 'Jazz', 'Sapateado']);
+        expect(result.courses[0].subcategory).toBe('Ballet');
+    });
+
     it('filters courses by city', async () => {
         const coursesRepo = new InMemoryCourseRepository();
         const categoriesRepo = new InMemoryCategoryRepository();
@@ -353,6 +398,7 @@ describe('ListAllCourses use case', () => {
         expect(result.courses).toHaveLength(1);
         expect(result.courses[0].category).toBeNull();
         expect(result.courses[0].subcategory).toBeNull();
+        expect(result.courses[0].subcategories).toEqual([]);
     });
 
     it('returns schoolCity, schoolState and schoolRatingAverage in each course', async () => {

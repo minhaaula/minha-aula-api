@@ -14,6 +14,7 @@ export interface MyCourseRecord {
     studentName: string;
     category: string | null;
     subcategory: string | null;
+    subcategories: string[];
     city: string | null;
     schedule: Array<{ day: string; start: string; end: string }>;
     /** Curso ativo na escola (`courses.is_active`). */
@@ -85,7 +86,11 @@ export class ListMyCourses {
 
         // Construir resultado final
         const courses: MyCourseRecord[] = myCoursesData.map((data) => {
-            const catInfo = categoriesMap.get(data.courseId) || { category: null, subcategory: null };
+            const catInfo = categoriesMap.get(data.courseId) ?? {
+                category: null,
+                subcategory: null,
+                subcategories: [] as string[]
+            };
             const city = citiesMap.get(data.schoolId) || null;
 
             return {
@@ -96,6 +101,7 @@ export class ListMyCourses {
                 studentName: data.studentName,
                 category: catInfo.category,
                 subcategory: catInfo.subcategory,
+                subcategories: catInfo.subcategories,
                 city: city,
                 schedule: data.schedule,
                 active: data.active,

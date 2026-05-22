@@ -90,28 +90,35 @@ export class CourseRepositoryAdapter implements CourseRepository {
             ORDER BY cc.created_at ASC
         `, courseIds);
 
-        const categoriesMap = new Map<string, { category: string | null; subcategory: string | null }>();
+        const categoriesMap = new Map<string, { category: string | null; subcategories: Set<string> }>();
         for (const row of results) {
             const courseId = row.course_id;
             if (!categoriesMap.has(courseId)) {
                 categoriesMap.set(courseId, {
                     category: row.category_name || null,
-                    subcategory: row.subcategory_name || null
+                    subcategories: new Set()
                 });
-            } else {
-                const existing = categoriesMap.get(courseId)!;
-                if (!existing.subcategory && row.subcategory_name) {
-                    existing.subcategory = row.subcategory_name;
-                }
+            }
+            const existing = categoriesMap.get(courseId)!;
+            if (!existing.category && row.category_name) {
+                existing.category = row.category_name;
+            }
+            if (row.subcategory_name) {
+                existing.subcategories.add(row.subcategory_name);
             }
         }
 
-        return courseIds.map(courseId => {
-            const info = categoriesMap.get(courseId) || { category: null, subcategory: null };
+        return courseIds.map((courseId) => {
+            const info = categoriesMap.get(courseId) ?? {
+                category: null,
+                subcategories: new Set<string>()
+            };
+            const subcategories = Array.from(info.subcategories).sort((a, b) => a.localeCompare(b, 'pt-BR'));
             return {
                 courseId,
                 category: info.category,
-                subcategory: info.subcategory
+                subcategory: subcategories[0] ?? null,
+                subcategories
             };
         });
     }

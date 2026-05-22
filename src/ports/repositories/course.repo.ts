@@ -3,7 +3,10 @@ import { Course } from '../../domain/entities/course';
 export type CourseCategoryInfo = {
     courseId: string;
     category: string | null;
+    /** Primeira subcategoria (compatibilidade). */
     subcategory: string | null;
+    /** Todas as subcategorias vinculadas ao curso. */
+    subcategories: string[];
 };
 
 export type CourseWithSchoolInfo = {

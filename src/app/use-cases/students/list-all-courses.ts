@@ -25,7 +25,10 @@ export interface CourseListItem {
     schoolCover: string | null;
     courseDescription: string | null;
     category: string | null;
+    /** Primeira subcategoria (compatibilidade). */
     subcategory: string | null;
+    /** Todas as subcategorias do curso. */
+    subcategories: string[];
     /** Cidade da escola (primeiro endereço). */
     schoolCity: string | null;
     /** Estado da escola (primeiro endereço). */
@@ -111,7 +114,11 @@ export class ListAllCourses {
 
         // Construir resultado final
         const courses: CourseListItem[] = coursesData.map((data) => {
-            const catInfo = categoriesMap.get(data.courseId) || { category: null, subcategory: null };
+            const catInfo = categoriesMap.get(data.courseId) ?? {
+                category: null,
+                subcategory: null,
+                subcategories: [] as string[]
+            };
 
             return {
                 courseName: data.courseName,
@@ -122,6 +129,7 @@ export class ListAllCourses {
                 courseDescription: data.courseDescription,
                 category: catInfo.category,
                 subcategory: catInfo.subcategory,
+                subcategories: catInfo.subcategories,
                 schoolCity: data.schoolCity ?? null,
                 schoolState: data.schoolState ?? null,
                 schoolRatingAverage: ratingMap.get(data.schoolId) ?? null,
