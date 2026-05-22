@@ -8,6 +8,7 @@ import { AppError, ErrorCode } from '../../../shared/errors';
 import { formatSchoolChargeDescriptionForSchoolUi } from '../../../shared/format-school-charge-description';
 import { presentTuitionExemptionFromEnrollmentRaw } from '../../presenters/tuition-exemption.presenter';
 import type { TuitionExemptionType } from '../../../domain/value-objects/tuition-exemption-type';
+import type { Gender } from '../../../domain/value-objects/gender';
 
 export interface GetAdminStudentDetailsInput {
     studentId: string;
@@ -46,6 +47,7 @@ export type AdminStudentDependentItem = {
     cpf: string | null;
     birthDate: Date | null;
     relationship: string | null;
+    gender: Gender | null;
     enrollments: EnrollmentItem[];
 };
 
@@ -57,6 +59,7 @@ export interface GetAdminStudentDetailsOutput {
         phone: string;
         cpf: string;
         birthDate: Date | null;
+        gender: Gender | null;
         studentType: 'USER' | 'DEPENDENT';
         endereco: PostalAddressProps;
     };
@@ -103,6 +106,7 @@ export class GetAdminStudentDetails {
                     cpf: dep.cpf,
                     birthDate: dep.birthDate,
                     relationship: dep.relationship,
+                    gender: dep.gender ?? null,
                     enrollments: depEnrollments
                 });
             }
@@ -115,6 +119,7 @@ export class GetAdminStudentDetails {
                     phone: user.phone,
                     cpf: user.cpf,
                     birthDate: user.birthDate,
+                    gender: user.gender ?? null,
                     studentType: 'USER',
                     endereco: user.address.toPrimitives()
                 },
@@ -148,6 +153,7 @@ export class GetAdminStudentDetails {
                 phone: '',
                 cpf: dependent.cpf || '',
                 birthDate: dependent.birthDate,
+                gender: dependent.gender ?? null,
                 studentType: 'DEPENDENT',
                 endereco: responsible.address.toPrimitives()
             },
