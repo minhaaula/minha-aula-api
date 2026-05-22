@@ -79,8 +79,27 @@ function verificationTokenFor(userId: string, phone = '+5511988887777'): string 
     });
 }
 
-describe('UpdateStudentProfile — persona SCHOOL no app aluno', () => {
-    it('bloqueia alteração de fullName e gender para persona SCHOOL', async () => {
+const schoolPersonaForbidden = {
+    code: ErrorCode.SCHOOL_PERSONA_STUDENT_PROFILE_UPDATE_FORBIDDEN
+};
+
+describe('Rotas de perfil do aluno — persona SCHOOL (KYC Asaas)', () => {
+    it('bloqueia PUT mesmo com token OTP aparentemente válido (antes da verificação de OTP)', async () => {
+        const users = new InMemoryUserRepository();
+        const user = makeUser(UserPersonaEnum.SCHOOL);
+        users.seed(user);
+
+        const useCase = new UpdateStudentProfile(users, tokenProvider);
+        await expect(
+            useCase.exec({
+                userId: user.id,
+                profileUpdateVerificationToken: verificationTokenFor(user.id),
+                email: 'outro@escola.com'
+            })
+        ).rejects.toMatchObject(schoolPersonaForbidden);
+    });
+
+    it('bloqueia PUT de perfil para qualquer campo', async () => {
         const users = new InMemoryUserRepository();
         const user = makeUser(UserPersonaEnum.SCHOOL);
         users.seed(user);
@@ -94,41 +113,23 @@ describe('UpdateStudentProfile — persona SCHOOL no app aluno', () => {
                 profileUpdateVerificationToken: token,
                 fullName: 'Novo Nome'
             })
-        ).rejects.toMatchObject({ code: ErrorCode.SCHOOL_OWNER_STUDENT_PROFILE_FIELD_LOCKED });
+        ).rejects.toMatchObject(schoolPersonaForbidden);
 
         await expect(
             useCase.exec({
                 userId: user.id,
-                profileUpdateVerificationToken: token,
-                gender: 'FEMALE'
+                profileUpdateVerificationToken: verificationTokenFor(user.id, '+5511977776666'),
+                email: 'novo@escola.com',
+                phone: '11977776666',
+                address: {
+                    street: 'Rua B',
+                    number: '99',
+                    city: 'São Paulo',
+                    state: 'SP',
+                    zipCode: '02000000'
+                }
             })
-        ).rejects.toMatchObject({ code: ErrorCode.SCHOOL_OWNER_STUDENT_PROFILE_FIELD_LOCKED });
-    });
-
-    it('permite alterar email, telefone e endereço para persona SCHOOL', async () => {
-        const users = new InMemoryUserRepository();
-        const user = makeUser(UserPersonaEnum.SCHOOL);
-        users.seed(user);
-
-        const useCase = new UpdateStudentProfile(users, tokenProvider);
-        const updated = await useCase.exec({
-            userId: user.id,
-            profileUpdateVerificationToken: verificationTokenFor(user.id, '+5511977776666'),
-            email: 'novo@escola.com',
-            phone: '11977776666',
-            address: {
-                street: 'Rua B',
-                number: '99',
-                city: 'São Paulo',
-                state: 'SP',
-                zipCode: '02000000'
-            }
-        });
-
-        expect(updated.email).toBe('novo@escola.com');
-        expect(updated.phone).toBe('11977776666');
-        expect(updated.fullName).toBe('João Escola');
-        expect(updated.gender).toBe('MALE');
+        ).rejects.toMatchObject(schoolPersonaForbidden);
     });
 
     it('aluno com persona STUDENT continua podendo alterar nome e sexo', async () => {

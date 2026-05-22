@@ -7,7 +7,7 @@ import type { Gender } from '../../../domain/value-objects/gender';
 import { parseGender } from '../../../domain/value-objects/gender';
 import { AppError, ErrorCode } from '../../../shared/errors';
 import { toE164Brazil } from '../../../shared/phone-e164';
-import { assertSchoolPersonaCanUpdateStudentProfileFields } from './assert-school-persona-student-profile-fields';
+import { assertSchoolPersonaCannotUseStudentProfileRoutes } from './assert-school-persona-student-profile-fields';
 
 export interface UpdateStudentProfileInput {
     userId: string;
@@ -53,23 +53,18 @@ export class UpdateStudentProfile {
             throw new Error('User id is required');
         }
 
-        await this.assertProfileUpdateVerified(
-            input.profileUpdateVerificationToken,
-            userId,
-            input.phone
-        );
-
         const user = await this.users.findById(userId);
         if (!user) {
             throw new Error('User not found');
         }
 
-        assertSchoolPersonaCanUpdateStudentProfileFields(user, {
-            fullName: input.fullName,
-            cpf: input.cpf,
-            birthDate: input.birthDate,
-            gender: input.gender
-        });
+        assertSchoolPersonaCannotUseStudentProfileRoutes(user);
+
+        await this.assertProfileUpdateVerified(
+            input.profileUpdateVerificationToken,
+            userId,
+            input.phone
+        );
 
         if (input.cpf !== undefined || input.birthDate !== undefined) {
             throw AppError.fromCode(ErrorCode.NOT_ALLOWED, {
@@ -77,7 +72,6 @@ export class UpdateStudentProfile {
             });
         }
 
-        // Validar se o email já está em uso por outro usuário
         if (input.email) {
             const email = Email.create(input.email);
             const existingUser = await this.users.findByEmail(email.value);
@@ -180,4 +174,3 @@ export class UpdateStudentProfile {
         return parsed;
     }
 }
-

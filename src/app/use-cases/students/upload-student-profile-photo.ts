@@ -2,6 +2,7 @@ import type { UserRepository } from '../../../ports/repositories/user.repo';
 import type { StorageProviderPort } from '../../../ports/providers/storage-provider.port';
 import { AppError } from '../../../shared/errors';
 import { canActAsStudent } from '../../../shared/user-student-access';
+import { assertSchoolPersonaCannotUseStudentProfileRoutes } from './assert-school-persona-student-profile-fields';
 import {
     deleteProfilePhotoFromStorage,
     profilePhotoFileExtension,
@@ -40,6 +41,7 @@ export class UploadStudentProfilePhoto {
         if (!canActAsStudent(user)) {
             throw AppError.forbidden('Apenas alunos podem alterar foto de perfil');
         }
+        assertSchoolPersonaCannotUseStudentProfileRoutes(user);
 
         validateProfilePhotoUpload(input.file, input.contentType, input.fileName);
 

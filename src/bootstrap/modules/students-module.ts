@@ -111,7 +111,12 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
     );
     const verifyStudentProfileUpdateOtp =
         deps.tokenProvider
-            ? new VerifyStudentProfileUpdateOtp(authPhoneOtpRepo, twilioVerify, deps.tokenProvider)
+            ? new VerifyStudentProfileUpdateOtp(
+                  authPhoneOtpRepo,
+                  twilioVerify,
+                  deps.tokenProvider,
+                  deps.usersRepo
+              )
             : undefined;
     const updateStudentProfile = deps.tokenProvider
         ? new UpdateStudentProfile(deps.usersRepo, deps.tokenProvider)

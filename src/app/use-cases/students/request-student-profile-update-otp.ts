@@ -8,6 +8,7 @@ import { sanitizeForLogging } from '../../../shared/log-sanitizer';
 import { log } from '../../../shared/logger';
 import { toE164Brazil } from '../../../shared/phone-e164';
 import { Uuid } from '../../../shared/uuid';
+import { assertSchoolPersonaCannotUseStudentProfileRoutes } from './assert-school-persona-student-profile-fields';
 
 const OTP_TTL_MINUTES = 10;
 const OTP_MAX_ATTEMPTS = 5;
@@ -61,6 +62,8 @@ export class RequestStudentProfileUpdateOtp {
         if (!user) {
             throw AppError.fromCode(ErrorCode.USER_NOT_FOUND, { userId });
         }
+
+        assertSchoolPersonaCannotUseStudentProfileRoutes(user);
 
         const targetE164 = this.resolveTargetPhoneE164(user.phone, input.phone);
 

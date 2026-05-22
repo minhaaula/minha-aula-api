@@ -12,6 +12,7 @@ import type { UserRepository } from '../../src/ports/repositories/user.repo';
 import type { OutboxRepository } from '../../src/ports/repositories/outbox.repo';
 import type { TwilioVerifyPort } from '../../src/ports/providers/twilio-verify.port';
 import type { TokenProviderPort } from '../../src/ports/providers/token-provider.port';
+import { updateStudentProfileSchema } from '../../src/infra/http/validators/student-schemas';
 import { AppError, ErrorCode } from '../../src/shared/errors';
 import { toE164Brazil } from '../../src/shared/phone-e164';
 import { Uuid } from '../../src/shared/uuid';
@@ -168,7 +169,7 @@ describe('Student profile update OTP', () => {
             verify: vi.fn(async (token) => JSON.parse(token) as Record<string, unknown>)
         };
 
-        const verifyOtp = new VerifyStudentProfileUpdateOtp(challenges, fakeTwilio, tokenProvider);
+        const verifyOtp = new VerifyStudentProfileUpdateOtp(challenges, fakeTwilio, tokenProvider, users);
         const verified = await verifyOtp.exec({
             userId: user.id,
             challengeId,
@@ -190,6 +191,13 @@ describe('Student profile update OTP', () => {
         expect(updated.phone).toBe('11977776666');
     });
 
+    it('updateStudentProfileSchema exige profileUpdateVerificationToken no body', () => {
+        expect(() => updateStudentProfileSchema.parse({ fullName: 'Maria' })).toThrow();
+        expect(() =>
+            updateStudentProfileSchema.parse({ profileUpdateVerificationToken: '', fullName: 'Maria' })
+        ).toThrow();
+    });
+
     it('rejeita PUT sem token de verificação válido', async () => {
         const users = new InMemoryUserRepository();
         const user = makeStudentUser();
@@ -208,6 +216,50 @@ describe('Student profile update OTP', () => {
                 userId: user.id,
                 profileUpdateVerificationToken: 'invalid',
                 fullName: 'X'
+            })
+        ).rejects.toMatchObject({ code: ErrorCode.STUDENT_PROFILE_NOT_VERIFIED });
+    });
+
+    it('rejeita token com typ ou sub incorretos', async () => {
+        const users = new InMemoryUserRepository();
+        const user = makeStudentUser();
+        users.seed(user);
+
+        const tokenProvider: TokenProviderPort = {
+            sign: vi.fn(async () => 'token'),
+            verify: vi.fn(async () => ({ typ: 'other', sub: user.id, ph: toE164Brazil(user.phone) }))
+        };
+
+        const updateProfile = new UpdateStudentProfile(users, tokenProvider);
+        await expect(
+            updateProfile.exec({
+                userId: user.id,
+                profileUpdateVerificationToken: 'wrong-typ',
+                email: 'novo@email.com'
+            })
+        ).rejects.toMatchObject({ code: ErrorCode.STUDENT_PROFILE_NOT_VERIFIED });
+    });
+
+    it('ao trocar phone exige que o token OTP seja do mesmo número', async () => {
+        const users = new InMemoryUserRepository();
+        const user = makeStudentUser();
+        users.seed(user);
+
+        const tokenProvider: TokenProviderPort = {
+            sign: vi.fn(async () => 'token'),
+            verify: vi.fn(async () => ({
+                typ: 'student_profile_update',
+                sub: user.id,
+                ph: toE164Brazil(user.phone)
+            }))
+        };
+
+        const updateProfile = new UpdateStudentProfile(users, tokenProvider);
+        await expect(
+            updateProfile.exec({
+                userId: user.id,
+                profileUpdateVerificationToken: 'token-old-phone',
+                phone: '11977776666'
             })
         ).rejects.toMatchObject({ code: ErrorCode.STUDENT_PROFILE_NOT_VERIFIED });
     });
@@ -237,7 +289,7 @@ describe('Student profile update OTP', () => {
             verify: vi.fn(async () => ({}))
         };
 
-        const verifyOtp = new VerifyStudentProfileUpdateOtp(challenges, fakeTwilio, tokenProvider);
+        const verifyOtp = new VerifyStudentProfileUpdateOtp(challenges, fakeTwilio, tokenProvider, users);
         await expect(
             verifyOtp.exec({
                 userId: other.id,

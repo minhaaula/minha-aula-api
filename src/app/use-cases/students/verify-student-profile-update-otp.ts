@@ -1,10 +1,12 @@
 import type { TokenProviderPort } from '../../../ports/providers/token-provider.port';
+import type { UserRepository } from '../../../ports/repositories/user.repo';
 import type { AuthPhoneOtpChallengeRepository } from '../../../ports/repositories/auth-phone-otp-challenge.repo';
 import type { TwilioVerifyPort } from '../../../ports/providers/twilio-verify.port';
 import { AppError, ErrorCode } from '../../../shared/errors';
 import { sanitizeForLogging } from '../../../shared/log-sanitizer';
 import { log } from '../../../shared/logger';
 import { toE164Brazil } from '../../../shared/phone-e164';
+import { assertSchoolPersonaCannotUseStudentProfileRoutes } from './assert-school-persona-student-profile-fields';
 
 const PROFILE_UPDATE_TOKEN_TTL_SEC = 15 * 60;
 
@@ -30,7 +32,8 @@ export class VerifyStudentProfileUpdateOtp {
     constructor(
         private readonly challenges: AuthPhoneOtpChallengeRepository,
         private readonly twilio: TwilioVerifyPort | undefined,
-        private readonly tokenProvider: TokenProviderPort
+        private readonly tokenProvider: TokenProviderPort,
+        private readonly users: UserRepository
     ) {}
 
     async exec(input: VerifyStudentProfileUpdateOtpInput): Promise<VerifyStudentProfileUpdateOtpOutput> {
@@ -40,6 +43,12 @@ export class VerifyStudentProfileUpdateOtp {
         if (!userId || !challengeId || !code) {
             throw AppError.validation('challengeId e code são obrigatórios');
         }
+
+        const user = await this.users.findById(userId);
+        if (!user) {
+            throw AppError.fromCode(ErrorCode.USER_NOT_FOUND, { userId });
+        }
+        assertSchoolPersonaCannotUseStudentProfileRoutes(user);
 
         const otp = await this.challenges.findById(challengeId);
         if (!otp || otp.purpose !== 'student_profile_update') {
