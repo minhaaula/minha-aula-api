@@ -6,8 +6,10 @@ import type { Dependent } from '../../../domain/entities/dependent';
 import type { User } from '../../../domain/entities/user';
 import { AppError, ErrorCode } from '../../../shared/errors';
 import { equalUuid } from '../../../shared/normalize-uuid';
-import { presentTuitionExemptionFromEnrollmentRaw } from '../../presenters/tuition-exemption.presenter';
-import type { TuitionExemptionType } from '../../../domain/value-objects/tuition-exemption-type';
+import {
+    presentEnrollmentMonthlyTuitionFromEnrollmentRaw,
+    type EnrollmentMonthlyTuitionApiFields
+} from '../../presenters/enrollment-monthly-tuition.presenter';
 import type { Gender } from '../../../domain/value-objects/gender';
 
 export interface GetSchoolStudentDetailsInput {
@@ -38,21 +40,21 @@ export interface GetSchoolStudentDetailsOutput {
         cpf: string;
         gender: Gender | null;
     } | null;
-    enrollments: Array<{
-        id: string;
-        course: {
+    enrollments: Array<
+        {
             id: string;
-            name: string;
-        };
-        class: {
-            id: string;
-            label: string;
-        };
-        enrolledAt: Date;
-        status: string;
-        tuitionExempt: boolean;
-        tuitionExemptionType: TuitionExemptionType | null;
-    }>;
+            course: {
+                id: string;
+                name: string;
+            };
+            class: {
+                id: string;
+                label: string;
+            };
+            enrolledAt: Date;
+            status: string;
+        } & EnrollmentMonthlyTuitionApiFields
+    >;
 }
 
 export class GetSchoolStudentDetails {
@@ -197,6 +199,10 @@ export class GetSchoolStudentDetails {
                 'enrollment.enrolledAt',
                 'enrollment.status',
                 'enrollment.tuitionExemptionType',
+                'enrollment.fullAmountCents',
+                'enrollment.paymentDueDay',
+                'enrollment.discountCents',
+                'enrollment.discountMonths',
                 'course.id',
                 'course.name',
                 'class.id',
@@ -204,22 +210,9 @@ export class GetSchoolStudentDetails {
             ])
             .getRawMany();
 
-        return enrollments.map((row: Record<string, unknown>) => ({
-            id: row.enrollment_id as string,
-            course: {
-                id: row.course_id as string,
-                name: row.course_name as string
-            },
-            class: {
-                id: row.class_id as string,
-                label: row.class_label as string
-            },
-            enrolledAt: row.enrollment_enrolled_at as Date,
-            status: row.enrollment_status as string,
-            ...presentTuitionExemptionFromEnrollmentRaw({
-                enrollment_tuition_exemption_type: row.enrollment_tuition_exemption_type as string | null
-            })
-        }));
+        return enrollments.map((row: Record<string, unknown>) =>
+            this.mapEnrollmentRow(row)
+        );
     }
 
     private async findEnrollmentsForDependent(schoolId: string, dependentId: string): Promise<GetSchoolStudentDetailsOutput['enrollments']> {
@@ -236,6 +229,10 @@ export class GetSchoolStudentDetails {
                 'enrollment.enrolledAt',
                 'enrollment.status',
                 'enrollment.tuitionExemptionType',
+                'enrollment.fullAmountCents',
+                'enrollment.paymentDueDay',
+                'enrollment.discountCents',
+                'enrollment.discountMonths',
                 'course.id',
                 'course.name',
                 'class.id',
@@ -243,7 +240,13 @@ export class GetSchoolStudentDetails {
             ])
             .getRawMany();
 
-        return enrollments.map((row: Record<string, unknown>) => ({
+        return enrollments.map((row: Record<string, unknown>) =>
+            this.mapEnrollmentRow(row)
+        );
+    }
+
+    private mapEnrollmentRow(row: Record<string, unknown>): GetSchoolStudentDetailsOutput['enrollments'][number] {
+        return {
             id: row.enrollment_id as string,
             course: {
                 id: row.course_id as string,
@@ -255,10 +258,14 @@ export class GetSchoolStudentDetails {
             },
             enrolledAt: row.enrollment_enrolled_at as Date,
             status: row.enrollment_status as string,
-            ...presentTuitionExemptionFromEnrollmentRaw({
-                enrollment_tuition_exemption_type: row.enrollment_tuition_exemption_type as string | null
+            ...presentEnrollmentMonthlyTuitionFromEnrollmentRaw({
+                enrollment_tuition_exemption_type: row.enrollment_tuition_exemption_type as string | null,
+                enrollment_full_amount_cents: row.enrollment_full_amount_cents as number | null,
+                enrollment_payment_due_day: row.enrollment_payment_due_day as number | null,
+                enrollment_discount_cents: row.enrollment_discount_cents as number | null,
+                enrollment_discount_months: row.enrollment_discount_months as number | null
             })
-        }));
+        };
     }
 
 }
