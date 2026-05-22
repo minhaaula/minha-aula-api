@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { phoneNumberSchema } from './numeric-fields';
-import { addressSchema } from './common-schemas';
+import { addressSchema, optionalBirthDateSchema } from './common-schemas';
 import { optionalGenderSchema } from './gender-schemas';
 
 // Re-export para compatibilidade
@@ -24,10 +24,7 @@ export const updateStudentProfileSchema = z
         fullName: z.string().trim().min(3).optional(),
         email: z.string().trim().email().optional(),
         phone: phoneNumberSchema().optional(),
-        birthDate: z
-            .string()
-            .regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD')
-            .optional(),
+        birthDate: optionalBirthDateSchema,
         address: addressSchema.optional(),
         gender: optionalGenderSchema
     })

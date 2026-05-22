@@ -206,6 +206,14 @@ describe('Student profile update OTP', () => {
         expect(parsed.birthDate).toBe('1992-08-14');
     });
 
+    it('updateStudentProfileSchema aceita birthDate em ISO (front)', () => {
+        const parsed = updateStudentProfileSchema.parse({
+            profileUpdateVerificationToken: 't',
+            birthDate: '1992-08-14T03:00:00.000Z'
+        });
+        expect(parsed.birthDate).toBe('1992-08-14');
+    });
+
     it('rejeita PUT sem token de verificação válido', async () => {
         const users = new InMemoryUserRepository();
         const user = makeStudentUser();
