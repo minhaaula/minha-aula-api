@@ -288,6 +288,7 @@ export class ListSchoolStudents {
                     cpf: dep.cpf,
                     birthDate: dep.birthDate,
                     relationship: dep.relationship,
+                    gender: dep.gender ?? null,
                     createdAt: dep.createdAt
                 };
             }
