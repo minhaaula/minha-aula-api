@@ -12,6 +12,7 @@ import { UserPersonaEnum } from '../../../../domain/value-objects/user-persona';
 import { createSchoolObjectSchema, createSchoolSchema } from '../../validators/school-schemas';
 import { z } from 'zod';
 import { mapAddresses } from './transformers';
+import { listTuitionExemptionTypes } from '../../../../domain/value-objects/tuition-exemption-type';
 
 type PublicSchoolRoutesDeps = {
     createSchool: CreateSchool;
@@ -64,6 +65,10 @@ export function buildPublicSchoolRoutes(deps: PublicSchoolRoutesDeps, optionalAu
             res.json(result);
         }));
     }
+
+    router.get('/tuition-exemption-types', asyncHandler(async (_req, res) => {
+        res.json({ items: listTuitionExemptionTypes() });
+    }));
 
     if (deps.listCategories) {
         router.get('/categories', asyncHandler(async (_req, res) => {

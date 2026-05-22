@@ -78,6 +78,14 @@ export function buildCoursesRoutes(deps: CoursesRoutesDeps, guards: SchoolRouteG
             decidedAt: request.decidedAt,
             decidedByUserId: request.decidedByUserId,
             notes: request.notes,
+            discont: request.discountCents !== null ? request.discountCents / 100 : null,
+            enrollmentFeeAmount: request.enrollmentFeeCents !== null ? request.enrollmentFeeCents / 100 : null,
+            enrollmentFeeDueDate: request.enrollmentFeeDueDate
+                ? request.enrollmentFeeDueDate.toISOString().slice(0, 10)
+                : null,
+            firstMonthlyPaymentDate: request.firstMonthlyPaymentDate.toISOString().slice(0, 10),
+            monthlyTuition: request.isTuitionExempt ? ('EXEMPT' as const) : null,
+            tuitionExemptionType: request.tuitionExemptionType,
             enrollmentId: request.enrollmentId,
             createdAt: request.createdAt,
             courseLabel: 'request' in item ? item.courseLabel : null,

@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+    getTuitionExemptionTypeLabel,
     isTuitionExemptionType,
+    listTuitionExemptionTypes,
     parseTuitionExemptionType,
     TUITION_EXEMPTION_TYPES
 } from '../../src/domain/value-objects/tuition-exemption-type';
@@ -21,5 +23,18 @@ describe('tuition-exemption-type', () => {
         expect(parseTuitionExemptionType('')).toBeNull();
         expect(parseTuitionExemptionType('FUNCIONARIO')).toBeNull();
         expect(isTuitionExemptionType('ISENTO')).toBe(false);
+    });
+
+    it('lists all types with Portuguese labels', () => {
+        const items = listTuitionExemptionTypes();
+        expect(items).toHaveLength(4);
+        expect(items).toEqual([
+            { value: 'EMPLOYEE', label: 'Funcionário' },
+            { value: 'RELATIVE', label: 'Parente' },
+            { value: 'SCHOLARSHIP', label: 'Bolsa de estudos' },
+            { value: 'NONPROFIT', label: 'Instituição sem fins lucrativos' }
+        ]);
+        expect(getTuitionExemptionTypeLabel('SCHOLARSHIP')).toBe('Bolsa de estudos');
+        expect(getTuitionExemptionTypeLabel(null)).toBeNull();
     });
 });

@@ -9,6 +9,8 @@ import { SchoolImageRepository } from '../../../ports/repositories/school-image.
 import { SchoolImageCategory } from '../../../domain/value-objects/school-image-category';
 import type { StorageProviderPort } from '../../../ports/providers/storage-provider.port';
 import type { PostalAddressOutput } from '../../types/common.types';
+import { presentTuitionExemption } from '../../presenters/tuition-exemption.presenter';
+import type { TuitionExemptionType } from '../../../domain/value-objects/tuition-exemption-type';
 
 export interface MyEnrollmentRequest {
     id: string;
@@ -19,7 +21,9 @@ export interface MyEnrollmentRequest {
     courseClassId: string;
     courseClassLabel: string | null;
     courseLabel: string | null;
-    /** Valor da mensalidade em reais (bruto). */
+    monthlyTuition: 'EXEMPT' | null;
+    tuitionExemptionType: TuitionExemptionType | null;
+    /** Valor da mensalidade em reais (bruto). Null quando isento. */
     monthlyTuitionAmount: number | null;
     /** Desconto em reais (quando houver). */
     discount: number | null;
@@ -134,7 +138,9 @@ export class ListMyEnrollmentRequests {
         }
 
         const mapped: MyEnrollmentRequest[] = allRequests.map((req) => {
-            const monthlyCents = req.monthlyPriceCents ?? null;
+            const isExempt = req.request.isTuitionExempt;
+            const exemption = presentTuitionExemption(req.request.tuitionExemptionType);
+            const monthlyCents = isExempt ? null : (req.monthlyPriceCents ?? null);
             const discountCents = req.request.discountCents ?? null;
             const netCents =
                 monthlyCents !== null
@@ -158,6 +164,7 @@ export class ListMyEnrollmentRequests {
                 courseClassId: req.request.courseClassId,
                 courseClassLabel: req.courseClassLabel,
                 courseLabel: req.courseLabel,
+                ...exemption,
                 monthlyTuitionAmount: monthlyCents != null ? monthlyCents / 100 : null,
                 discount: discountCents != null ? discountCents / 100 : null,
                 monthlyTuitionNetAmount: netCents != null ? netCents / 100 : null,

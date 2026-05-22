@@ -12,6 +12,8 @@ import type { User } from '../../../domain/entities/user';
 import type { Dependent } from '../../../domain/entities/dependent';
 import { equalUuid } from '../../../shared/normalize-uuid';
 import { isMinorByBirthDate } from '../../../shared/is-minor-by-birth-date';
+import { presentTuitionExemption } from '../../presenters/tuition-exemption.presenter';
+import type { TuitionExemptionType } from '../../../domain/value-objects/tuition-exemption-type';
 
 type ListSchoolStudentsInput = {
     schoolId: string;
@@ -39,6 +41,8 @@ export type AdminSchoolStudentEnrollmentItem = {
     enrolledAt: Date;
     course: { id: string; name: string };
     class: { id: string; label: string };
+    monthlyTuition: 'EXEMPT' | null;
+    tuitionExemptionType: TuitionExemptionType | null;
 };
 
 /** Item da listagem admin: um estudante matriculado (titular ou dependente) com cursos/turmas. */
@@ -69,6 +73,8 @@ export type SchoolStudentRecord = {
     detailsStudentId: string;
     course: { id: string; name: string };
     class: { id: string; label: string };
+    monthlyTuition: 'EXEMPT' | null;
+    tuitionExemptionType: TuitionExemptionType | null;
 };
 
 export type ListSchoolStudentsOutput = {
@@ -198,12 +204,14 @@ export class ListSchoolStudents {
                           }
                         : null;
 
+                const exemption = presentTuitionExemption(enrollment.tuitionExemptionType);
                 const enrollmentItem: AdminSchoolStudentEnrollmentItem = {
                     enrollmentId: enrollment.id,
                     status: enrollment.status,
                     enrolledAt: enrollment.enrolledAt,
                     course: { id: course.id, name: course.name },
-                    class: { id: courseClass.id, label: courseClass.label }
+                    class: { id: courseClass.id, label: courseClass.label },
+                    ...exemption
                 };
 
                 const existing = byStudentKey.get(studentKey);
@@ -303,7 +311,8 @@ export class ListSchoolStudents {
                 dependent: dependentSummary,
                 detailsStudentId,
                 course: { id: course.id, name: course.name },
-                class: { id: courseClass.id, label: courseClass.label }
+                class: { id: courseClass.id, label: courseClass.label },
+                ...presentTuitionExemption(enrollment.tuitionExemptionType)
             });
         }
 

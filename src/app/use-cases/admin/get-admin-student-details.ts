@@ -6,6 +6,8 @@ import { EnrollmentOrm } from '../../../infra/db/typeorm/entities/enrollment.orm
 import { SchoolFinancialChargeOrm } from '../../../infra/db/typeorm/entities/school-financial-charge.orm';
 import { AppError, ErrorCode } from '../../../shared/errors';
 import { formatSchoolChargeDescriptionForSchoolUi } from '../../../shared/format-school-charge-description';
+import { presentTuitionExemptionFromEnrollmentRaw } from '../../presenters/tuition-exemption.presenter';
+import type { TuitionExemptionType } from '../../../domain/value-objects/tuition-exemption-type';
 
 export interface GetAdminStudentDetailsInput {
     studentId: string;
@@ -18,6 +20,8 @@ type EnrollmentItem = {
     class: { id: string; label: string };
     enrolledAt: Date;
     status: string;
+    monthlyTuition: 'EXEMPT' | null;
+    tuitionExemptionType: TuitionExemptionType | null;
 };
 
 type PaidChargeItem = {
@@ -172,6 +176,7 @@ export class GetAdminStudentDetails {
                 'enrollment.id',
                 'enrollment.enrolledAt',
                 'enrollment.status',
+                'enrollment.tuitionExemptionType',
                 'course.id',
                 'course.name',
                 'class.id',
@@ -181,13 +186,16 @@ export class GetAdminStudentDetails {
             ])
             .orderBy('enrollment.enrolledAt', 'DESC')
             .getRawMany();
-        return rows.map((row: any) => ({
-            id: row.enrollment_id,
-            school: { id: row.school_id, name: row.school_name },
-            course: { id: row.course_id, name: row.course_name },
-            class: { id: row.class_id, label: row.class_label },
-            enrolledAt: row.enrollment_enrolled_at,
-            status: row.enrollment_status
+        return rows.map((row: Record<string, unknown>) => ({
+            id: row.enrollment_id as string,
+            school: { id: row.school_id as string, name: row.school_name as string },
+            course: { id: row.course_id as string, name: row.course_name as string },
+            class: { id: row.class_id as string, label: row.class_label as string },
+            enrolledAt: row.enrollment_enrolled_at as Date,
+            status: row.enrollment_status as string,
+            ...presentTuitionExemptionFromEnrollmentRaw({
+                enrollment_tuition_exemption_type: row.enrollment_tuition_exemption_type as string | null
+            })
         }));
     }
 
@@ -203,6 +211,7 @@ export class GetAdminStudentDetails {
                 'enrollment.id',
                 'enrollment.enrolledAt',
                 'enrollment.status',
+                'enrollment.tuitionExemptionType',
                 'course.id',
                 'course.name',
                 'class.id',
@@ -212,13 +221,16 @@ export class GetAdminStudentDetails {
             ])
             .orderBy('enrollment.enrolledAt', 'DESC')
             .getRawMany();
-        return rows.map((row: any) => ({
-            id: row.enrollment_id,
-            school: { id: row.school_id, name: row.school_name },
-            course: { id: row.course_id, name: row.course_name },
-            class: { id: row.class_id, label: row.class_label },
-            enrolledAt: row.enrollment_enrolled_at,
-            status: row.enrollment_status
+        return rows.map((row: Record<string, unknown>) => ({
+            id: row.enrollment_id as string,
+            school: { id: row.school_id as string, name: row.school_name as string },
+            course: { id: row.course_id as string, name: row.course_name as string },
+            class: { id: row.class_id as string, label: row.class_label as string },
+            enrolledAt: row.enrollment_enrolled_at as Date,
+            status: row.enrollment_status as string,
+            ...presentTuitionExemptionFromEnrollmentRaw({
+                enrollment_tuition_exemption_type: row.enrollment_tuition_exemption_type as string | null
+            })
         }));
     }
 

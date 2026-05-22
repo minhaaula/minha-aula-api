@@ -105,4 +105,59 @@ describe('ListSchoolStudents — formato admin', () => {
         expect(row.enrollments[0].course.name).toBe('Violão');
         expect(row.enrollments[0].class.label).toBe('Turma A');
     });
+
+    it('inclui isenção de mensalidade nas matrículas do estudante', async () => {
+        const schoolId = 'school-1';
+        const course = Course.create({
+            id: 'course-1',
+            schoolId,
+            name: 'Violão',
+            isActive: true,
+            createdAt: new Date()
+        });
+        const courseClass = CourseClass.create({
+            id: 'class-1',
+            courseId: course.id,
+            label: 'Turma A',
+            schedule: [{ day: 'Segunda', start: '08:00', end: '09:00' }],
+            isActive: true,
+            createdAt: new Date()
+        });
+        const owner = makeOwner('owner-2', new Date('1985-01-01'));
+        const enrollment = Enrollment.createForUser({
+            id: 'enr-exempt',
+            courseClassId: courseClass.id,
+            ownerUserId: owner.id,
+            studentUserId: owner.id,
+            status: 'ACTIVE',
+            enrolledAt: new Date('2025-01-01'),
+            updatedAt: new Date('2025-01-01'),
+            tuitionExemptionType: 'EMPLOYEE'
+        });
+
+        const useCase = new ListSchoolStudents(
+            {
+                findBySchoolId: vi.fn(async () => [course]),
+                findById: vi.fn(async (id: string) => (id === course.id ? course : null))
+            } as never,
+            {
+                findByCourseIds: vi.fn(async () => [courseClass]),
+                findById: vi.fn(async (id: string) => (id === courseClass.id ? courseClass : null))
+            } as never,
+            {
+                findActiveByClassIds: vi.fn(async () => [enrollment])
+            } as never,
+            {
+                findById: vi.fn(async (id: string) => (id === owner.id ? owner : null))
+            } as never,
+            {
+                findByUserIds: vi.fn(async () => [])
+            } as never
+        );
+
+        const result = await useCase.exec({ schoolId, outputFormat: 'admin' });
+        const row = result.students[0] as import('../../src/app/use-cases/schools/list-school-students').AdminSchoolStudentItem;
+        expect(row.enrollments[0].monthlyTuition).toBe('EXEMPT');
+        expect(row.enrollments[0].tuitionExemptionType).toBe('EMPLOYEE');
+    });
 });

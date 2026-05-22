@@ -331,6 +331,36 @@ describe('ListMyEnrollmentRequests use case', () => {
         expect(result.requests[0].schedule).toEqual([]);
     });
 
+    it('exposes tuition exemption and hides monthly amounts when request is exempt', async () => {
+        const repo = new InMemoryEnrollmentRequestRepository();
+        const dependents = new InMemoryDependentsRepository();
+        const userId = 'user-exempt';
+
+        const exemptRequest = EnrollmentRequest.create({
+            id: 'req-exempt',
+            schoolId: 'school-1',
+            courseClassId: 'class-1',
+            requestedForUserId: userId,
+            firstMonthlyPaymentDate: new Date('2024-02-01'),
+            tuitionExemptionType: 'SCHOLARSHIP'
+        });
+
+        repo.seed([
+            makeRequestWithDetails(exemptRequest, 'Curso', 'Turma A', 'João', null, {
+                monthlyPriceCents: 150_000
+            })
+        ]);
+
+        const useCase = new ListMyEnrollmentRequests(repo, dependents);
+        const result = await useCase.exec({ userId });
+
+        expect(result.requests).toHaveLength(1);
+        expect(result.requests[0].monthlyTuition).toBe('EXEMPT');
+        expect(result.requests[0].tuitionExemptionType).toBe('SCHOLARSHIP');
+        expect(result.requests[0].monthlyTuitionAmount).toBeNull();
+        expect(result.requests[0].monthlyTuitionNetAmount).toBeNull();
+    });
+
     it('handles requests with dependents', async () => {
         const repo = new InMemoryEnrollmentRequestRepository();
         const dependents = new InMemoryDependentsRepository();
