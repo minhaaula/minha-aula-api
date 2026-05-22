@@ -109,7 +109,7 @@ export class UpdateStudentProfile {
             phone: updated.phone,
             birthDate: updated.birthDate,
             address: updated.address.toPrimitives(),
-            gender: updated.gender,
+            gender: updated.gender ?? null,
             createdAt: updated.createdAt
         };
     }

@@ -66,7 +66,7 @@ export class GetMyProfile {
             cpf: user.cpf,
             phone: user.phone,
             birthDate: user.birthDate,
-            gender: user.gender,
+            gender: user.gender ?? null,
             address: {
                 street: addressPrimitives.street,
                 number: addressPrimitives.number,
@@ -85,7 +85,7 @@ export class GetMyProfile {
                     cpf: dep.cpf,
                     birthDate: dep.birthDate,
                     relationship: dep.relationship,
-                    gender: dep.gender,
+                    gender: dep.gender ?? null,
                     photoUrl: this.storage
                         ? await resolveProfilePhotoUrl(this.storage, dep.photoStorageKey)
                         : dep.photoStorageKey

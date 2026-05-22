@@ -74,7 +74,8 @@ function makeUser(
     fullName: string = 'João Silva',
     email: string = 'joao@email.com',
     cpf: string = '12345678901',
-    phone: string = '11999999999'
+    phone: string = '11999999999',
+    gender: 'MALE' | 'FEMALE' | null = 'FEMALE'
 ): User {
     return User.create({
         id,
@@ -93,7 +94,8 @@ function makeUser(
             zipCode: '01234567'
         }),
         persona: UserPersonaEnum.STUDENT,
-        passwordHash: 'hashed'
+        passwordHash: 'hashed',
+        gender
     });
 }
 
@@ -103,7 +105,8 @@ function makeDependent(
     fullName: string,
     cpf: string | null = null,
     birthDate: Date | null = null,
-    relationship: string | null = null
+    relationship: string | null = null,
+    gender: 'MALE' | 'FEMALE' | null = 'MALE'
 ): Dependent {
     return Dependent.create({
         id,
@@ -112,7 +115,8 @@ function makeDependent(
         cpf,
         birthDate,
         relationship,
-        createdAt: new Date()
+        createdAt: new Date(),
+        gender
     });
 }
 
@@ -150,6 +154,8 @@ describe('GetMyProfile use case', () => {
         expect(profile!.dependents).toHaveLength(2);
         expect(profile!.dependents[0].fullName).toBe('Maria Silva');
         expect(profile!.dependents[1].fullName).toBe('Pedro Silva');
+        expect(profile!.gender).toBe('FEMALE');
+        expect(profile!.dependents[0].gender).toBe('MALE');
     });
 
     it('returns student profile without dependents', async () => {
@@ -177,6 +183,22 @@ describe('GetMyProfile use case', () => {
         const profile = await useCase.exec({ userId: 'non-existent' });
 
         expect(profile).toBeNull();
+    });
+
+    it('always includes gender as null when not set', async () => {
+        const users = new InMemoryUserRepository();
+        const dependents = new InMemoryDependentRepository();
+        const userId = 'user-no-gender';
+
+        users.seed(makeUser(userId, 'Ana', 'ana@email.com', '12345678901', '11999999999', null));
+
+        const useCase = new GetMyProfile(users, dependents);
+        const profile = await useCase.exec({ userId });
+
+        expect(profile!.gender).toBeNull();
+        const json = JSON.parse(JSON.stringify(profile));
+        expect(json).toHaveProperty('gender', null);
+        expect(json.dependents).toEqual([]);
     });
 
     it('returns null when userId is empty', async () => {
