@@ -1,4 +1,4 @@
-/** Reason for tuition exemption (`monthlyTuition: EXEMPT`). */
+/** Reason for tuition exemption when `tuitionExempt` is true. */
 export const TUITION_EXEMPTION_TYPES = [
     'EMPLOYEE',
     'RELATIVE',

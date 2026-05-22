@@ -18,6 +18,9 @@ export class AuthPhoneOtpChallengeOrm {
     @Column('varchar', { length: 255, nullable: true })
     email!: string | null;
 
+    @Column('char', { name: 'subject_user_id', length: 36, nullable: true })
+    subjectUserId!: string | null;
+
     @Column('datetime', { name: 'expires_at' })
     expiresAt!: Date;
 

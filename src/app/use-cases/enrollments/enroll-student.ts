@@ -12,6 +12,7 @@ import type { EnrollStudentInput, EnrollStudentOutput } from '../../types/enroll
 import type { NotifyStudentUser } from '../shared/notify-student-user';
 import { Enrollment } from '../../../domain/entities/enrollment';
 import type { TuitionExemptionType } from '../../../domain/value-objects/tuition-exemption-type';
+import { presentTuitionExemption } from '../../presenters/tuition-exemption.presenter';
 
 export class EnrollStudent {
     constructor(
@@ -110,6 +111,8 @@ export class EnrollStudent {
             }
         }
 
+        const exemption = presentTuitionExemption(enrollment.tuitionExemptionType);
+
         return {
             id: enrollment.id,
             courseClassId: enrollment.courseClassId,
@@ -120,8 +123,8 @@ export class EnrollStudent {
             status: enrollment.status,
             enrolledAt: enrollment.enrolledAt,
             updatedAt: enrollment.updatedAt,
-            monthlyTuition: enrollment.isTuitionExempt ? 'EXEMPT' : null,
-            tuitionExemptionType: enrollment.tuitionExemptionType
+            tuitionExempt: exemption.tuitionExempt,
+            tuitionExemptionType: exemption.tuitionExemptionType
         };
     }
 

@@ -21,7 +21,7 @@ export interface MyEnrollmentRequest {
     courseClassId: string;
     courseClassLabel: string | null;
     courseLabel: string | null;
-    monthlyTuition: 'EXEMPT' | null;
+    tuitionExempt: boolean;
     tuitionExemptionType: TuitionExemptionType | null;
     /** Valor da mensalidade em reais (bruto). Null quando isento. */
     monthlyTuitionAmount: number | null;

@@ -32,6 +32,11 @@ import { UpdateDependent } from '../../app/use-cases/students/update-dependent';
 import { GetMyProfile } from '../../app/use-cases/students/get-my-profile';
 import { ListMyEnrollmentRequests } from '../../app/use-cases/enrollments/list-my-enrollment-requests';
 import { UpdateStudentProfile } from '../../app/use-cases/students/update-student-profile';
+import { RequestStudentProfileUpdateOtp } from '../../app/use-cases/students/request-student-profile-update-otp';
+import { VerifyStudentProfileUpdateOtp } from '../../app/use-cases/students/verify-student-profile-update-otp';
+import { AuthPhoneOtpChallengeRepositoryAdapter } from '../../infra/db/typeorm/auth-phone-otp-challenge-repository.adapter';
+import { createTwilioVerifyFromEnv } from '../../infra/providers/twilio/create-twilio-verify-provider';
+import type { HmacTokenProvider } from '../../infra/auth/hmac-token-provider';
 import { DeactivateStudentAccount } from '../../app/use-cases/students/deactivate-student-account';
 import { ListSchoolCourses } from '../../app/use-cases/schools/list-school-courses';
 import { ListSchoolReviews } from '../../app/use-cases/schools/list-school-reviews';
@@ -77,6 +82,7 @@ export type StudentsModuleDeps = {
     pushTokensRepo?: PushTokenRepositoryAdapter;
     outbox?: OutboxRepository;
     frontendBaseUrl?: string;
+    tokenProvider?: HmacTokenProvider;
 };
 
 export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupContext): ModuleBuildResult {
@@ -95,7 +101,21 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
     );
     const getStudentDirectoryEntry = new GetStudentDirectoryEntry(deps.usersRepo, deps.dependentsRepo);
     const getMyProfile = new GetMyProfile(deps.usersRepo, deps.dependentsRepo, deps.storageProvider);
-    const updateStudentProfile = new UpdateStudentProfile(deps.usersRepo);
+    const authPhoneOtpRepo = new AuthPhoneOtpChallengeRepositoryAdapter();
+    const twilioVerify = createTwilioVerifyFromEnv();
+    const requestStudentProfileUpdateOtp = new RequestStudentProfileUpdateOtp(
+        authPhoneOtpRepo,
+        deps.usersRepo,
+        twilioVerify,
+        deps.outbox
+    );
+    const verifyStudentProfileUpdateOtp =
+        deps.tokenProvider
+            ? new VerifyStudentProfileUpdateOtp(authPhoneOtpRepo, twilioVerify, deps.tokenProvider)
+            : undefined;
+    const updateStudentProfile = deps.tokenProvider
+        ? new UpdateStudentProfile(deps.usersRepo, deps.tokenProvider)
+        : undefined;
     const deactivateStudentAccount = new DeactivateStudentAccount(deps.usersRepo);
     const schoolImagesRepo = new SchoolImageRepositoryAdapter();
     const listMyCourses = new ListMyCourses(deps.enrollmentsRepo, deps.coursesRepo, deps.schoolsRepo, schoolImagesRepo, deps.storageProvider);
@@ -226,6 +246,8 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
         getStudentDirectoryEntry,
         getMyProfile,
         updateStudentProfile,
+        requestStudentProfileUpdateOtp,
+        verifyStudentProfileUpdateOtp,
         deactivateStudentAccount,
         listMyCourses,
         listAllCourses,

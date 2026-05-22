@@ -87,7 +87,7 @@ export function buildCoursesRoutes(deps: CoursesRoutesDeps, guards: SchoolRouteG
                 ? request.enrollmentFeeDueDate.toISOString().slice(0, 10)
                 : null,
             firstMonthlyPaymentDate: request.firstMonthlyPaymentDate.toISOString().slice(0, 10),
-            monthlyTuition: request.isTuitionExempt ? ('EXEMPT' as const) : null,
+            tuitionExempt: request.isTuitionExempt,
             tuitionExemptionType: request.tuitionExemptionType,
             enrollmentId: request.enrollmentId,
             createdAt: request.createdAt,
@@ -322,7 +322,7 @@ export function buildCoursesRoutes(deps: CoursesRoutesDeps, guards: SchoolRouteG
                 discount: data.discont ?? null,
                 discountMonths: data.discountMonths ?? null,
                 tuitionExemptionType:
-                    data.monthlyTuition === 'EXEMPT' ? (data.tuitionExemptionType ?? null) : null
+                    data.tuitionExempt === true ? (data.tuitionExemptionType ?? null) : null
             });
 
             res.status(201).json(enrollment);
@@ -368,9 +368,8 @@ export function buildCoursesRoutes(deps: CoursesRoutesDeps, guards: SchoolRouteG
                     discountCents: data.clearDiscount ? null : data.discountCents,
                     discountMonths: data.clearDiscount ? null : data.discountMonths,
                     clearDiscount: data.clearDiscount,
-                    monthlyTuition: data.monthlyTuition,
-                    tuitionExemptionType: data.tuitionExemptionType ?? null,
-                    removeTuitionExemption: data.removeTuitionExemption
+                    tuitionExempt: data.tuitionExempt,
+                    tuitionExemptionType: data.tuitionExemptionType ?? null
                 });
 
                 res.json(result);

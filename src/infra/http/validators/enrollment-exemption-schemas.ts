@@ -3,36 +3,36 @@ import { TUITION_EXEMPTION_TYPES } from '../../../domain/value-objects/tuition-e
 
 const tuitionExemptionTypeSchema = z.enum(TUITION_EXEMPTION_TYPES);
 
-/** Optional tuition exemption fields (enrollment / enrollment request). */
+/** Campos opcionais de isenção de mensalidade (matrícula / pedido de matrícula). */
 export const enrollmentTuitionExemptionFields = {
-    monthlyTuition: z.literal('EXEMPT').optional(),
+    tuitionExempt: z.boolean().optional(),
     tuitionExemptionType: tuitionExemptionTypeSchema.optional()
 };
 
 export function refineEnrollmentTuitionExemption(
     data: {
-        monthlyTuition?: 'EXEMPT';
+        tuitionExempt?: boolean;
         tuitionExemptionType?: z.infer<typeof tuitionExemptionTypeSchema>;
         discont?: number;
     },
     ctx: z.RefinementCtx
 ): void {
-    const isExempt = data.monthlyTuition === 'EXEMPT';
+    const isExempt = data.tuitionExempt === true;
 
     if (isExempt && !data.tuitionExemptionType) {
         ctx.addIssue({
             code: z.ZodIssueCode.custom,
             path: ['tuitionExemptionType'],
             message:
-                'tuitionExemptionType is required when monthlyTuition is EXEMPT (EMPLOYEE, RELATIVE, SCHOLARSHIP or NONPROFIT)'
+                'tuitionExemptionType is required when tuitionExempt is true (EMPLOYEE, RELATIVE, SCHOLARSHIP or NONPROFIT)'
         });
     }
 
     if (!isExempt && data.tuitionExemptionType) {
         ctx.addIssue({
             code: z.ZodIssueCode.custom,
-            path: ['monthlyTuition'],
-            message: 'monthlyTuition must be EXEMPT when tuitionExemptionType is provided'
+            path: ['tuitionExempt'],
+            message: 'tuitionExempt must be true when tuitionExemptionType is provided'
         });
     }
 
@@ -40,7 +40,7 @@ export function refineEnrollmentTuitionExemption(
         ctx.addIssue({
             code: z.ZodIssueCode.custom,
             path: ['discont'],
-            message: 'Discount does not apply when monthlyTuition is EXEMPT'
+            message: 'Discount does not apply when tuitionExempt is true'
         });
     }
 }

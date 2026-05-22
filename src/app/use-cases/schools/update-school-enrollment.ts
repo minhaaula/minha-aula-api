@@ -74,43 +74,34 @@ export class UpdateSchoolEnrollment {
             }
         }
 
-        const addingExemption = input.monthlyTuition === 'EXEMPT';
-        const removingExemption = input.removeTuitionExemption === true;
-
-        if (addingExemption && removingExemption) {
-            throw AppError.fromCode(ErrorCode.VALIDATION_ERROR, {
-                message: 'Não é possível adicionar e remover isenção na mesma requisição'
-            });
-        }
-
-        if (addingExemption) {
+        if (input.tuitionExempt === true) {
             if (!input.tuitionExemptionType) {
                 throw AppError.fromCode(ErrorCode.VALIDATION_ERROR, {
-                    message: 'tuitionExemptionType é obrigatório quando monthlyTuition é EXEMPT'
+                    message: 'tuitionExemptionType é obrigatório quando tuitionExempt é true'
                 });
             }
             patch.tuitionExemptionType = input.tuitionExemptionType;
             patch.fullAmountCents = null;
             patch.discountCents = null;
             patch.discountMonths = null;
-        } else if (removingExemption) {
+        } else if (input.tuitionExempt === false) {
             patch.tuitionExemptionType = null;
             const monthlyPrice = course.monthlyPriceCents ?? courseClass.monthlyPriceCents;
             if (!monthlyPrice || monthlyPrice <= 0) {
                 throw AppError.fromCode(ErrorCode.VALIDATION_ERROR, {
-                    message: 'Curso/turma sem valor de mensalidade para remover isenção'
+                    message: 'Curso/turma sem valor de mensalidade para voltar a pagante'
                 });
             }
             patch.fullAmountCents = monthlyPrice;
         } else if (input.tuitionExemptionType !== undefined && !enrollment.isTuitionExempt) {
             throw AppError.fromCode(ErrorCode.VALIDATION_ERROR, {
-                message: 'Informe monthlyTuition EXEMPT para aplicar isenção'
+                message: 'Informe tuitionExempt true para aplicar isenção'
             });
         }
 
         if (
-            !addingExemption &&
-            !removingExemption &&
+            input.tuitionExempt !== true &&
+            input.tuitionExempt !== false &&
             (patch.discountCents !== undefined || patch.discountMonths !== undefined) &&
             enrollment.isTuitionExempt
         ) {
@@ -138,7 +129,7 @@ export class UpdateSchoolEnrollment {
             fullAmountCents: enrollment.fullAmountCents,
             discountCents: enrollment.discountCents,
             discountMonths: enrollment.discountMonths,
-            monthlyTuition: exemption.monthlyTuition,
+            tuitionExempt: exemption.tuitionExempt,
             tuitionExemptionType: exemption.tuitionExemptionType,
             updatedAt: enrollment.updatedAt
         };

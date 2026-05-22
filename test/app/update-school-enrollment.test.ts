@@ -151,11 +151,11 @@ describe('UpdateSchoolEnrollment', () => {
             courseId: 'course-1',
             classId: 'class-1',
             enrollmentId: 'enr-1',
-            monthlyTuition: 'EXEMPT',
+            tuitionExempt: true,
             tuitionExemptionType: 'SCHOLARSHIP'
         });
 
-        expect(exempt.monthlyTuition).toBe('EXEMPT');
+        expect(exempt.tuitionExempt).toBe(true);
         expect(exempt.tuitionExemptionType).toBe('SCHOLARSHIP');
         expect(exempt.fullAmountCents).toBeNull();
         expect(exempt.discountCents).toBeNull();
@@ -165,10 +165,10 @@ describe('UpdateSchoolEnrollment', () => {
             courseId: 'course-1',
             classId: 'class-1',
             enrollmentId: 'enr-1',
-            removeTuitionExemption: true
+            tuitionExempt: false
         });
 
-        expect(restored.monthlyTuition).toBeNull();
+        expect(restored.tuitionExempt).toBe(false);
         expect(restored.fullAmountCents).toBe(20000);
     });
 });

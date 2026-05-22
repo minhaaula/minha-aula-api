@@ -226,7 +226,7 @@ describe('EnrollStudent use case', () => {
             studentUserId: student.id
         });
 
-        expect(result.monthlyTuition).toBeNull();
+        expect(result.tuitionExempt).toBe(false);
         expect(result.tuitionExemptionType).toBeNull();
         expect(enrollments.all()[0].fullAmountCents).toBe(15000);
         expect(enrollments.all()[0].isTuitionExempt).toBe(false);
@@ -252,7 +252,7 @@ describe('EnrollStudent use case', () => {
             tuitionExemptionType: 'SCHOLARSHIP'
         });
 
-        expect(result.monthlyTuition).toBe('EXEMPT');
+        expect(result.tuitionExempt).toBe(true);
         expect(result.tuitionExemptionType).toBe('SCHOLARSHIP');
         const saved = enrollments.all()[0];
         expect(saved.isTuitionExempt).toBe(true);
@@ -282,7 +282,7 @@ describe('EnrollStudent use case', () => {
                 tuitionExemptionType
             });
 
-            expect(result.monthlyTuition).toBe('EXEMPT');
+            expect(result.tuitionExempt).toBe(true);
             expect(result.tuitionExemptionType).toBe(tuitionExemptionType);
         }
     );
@@ -316,7 +316,7 @@ describe('EnrollStudent use case', () => {
         });
 
         expect(result.studentType).toBe('DEPENDENT');
-        expect(result.monthlyTuition).toBe('EXEMPT');
+        expect(result.tuitionExempt).toBe(true);
         expect(result.tuitionExemptionType).toBe('RELATIVE');
         expect(enrollments.all()[0].fullAmountCents).toBeNull();
     });

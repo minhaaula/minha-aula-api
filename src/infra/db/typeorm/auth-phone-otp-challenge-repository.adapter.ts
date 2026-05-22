@@ -14,6 +14,7 @@ export class AuthPhoneOtpChallengeRepositoryAdapter implements AuthPhoneOtpChall
         row.code = challenge.code;
         row.phone = challenge.phone;
         row.email = challenge.email;
+        row.subjectUserId = challenge.subjectUserId;
         row.expiresAt = challenge.expiresAt;
         row.attemptsUsed = challenge.attemptsUsed;
         row.maxAttempts = challenge.maxAttempts;
@@ -38,6 +39,7 @@ export class AuthPhoneOtpChallengeRepositoryAdapter implements AuthPhoneOtpChall
             code: row.code,
             phone: row.phone,
             email: row.email,
+            subjectUserId: row.subjectUserId ?? null,
             expiresAt: row.expiresAt,
             attemptsUsed: row.attemptsUsed,
             maxAttempts: row.maxAttempts,

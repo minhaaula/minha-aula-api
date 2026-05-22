@@ -50,7 +50,7 @@ export interface GetSchoolStudentDetailsOutput {
         };
         enrolledAt: Date;
         status: string;
-        monthlyTuition: 'EXEMPT' | null;
+        tuitionExempt: boolean;
         tuitionExemptionType: TuitionExemptionType | null;
     }>;
 }

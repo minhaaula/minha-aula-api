@@ -222,6 +222,7 @@ export function startWorker(): Worker {
                         code: otp.code,
                         phone: otp.phone,
                         email: otp.email,
+                        subjectUserId: otp.subjectUserId,
                         expiresAt: otp.expiresAt,
                         attemptsUsed: otp.attemptsUsed,
                         maxAttempts: otp.maxAttempts,

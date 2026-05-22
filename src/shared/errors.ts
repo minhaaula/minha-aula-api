@@ -75,6 +75,8 @@ export enum ErrorCode {
     SCHOOL_SIGNUP_PHONE_NOT_VERIFIED = 'SCHOOL_SIGNUP_PHONE_NOT_VERIFIED',
     /** Envio do código ainda não concluído pelo worker (Twilio Verify na fila). */
     OTP_SEND_PENDING = 'OTP_SEND_PENDING',
+    /** Alteração de perfil do aluno exige token emitido após verificação do WhatsApp. */
+    STUDENT_PROFILE_NOT_VERIFIED = 'STUDENT_PROFILE_NOT_VERIFIED',
     
     // Sistema (7000-7999)
     INTERNAL_ERROR = 'INTERNAL_ERROR',
@@ -153,6 +155,8 @@ export const ErrorMessages: Record<ErrorCode, string> = {
     [ErrorCode.SIGNUP_PHONE_NOT_VERIFIED]: 'Confirme o código enviado ao WhatsApp antes de concluir o cadastro',
     [ErrorCode.SCHOOL_SIGNUP_PHONE_NOT_VERIFIED]: 'Confirme o código enviado ao WhatsApp antes de concluir o cadastro da escola',
     [ErrorCode.OTP_SEND_PENDING]: 'Aguarde alguns instantes. O código está sendo enviado ao WhatsApp.',
+    [ErrorCode.STUDENT_PROFILE_NOT_VERIFIED]:
+        'Confirme o código enviado ao WhatsApp antes de salvar as alterações do perfil',
     
     // Sistema
     [ErrorCode.INTERNAL_ERROR]: 'Erro interno do servidor',

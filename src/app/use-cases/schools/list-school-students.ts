@@ -42,7 +42,7 @@ export type AdminSchoolStudentEnrollmentItem = {
     enrolledAt: Date;
     course: { id: string; name: string };
     class: { id: string; label: string };
-    monthlyTuition: 'EXEMPT' | null;
+    tuitionExempt: boolean;
     tuitionExemptionType: TuitionExemptionType | null;
 };
 
@@ -75,7 +75,7 @@ export type SchoolStudentRecord = {
     detailsStudentId: string;
     course: { id: string; name: string };
     class: { id: string; label: string };
-    monthlyTuition: 'EXEMPT' | null;
+    tuitionExempt: boolean;
     tuitionExemptionType: TuitionExemptionType | null;
 };
 

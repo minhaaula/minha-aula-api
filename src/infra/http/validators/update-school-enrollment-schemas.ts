@@ -14,7 +14,6 @@ export const updateSchoolEnrollmentSchema = z
         discountCents: z.number().int().min(0).nullable().optional(),
         discountMonths: z.number().int().min(1).nullable().optional(),
         clearDiscount: z.boolean().optional(),
-        removeTuitionExemption: z.literal(true).optional(),
         ...enrollmentTuitionExemptionFields
     })
     .superRefine((data, ctx) => {
@@ -38,7 +37,7 @@ export const updateSchoolEnrollmentSchema = z
 
         refineEnrollmentTuitionExemption(
             {
-                monthlyTuition: data.monthlyTuition,
+                tuitionExempt: data.tuitionExempt,
                 tuitionExemptionType: data.tuitionExemptionType,
                 discont:
                     data.discountCents != null && data.discountCents > 0
@@ -48,11 +47,11 @@ export const updateSchoolEnrollmentSchema = z
             ctx
         );
 
-        if (data.removeTuitionExemption && data.monthlyTuition === 'EXEMPT') {
+        if (data.tuitionExempt === false && data.tuitionExemptionType) {
             ctx.addIssue({
                 code: z.ZodIssueCode.custom,
-                path: ['removeTuitionExemption'],
-                message: 'Não use removeTuitionExemption junto com monthlyTuition EXEMPT'
+                path: ['tuitionExemptionType'],
+                message: 'Não informe tuitionExemptionType ao definir tuitionExempt false'
             });
         }
     });

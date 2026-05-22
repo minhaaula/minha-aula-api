@@ -157,7 +157,7 @@ describe('ListSchoolStudents — formato admin', () => {
 
         const result = await useCase.exec({ schoolId, outputFormat: 'admin' });
         const row = result.students[0] as import('../../src/app/use-cases/schools/list-school-students').AdminSchoolStudentItem;
-        expect(row.enrollments[0].monthlyTuition).toBe('EXEMPT');
+        expect(row.enrollments[0].tuitionExempt).toBe(true);
         expect(row.enrollments[0].tuitionExemptionType).toBe('EMPLOYEE');
     });
 });

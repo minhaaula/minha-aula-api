@@ -56,7 +56,7 @@ export function enrollmentRequestsRouter(deps: {
                 ? request.enrollmentFeeDueDate.toISOString().slice(0, 10)
                 : null,
             firstMonthlyPaymentDate: request.firstMonthlyPaymentDate.toISOString().slice(0, 10),
-            monthlyTuition: request.isTuitionExempt ? ('EXEMPT' as const) : null,
+            tuitionExempt: request.isTuitionExempt,
             tuitionExemptionType: request.tuitionExemptionType,
             enrollmentId: request.enrollmentId,
             createdAt: request.createdAt,
@@ -322,7 +322,7 @@ export function enrollmentRequestsRouter(deps: {
                 enrollmentFeeDueDate: data.enrollmentFeeDueDate ?? null,
                 firstMonthlyPaymentDate: data.firstMonthlyPaymentDate,
                 tuitionExemptionType:
-                    data.monthlyTuition === 'EXEMPT' ? (data.tuitionExemptionType ?? null) : null,
+                    data.tuitionExempt === true ? (data.tuitionExemptionType ?? null) : null,
                 initiatedBySchool
             });
             res.status(201).json(serializeEnrollmentRequest(request));
@@ -400,7 +400,7 @@ export function enrollmentRequestsRouter(deps: {
                 enrollmentFeeDueDate: data.enrollmentFeeDueDate ?? null,
                 firstMonthlyPaymentDate: data.firstMonthlyPaymentDate,
                 tuitionExemptionType:
-                    data.monthlyTuition === 'EXEMPT' ? (data.tuitionExemptionType ?? null) : null,
+                    data.tuitionExempt === true ? (data.tuitionExemptionType ?? null) : null,
                 initiatedBySchool: true
             });
 

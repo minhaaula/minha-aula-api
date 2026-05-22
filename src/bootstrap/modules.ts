@@ -437,7 +437,8 @@ export async function createServerForModules(modules: ModuleName[]): Promise<{ a
                     notificationsRepo,
                     pushTokensRepo,
                     outbox,
-                    frontendBaseUrl
+                    frontendBaseUrl,
+                    tokenProvider
                 }, ctx);
                 mergeModuleResult(serverDeps, docFiles, result);
                 break;

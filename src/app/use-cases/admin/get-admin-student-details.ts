@@ -20,7 +20,7 @@ type EnrollmentItem = {
     class: { id: string; label: string };
     enrolledAt: Date;
     status: string;
-    monthlyTuition: 'EXEMPT' | null;
+    tuitionExempt: boolean;
     tuitionExemptionType: TuitionExemptionType | null;
 };
 

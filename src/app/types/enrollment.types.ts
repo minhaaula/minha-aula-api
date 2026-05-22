@@ -15,7 +15,7 @@ export interface CreateEnrollmentRequestInput {
     enrollmentFeeAmount?: number | null;
     enrollmentFeeDueDate?: string | null;
     firstMonthlyPaymentDate: string;
-    /** When `monthlyTuition` is EXEMPT, reason for exemption. */
+    /** Quando `tuitionExempt` é true na criação do pedido. */
     tuitionExemptionType?: TuitionExemptionType | null;
     /** Quando a escola cria o pedido para o aluno (responsible-requests), dispara email, push e notificação in-app. */
     initiatedBySchool?: boolean;
@@ -92,7 +92,7 @@ export interface EnrollStudentOutput {
     status: string;
     enrolledAt: Date;
     updatedAt: Date;
-    monthlyTuition: 'EXEMPT' | null;
+    tuitionExempt: boolean;
     tuitionExemptionType: TuitionExemptionType | null;
 }
 

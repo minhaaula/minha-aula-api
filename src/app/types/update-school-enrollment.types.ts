@@ -11,10 +11,9 @@ export interface UpdateSchoolEnrollmentInput {
     discountCents?: number | null;
     discountMonths?: number | null;
     clearDiscount?: boolean;
-    monthlyTuition?: 'EXEMPT';
+    /** `true` = isentar; `false` = voltar a pagante (restaura valor do curso/turma). */
+    tuitionExempt?: boolean;
     tuitionExemptionType?: TuitionExemptionType | null;
-    /** Remove isenção e restaura mensalidade do curso/turma. */
-    removeTuitionExemption?: boolean;
 }
 
 export interface UpdateSchoolEnrollmentOutput {
@@ -25,7 +24,7 @@ export interface UpdateSchoolEnrollmentOutput {
     fullAmountCents: number | null;
     discountCents: number | null;
     discountMonths: number | null;
-    monthlyTuition: 'EXEMPT' | null;
+    tuitionExempt: boolean;
     tuitionExemptionType: TuitionExemptionType | null;
     updatedAt: Date;
 }

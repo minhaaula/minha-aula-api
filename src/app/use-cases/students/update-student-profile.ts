@@ -1,13 +1,16 @@
 import { UserRepository } from '../../../ports/repositories/user.repo';
+import type { TokenProviderPort } from '../../../ports/providers/token-provider.port';
 import { Email } from '../../../domain/value-objects/email';
 import { PostalAddress, PostalAddressProps } from '../../../domain/value-objects/postal-address';
 import { User } from '../../../domain/entities/user';
 import type { Gender } from '../../../domain/value-objects/gender';
 import { parseGender } from '../../../domain/value-objects/gender';
 import { AppError, ErrorCode } from '../../../shared/errors';
+import { toE164Brazil } from '../../../shared/phone-e164';
 
 export interface UpdateStudentProfileInput {
     userId: string;
+    profileUpdateVerificationToken: string;
     fullName?: string;
     email?: string;
     phone?: string;
@@ -37,7 +40,8 @@ export interface UpdateStudentProfileOutput {
 
 export class UpdateStudentProfile {
     constructor(
-        private readonly users: UserRepository
+        private readonly users: UserRepository,
+        private readonly tokenProvider: TokenProviderPort
     ) {}
 
     async exec(input: UpdateStudentProfileInput): Promise<UpdateStudentProfileOutput> {
@@ -45,6 +49,12 @@ export class UpdateStudentProfile {
         if (!userId) {
             throw new Error('User id is required');
         }
+
+        await this.assertProfileUpdateVerified(
+            input.profileUpdateVerificationToken,
+            userId,
+            input.phone
+        );
 
         const user = await this.users.findById(userId);
         if (!user) {
@@ -112,6 +122,35 @@ export class UpdateStudentProfile {
             gender: updated.gender ?? null,
             createdAt: updated.createdAt
         };
+    }
+
+    private async assertProfileUpdateVerified(
+        token: string,
+        userId: string,
+        declaredPhone?: string
+    ): Promise<void> {
+        try {
+            const payload = await this.tokenProvider.verify<{
+                typ?: string;
+                sub?: string;
+                ph?: string;
+            }>(token.trim());
+            if (payload.typ !== 'student_profile_update' || payload.sub !== userId) {
+                throw AppError.fromCode(ErrorCode.STUDENT_PROFILE_NOT_VERIFIED);
+            }
+            if (declaredPhone !== undefined) {
+                const e164Declared = toE164Brazil(declaredPhone);
+                const e164Token = toE164Brazil(String(payload.ph ?? ''));
+                if (!e164Declared || !e164Token || e164Declared !== e164Token) {
+                    throw AppError.fromCode(ErrorCode.STUDENT_PROFILE_NOT_VERIFIED);
+                }
+            }
+        } catch (e) {
+            if (e instanceof AppError) {
+                throw e;
+            }
+            throw AppError.fromCode(ErrorCode.STUDENT_PROFILE_NOT_VERIFIED);
+        }
     }
 
     private resolveGender(value: Gender | null): Gender | null {

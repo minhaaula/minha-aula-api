@@ -2,7 +2,8 @@ import type { TuitionExemptionType } from '../../domain/value-objects/tuition-ex
 import { parseTuitionExemptionType } from '../../domain/value-objects/tuition-exemption-type';
 
 export type TuitionExemptionApiFields = {
-    monthlyTuition: 'EXEMPT' | null;
+    /** `true` = isento de mensalidade; `false` = pagante. */
+    tuitionExempt: boolean;
     tuitionExemptionType: TuitionExemptionType | null;
 };
 
@@ -11,7 +12,7 @@ export function presentTuitionExemption(
 ): TuitionExemptionApiFields {
     const type = tuitionExemptionType ?? null;
     return {
-        monthlyTuition: type ? 'EXEMPT' : null,
+        tuitionExempt: type !== null,
         tuitionExemptionType: type
     };
 }

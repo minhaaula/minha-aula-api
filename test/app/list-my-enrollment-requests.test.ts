@@ -355,7 +355,7 @@ describe('ListMyEnrollmentRequests use case', () => {
         const result = await useCase.exec({ userId });
 
         expect(result.requests).toHaveLength(1);
-        expect(result.requests[0].monthlyTuition).toBe('EXEMPT');
+        expect(result.requests[0].tuitionExempt).toBe(true);
         expect(result.requests[0].tuitionExemptionType).toBe('SCHOLARSHIP');
         expect(result.requests[0].monthlyTuitionAmount).toBeNull();
         expect(result.requests[0].monthlyTuitionNetAmount).toBeNull();

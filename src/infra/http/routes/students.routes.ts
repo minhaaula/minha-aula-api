@@ -32,7 +32,15 @@ import { requirePersona } from '../middlewares/require-persona';
 import { UserPersonaEnum } from '../../../domain/value-objects/user-persona';
 import { AuthenticatedRequest } from '../middlewares/auth';
 import { asyncHandler } from '../utils/async-handler';
-import { updateStudentProfileSchema, deactivateStudentAccountSchema } from '../validators/student-schemas';
+import {
+    updateStudentProfileSchema,
+    deactivateStudentAccountSchema,
+    requestStudentProfileUpdateOtpSchema,
+    verifyStudentProfileUpdateOtpSchema
+} from '../validators/student-schemas';
+import type { RequestStudentProfileUpdateOtp } from '../../../app/use-cases/students/request-student-profile-update-otp';
+import type { VerifyStudentProfileUpdateOtp } from '../../../app/use-cases/students/verify-student-profile-update-otp';
+import { authRateLimiter } from '../middlewares/rate-limiter';
 
 export function studentsRouter(deps: { 
     listStudents: ListStudents; 
@@ -45,6 +53,8 @@ export function studentsRouter(deps: {
     getMyProfile?: GetMyProfile;
     listMyEnrollmentRequests?: ListMyEnrollmentRequests;
     updateStudentProfile?: UpdateStudentProfile;
+    requestStudentProfileUpdateOtp?: RequestStudentProfileUpdateOtp;
+    verifyStudentProfileUpdateOtp?: VerifyStudentProfileUpdateOtp;
     deactivateStudentAccount?: DeactivateStudentAccount;
     listSchoolCourses?: ListSchoolCourses;
     listSchoolReviews?: ListSchoolReviews;
@@ -195,6 +205,55 @@ export function studentsRouter(deps: {
         }));
     }
 
+    if (deps.requestStudentProfileUpdateOtp) {
+        r.post(
+            '/me/profile-update/verification/request',
+            requireStudent,
+            authRateLimiter,
+            asyncHandler(async (req, res) => {
+                const authReq = req as AuthenticatedRequest;
+                if (!authReq.user?.sub) {
+                    return res.status(401).json({
+                        error: 'Não autorizado',
+                        code: 'UNAUTHORIZED'
+                    });
+                }
+
+                const data = requestStudentProfileUpdateOtpSchema.parse(req.body ?? {});
+                const result = await deps.requestStudentProfileUpdateOtp!.exec({
+                    userId: authReq.user.sub,
+                    phone: data.phone
+                });
+                res.status(201).json(result);
+            })
+        );
+    }
+
+    if (deps.verifyStudentProfileUpdateOtp) {
+        r.post(
+            '/me/profile-update/verification/verify',
+            requireStudent,
+            authRateLimiter,
+            asyncHandler(async (req, res) => {
+                const authReq = req as AuthenticatedRequest;
+                if (!authReq.user?.sub) {
+                    return res.status(401).json({
+                        error: 'Não autorizado',
+                        code: 'UNAUTHORIZED'
+                    });
+                }
+
+                const data = verifyStudentProfileUpdateOtpSchema.parse(req.body ?? {});
+                const result = await deps.verifyStudentProfileUpdateOtp!.exec({
+                    userId: authReq.user.sub,
+                    challengeId: data.challengeId,
+                    code: data.code
+                });
+                res.json(result);
+            })
+        );
+    }
+
     if (deps.updateStudentProfile) {
         r.put('/me', requireStudent, asyncHandler(async (req, res) => {
             const authReq = req as AuthenticatedRequest;
@@ -208,6 +267,7 @@ export function studentsRouter(deps: {
             const data = updateStudentProfileSchema.parse(req.body ?? {});
             const result = await deps.updateStudentProfile!.exec({
                 userId: authReq.user.sub,
+                profileUpdateVerificationToken: data.profileUpdateVerificationToken,
                 fullName: data.fullName,
                 email: data.email,
                 phone: data.phone,

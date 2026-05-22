@@ -188,7 +188,7 @@ describe('enrollment-requests routes (HTTP)', () => {
         });
     });
 
-    it('SCHOOL /responsible-requests: accepts monthlyTuition EXEMPT with tuitionExemptionType', async () => {
+    it('SCHOOL /responsible-requests: accepts tuitionExempt true with tuitionExemptionType', async () => {
         const exec = vi.fn(async (input: any) => buildEnrollmentRequestFromInput(input));
 
         const app = buildTestApp({
@@ -205,12 +205,12 @@ describe('enrollment-requests routes (HTTP)', () => {
             .send({
                 requestedForUserId: '550e8400-e29b-41d4-a716-446655440000',
                 firstMonthlyPaymentDate: '2026-03-19',
-                monthlyTuition: 'EXEMPT',
+                tuitionExempt: true,
                 tuitionExemptionType: 'SCHOLARSHIP'
             });
 
         expect(res.status).toBe(201);
-        expect(res.body.monthlyTuition).toBe('EXEMPT');
+        expect(res.body.tuitionExempt).toBe(true);
         expect(res.body.tuitionExemptionType).toBe('SCHOLARSHIP');
         expect(exec.mock.calls[0][0]).toMatchObject({
             tuitionExemptionType: 'SCHOLARSHIP',
@@ -218,7 +218,7 @@ describe('enrollment-requests routes (HTTP)', () => {
         });
     });
 
-    it('SCHOOL /responsible-requests: rejects EXEMPT without tuitionExemptionType', async () => {
+    it('SCHOOL /responsible-requests: rejects tuitionExempt true without tuitionExemptionType', async () => {
         const exec = vi.fn(async (input: any) => buildEnrollmentRequestFromInput(input));
 
         const app = buildTestApp({
@@ -235,14 +235,14 @@ describe('enrollment-requests routes (HTTP)', () => {
             .send({
                 requestedForUserId: '550e8400-e29b-41d4-a716-446655440000',
                 firstMonthlyPaymentDate: '2026-03-19',
-                monthlyTuition: 'EXEMPT'
+                tuitionExempt: true
             });
 
         expect(res.status).toBe(400);
         expect(exec).toHaveBeenCalledTimes(0);
     });
 
-    it('SCHOOL /responsible-requests: rejects tuitionExemptionType without monthlyTuition EXEMPT', async () => {
+    it('SCHOOL /responsible-requests: rejects tuitionExemptionType without tuitionExempt true', async () => {
         const exec = vi.fn(async (input: any) => buildEnrollmentRequestFromInput(input));
 
         const app = buildTestApp({
