@@ -15,6 +15,7 @@ export const verifyStudentProfileUpdateOtpSchema = z.object({
     code: z.string().trim().regex(/^\d{4,8}$/)
 });
 
+/** Apenas dados pessoais; matrícula/mensalidade não são editáveis pelas rotas do aluno. */
 export const updateStudentProfileSchema = z
     .object({
         profileUpdateVerificationToken: z
@@ -26,10 +27,12 @@ export const updateStudentProfileSchema = z
         address: addressSchema.optional(),
         gender: optionalGenderSchema
     })
-    .strict();
+    .strict({
+        message:
+            'Campos de matrícula não são aceitos em PUT /students/me. Dados pessoais apenas (fullName, email, phone, address, gender).'
+    });
 
 export const deactivateStudentAccountSchema = z.object({
     motivo: z.string().trim().min(1, 'O motivo é obrigatório'),
     descricao: z.string().trim()
 });
-

@@ -87,6 +87,7 @@ import type { UpdateSchoolStudentLevel } from '../../../app/use-cases/schools/up
 import type { DeleteSchoolStudentLevel } from '../../../app/use-cases/schools/delete-school-student-level';
 import type { ReorderSchoolStudentLevels } from '../../../app/use-cases/schools/reorder-school-student-levels';
 import type { ListEnrollmentLevelPromotions } from '../../../app/use-cases/enrollments/list-enrollment-level-promotions';
+import type { UpdateSchoolStudent } from '../../../app/use-cases/schools/update-school-student';
 
 export type SchoolsRouterDeps = {
     createSchool: CreateSchool;
@@ -146,6 +147,7 @@ export type SchoolsRouterDeps = {
     getSchoolStudentDetails?: import('../../../app/use-cases/schools/get-school-student-details').GetSchoolStudentDetails;
     listSchoolStudentPaidCharges?: import('../../../app/use-cases/schools/list-school-student-paid-charges').ListSchoolStudentPaidCharges;
     consolidateSchoolStudentFinancial?: import('../../../app/use-cases/schools/consolidate-school-student-financial').ConsolidateSchoolStudentFinancial;
+    updateSchoolStudent?: UpdateSchoolStudent;
     getSchoolDashboard?: import('../../../app/use-cases/schools/get-school-dashboard').GetSchoolDashboard;
     uploadSchoolImage?: import('../../../app/use-cases/schools/upload-school-image').UploadSchoolImage;
     listSchoolImages?: import('../../../app/use-cases/schools/list-school-images').ListSchoolImages;
@@ -256,7 +258,8 @@ export function schoolsRouter(deps: SchoolsRouterDeps) {
             getStudentDirectoryEntry: deps.getStudentDirectoryEntry,
             getSchoolStudentDetails: deps.getSchoolStudentDetails,
             listSchoolStudentPaidCharges: deps.listSchoolStudentPaidCharges,
-            consolidateSchoolStudentFinancial: deps.consolidateSchoolStudentFinancial
+            consolidateSchoolStudentFinancial: deps.consolidateSchoolStudentFinancial,
+            updateSchoolStudent: deps.updateSchoolStudent
         }, guards));
     }
 

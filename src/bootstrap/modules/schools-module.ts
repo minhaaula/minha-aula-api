@@ -129,6 +129,8 @@ import { AppendEnrollmentTimelineEvent } from '../../app/use-cases/enrollments/a
 import { IssueEnrollmentPromotionCertificate } from '../../app/use-cases/enrollments/issue-enrollment-promotion-certificate';
 import { ListEnrollmentTimeline } from '../../app/use-cases/enrollments/list-enrollment-timeline';
 import { UpdateSchoolStudentLevel } from '../../app/use-cases/schools/update-school-student-level';
+import { UpdateAdminStudent } from '../../app/use-cases/admin/update-admin-student';
+import { UpdateSchoolStudent } from '../../app/use-cases/schools/update-school-student';
 import { DeleteSchoolStudentLevel } from '../../app/use-cases/schools/delete-school-student-level';
 import { ReorderSchoolStudentLevels } from '../../app/use-cases/schools/reorder-school-student-levels';
 import { ListEnrollmentLevelPromotions } from '../../app/use-cases/enrollments/list-enrollment-level-promotions';
@@ -502,6 +504,8 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
     const appendEnrollmentTimelineEvent = new AppendEnrollmentTimelineEvent(enrollmentProgressRepo);
     const issueEnrollmentPromotionCertificate = new IssueEnrollmentPromotionCertificate(enrollmentProgressRepo);
     const listEnrollmentTimeline = new ListEnrollmentTimeline(enrollmentProgressRepo);
+    const updateAdminStudent = new UpdateAdminStudent(deps.usersRepo, deps.dependentsRepo);
+    const updateSchoolStudent = new UpdateSchoolStudent(updateAdminStudent);
     const updateSchoolStudentLevel = new UpdateSchoolStudentLevel(enrollmentProgressRepo);
     const deleteSchoolStudentLevel = new DeleteSchoolStudentLevel(enrollmentProgressRepo);
     const reorderSchoolStudentLevels = new ReorderSchoolStudentLevels(enrollmentProgressRepo);
@@ -567,6 +571,7 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         getSchoolStudentDetails,
         listSchoolStudentPaidCharges,
         consolidateSchoolStudentFinancial,
+        updateSchoolStudent,
         uploadSchoolImage,
         listSchoolImages,
         validateSchoolCoupon,

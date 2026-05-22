@@ -9,13 +9,16 @@ import { AppError, ErrorCode } from '../../../shared/errors';
 import { toE164Brazil } from '../../../shared/phone-e164';
 import { assertSchoolPersonaCannotUseStudentProfileRoutes } from './assert-school-persona-student-profile-fields';
 
+/** Somente dados pessoais; matrícula não é alterável por esta rota (persona SCHOOL: bloqueio total). */
 export interface UpdateStudentProfileInput {
     userId: string;
     profileUpdateVerificationToken: string;
     fullName?: string;
     email?: string;
     phone?: string;
+    /** Não aplicado em PUT /students/me — rejeitado no use case se enviado. */
     cpf?: string | null;
+    /** Não aplicado em PUT /students/me — rejeitado no use case se enviado. */
     birthDate?: string | null;
     address?: {
         street: string;

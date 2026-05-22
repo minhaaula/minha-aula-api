@@ -9,6 +9,9 @@ import type { SchoolContextRequest } from '../../middlewares/resolve-school-cont
 import type { GetSchoolStudentDetails } from '../../../../app/use-cases/schools/get-school-student-details';
 import type { ListSchoolStudentPaidCharges } from '../../../../app/use-cases/schools/list-school-student-paid-charges';
 import type { ConsolidateSchoolStudentFinancial } from '../../../../app/use-cases/schools/consolidate-school-student-financial';
+import type { UpdateSchoolStudent } from '../../../../app/use-cases/schools/update-school-student';
+import { patchSchoolStudentSchema } from '../../validators/patch-school-student-schemas';
+import { AppError, ErrorCode } from '../../../../shared/errors';
 
 type StudentsRoutesDeps = {
     listSchoolStudents: ListSchoolStudents;
@@ -16,6 +19,7 @@ type StudentsRoutesDeps = {
     getSchoolStudentDetails?: GetSchoolStudentDetails;
     listSchoolStudentPaidCharges?: ListSchoolStudentPaidCharges;
     consolidateSchoolStudentFinancial?: ConsolidateSchoolStudentFinancial;
+    updateSchoolStudent?: UpdateSchoolStudent;
 };
 
 export function buildStudentsRoutes(deps: StudentsRoutesDeps, guards: SchoolRouteGuards) {
@@ -181,6 +185,45 @@ export function buildStudentsRoutes(deps: StudentsRoutesDeps, guards: SchoolRout
                 });
             })
         );
+    }
+
+    if (deps.updateSchoolStudent) {
+        router.patch('/:studentId', ...protectedMiddleware, asyncHandler(async (req, res) => {
+            const paramsSchema = z.object({ studentId: z.string().uuid() });
+            const { studentId } = paramsSchema.parse(req.params);
+            const schoolId = (req as SchoolContextRequest).schoolId as string;
+            const querySchema = z.object({
+                dependentId: z.string().uuid().optional()
+            });
+            const query = querySchema.parse({
+                dependentId: typeof req.query.dependentId === 'string' ? req.query.dependentId : undefined
+            });
+
+            const data = patchSchoolStudentSchema.parse(req.body ?? {});
+
+            const hasField = Object.values(data).some((v) => v !== undefined);
+            if (!hasField) {
+                throw AppError.fromCode(ErrorCode.VALIDATION_ERROR, {
+                    message: 'Informe ao menos um campo para atualizar'
+                });
+            }
+
+            const student = await deps.updateSchoolStudent!.exec({
+                schoolId,
+                studentId,
+                dependentId: query.dependentId ?? null,
+                fullName: data.fullName,
+                email: data.email,
+                phone: data.phone,
+                cpf: data.cpf,
+                birthDate: data.birthDate,
+                address: data.address,
+                gender: data.gender,
+                relationship: data.relationship
+            });
+
+            res.json(student);
+        }));
     }
 
     // Rota de detalhes do aluno por ID
