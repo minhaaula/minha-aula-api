@@ -205,8 +205,10 @@ export class GetSchoolStudentDetails {
                 'enrollment.discountMonths',
                 'course.id',
                 'course.name',
+                'course.monthlyPriceCents',
                 'class.id',
-                'class.label'
+                'class.label',
+                'class.monthlyPriceCents'
             ])
             .getRawMany();
 
@@ -235,8 +237,10 @@ export class GetSchoolStudentDetails {
                 'enrollment.discountMonths',
                 'course.id',
                 'course.name',
+                'course.monthlyPriceCents',
                 'class.id',
-                'class.label'
+                'class.label',
+                'class.monthlyPriceCents'
             ])
             .getRawMany();
 
@@ -263,7 +267,9 @@ export class GetSchoolStudentDetails {
                 enrollment_full_amount_cents: row.enrollment_full_amount_cents as number | null,
                 enrollment_payment_due_day: row.enrollment_payment_due_day as number | null,
                 enrollment_discount_cents: row.enrollment_discount_cents as number | null,
-                enrollment_discount_months: row.enrollment_discount_months as number | null
+                enrollment_discount_months: row.enrollment_discount_months as number | null,
+                course_monthly_price_cents: row.course_monthly_price_cents as number | null,
+                class_monthly_price_cents: row.class_monthly_price_cents as number | null
             })
         };
     }

@@ -11,31 +11,39 @@ describe('enrollment-monthly-tuition presenter', () => {
             fullAmountCents: 25000,
             paymentDueDay: 10,
             discountCents: 5000,
-            discountMonths: 3
+            discountMonths: 3,
+            courseMonthlyPriceCents: 20000,
+            classMonthlyPriceCents: 25000
         });
 
         expect(result.tuitionExempt).toBe(false);
         expect(result.fullAmountCents).toBe(25000);
+        expect(result.referenceFullAmountCents).toBe(25000);
         expect(result.monthlyTuitionAmount).toBe(250);
+        expect(result.referenceMonthlyTuitionAmount).toBe(250);
         expect(result.discount).toBe(50);
         expect(result.monthlyTuitionNetAmount).toBe(200);
         expect(result.discountMonths).toBe(3);
         expect(result.paymentDueDay).toBe(10);
     });
 
-    it('apresenta isenção sem valores de mensalidade', () => {
+    it('isento exibe valor de referência da turma/curso', () => {
         const result = presentEnrollmentMonthlyTuition({
             tuitionExemptionType: 'SCHOLARSHIP',
-            fullAmountCents: 25000,
+            fullAmountCents: null,
             paymentDueDay: 10,
-            discountCents: 5000,
-            discountMonths: 3
+            discountCents: null,
+            discountMonths: null,
+            courseMonthlyPriceCents: 18000,
+            classMonthlyPriceCents: 22000
         });
 
         expect(result.tuitionExempt).toBe(true);
         expect(result.tuitionExemptionType).toBe('SCHOLARSHIP');
         expect(result.fullAmountCents).toBeNull();
-        expect(result.monthlyTuitionAmount).toBeNull();
+        expect(result.referenceFullAmountCents).toBe(22000);
+        expect(result.referenceMonthlyTuitionAmount).toBe(220);
+        expect(result.monthlyTuitionAmount).toBe(220);
         expect(result.monthlyTuitionNetAmount).toBeNull();
     });
 
@@ -45,10 +53,13 @@ describe('enrollment-monthly-tuition presenter', () => {
             enrollment_full_amount_cents: 15000,
             enrollment_payment_due_day: 5,
             enrollment_discount_cents: null,
-            enrollment_discount_months: null
+            enrollment_discount_months: null,
+            course_monthly_price_cents: 12000,
+            class_monthly_price_cents: 15000
         });
 
         expect(result.monthlyTuitionAmount).toBe(150);
+        expect(result.referenceMonthlyTuitionAmount).toBe(150);
         expect(result.paymentDueDay).toBe(5);
     });
 });

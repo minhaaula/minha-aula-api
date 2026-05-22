@@ -16,10 +16,9 @@ export interface UpdateStudentProfileInput {
     fullName?: string;
     email?: string;
     phone?: string;
-    /** Não aplicado em PUT /students/me — rejeitado no use case se enviado. */
+    /** Não pode ser alterado em PUT /students/me. */
     cpf?: string | null;
-    /** Não aplicado em PUT /students/me — rejeitado no use case se enviado. */
-    birthDate?: string | null;
+    birthDate?: string;
     address?: {
         street: string;
         number: string;
@@ -69,9 +68,9 @@ export class UpdateStudentProfile {
             input.phone
         );
 
-        if (input.cpf !== undefined || input.birthDate !== undefined) {
+        if (input.cpf !== undefined) {
             throw AppError.fromCode(ErrorCode.NOT_ALLOWED, {
-                message: 'CPF e data de nascimento não podem ser alterados pelas rotas do aluno'
+                message: 'CPF não pode ser alterado pelas rotas do aluno'
             });
         }
 
@@ -103,10 +102,13 @@ export class UpdateStudentProfile {
                 ? this.resolveGender(input.gender)
                 : user.gender;
 
+        const birthDate =
+            input.birthDate !== undefined ? this.parseBirthDate(input.birthDate) : user.birthDate;
+
         const updated = User.create({
             id: user.id,
             fullName,
-            birthDate: user.birthDate,
+            birthDate,
             email,
             phone,
             cpf: user.cpf,
@@ -164,6 +166,16 @@ export class UpdateStudentProfile {
             }
             throw AppError.fromCode(ErrorCode.STUDENT_PROFILE_NOT_VERIFIED);
         }
+    }
+
+    private parseBirthDate(value: string): Date {
+        const parsed = new Date(value);
+        if (Number.isNaN(parsed.getTime())) {
+            throw AppError.fromCode(ErrorCode.INVALID_BIRTH_DATE, { birthDate: value });
+        }
+        return new Date(
+            Date.UTC(parsed.getUTCFullYear(), parsed.getUTCMonth(), parsed.getUTCDate())
+        );
     }
 
     private resolveGender(value: Gender | null): Gender | null {

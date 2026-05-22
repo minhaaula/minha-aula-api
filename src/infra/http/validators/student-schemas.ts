@@ -24,12 +24,16 @@ export const updateStudentProfileSchema = z
         fullName: z.string().trim().min(3).optional(),
         email: z.string().trim().email().optional(),
         phone: phoneNumberSchema().optional(),
+        birthDate: z
+            .string()
+            .regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD')
+            .optional(),
         address: addressSchema.optional(),
         gender: optionalGenderSchema
     })
     .strict({
         message:
-            'Campos de matrícula não são aceitos em PUT /students/me. Dados pessoais apenas (fullName, email, phone, address, gender).'
+            'Campos de matrícula não são aceitos em PUT /students/me. Use fullName, email, phone, birthDate, address e gender.'
     });
 
 export const deactivateStudentAccountSchema = z.object({
