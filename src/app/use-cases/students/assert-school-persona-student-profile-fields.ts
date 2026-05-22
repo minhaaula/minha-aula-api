@@ -3,8 +3,7 @@ import { UserPersonaEnum } from '../../../domain/value-objects/user-persona';
 import { AppError, ErrorCode } from '../../../shared/errors';
 
 export const SCHOOL_PERSONA_STUDENT_PROFILE_ROUTES_MESSAGE =
-    'Usuários com perfil de escola não podem alterar o próprio cadastro pelas rotas do aluno. ' +
-    'Os dados estão vinculados ao KYC da subconta Asaas — altere pelo painel da escola (PATCH /schools/students/:id).';
+    'Usuários que também são donos de escola devem realizar alteração de dados pelo Painel da Escola.';
 
 /**
  * Impede qualquer alteração de perfil via rotas do app aluno quando o titular tem persona SCHOOL.

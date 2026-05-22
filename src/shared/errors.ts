@@ -164,7 +164,7 @@ export const ErrorMessages: Record<ErrorCode, string> = {
     [ErrorCode.SCHOOL_OWNER_STUDENT_PROFILE_FIELD_LOCKED]:
         'Usuários com perfil de escola não podem alterar nome, CPF, data de nascimento nem sexo pelas rotas do aluno',
     [ErrorCode.SCHOOL_PERSONA_STUDENT_PROFILE_UPDATE_FORBIDDEN]:
-        'Usuários com perfil de escola não podem alterar o próprio cadastro pelas rotas do aluno (dados vinculados ao KYC Asaas). Use o painel da escola.',
+        'Usuários que também são donos de escola devem realizar alteração de dados pelo Painel da Escola.',
     
     // Sistema
     [ErrorCode.INTERNAL_ERROR]: 'Erro interno do servidor',
