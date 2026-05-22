@@ -48,6 +48,7 @@ import { ListAdminEnrollmentRequests } from '../../app/use-cases/admin/list-admi
 import { ListAdminStudentCharges } from '../../app/use-cases/admin/list-admin-student-charges';
 import { ListAdminStudentCourses } from '../../app/use-cases/admin/list-admin-student-courses';
 import { GetAdminStudentDetails } from '../../app/use-cases/admin/get-admin-student-details';
+import { UpdateAdminStudent } from '../../app/use-cases/admin/update-admin-student';
 import { AdminSoftDeleteUser } from '../../app/use-cases/admin/admin-soft-delete-user';
 import { AdminSoftDeleteSchool } from '../../app/use-cases/admin/admin-soft-delete-school';
 import { ListAdminSchoolCourses } from '../../app/use-cases/admin/list-admin-school-courses';
@@ -171,6 +172,7 @@ export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext)
 
     const listAdminStudentCourses = new ListAdminStudentCourses(deps.usersRepo, deps.dependentsRepo);
     const getAdminStudentDetails = new GetAdminStudentDetails(deps.usersRepo, deps.dependentsRepo);
+    const updateAdminStudent = new UpdateAdminStudent(deps.usersRepo, deps.dependentsRepo);
     const listAdminSchoolCourses = new ListAdminSchoolCourses(
         deps.coursesRepo,
         deps.categoriesRepo,
@@ -306,6 +308,7 @@ export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext)
         listAllStudents,
         listAdminStudentCourses,
         getAdminStudentDetails,
+        updateAdminStudent,
         listAdminStudentCharges,
         listAdminSchoolCourses,
         getAdminSchoolFinancial,

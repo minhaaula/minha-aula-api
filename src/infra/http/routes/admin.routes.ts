@@ -27,6 +27,8 @@ import type { ListSchoolStudents } from '../../../app/use-cases/schools/list-sch
 import type { ListAllStudents } from '../../../app/use-cases/admin/list-all-students';
 import type { ListAdminStudentCourses } from '../../../app/use-cases/admin/list-admin-student-courses';
 import type { GetAdminStudentDetails } from '../../../app/use-cases/admin/get-admin-student-details';
+import type { UpdateAdminStudent } from '../../../app/use-cases/admin/update-admin-student';
+import { adminUpdateStudentSchema } from '../validators/admin-update-student-schemas';
 import type { ListAdminSchoolCourses } from '../../../app/use-cases/admin/list-admin-school-courses';
 import type { GetAdminSchoolFinancial } from '../../../app/use-cases/admin/get-admin-school-financial';
 import type { GetAdminSchoolBilling } from '../../../app/use-cases/admin/get-admin-school-billing';
@@ -89,6 +91,7 @@ type AdminRouterDeps = {
     listAllStudents?: ListAllStudents;
     listAdminStudentCourses?: ListAdminStudentCourses;
     getAdminStudentDetails?: GetAdminStudentDetails;
+    updateAdminStudent?: UpdateAdminStudent;
     listAdminSchoolCourses?: ListAdminSchoolCourses;
     getAdminSchoolFinancial?: GetAdminSchoolFinancial;
     getAdminSchoolBilling?: GetAdminSchoolBilling;
@@ -147,6 +150,7 @@ export function adminRouter({
     listAllStudents,
     listAdminStudentCourses,
     getAdminStudentDetails,
+    updateAdminStudent,
     listAdminSchoolCourses,
     getAdminSchoolFinancial,
     getAdminSchoolBilling,
@@ -520,6 +524,30 @@ export function adminRouter({
             if (result === null) {
                 return res.status(404).json({ error: 'Aluno não encontrado' });
             }
+            res.json(result);
+        }));
+    }
+
+    if (updateAdminStudent) {
+        router.patch('/students/:studentId', requireAuth, requireAdminPersona, asyncHandler(async (req, res) => {
+            const paramsSchema = z.object({
+                studentId: z.string().uuid()
+            });
+            const { studentId } = paramsSchema.parse(req.params);
+            const data = adminUpdateStudentSchema.parse(req.body ?? {});
+
+            const result = await updateAdminStudent.exec({
+                studentId,
+                fullName: data.fullName,
+                email: data.email,
+                phone: data.phone,
+                cpf: data.cpf,
+                birthDate: data.birthDate,
+                address: data.address,
+                gender: data.gender,
+                relationship: data.relationship
+            });
+
             res.json(result);
         }));
     }
