@@ -2,6 +2,8 @@ import { DependentRepository } from '../../../ports/repositories/dependent.repo'
 import { Dependent } from '../../../domain/entities/dependent';
 import { AppError, ErrorCode } from '../../../shared/errors';
 import { equalUuid } from '../../../shared/normalize-uuid';
+import type { Gender } from '../../../domain/value-objects/gender';
+import { parseGender } from '../../../domain/value-objects/gender';
 
 export interface UpdateDependentInput {
     ownerUserId: string;
@@ -9,6 +11,7 @@ export interface UpdateDependentInput {
     fullName?: string;
     birthDate?: string | null;
     relationship?: string | null;
+    gender?: Gender | null;
 }
 
 export interface UpdateDependentOutput {
@@ -18,6 +21,7 @@ export interface UpdateDependentOutput {
     cpf: string | null;
     birthDate: Date | null;
     relationship: string | null;
+    gender: Gender | null;
     createdAt: Date;
 }
 
@@ -80,6 +84,9 @@ export class UpdateDependent {
             ? (input.relationship?.trim() || null)
             : dependent.relationship;
 
+        const gender =
+            input.gender !== undefined ? this.resolveGender(input.gender) : dependent.gender;
+
         // Criar dependente atualizado (mantendo CPF original)
         const updated = Dependent.create({
             id: dependent.id,
@@ -90,7 +97,8 @@ export class UpdateDependent {
             relationship,
             createdAt: dependent.createdAt,
             deletedAt: dependent.deletedAt,
-            photoStorageKey: dependent.photoStorageKey
+            photoStorageKey: dependent.photoStorageKey,
+            gender
         });
 
         await this.dependents.save(updated);
@@ -102,8 +110,20 @@ export class UpdateDependent {
             cpf: updated.cpf,
             birthDate: updated.birthDate,
             relationship: updated.relationship,
+            gender: updated.gender,
             createdAt: updated.createdAt
         };
+    }
+
+    private resolveGender(value: Gender | null): Gender | null {
+        if (value === null) return null;
+        const parsed = parseGender(value);
+        if (!parsed) {
+            throw AppError.fromCode(ErrorCode.VALIDATION_ERROR, {
+                message: 'gender inválido (use MALE ou FEMALE)'
+            });
+        }
+        return parsed;
     }
 }
 

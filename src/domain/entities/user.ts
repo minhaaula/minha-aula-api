@@ -1,6 +1,8 @@
 import { Email } from '../value-objects/email';
 import { PostalAddress } from '../value-objects/postal-address';
 import { UserPersona, assertUserPersona } from '../value-objects/user-persona';
+import type { Gender } from '../value-objects/gender';
+import { parseGender } from '../value-objects/gender';
 
 export class User {
     private constructor(
@@ -18,7 +20,8 @@ export class User {
         public readonly deactivationReason: string | null,
         public readonly deactivationDescription: string | null,
         private _photoStorageKey: string | null = null,
-        private _studentAccessEnabled: boolean = true
+        private _studentAccessEnabled: boolean = true,
+        private readonly _gender: Gender | null = null
     ) {}
 
     static create(params: {
@@ -38,6 +41,7 @@ export class User {
         photoStorageKey?: string | null;
         /** Permite login no app de aluno quando persona é SCHOOL. Default: true. */
         studentAccessEnabled?: boolean;
+        gender?: Gender | null;
     }) {
         if (!(params.birthDate instanceof Date) || Number.isNaN(params.birthDate.getTime())) {
             throw new Error('Invalid birth date');
@@ -68,8 +72,13 @@ export class User {
             params.deactivationReason ?? null,
             params.deactivationDescription ?? null,
             params.photoStorageKey?.trim() || null,
-            params.studentAccessEnabled ?? true
+            params.studentAccessEnabled ?? true,
+            parseGender(params.gender)
         );
+    }
+
+    get gender(): Gender | null {
+        return this._gender;
     }
 
     get studentAccessEnabled(): boolean {

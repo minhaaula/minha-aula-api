@@ -1,5 +1,6 @@
 import { Column, CreateDateColumn, Entity, Index, OneToMany, PrimaryColumn } from 'typeorm';
 import { SchoolOrm } from './school.orm';
+import type { Gender } from '../../../../domain/value-objects/gender';
 
 @Entity('users')
 @Index(['email'], { unique: true })
@@ -8,6 +9,7 @@ export class UserOrm {
     @PrimaryColumn('char', { length: 36 }) id!: string;
     @Column('varchar', { length: 191, name: 'full_name' }) fullName!: string;
     @Column('date', { name: 'birth_date' }) birthDate!: Date;
+    @Column('enum', { enum: ['MALE', 'FEMALE'], nullable: true }) gender!: Gender | null;
     @Column('varchar', { length: 191 }) email!: string;
     @Column('varchar', { length: 32 }) phone!: string;
     @Column('char', { length: 11 }) cpf!: string;

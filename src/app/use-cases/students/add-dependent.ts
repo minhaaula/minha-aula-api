@@ -47,7 +47,8 @@ export class AddDependent {
             fullName: input.fullName,
             cpf: normalizedCpf,
             birthDate,
-            relationship: input.relationship ?? null
+            relationship: input.relationship ?? null,
+            gender: input.gender ?? null
         });
 
         await this.dependents.save(dependent);
@@ -59,6 +60,7 @@ export class AddDependent {
             cpf: dependent.cpf,
             birthDate: dependent.birthDate,
             relationship: dependent.relationship,
+            gender: dependent.gender,
             createdAt: dependent.createdAt
         };
     }

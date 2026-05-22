@@ -2,6 +2,9 @@ import { UserRepository } from '../../../ports/repositories/user.repo';
 import { Email } from '../../../domain/value-objects/email';
 import { PostalAddress, PostalAddressProps } from '../../../domain/value-objects/postal-address';
 import { User } from '../../../domain/entities/user';
+import type { Gender } from '../../../domain/value-objects/gender';
+import { parseGender } from '../../../domain/value-objects/gender';
+import { AppError, ErrorCode } from '../../../shared/errors';
 
 export interface UpdateStudentProfileInput {
     userId: string;
@@ -17,6 +20,7 @@ export interface UpdateStudentProfileInput {
         state: string;
         zipCode: string;
     };
+    gender?: Gender | null;
 }
 
 export interface UpdateStudentProfileOutput {
@@ -27,6 +31,7 @@ export interface UpdateStudentProfileOutput {
     phone: string;
     birthDate: Date;
     address: PostalAddressProps;
+    gender: Gender | null;
     createdAt: Date;
 }
 
@@ -70,6 +75,11 @@ export class UpdateStudentProfile {
             })
             : user.address;
 
+        const gender =
+            input.gender !== undefined
+                ? this.resolveGender(input.gender)
+                : user.gender;
+
         const updated = User.create({
             id: user.id,
             fullName,
@@ -83,7 +93,10 @@ export class UpdateStudentProfile {
             createdAt: user.createdAt,
             active: user.active,
             deactivationReason: user.deactivationReason,
-            deactivationDescription: user.deactivationDescription
+            deactivationDescription: user.deactivationDescription,
+            photoStorageKey: user.photoStorageKey,
+            studentAccessEnabled: user.studentAccessEnabled,
+            gender
         });
 
         await this.users.save(updated);
@@ -96,8 +109,20 @@ export class UpdateStudentProfile {
             phone: updated.phone,
             birthDate: updated.birthDate,
             address: updated.address.toPrimitives(),
+            gender: updated.gender,
             createdAt: updated.createdAt
         };
+    }
+
+    private resolveGender(value: Gender | null): Gender | null {
+        if (value === null) return null;
+        const parsed = parseGender(value);
+        if (!parsed) {
+            throw AppError.fromCode(ErrorCode.VALIDATION_ERROR, {
+                message: 'gender inválido (use MALE ou FEMALE)'
+            });
+        }
+        return parsed;
     }
 }
 

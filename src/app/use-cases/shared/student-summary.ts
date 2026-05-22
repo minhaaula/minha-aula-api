@@ -1,6 +1,7 @@
 import { Dependent } from '../../../domain/entities/dependent';
 import { User } from '../../../domain/entities/user';
 import type { PostalAddressProps } from '../../../domain/value-objects/postal-address';
+import type { Gender } from '../../../domain/value-objects/gender';
 
 export type DependentSummary = {
     id: string;
@@ -9,6 +10,7 @@ export type DependentSummary = {
     cpf: string | null;
     birthDate: Date | null;
     relationship: string | null;
+    gender: Gender | null;
     createdAt: Date;
 };
 
@@ -42,6 +44,7 @@ export type StudentSummary = {
     phone: string;
     cpf: string;
     birthDate: Date;
+    gender: Gender | null;
     address: PostalAddressProps;
     dependents: DependentSummary[];
     createdAt: Date;
@@ -59,6 +62,7 @@ export function buildStudentSummary(student: User, dependents: Dependent[]): Stu
             cpf: dep.cpf,
             birthDate: dep.birthDate,
             relationship: dep.relationship,
+            gender: dep.gender,
             createdAt: dep.createdAt
         }));
 
@@ -69,6 +73,7 @@ export function buildStudentSummary(student: User, dependents: Dependent[]): Stu
         phone: student.phone,
         cpf: student.cpf,
         birthDate: student.birthDate,
+        gender: student.gender,
         address: student.address.toPrimitives(),
         dependents: sortedDependents,
         createdAt: student.createdAt

@@ -2,6 +2,7 @@ import { UserRepository } from '../../../ports/repositories/user.repo';
 import { DependentRepository } from '../../../ports/repositories/dependent.repo';
 import type { StorageProviderPort } from '../../../ports/providers/storage-provider.port';
 import { resolveProfilePhotoUrl } from '../../../shared/profile-photo';
+import type { Gender } from '../../../domain/value-objects/gender';
 
 export interface StudentProfile {
     id: string;
@@ -10,6 +11,7 @@ export interface StudentProfile {
     cpf: string;
     phone: string;
     birthDate: Date;
+    gender: Gender | null;
     address: {
         street: string;
         number: string;
@@ -27,6 +29,7 @@ export interface StudentProfile {
         cpf: string | null;
         birthDate: Date | null;
         relationship: string | null;
+        gender: Gender | null;
         photoUrl: string | null;
     }>;
 }
@@ -63,6 +66,7 @@ export class GetMyProfile {
             cpf: user.cpf,
             phone: user.phone,
             birthDate: user.birthDate,
+            gender: user.gender,
             address: {
                 street: addressPrimitives.street,
                 number: addressPrimitives.number,
@@ -81,6 +85,7 @@ export class GetMyProfile {
                     cpf: dep.cpf,
                     birthDate: dep.birthDate,
                     relationship: dep.relationship,
+                    gender: dep.gender,
                     photoUrl: this.storage
                         ? await resolveProfilePhotoUrl(this.storage, dep.photoStorageKey)
                         : dep.photoStorageKey

@@ -13,6 +13,7 @@ import { createSchoolObjectSchema, createSchoolSchema } from '../../validators/s
 import { z } from 'zod';
 import { mapAddresses } from './transformers';
 import { listTuitionExemptionTypes } from '../../../../domain/value-objects/tuition-exemption-type';
+import { listGenders } from '../../../../domain/value-objects/gender';
 
 type PublicSchoolRoutesDeps = {
     createSchool: CreateSchool;
@@ -68,6 +69,10 @@ export function buildPublicSchoolRoutes(deps: PublicSchoolRoutesDeps, optionalAu
 
     router.get('/tuition-exemption-types', asyncHandler(async (_req, res) => {
         res.json({ items: listTuitionExemptionTypes() });
+    }));
+
+    router.get('/genders', asyncHandler(async (_req, res) => {
+        res.json({ items: listGenders() });
     }));
 
     if (deps.listCategories) {

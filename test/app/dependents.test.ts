@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { AddDependent } from '../../src/app/use-cases/students/add-dependent';
+import { UpdateDependent } from '../../src/app/use-cases/students/update-dependent';
 import { UserRepository } from '../../src/ports/repositories/user.repo';
 import { DependentRepository } from '../../src/ports/repositories/dependent.repo';
 import { User } from '../../src/domain/entities/user';
@@ -146,5 +147,32 @@ describe('AddDependent use case', () => {
 
         await expect(useCase.exec({ ownerUserId: owner.id, fullName: 'Carla', cpf: '22233344455' }))
             .rejects.toThrow('CPF já cadastrado');
+    });
+
+    it('allows setting gender on existing dependent via update', async () => {
+        const users = new InMemoryUserRepository();
+        const dependents = new InMemoryDependentRepository();
+        const owner = makeUser();
+        users.seed(owner);
+        dependents.seed(
+            Dependent.create({
+                id: 'dep-legacy',
+                userId: owner.id,
+                fullName: 'Maria',
+                cpf: null,
+                birthDate: null,
+                relationship: 'Filha',
+                createdAt: new Date()
+            })
+        );
+
+        const update = new UpdateDependent(dependents);
+        const result = await update.exec({
+            ownerUserId: owner.id,
+            dependentId: 'dep-legacy',
+            gender: 'FEMALE'
+        });
+
+        expect(result.gender).toBe('FEMALE');
     });
 });

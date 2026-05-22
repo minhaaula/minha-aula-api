@@ -2,6 +2,7 @@ import { Column, CreateDateColumn, Entity, Index, JoinColumn, ManyToOne, OneToMa
 import { UserOrm } from './user.orm';
 import { EnrollmentOrm } from './enrollment.orm';
 import { EnrollmentRequestOrm } from './enrollment-request.orm';
+import type { Gender } from '../../../../domain/value-objects/gender';
 
 @Entity('dependents')
 @Index('idx_dependents_user', ['userId'])
@@ -15,6 +16,8 @@ export class DependentOrm {
     @Column('char', { length: 11, nullable: true }) cpf!: string | null;
 
     @Column('date', { name: 'birth_date', nullable: true }) birthDate!: Date | null;
+
+    @Column('enum', { enum: ['MALE', 'FEMALE'], nullable: true }) gender!: Gender | null;
 
     @Column('varchar', { length: 64, nullable: true }) relationship!: string | null;
 

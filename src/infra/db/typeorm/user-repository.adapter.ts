@@ -226,7 +226,8 @@ export class UserRepositoryAdapter implements UserRepository {
             deactivationReason: row.deactivationReason ?? null,
             deactivationDescription: row.deactivationDescription ?? null,
             photoStorageKey: row.photoUrl ?? null,
-            studentAccessEnabled: normalizeStudentAccessEnabled(row.studentAccessEnabled)
+            studentAccessEnabled: normalizeStudentAccessEnabled(row.studentAccessEnabled),
+            gender: row.gender ?? null
         });
     }
 
@@ -254,6 +255,7 @@ export class UserRepositoryAdapter implements UserRepository {
         row.deactivationReason = user.deactivationReason ?? null;
         row.deactivationDescription = user.deactivationDescription ?? null;
         row.photoUrl = user.photoStorageKey;
+        row.gender = user.gender;
         return row;
     }
 }

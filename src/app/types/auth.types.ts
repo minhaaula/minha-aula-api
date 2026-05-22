@@ -3,6 +3,7 @@
  */
 
 import { UserPersona } from '../../domain/value-objects/user-persona';
+import type { Gender } from '../../domain/value-objects/gender';
 import type { PostalAddressInput, PostalAddressOutput } from './common.types';
 
 export interface RegisterUserInput {
@@ -16,6 +17,7 @@ export interface RegisterUserInput {
     password: string;
     /** Token emitido por `POST /auth/verification/verify` após validar o WhatsApp (mesmo telefone de `phone`). */
     phoneVerificationToken: string;
+    gender?: Gender | null;
 }
 
 export interface RegisterUserOutput {

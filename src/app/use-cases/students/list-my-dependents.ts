@@ -1,6 +1,7 @@
 import { DependentRepository } from '../../../ports/repositories/dependent.repo';
 import type { StorageProviderPort } from '../../../ports/providers/storage-provider.port';
 import { resolveProfilePhotoUrl } from '../../../shared/profile-photo';
+import type { Gender } from '../../../domain/value-objects/gender';
 
 export interface DependentListItem {
     id: string;
@@ -8,6 +9,7 @@ export interface DependentListItem {
     cpf: string | null;
     birthDate: Date | null;
     relationship: string | null;
+    gender: Gender | null;
     createdAt: Date;
     photoUrl: string | null;
 }
@@ -33,6 +35,7 @@ export class ListMyDependents {
                 cpf: dep.cpf,
                 birthDate: dep.birthDate,
                 relationship: dep.relationship,
+                gender: dep.gender,
                 createdAt: dep.createdAt,
                 photoUrl: this.storage
                     ? await resolveProfilePhotoUrl(this.storage, dep.photoStorageKey)

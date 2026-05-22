@@ -65,7 +65,8 @@ export class RegisterUser {
             cpf,
             address,
             persona: input.persona,
-            passwordHash
+            passwordHash,
+            gender: input.gender ?? null
         });
 
         await this.users.save(user);

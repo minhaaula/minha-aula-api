@@ -8,6 +8,7 @@ import { AppError, ErrorCode } from '../../../shared/errors';
 import { equalUuid } from '../../../shared/normalize-uuid';
 import { presentTuitionExemptionFromEnrollmentRaw } from '../../presenters/tuition-exemption.presenter';
 import type { TuitionExemptionType } from '../../../domain/value-objects/tuition-exemption-type';
+import type { Gender } from '../../../domain/value-objects/gender';
 
 export interface GetSchoolStudentDetailsInput {
     schoolId: string;
@@ -27,6 +28,7 @@ export interface GetSchoolStudentDetailsOutput {
         phone: string;
         cpf: string;
         birthDate: Date | null;
+        gender: Gender | null;
     };
     responsible: {
         id: string;
@@ -34,6 +36,7 @@ export interface GetSchoolStudentDetailsOutput {
         email: string;
         phone: string;
         cpf: string;
+        gender: Gender | null;
     } | null;
     enrollments: Array<{
         id: string;
@@ -119,14 +122,16 @@ export class GetSchoolStudentDetails {
                 email: '',
                 phone: '',
                 cpf: dependent.cpf || '',
-                birthDate: dependent.birthDate
+                birthDate: dependent.birthDate,
+                gender: dependent.gender
             },
             responsible: {
                 id: responsible.id,
                 fullName: responsible.fullName,
                 email: responsible.email.value,
                 phone: responsible.phone,
-                cpf: responsible.cpf
+                cpf: responsible.cpf,
+                gender: responsible.gender
             },
             enrollments
         };
@@ -142,7 +147,8 @@ export class GetSchoolStudentDetails {
                 email: user.email.value,
                 phone: user.phone,
                 cpf: user.cpf,
-                birthDate: user.birthDate
+                birthDate: user.birthDate,
+                gender: user.gender
             },
             responsible: null,
             enrollments

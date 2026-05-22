@@ -14,6 +14,7 @@ import { equalUuid } from '../../../shared/normalize-uuid';
 import { isMinorByBirthDate } from '../../../shared/is-minor-by-birth-date';
 import { presentTuitionExemption } from '../../presenters/tuition-exemption.presenter';
 import type { TuitionExemptionType } from '../../../domain/value-objects/tuition-exemption-type';
+import type { Gender } from '../../../domain/value-objects/gender';
 
 type ListSchoolStudentsInput = {
     schoolId: string;
@@ -51,6 +52,7 @@ export type AdminSchoolStudentItem = {
     studentName: string;
     cpf: string | null;
     birthDate: Date | null;
+    gender: Gender | null;
     isDependent: boolean;
     /** Responsável (titular) quando `isDependent` ou quando o estudante é menor de idade. */
     responsible: AdminSchoolStudentResponsible | null;
@@ -189,6 +191,7 @@ export class ListSchoolStudents {
                 const studentName = isDependentEnrollment ? dependent!.fullName : owner.fullName;
                 const cpf = isDependentEnrollment ? dependent!.cpf : owner.cpf;
                 const birthDate = isDependentEnrollment ? dependent!.birthDate : owner.birthDate;
+                const gender = isDependentEnrollment ? dependent!.gender : owner.gender;
                 const isDependent = isDependentEnrollment;
 
                 const needsResponsible = isDependent || isMinorByBirthDate(birthDate);
@@ -221,6 +224,7 @@ export class ListSchoolStudents {
                         studentName,
                         cpf,
                         birthDate,
+                        gender,
                         isDependent,
                         responsible,
                         enrollments: [enrollmentItem]

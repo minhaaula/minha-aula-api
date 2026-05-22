@@ -12,6 +12,7 @@ import { ValidatePasswordResetToken } from '../../../app/use-cases/auth/validate
 import { AuthenticatedRequest } from '../middlewares/auth';
 import { cpfNumberSchema, phoneNumberSchema } from '../validators/numeric-fields';
 import { addressSchema } from '../validators/common-schemas';
+import { optionalGenderSchema } from '../validators/gender-schemas';
 import { authRateLimiter, registrationRateLimiter } from '../middlewares/rate-limiter';
 
 const cpfSchema = cpfNumberSchema();
@@ -51,7 +52,8 @@ export function authRouter({
         address: addressSchema,
         persona: z.enum(USER_PERSONAS),
         password: z.string().min(8),
-        phoneVerificationToken: z.string().min(1, 'Confirme o telefone no WhatsApp antes de cadastrar')
+        phoneVerificationToken: z.string().min(1, 'Confirme o telefone no WhatsApp antes de cadastrar'),
+        gender: optionalGenderSchema
     });
 
     const loginSchema = z.object({

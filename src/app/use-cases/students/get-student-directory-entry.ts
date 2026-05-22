@@ -1,12 +1,14 @@
 import { UserRepository } from '../../../ports/repositories/user.repo';
 import { DependentRepository } from '../../../ports/repositories/dependent.repo';
 import { canActAsStudent } from '../../../shared/user-student-access';
+import type { Gender } from '../../../domain/value-objects/gender';
 
 export type StudentDirectoryPerson = {
     id: string;
     name: string;
     cpf: string;
     birthDate: Date | null;
+    gender: Gender | null;
 };
 
 export type StudentDirectoryEntry = {
@@ -36,13 +38,15 @@ export class GetStudentDirectoryEntry {
                     id: dependent.id,
                     name: dependent.fullName,
                     cpf,
-                    birthDate: dependent.birthDate ?? null
+                    birthDate: dependent.birthDate ?? null,
+                    gender: dependent.gender
                 },
                 responsible: {
                     id: responsible.id,
                     name: responsible.fullName,
                     cpf: responsible.cpf,
-                    birthDate: responsible.birthDate
+                    birthDate: responsible.birthDate,
+                    gender: responsible.gender
                 },
                 isDependent: true
             };
@@ -58,7 +62,8 @@ export class GetStudentDirectoryEntry {
                 id: student.id,
                 name: student.fullName,
                 cpf: student.cpf,
-                birthDate: student.birthDate
+                birthDate: student.birthDate,
+                gender: student.gender
             },
             responsible: null,
             isDependent: false

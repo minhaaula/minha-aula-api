@@ -211,7 +211,8 @@ export function studentsRouter(deps: {
                 fullName: data.fullName,
                 email: data.email,
                 phone: data.phone,
-                address: data.address
+                address: data.address,
+                gender: data.gender !== undefined ? data.gender : undefined
             });
 
             res.json(result);
