@@ -9,6 +9,10 @@ import type { Gender } from '../../../domain/value-objects/gender';
 import { parseGender } from '../../../domain/value-objects/gender';
 import type { PostalAddressProps } from '../../../domain/value-objects/postal-address';
 import { AppError, ErrorCode } from '../../../shared/errors';
+import {
+    presentStudentAccountStatus,
+    type StudentAccountStatus
+} from '../../types/admin.types';
 
 export interface UpdateAdminStudentInput {
     studentId: string;
@@ -28,6 +32,9 @@ export interface UpdateAdminStudentInput {
     };
     gender?: Gender | null;
     relationship?: string | null;
+    /** Apenas titular (USER): ativar ou inativar conta. */
+    status?: StudentAccountStatus;
+    deactivationDescription?: string | null;
 }
 
 export type UpdateAdminStudentOutput =
@@ -41,6 +48,7 @@ export type UpdateAdminStudentOutput =
           birthDate: Date;
           gender: Gender | null;
           address: PostalAddressProps;
+          status: StudentAccountStatus;
       }
     | {
           studentType: 'DEPENDENT';
@@ -125,6 +133,8 @@ export class UpdateAdminStudent {
         const gender =
             input.gender !== undefined ? this.resolveGender(input.gender) : user.gender;
 
+        const accountState = await this.resolveAccountState(user, input);
+
         const updated = User.create({
             id: user.id,
             fullName: typeof input.fullName === 'string' ? input.fullName : user.fullName,
@@ -146,9 +156,9 @@ export class UpdateAdminStudent {
             persona: user.persona,
             passwordHash: user.passwordHash,
             createdAt: user.createdAt,
-            active: user.active,
-            deactivationReason: user.deactivationReason,
-            deactivationDescription: user.deactivationDescription,
+            active: accountState.active,
+            deactivationReason: accountState.deactivationReason,
+            deactivationDescription: accountState.deactivationDescription,
             photoStorageKey: user.photoStorageKey,
             studentAccessEnabled: user.studentAccessEnabled,
             gender
@@ -165,7 +175,8 @@ export class UpdateAdminStudent {
             cpf: updated.cpf,
             birthDate: updated.birthDate,
             gender: updated.gender ?? null,
-            address: updated.address.toPrimitives()
+            address: updated.address.toPrimitives(),
+            status: presentStudentAccountStatus(updated.active)
         };
     }
 
@@ -173,6 +184,12 @@ export class UpdateAdminStudent {
         dependent: Dependent,
         input: UpdateAdminStudentInput
     ): Promise<UpdateAdminStudentOutput> {
+        if (input.status !== undefined) {
+            throw AppError.fromCode(ErrorCode.VALIDATION_ERROR, {
+                message: 'status aplica-se apenas ao titular (USER); dependentes não possuem conta de login'
+            });
+        }
+
         if (input.email !== undefined || input.phone !== undefined || input.address !== undefined) {
             throw AppError.fromCode(ErrorCode.VALIDATION_ERROR, {
                 message:
@@ -254,6 +271,47 @@ export class UpdateAdminStudent {
             birthDate: updated.birthDate,
             relationship: updated.relationship,
             gender: updated.gender ?? null
+        };
+    }
+
+    private async resolveAccountState(
+        user: User,
+        input: UpdateAdminStudentInput
+    ): Promise<{
+        active: boolean;
+        deactivationReason: string | null;
+        deactivationDescription: string | null;
+    }> {
+        if (input.status === undefined) {
+            return {
+                active: user.active,
+                deactivationReason: user.deactivationReason,
+                deactivationDescription: user.deactivationDescription
+            };
+        }
+
+        if (input.status === 'ACTIVE') {
+            if (this.users.isDeletedByAdmin && (await this.users.isDeletedByAdmin(user.id))) {
+                throw AppError.fromCode(ErrorCode.BUSINESS_RULE_VIOLATION, {
+                    message: 'Não é possível reativar usuário excluído pelo admin; cadastre um novo aluno'
+                });
+            }
+            return {
+                active: true,
+                deactivationReason: null,
+                deactivationDescription: null
+            };
+        }
+
+        const description =
+            input.deactivationDescription !== undefined
+                ? input.deactivationDescription?.trim() || null
+                : user.deactivationDescription;
+
+        return {
+            active: false,
+            deactivationReason: 'ADMIN',
+            deactivationDescription: description
         };
     }
 

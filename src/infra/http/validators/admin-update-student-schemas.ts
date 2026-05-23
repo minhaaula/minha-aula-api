@@ -19,3 +19,10 @@ export const adminUpdateStudentSchema = z.object({
     gender: optionalGenderSchema,
     relationship: z.string().trim().min(1).optional().nullable()
 });
+
+/** PATCH /admin/students/:studentId — inclui ativação/inativação da conta do titular. */
+export const adminPatchStudentSchema = adminUpdateStudentSchema.extend({
+    status: z.enum(['ACTIVE', 'INACTIVE']).optional(),
+    /** Observação opcional ao inativar pelo admin (ignorada ao reativar). */
+    deactivationDescription: z.string().trim().min(1).max(500).optional().nullable()
+});

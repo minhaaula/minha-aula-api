@@ -33,6 +33,9 @@ class InMemoryUsers implements UserRepository {
     async save(user: User) {
         this.map.set(user.id, user);
     }
+    async isDeletedByAdmin() {
+        return false;
+    }
 }
 
 class InMemoryDependents implements DependentRepository {
@@ -123,6 +126,79 @@ describe('UpdateAdminStudent', () => {
             expect(result.cpf).toBe('11144477735');
             expect(result.relationship).toBe('Filho(a)');
         }
+    });
+
+    it('deactivates titular when status is INACTIVE', async () => {
+        const users = new InMemoryUsers(new Map([['user-1', makeUser()]]));
+        const useCase = new UpdateAdminStudent(users, new InMemoryDependents(new Map()));
+
+        const result = await useCase.exec({
+            studentId: 'user-1',
+            status: 'INACTIVE',
+            deactivationDescription: 'Solicitação do suporte'
+        });
+
+        expect(result.studentType).toBe('USER');
+        if (result.studentType === 'USER') {
+            expect(result.status).toBe('INACTIVE');
+        }
+        const saved = await users.findById('user-1');
+        expect(saved?.active).toBe(false);
+        expect(saved?.deactivationReason).toBe('ADMIN');
+        expect(saved?.deactivationDescription).toBe('Solicitação do suporte');
+    });
+
+    it('reactivates titular when status is ACTIVE', async () => {
+        const inactive = User.create({
+            id: 'user-1',
+            fullName: 'Maria Silva',
+            birthDate: new Date('1990-03-15'),
+            email: Email.create('maria@email.com'),
+            phone: '11999999999',
+            cpf: '12345678909',
+            address: PostalAddress.create({
+                street: 'Rua A',
+                number: '10',
+                city: 'SP',
+                state: 'SP',
+                zipCode: '01000000'
+            }),
+            persona: UserPersonaEnum.STUDENT,
+            passwordHash: 'hash',
+            active: false,
+            deactivationReason: 'ADMIN',
+            deactivationDescription: 'Teste'
+        });
+        const users = new InMemoryUsers(new Map([['user-1', inactive]]));
+        const useCase = new UpdateAdminStudent(users, new InMemoryDependents(new Map()));
+
+        const result = await useCase.exec({ studentId: 'user-1', status: 'ACTIVE' });
+
+        expect(result.studentType).toBe('USER');
+        if (result.studentType === 'USER') {
+            expect(result.status).toBe('ACTIVE');
+        }
+        const saved = await users.findById('user-1');
+        expect(saved?.active).toBe(true);
+        expect(saved?.deactivationReason).toBeNull();
+        expect(saved?.deactivationDescription).toBeNull();
+    });
+
+    it('rejects status change for dependent', async () => {
+        const owner = makeUser('owner-1');
+        const dep = Dependent.create({
+            id: 'dep-1',
+            userId: 'owner-1',
+            fullName: 'João',
+            cpf: null,
+            birthDate: new Date('2015-01-01'),
+            relationship: 'Filho'
+        });
+        const users = new InMemoryUsers(new Map([['owner-1', owner]]));
+        const dependents = new InMemoryDependents(new Map([['dep-1', dep]]));
+        const useCase = new UpdateAdminStudent(users, dependents);
+
+        await expect(useCase.exec({ studentId: 'dep-1', status: 'INACTIVE' })).rejects.toBeInstanceOf(AppError);
     });
 
     it('rejects duplicate cpf', async () => {

@@ -28,7 +28,7 @@ import type { ListAllStudents } from '../../../app/use-cases/admin/list-all-stud
 import type { ListAdminStudentCourses } from '../../../app/use-cases/admin/list-admin-student-courses';
 import type { GetAdminStudentDetails } from '../../../app/use-cases/admin/get-admin-student-details';
 import type { UpdateAdminStudent } from '../../../app/use-cases/admin/update-admin-student';
-import { adminUpdateStudentSchema } from '../validators/admin-update-student-schemas';
+import { adminPatchStudentSchema } from '../validators/admin-update-student-schemas';
 import type { ListAdminSchoolCourses } from '../../../app/use-cases/admin/list-admin-school-courses';
 import type { GetAdminSchoolFinancial } from '../../../app/use-cases/admin/get-admin-school-financial';
 import type { GetAdminSchoolBilling } from '../../../app/use-cases/admin/get-admin-school-billing';
@@ -534,7 +534,7 @@ export function adminRouter({
                 studentId: z.string().uuid()
             });
             const { studentId } = paramsSchema.parse(req.params);
-            const data = adminUpdateStudentSchema.parse(req.body ?? {});
+            const data = adminPatchStudentSchema.parse(req.body ?? {});
 
             const result = await updateAdminStudent.exec({
                 studentId,
@@ -545,7 +545,9 @@ export function adminRouter({
                 birthDate: data.birthDate,
                 address: data.address,
                 gender: data.gender,
-                relationship: data.relationship
+                relationship: data.relationship,
+                status: data.status,
+                deactivationDescription: data.deactivationDescription
             });
 
             res.json(result);
