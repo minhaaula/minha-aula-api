@@ -31,6 +31,7 @@ import { ResendSchoolAsaasAccount } from '../../app/use-cases/schools/resend-sch
 import { GetAdminSchoolDetails } from '../../app/use-cases/admin/get-admin-school-details';
 import { GetAdminSchoolPlans } from '../../app/use-cases/admin/get-admin-school-plans';
 import { UpdateSchool } from '../../app/use-cases/schools/update-school';
+import { AdminUpdateSchoolRegistration } from '../../app/use-cases/admin/admin-update-school-registration';
 import { ListAdminSubscriptionPlans } from '../../app/use-cases/admin/list-admin-subscription-plans';
 import { CreateSubscriptionPlan } from '../../app/use-cases/admin/create-subscription-plan';
 import { UpdateSubscriptionPlan } from '../../app/use-cases/admin/update-subscription-plan';
@@ -142,6 +143,10 @@ export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext)
         deps.schoolsRepo,
         deps.passwordHasher,
         deps.usersRepo
+    );
+    const adminUpdateSchoolRegistration = new AdminUpdateSchoolRegistration(
+        deps.schoolsRepo,
+        updateSchool
     );
 
     const loginAdmin = new LoginAdmin(
@@ -293,6 +298,7 @@ export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext)
         getAdminSchoolDetails,
         getAdminSchoolPlans,
         updateSchool,
+        adminUpdateSchoolRegistration,
         listAdminSubscriptionPlans,
         createSubscriptionPlan,
         updateSubscriptionPlan,

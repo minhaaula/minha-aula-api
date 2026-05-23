@@ -48,6 +48,7 @@ export enum ErrorCode {
     ACCOUNT_DEACTIVATED = 'ACCOUNT_DEACTIVATED',
     ACCOUNT_ALREADY_DEACTIVATED = 'ACCOUNT_ALREADY_DEACTIVATED',
     SCHOOL_ALREADY_DELETED = 'SCHOOL_ALREADY_DELETED',
+    SCHOOL_ONBOARDING_ALREADY_COMPLETED = 'SCHOOL_ONBOARDING_ALREADY_COMPLETED',
     CANNOT_DELETE_ADMIN_USER = 'CANNOT_DELETE_ADMIN_USER',
     CANNOT_DELETE_USER_WITH_ACTIVE_SCHOOL = 'CANNOT_DELETE_USER_WITH_ACTIVE_SCHOOL',
     
@@ -135,6 +136,8 @@ export const ErrorMessages: Record<ErrorCode, string> = {
     [ErrorCode.ACCOUNT_DEACTIVATED]: 'Conta desativada',
     [ErrorCode.ACCOUNT_ALREADY_DEACTIVATED]: 'Conta já está desativada',
     [ErrorCode.SCHOOL_ALREADY_DELETED]: 'Escola já foi excluída',
+    [ErrorCode.SCHOOL_ONBOARDING_ALREADY_COMPLETED]:
+        'Não é possível alterar o cadastro: onboarding da escola já foi concluído',
     [ErrorCode.CANNOT_DELETE_ADMIN_USER]: 'Não é permitido excluir usuário administrador',
     [ErrorCode.CANNOT_DELETE_USER_WITH_ACTIVE_SCHOOL]: 'Usuário possui escola ativa vinculada. Exclua a escola antes.',
     

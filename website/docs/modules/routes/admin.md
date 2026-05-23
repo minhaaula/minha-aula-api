@@ -340,6 +340,25 @@ Atualiza dados cadastrais e de configuração de uma escola.
 - Permite atualizar informações do responsável
 - Permite ajustar `incomeValue` e links públicos da escola
 - Retorna sempre a visão administrativa completa da escola após a atualização
+- Sem restrição de onboarding (para edição antes do KYC, use a rota `/registration` abaixo)
+
+Requer autenticação com persona ADMIN.
+
+---
+
+### `PATCH` `/admin/schools/\{schoolId\}/registration`
+
+**Resumo:** Atualizar cadastro da escola (antes do onboarding concluído)
+
+**Funcionalidade:**
+
+Atualiza dados cadastrais da escola **somente enquanto o onboarding/KYC não estiver concluído**
+(`onboarding.completed` = false).
+
+- Aceita os mesmos campos do PATCH `/admin/schools/{schoolId}` (nome, contato, CNPJ, endereços, titular, `incomeValue`, links, etc.)
+- Retorna a visão administrativa completa da escola após a atualização
+- Se o onboarding já foi concluído, retorna `SCHOOL_ONBOARDING_ALREADY_COMPLETED` (409)
+- Após o onboarding, use `PATCH /admin/schools/{schoolId}` para alterações administrativas
 
 Requer autenticação com persona ADMIN.
 
@@ -587,9 +606,9 @@ Retorna informações sobre módulos ativos, arquivos OpenAPI carregados e infor
 **Funcionalidade:**
 
 Retorna a lista de titulares (alunos USER) do sistema, paginada e com filtros por nome, escola e CPF.
-Cada item traz apenas os campos cpf, studentId, studentName, studentType (USER), endereco, createdAt,
-countCursos (quantidade de cursos/turmas vinculados) e um array dependentes (id, nome, cpf, dataNascimento, vinculo)
-para exibir os dependentes na mesma linha do titular.
+Cada item traz cpf, studentId, studentName, studentType (USER), `status` (ACTIVE/INACTIVE), endereco,
+createdAt, countCursos (quantidade de cursos/turmas vinculados) e um array dependentes
+(id, nome, cpf, dataNascimento, vinculo) para exibir na mesma linha do titular.
 
 ---
 
@@ -600,9 +619,26 @@ para exibir os dependentes na mesma linha do titular.
 **Funcionalidade:**
 
 Retorna os detalhes do aluno pelo ID: dados do aluno (studentType USER ou DEPENDENT),
-responsável (quando dependente), matrículas e cobranças pagas em todas as escolas,
-e array de dependentes com seus dados e matrículas quando o aluno for titular (USER).
-Cada matrícula e cobrança inclui a escola (id e name).
+incluindo `status` (ACTIVE/INACTIVE), responsável (quando dependente), matrículas e cobranças
+pagas em todas as escolas, e array de dependentes com seus dados e matrículas quando o aluno
+for titular (USER). Cada matrícula e cobrança inclui a escola (id e name).
+
+---
+
+### `PATCH` `/admin/students/\{studentId\}`
+
+**Resumo:** Atualizar dados do estudante (e ativar/inativar titular)
+
+**Funcionalidade:**
+
+Atualiza cadastro do aluno pelo admin.
+
+- **Titular (USER):** `fullName`, `email`, `phone`, `cpf`, `birthDate`, `address`, `gender` e opcionalmente `status` (`ACTIVE` / `INACTIVE`)
+- **Dependente:** `fullName`, `cpf`, `birthDate`, `relationship`, `gender` (sem `status`, `email`, `phone` ou `address`)
+- `status: INACTIVE` desativa a conta; `status: ACTIVE` reativa
+- `deactivationDescription` opcional ao inativar
+
+Requer autenticação com persona ADMIN.
 
 ---
 

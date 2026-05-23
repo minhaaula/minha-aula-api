@@ -17,6 +17,9 @@ import type { ResendSchoolAsaasAccount } from '../../../app/use-cases/schools/re
 import { GetAdminSchoolDetails } from '../../../app/use-cases/admin/get-admin-school-details';
 import { GetAdminSchoolPlans } from '../../../app/use-cases/admin/get-admin-school-plans';
 import { UpdateSchool } from '../../../app/use-cases/schools/update-school';
+import type { AdminUpdateSchoolRegistration } from '../../../app/use-cases/admin/admin-update-school-registration';
+import { updateSchoolSchema } from '../validators/school-schemas';
+import { mapAddresses } from './schools/transformers';
 import type { ListAdminSubscriptionPlans } from '../../../app/use-cases/admin/list-admin-subscription-plans';
 import type { CreateSubscriptionPlan } from '../../../app/use-cases/admin/create-subscription-plan';
 import type { UpdateSubscriptionPlan } from '../../../app/use-cases/admin/update-subscription-plan';
@@ -75,6 +78,7 @@ type AdminRouterDeps = {
     getAdminSchoolDetails: GetAdminSchoolDetails;
     getAdminSchoolPlans: GetAdminSchoolPlans;
     updateSchool: UpdateSchool;
+    adminUpdateSchoolRegistration?: AdminUpdateSchoolRegistration;
     listAdminSubscriptionPlans?: ListAdminSubscriptionPlans;
     createSubscriptionPlan?: CreateSubscriptionPlan;
     updateSubscriptionPlan?: UpdateSubscriptionPlan;
@@ -135,6 +139,7 @@ export function adminRouter({
     getAdminSchoolDetails,
     getAdminSchoolPlans,
     updateSchool,
+    adminUpdateSchoolRegistration,
     listAdminSubscriptionPlans,
     createSubscriptionPlan,
     updateSubscriptionPlan,
@@ -244,6 +249,38 @@ export function adminRouter({
         const payload = await getAdminSchoolDetails.exec({ schoolId });
         res.json(payload);
     }));
+
+    if (adminUpdateSchoolRegistration) {
+        router.patch('/schools/:schoolId/registration', requireAuth, requireAdminPersona, asyncHandler(async (req, res) => {
+            const paramsSchema = z.object({
+                schoolId: z.string().uuid()
+            });
+            const { schoolId } = paramsSchema.parse(req.params);
+            const data = updateSchoolSchema.parse(req.body ?? {});
+
+            await adminUpdateSchoolRegistration.exec({
+                schoolId,
+                name: data.name,
+                email: data.email,
+                phone: data.phone,
+                cnpj: data.cnpj,
+                addresses: mapAddresses(data.addresses),
+                ownerName: data.ownerName === undefined ? undefined : data.ownerName,
+                ownerCpf: data.ownerCpf === undefined ? undefined : data.ownerCpf,
+                ownerEmail: data.ownerEmail === undefined ? undefined : data.ownerEmail,
+                ownerBirthDate: data.ownerBirthDate === undefined ? undefined : data.ownerBirthDate,
+                ownerWhatsapp: data.ownerWhatsapp === undefined ? undefined : data.ownerWhatsapp,
+                ownerUserId: data.ownerUserId === undefined ? undefined : data.ownerUserId,
+                ownerPassword: data.ownerPassword === undefined ? undefined : data.ownerPassword,
+                ownerStudentAccessEnabled: data.ownerStudentAccessEnabled,
+                incomeValue: data.incomeValue === undefined ? undefined : data.incomeValue,
+                links: data.links
+            });
+
+            const payload = await getAdminSchoolDetails.exec({ schoolId });
+            res.json(payload);
+        }));
+    }
 
     if (adminSoftDeleteSchool) {
         router.delete('/schools/:schoolId', requireAuth, requireAdminPersona, asyncHandler(async (req, res) => {

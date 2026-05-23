@@ -873,6 +873,7 @@ paths:
         - Permite atualizar informações do responsável
         - Permite ajustar `incomeValue` e links públicos da escola
         - Retorna sempre a visão administrativa completa da escola após a atualização
+        - **Sem restrição de onboarding** (use `PATCH /admin/schools/{schoolId}/registration` para edição apenas antes do KYC concluído)
 
         Requer autenticação com persona ADMIN.
       security:
@@ -918,6 +919,77 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Escola não encontrada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/schools/{schoolId}/registration:
+    patch:
+      tags:
+        - Admin
+      summary: Atualizar cadastro da escola (antes do onboarding concluído)
+      description: |
+        Atualiza dados cadastrais da escola **somente enquanto o onboarding/KYC não estiver concluído**
+        (`onboarding.completed` = false / `onboarding_completed_at` nulo).
+
+        Aceita os mesmos campos de `AdminUpdateSchoolInput` (nome, contato, CNPJ, endereços,
+        titular, `incomeValue`, links, etc.).
+
+        - Retorna a visão administrativa completa da escola após a atualização
+        - Se o onboarding já foi concluído, retorna erro `SCHOOL_ONBOARDING_ALREADY_COMPLETED` (409)
+
+        Para alterações após o onboarding, use `PATCH /admin/schools/{schoolId}`.
+
+        Requer autenticação com persona ADMIN.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: schoolId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Identificador da escola
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminUpdateSchoolInput'
+      responses:
+        '200':
+          description: Escola atualizada com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminSchoolDetailsResponse'
+        '400':
+          description: Erro de validação ou regra de negócio.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Usuário não autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado (requer persona ADMIN).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Escola não encontrada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Onboarding da escola já concluído (`SCHOOL_ONBOARDING_ALREADY_COMPLETED`).
           content:
             application/json:
               schema:
@@ -1891,7 +1963,8 @@ paths:
       description: |
         Retorna titulares (persona STUDENT) paginados, ordenados por `createdAt` decrescente (cadastro mais recente primeiro).
         Filtros: nome, escola (`schoolId`), CPF e cidade do endereço do titular.
-        Cada item inclui `birthDate`, endereço, `countCursos` e array `dependentes` (id, nome, cpf, dataNascimento, vinculo).
+        Cada item inclui `birthDate`, `status` (ACTIVE/INACTIVE da conta do titular), endereço,
+        `countCursos` e array `dependentes` (id, nome, cpf, dataNascimento, vinculo).
       security:
         - bearerAuth: []
       parameters:
@@ -2345,8 +2418,9 @@ paths:
       summary: Obter detalhes do estudante por ID
       description: |
         Retorna os detalhes do aluno pelo ID: dados do aluno (studentType USER ou DEPENDENT),
-        responsável (quando dependente), matrículas e cobranças pagas em todas as escolas,
-        e array de dependentes com seus dados e matrículas quando o aluno for titular (USER).
+        incluindo `status` da conta (ACTIVE/INACTIVE), responsável (quando dependente),
+        matrículas e cobranças pagas em todas as escolas, e array de dependentes com seus dados
+        e matrículas quando o aluno for titular (USER).
         Cada matrícula e cobrança inclui a escola (id e name).
       security:
         - bearerAuth: []
@@ -2365,6 +2439,67 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AdminSchoolStudentDetailsResponse'
+        '401':
+          description: Usuário não autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado (requer persona ADMIN).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Aluno não encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    patch:
+      tags:
+        - Admin
+      summary: Atualizar dados do estudante (titular ou dependente)
+      description: |
+        Atualiza cadastro do aluno pelo admin.
+
+        - Titular (USER): `fullName`, `email`, `phone`, `cpf`, `birthDate`, `address`, `gender`
+          e opcionalmente `status` (`ACTIVE` / `INACTIVE`) para ativar ou inativar a conta.
+        - Dependente: `fullName`, `cpf`, `birthDate`, `relationship`, `gender` (sem `status`, `email`, `phone` ou `address`).
+        - Ao inativar titular (`status: INACTIVE`), `deactivationDescription` é opcional.
+        - Ao reativar (`status: ACTIVE`), motivo/descrição de desativação são limpos.
+
+        Requer autenticação com persona ADMIN.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: studentId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID do aluno (usuário titular ou dependente)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminPatchStudentInput'
+      responses:
+        '200':
+          description: Dados do estudante atualizados.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminPatchStudentResponse'
+        '400':
+          description: Erro de validação ou regra de negócio.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '401':
           description: Usuário não autenticado.
           content:
@@ -3561,6 +3696,9 @@ components:
                 type: string
                 enum: ['USER']
                 description: Sempre USER (titular)
+              status:
+                $ref: '#/components/schemas/StudentAccountStatus'
+                description: Status da conta do titular (ativo/inativo)
               birthDate:
                 type: string
                 format: date
@@ -3622,6 +3760,7 @@ components:
               - studentId
               - studentName
               - studentType
+              - status
               - birthDate
               - endereco
               - createdAt
@@ -4239,6 +4378,11 @@ components:
               type: string
               enum: ['USER', 'DEPENDENT']
               description: USER = titular, DEPENDENT = dependente
+            status:
+              $ref: '#/components/schemas/StudentAccountStatus'
+              description: |
+                Status da conta: titular usa `users.active`; dependente usa soft delete
+                (INACTIVE se removido).
             endereco:
               type: object
               description: Endereço do aluno (ou do responsável quando dependente)
@@ -4266,6 +4410,7 @@ components:
             - phone
             - cpf
             - studentType
+            - status
             - endereco
         responsible:
           type: object
@@ -4681,6 +4826,111 @@ components:
         - total
         - limit
         - offset
+    StudentAccountStatus:
+      type: string
+      enum: ['ACTIVE', 'INACTIVE']
+      description: |
+        Status da conta do aluno titular ou do dependente no painel admin.
+        `ACTIVE` = ativo; `INACTIVE` = inativo (conta desativada ou dependente excluído).
+    AdminPatchStudentInput:
+      type: object
+      description: Corpo do PATCH /admin/students/{studentId}
+      properties:
+        fullName:
+          type: string
+          minLength: 3
+        email:
+          type: string
+          format: email
+          description: Somente titular (USER)
+        phone:
+          type: string
+          description: WhatsApp/telefone do titular (somente dígitos)
+        cpf:
+          type: string
+          nullable: true
+        birthDate:
+          type: string
+          format: date
+          nullable: true
+          description: YYYY-MM-DD
+        address:
+          $ref: '#/components/schemas/PostalAddressOutput'
+          description: Endereço do titular
+        gender:
+          type: string
+          nullable: true
+          enum: ['MALE', 'FEMALE', null]
+        relationship:
+          type: string
+          nullable: true
+          description: Vínculo do dependente
+        status:
+          $ref: '#/components/schemas/StudentAccountStatus'
+          description: Ativar/inativar conta — apenas titular (USER)
+        deactivationDescription:
+          type: string
+          nullable: true
+          maxLength: 500
+          description: Observação opcional ao inativar pelo admin (ignorada ao reativar)
+    AdminPatchStudentResponse:
+      type: object
+      description: Resposta do PATCH /admin/students/{studentId}
+      oneOf:
+        - type: object
+          required: [studentType, id, fullName, email, phone, cpf, birthDate, gender, address, status]
+          properties:
+            studentType:
+              type: string
+              enum: ['USER']
+            id:
+              type: string
+              format: uuid
+            fullName:
+              type: string
+            email:
+              type: string
+            phone:
+              type: string
+            cpf:
+              type: string
+            birthDate:
+              type: string
+              format: date
+            gender:
+              type: string
+              nullable: true
+            address:
+              $ref: '#/components/schemas/PostalAddressOutput'
+            status:
+              $ref: '#/components/schemas/StudentAccountStatus'
+        - type: object
+          required: [studentType, id, userId, fullName, cpf, birthDate, relationship, gender]
+          properties:
+            studentType:
+              type: string
+              enum: ['DEPENDENT']
+            id:
+              type: string
+              format: uuid
+            userId:
+              type: string
+              format: uuid
+            fullName:
+              type: string
+            cpf:
+              type: string
+              nullable: true
+            birthDate:
+              type: string
+              format: date
+              nullable: true
+            relationship:
+              type: string
+              nullable: true
+            gender:
+              type: string
+              nullable: true
     AdminUpdateSchoolInput:
       type: object
       properties:
@@ -4731,6 +4981,18 @@ components:
           nullable: true
           format: password
           description: Senha do responsável (obrigatória se dados do responsável forem preenchidos)
+        ownerWhatsapp:
+          type: string
+          nullable: true
+          description: WhatsApp do titular (somente dígitos)
+        ownerStudentAccessEnabled:
+          type: boolean
+          description: Permite login no app de aluno para o usuário dono (persona SCHOOL)
+        addresses:
+          type: array
+          items:
+            $ref: '#/components/schemas/PostalAddressOutput'
+          description: Endereços da escola
         links:
           type: object
           description: Links públicos da escola
