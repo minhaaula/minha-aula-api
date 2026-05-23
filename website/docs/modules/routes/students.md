@@ -9,7 +9,7 @@ App do **aluno / responsável** (**persona STUDENT**): perfil, cursos, pagamento
 
 > Referência técnica completa: [Swagger UI](pathname:///docs) · [OpenAPI JSON](pathname:///docs/openapi.json)
 
-## Endpoints (24)
+## Endpoints (25)
 
 ### `GET` `/students`
 
@@ -208,6 +208,22 @@ Marca uma notificação do aluno autenticado como lida (in-app). Só aplica a no
 **Funcionalidade:**
 
 Retorna os pagamentos (cobranças financeiras) do usuário logado e seus dependentes. Inclui tipo da transação (mensalidade/matrícula), campo `description` para exibição (ex.: "Mensalidade de Fevereiro de 2026"), data de pagamento, desconto, valor líquido, logo da escola e observação quando for pagamento manual. Requer persona STUDENT.
+
+---
+
+### `GET` `/students/payments/\{paymentId\}/status`
+
+**Resumo:** Verificar status de um pagamento
+
+**Funcionalidade:**
+
+Retorna o status de uma cobrança do titular logado ou de um dependente (`owner_user_id`).
+Se existir cobrança no Asaas e o pagamento ainda estiver em aberto, consulta o provedor e pode
+atualizar o status local (útil após PIX, enquanto o webhook não chega).
+
+Campos: `status`, `paidAt`, `syncedFromProvider`.
+
+Requer persona STUDENT. Retorna 403 se o pagamento não pertencer ao usuário autenticado.
 
 ---
 

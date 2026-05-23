@@ -26,6 +26,7 @@ import { ListAllCourses } from '../../app/use-cases/students/list-all-courses';
 import { ListStudentPayments } from '../../app/use-cases/students/list-student-payments';
 import { ListStudentPaidTotalsByYear } from '../../app/use-cases/students/list-student-paid-totals-by-year';
 import { GetStudentPaymentDetails } from '../../app/use-cases/students/get-student-payment-details';
+import { VerifyStudentPaymentStatus } from '../../app/use-cases/students/verify-student-payment-status';
 import { ListMyDependents } from '../../app/use-cases/students/list-my-dependents';
 import { DeleteDependent } from '../../app/use-cases/students/delete-dependent';
 import { UpdateDependent } from '../../app/use-cases/students/update-dependent';
@@ -135,6 +136,11 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
         deps.dependentsRepo,
         deps.coursesRepo,
         deps.classesRepo
+    );
+    const verifyStudentPaymentStatus = new VerifyStudentPaymentStatus(
+        deps.financialChargesRepo,
+        deps.schoolsRepo,
+        deps.paymentProvider
     );
     const listSchools = new ListSchools(deps.schoolsRepo);
     const createEnrollmentRequest = new CreateEnrollmentRequest(
@@ -259,6 +265,7 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
         listStudentPayments,
         listStudentPaidTotalsByYear,
         getStudentPaymentDetails,
+        verifyStudentPaymentStatus,
         listMyEnrollmentRequests,
         listSchoolCourses,
         listSchoolReviews,

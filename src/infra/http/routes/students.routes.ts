@@ -7,6 +7,7 @@ import { ListAllCourses } from '../../../app/use-cases/students/list-all-courses
 import { ListStudentPayments } from '../../../app/use-cases/students/list-student-payments';
 import { ListStudentPaidTotalsByYear } from '../../../app/use-cases/students/list-student-paid-totals-by-year';
 import { GetStudentPaymentDetails } from '../../../app/use-cases/students/get-student-payment-details';
+import { VerifyStudentPaymentStatus } from '../../../app/use-cases/students/verify-student-payment-status';
 import { GetMyProfile } from '../../../app/use-cases/students/get-my-profile';
 import { ListMyEnrollmentRequests } from '../../../app/use-cases/enrollments/list-my-enrollment-requests';
 import { UpdateStudentProfile } from '../../../app/use-cases/students/update-student-profile';
@@ -50,6 +51,7 @@ export function studentsRouter(deps: {
     listStudentPayments?: ListStudentPayments;
     listStudentPaidTotalsByYear?: ListStudentPaidTotalsByYear;
     getStudentPaymentDetails?: GetStudentPaymentDetails;
+    verifyStudentPaymentStatus?: VerifyStudentPaymentStatus;
     getMyProfile?: GetMyProfile;
     listMyEnrollmentRequests?: ListMyEnrollmentRequests;
     updateStudentProfile?: UpdateStudentProfile;
@@ -393,6 +395,30 @@ export function studentsRouter(deps: {
             const result = await deps.listStudentPaidTotalsByYear!.exec({
                 userId: authReq.user.sub
             });
+            res.json(result);
+        }));
+    }
+
+    if (deps.verifyStudentPaymentStatus) {
+        r.get('/payments/:paymentId/status', requireStudent, asyncHandler(async (req, res) => {
+            const authReq = req as AuthenticatedRequest;
+            if (!authReq.user?.sub) {
+                return res.status(401).json({
+                    error: 'Não autorizado',
+                    code: 'UNAUTHORIZED'
+                });
+            }
+
+            const paramsSchema = z.object({
+                paymentId: z.string().uuid('ID do pagamento inválido')
+            });
+            const { paymentId } = paramsSchema.parse(req.params);
+
+            const result = await deps.verifyStudentPaymentStatus!.exec({
+                paymentId,
+                userId: authReq.user.sub
+            });
+
             res.json(result);
         }));
     }

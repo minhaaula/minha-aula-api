@@ -460,6 +460,13 @@ export function adminRouter({
             name: z.string().trim().min(1).optional(),
             courseId: z.string().uuid().optional(),
             classId: z.string().uuid().optional(),
+            cpf: z
+                .string()
+                .trim()
+                .min(1)
+                .transform((value) => value.replace(/\D/g, ''))
+                .refine((digits) => digits.length === 11, { message: 'CPF inválido' })
+                .optional(),
             limit: z.coerce.number().int().positive().max(100).optional(),
             offset: z.coerce.number().int().min(0).optional()
         });
@@ -470,6 +477,7 @@ export function adminRouter({
                 name: typeof req.query.name === 'string' ? req.query.name : undefined,
                 courseId: typeof req.query.courseId === 'string' ? req.query.courseId : undefined,
                 classId: typeof req.query.classId === 'string' ? req.query.classId : undefined,
+                cpf: typeof req.query.cpf === 'string' ? req.query.cpf : undefined,
                 limit: req.query.limit,
                 offset: req.query.offset
             });
@@ -478,6 +486,7 @@ export function adminRouter({
                 name: query.name,
                 courseId: query.courseId,
                 classId: query.classId,
+                cpf: query.cpf,
                 limit: query.limit,
                 offset: query.offset,
                 outputFormat: 'admin'

@@ -11,6 +11,7 @@ import type { ListSchoolStudentPaidCharges } from '../../../../app/use-cases/sch
 import type { ConsolidateSchoolStudentFinancial } from '../../../../app/use-cases/schools/consolidate-school-student-financial';
 import type { UpdateSchoolStudent } from '../../../../app/use-cases/schools/update-school-student';
 import { patchSchoolStudentSchema } from '../../validators/patch-school-student-schemas';
+import { cpfNumberSchema } from '../../validators/numeric-fields';
 import { AppError, ErrorCode } from '../../../../shared/errors';
 
 type StudentsRoutesDeps = {
@@ -74,6 +75,7 @@ export function buildStudentsRoutes(deps: StudentsRoutesDeps, guards: SchoolRout
         name: z.string().trim().min(1).optional(),
         courseId: z.string().uuid().optional(),
         classId: z.string().uuid().optional(),
+        cpf: cpfNumberSchema().optional(),
         limit: z.coerce.number().int().positive().max(100).optional(),
         offset: z.coerce.number().int().min(0).optional()
     });
@@ -85,6 +87,7 @@ export function buildStudentsRoutes(deps: StudentsRoutesDeps, guards: SchoolRout
             name: typeof req.query.name === 'string' ? req.query.name : undefined,
             courseId: typeof req.query.courseId === 'string' ? req.query.courseId : undefined,
             classId: typeof req.query.classId === 'string' ? req.query.classId : undefined,
+            cpf: typeof req.query.cpf === 'string' ? req.query.cpf : undefined,
             limit: req.query.limit,
             offset: req.query.offset
         });
@@ -94,6 +97,7 @@ export function buildStudentsRoutes(deps: StudentsRoutesDeps, guards: SchoolRout
             name: query.name,
             courseId: query.courseId,
             classId: query.classId,
+            cpf: query.cpf,
             limit: query.limit,
             offset: query.offset
         });

@@ -2185,7 +2185,7 @@ paths:
       description: |
         Retorna um item por estudante matriculado na escola (titular ou dependente), com cursos/turmas em `enrollments`.
         Inclui `birthDate`, `isDependent` e `responsible` (titular) quando o aluno é dependente ou menor de idade.
-        Ordenação alfabética por nome do estudante. Filtros por nome (aluno ou responsável), curso e turma.
+        Ordenação alfabética por nome do estudante. Filtros por nome (aluno ou responsável), curso, turma e CPF.
 
         Esta rota é apenas de visualização para o painel administrativo.
       security:
@@ -2217,7 +2217,13 @@ paths:
           schema:
             type: string
             format: uuid
-          description: Filtrar por turma.
+          description: Filtrar por turma (`course_classes.id`).
+        - in: query
+          name: cpf
+          required: false
+          schema:
+            type: string
+          description: Filtrar por CPF do titular ou do dependente (com ou sem formatação).
         - in: query
           name: limit
           required: false

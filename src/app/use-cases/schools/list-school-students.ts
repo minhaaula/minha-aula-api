@@ -20,7 +20,10 @@ type ListSchoolStudentsInput = {
     schoolId: string;
     name?: string | null;
     courseId?: string | null;
+    /** ID da turma (`course_classes.id`); query `classId`. */
     classId?: string | null;
+    /** CPF do titular ou do dependente (11 dígitos, com ou sem formatação). */
+    cpf?: string | null;
     limit?: number;
     offset?: number;
     /** Quando 'admin', retorna um item por titular com array dependentes (para painel admin). */
@@ -100,6 +103,7 @@ export class ListSchoolStudents {
         const courseIdFilter = input.courseId?.trim() || null;
         const classIdFilter = input.classId?.trim() || null;
         const nameFilter = input.name?.trim().toLowerCase() || null;
+        const cpfFilter = this.normalizeCpfFilter(input.cpf);
         const limit = Math.min(Math.max(input.limit ?? 50, 1), 100);
         const offset = Math.max(0, input.offset ?? 0);
 
@@ -245,6 +249,10 @@ export class ListSchoolStudents {
                 });
             }
 
+            if (cpfFilter) {
+                results = results.filter((row) => this.matchesCpf(row.cpf, cpfFilter));
+            }
+
             const sortedResults = results.sort((a, b) =>
                 a.studentName.localeCompare(b.studentName, undefined, { sensitivity: 'base' })
             );
@@ -299,6 +307,14 @@ export class ListSchoolStudents {
                     ? dependentSummary.fullName.toLowerCase().includes(nameFilter)
                     : false;
                 if (!ownerMatches && !dependentMatches) continue;
+            }
+
+            if (cpfFilter) {
+                const ownerCpfMatches = this.matchesCpf(studentSummary.cpf, cpfFilter);
+                const dependentCpfMatches = dependentSummary
+                    ? this.matchesCpf(dependentSummary.cpf, cpfFilter)
+                    : false;
+                if (!ownerCpfMatches && !dependentCpfMatches) continue;
             }
 
             const detailsStudentId =
@@ -410,6 +426,18 @@ export class ListSchoolStudents {
         }
 
         return dependents;
+    }
+
+    private normalizeCpfFilter(value?: string | null): string | null {
+        if (value === undefined || value === null) return null;
+        const digits = String(value).replace(/\D/g, '');
+        if (digits.length !== 11) return null;
+        return digits;
+    }
+
+    private matchesCpf(stored: string | null | undefined, filterDigits: string): boolean {
+        if (!stored) return false;
+        return stored.replace(/\D/g, '') === filterDigits;
     }
 
 }

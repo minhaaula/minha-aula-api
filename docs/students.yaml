@@ -955,6 +955,75 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /students/payments/{paymentId}/status:
+    get:
+      tags:
+        - Students
+      summary: Verificar status de um pagamento
+      description: |
+        Retorna o status atual de uma cobrança (pagamento) do titular logado ou de um dependente
+        vinculado a ele (`owner_user_id`).
+
+        Quando a cobrança possui `asaasPaymentId` e ainda não está quitada/cancelada, consulta o Asaas
+        na subconta da escola (quando disponível) e pode atualizar o status local (ex.: após PIX confirmado),
+        útil para polling na tela de pagamento antes do webhook.
+
+        Requer persona STUDENT. Retorna 403 se o pagamento não pertencer ao usuário autenticado.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: paymentId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID da cobrança (mesmo valor de `chargeId` na listagem)
+      responses:
+        '200':
+          description: Status do pagamento retornado com sucesso.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  paymentId:
+                    type: string
+                    format: uuid
+                  status:
+                    type: string
+                    enum: [PENDING_SYNC, OPEN, PAID, OVERDUE, CANCELLED, FAILED]
+                    description: Status da cobrança
+                  paidAt:
+                    type: string
+                    format: date-time
+                    nullable: true
+                  syncedFromProvider:
+                    type: boolean
+                    description: True se o Asaas foi consultado nesta requisição e o status foi atualizado
+                required:
+                  - paymentId
+                  - status
+                  - paidAt
+                  - syncedFromProvider
+        '401':
+          description: Não autorizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Pagamento não pertence ao usuário autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Cobrança não encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /students/payments/{paymentId}:
     get:
       tags:

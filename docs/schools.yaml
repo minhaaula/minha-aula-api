@@ -333,7 +333,13 @@ paths:
           schema:
             type: string
             format: uuid
-          description: Filtrar matrículas de uma turma específica.
+          description: Filtrar matrículas de uma turma específica (`course_classes.id`).
+        - in: query
+          name: cpf
+          required: false
+          schema:
+            type: string
+          description: Filtrar por CPF do titular ou do dependente (com ou sem formatação).
         - in: query
           name: limit
           required: false

@@ -160,4 +160,149 @@ describe('ListSchoolStudents — formato admin', () => {
         expect(row.enrollments[0].tuitionExempt).toBe(true);
         expect(row.enrollments[0].tuitionExemptionType).toBe('EMPLOYEE');
     });
+
+    it('filtra por CPF do dependente', async () => {
+        const schoolId = 'school-1';
+        const course = Course.create({
+            id: 'course-1',
+            schoolId,
+            name: 'Violão',
+            isActive: true,
+            createdAt: new Date()
+        });
+        const courseClass = CourseClass.create({
+            id: 'class-1',
+            courseId: course.id,
+            label: 'Turma A',
+            schedule: [{ day: 'Segunda', start: '08:00', end: '09:00' }],
+            isActive: true,
+            createdAt: new Date()
+        });
+        const owner = makeOwner('owner-1', new Date('1985-01-01'));
+        const dependent = makeDependent('dep-1', owner.id, new Date('2015-03-10'));
+        const enrollment = Enrollment.createForDependent({
+            id: 'enr-1',
+            courseClassId: courseClass.id,
+            ownerUserId: owner.id,
+            dependentId: dependent.id,
+            status: 'ACTIVE',
+            enrolledAt: new Date('2025-01-01'),
+            updatedAt: new Date('2025-01-01')
+        });
+
+        const useCase = new ListSchoolStudents(
+            {
+                findBySchoolId: vi.fn(async () => [course]),
+                findById: vi.fn(async (id: string) => (id === course.id ? course : null))
+            } as never,
+            {
+                findByCourseIds: vi.fn(async () => [courseClass]),
+                findById: vi.fn(async (id: string) => (id === courseClass.id ? courseClass : null))
+            } as never,
+            {
+                findActiveByClassIds: vi.fn(async () => [enrollment])
+            } as never,
+            {
+                findById: vi.fn(async (id: string) => (id === owner.id ? owner : null))
+            } as never,
+            {
+                findByUserIds: vi.fn(async () => [dependent])
+            } as never
+        );
+
+        const result = await useCase.exec({
+            schoolId,
+            cpf: '987.654.321-00',
+            outputFormat: 'admin'
+        });
+
+        expect(result.students).toHaveLength(1);
+        expect(result.students[0]).toMatchObject({ studentId: 'dep-1', cpf: '98765432100' });
+    });
+
+    it('filtra por classId', async () => {
+        const schoolId = 'school-1';
+        const course = Course.create({
+            id: 'course-1',
+            schoolId,
+            name: 'Violão',
+            isActive: true,
+            createdAt: new Date()
+        });
+        const classA = CourseClass.create({
+            id: 'class-a',
+            courseId: course.id,
+            label: 'Turma A',
+            schedule: [{ day: 'Segunda', start: '08:00', end: '09:00' }],
+            isActive: true,
+            createdAt: new Date()
+        });
+        const classB = CourseClass.create({
+            id: 'class-b',
+            courseId: course.id,
+            label: 'Turma B',
+            schedule: [{ day: 'Terça', start: '08:00', end: '09:00' }],
+            isActive: true,
+            createdAt: new Date()
+        });
+        const owner = makeOwner('owner-1', new Date('1990-01-01'));
+        const enrollmentA = Enrollment.createForUser({
+            id: 'enr-a',
+            courseClassId: classA.id,
+            ownerUserId: owner.id,
+            studentUserId: owner.id,
+            status: 'ACTIVE',
+            enrolledAt: new Date('2025-01-01'),
+            updatedAt: new Date('2025-01-01')
+        });
+        const enrollmentB = Enrollment.createForUser({
+            id: 'enr-b',
+            courseClassId: classB.id,
+            ownerUserId: owner.id,
+            studentUserId: owner.id,
+            status: 'ACTIVE',
+            enrolledAt: new Date('2025-02-01'),
+            updatedAt: new Date('2025-02-01')
+        });
+
+        const useCase = new ListSchoolStudents(
+            {
+                findBySchoolId: vi.fn(async () => [course]),
+                findById: vi.fn(async (id: string) => (id === course.id ? course : null))
+            } as never,
+            {
+                findByCourseIds: vi.fn(async () => [classA, classB]),
+                findById: vi.fn(async (id: string) => {
+                    if (id === classA.id) return classA;
+                    if (id === classB.id) return classB;
+                    return null;
+                })
+            } as never,
+            {
+                findActiveByClassIds: vi.fn(async (ids: string[]) => {
+                    if (ids.includes(classA.id)) return [enrollmentA];
+                    if (ids.includes(classB.id)) return [enrollmentB];
+                    return [];
+                })
+            } as never,
+            {
+                findById: vi.fn(async (id: string) => (id === owner.id ? owner : null))
+            } as never,
+            {
+                findByUserIds: vi.fn(async () => [])
+            } as never
+        );
+
+        const result = await useCase.exec({
+            schoolId,
+            classId: 'class-a',
+            outputFormat: 'admin'
+        });
+
+        expect(result.students).toHaveLength(1);
+        expect(
+            (result.students[0] as import('../../src/app/use-cases/schools/list-school-students').AdminSchoolStudentItem)
+                .enrollments[0].class.id
+        ).toBe('class-a');
+    });
 });
