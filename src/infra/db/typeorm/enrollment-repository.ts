@@ -195,6 +195,44 @@ export class EnrollmentRepositoryAdapter implements EnrollmentRepository {
             .getCount();
     }
 
+    async findMyTuitionExemptEnrollments(
+        userId: string
+    ): Promise<import('../../../ports/repositories/enrollment.repo').MyTuitionExemptEnrollmentData[]> {
+        const results = await this.repo
+            .createQueryBuilder('enrollment')
+            .innerJoin('enrollment.courseClass', 'courseClass')
+            .innerJoin('courseClass.course', 'course')
+            .leftJoin('enrollment.studentUser', 'studentUser')
+            .leftJoin('enrollment.dependent', 'dependent')
+            .where('enrollment.ownerUserId = :userId', { userId })
+            .andWhere('enrollment.status = :status', { status: 'ACTIVE' })
+            .andWhere('enrollment.tuitionExemptionType IS NOT NULL')
+            .select([
+                'enrollment.id AS enrollmentId',
+                'enrollment.tuitionExemptionType AS tuitionExemptionType',
+                'course.id AS courseId',
+                'course.name AS courseName',
+                'courseClass.id AS classId',
+                'courseClass.label AS className',
+                'COALESCE(courseClass.monthlyPriceCents, course.monthlyPriceCents) AS monthlyTuitionAmountCents',
+                'COALESCE(studentUser.fullName, dependent.fullName) AS studentName'
+            ])
+            .orderBy('enrollment.enrolledAt', 'DESC')
+            .getRawMany();
+
+        return results.map((row: Record<string, unknown>) => ({
+            enrollmentId: String(row.enrollmentId),
+            studentName: String(row.studentName ?? ''),
+            courseId: String(row.courseId),
+            courseName: String(row.courseName),
+            classId: String(row.classId),
+            className: String(row.className),
+            tuitionExemptionType: row.tuitionExemptionType as import('../../../ports/repositories/enrollment.repo').MyTuitionExemptEnrollmentData['tuitionExemptionType'],
+            monthlyTuitionAmountCents:
+                row.monthlyTuitionAmountCents != null ? Number(row.monthlyTuitionAmountCents) : null
+        }));
+    }
+
     async findMyCourses(userId: string): Promise<import('../../../ports/repositories/enrollment.repo').MyCourseData[]> {
         const results = await this.repo
             .createQueryBuilder('enrollment')

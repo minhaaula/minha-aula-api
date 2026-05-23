@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { ListStudents } from '../../../app/use-cases/students/list-students';
 import { GetStudentDirectoryEntry } from '../../../app/use-cases/students/get-student-directory-entry';
 import { ListMyCourses } from '../../../app/use-cases/students/list-my-courses';
+import { ListMyTuitionExemptEnrollments } from '../../../app/use-cases/students/list-my-tuition-exempt-enrollments';
 import { ListAllCourses } from '../../../app/use-cases/students/list-all-courses';
 import { ListStudentPayments } from '../../../app/use-cases/students/list-student-payments';
 import { ListStudentPaidTotalsByYear } from '../../../app/use-cases/students/list-student-paid-totals-by-year';
@@ -47,6 +48,7 @@ export function studentsRouter(deps: {
     listStudents: ListStudents; 
     getStudentDirectoryEntry: GetStudentDirectoryEntry;
     listMyCourses?: ListMyCourses;
+    listMyTuitionExemptEnrollments?: ListMyTuitionExemptEnrollments;
     listAllCourses?: ListAllCourses;
     listStudentPayments?: ListStudentPayments;
     listStudentPaidTotalsByYear?: ListStudentPaidTotalsByYear;
@@ -296,6 +298,21 @@ export function studentsRouter(deps: {
                 motivo: dto.motivo,
                 descricao: dto.descricao ?? ''
             });
+            res.json(result);
+        }));
+    }
+
+    if (deps.listMyTuitionExemptEnrollments) {
+        r.get('/enrollments/tuition-exempt', requireStudent, asyncHandler(async (req, res) => {
+            const authReq = req as AuthenticatedRequest;
+            if (!authReq.user?.sub) {
+                return res.status(401).json({
+                    error: 'Não autorizado',
+                    code: 'UNAUTHORIZED'
+                });
+            }
+
+            const result = await deps.listMyTuitionExemptEnrollments!.exec({ userId: authReq.user.sub });
             res.json(result);
         }));
     }

@@ -22,6 +22,7 @@ import { GetEnrollmentRequest } from '../../app/use-cases/enrollments/get-enroll
 import { PaymentProviderPort } from '../../ports/providers/payment-provider.port';
 import { GetStudentDirectoryEntry } from '../../app/use-cases/students/get-student-directory-entry';
 import { ListMyCourses } from '../../app/use-cases/students/list-my-courses';
+import { ListMyTuitionExemptEnrollments } from '../../app/use-cases/students/list-my-tuition-exempt-enrollments';
 import { ListAllCourses } from '../../app/use-cases/students/list-all-courses';
 import { ListStudentPayments } from '../../app/use-cases/students/list-student-payments';
 import { ListStudentPaidTotalsByYear } from '../../app/use-cases/students/list-student-paid-totals-by-year';
@@ -125,6 +126,7 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
     const deactivateStudentAccount = new DeactivateStudentAccount(deps.usersRepo);
     const schoolImagesRepo = new SchoolImageRepositoryAdapter();
     const listMyCourses = new ListMyCourses(deps.enrollmentsRepo, deps.coursesRepo, deps.schoolsRepo, schoolImagesRepo, deps.storageProvider);
+    const listMyTuitionExemptEnrollments = new ListMyTuitionExemptEnrollments(deps.enrollmentsRepo);
     const listAllCourses = deps.categoriesRepo
         ? new ListAllCourses(deps.coursesRepo, deps.categoriesRepo, schoolImagesRepo, deps.storageProvider, deps.schoolReviewsRepo)
         : undefined;
@@ -261,6 +263,7 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
         verifyStudentProfileUpdateOtp,
         deactivateStudentAccount,
         listMyCourses,
+        listMyTuitionExemptEnrollments,
         listAllCourses,
         listStudentPayments,
         listStudentPaidTotalsByYear,

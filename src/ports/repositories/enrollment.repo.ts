@@ -1,4 +1,5 @@
 import { Enrollment } from '../../domain/entities/enrollment';
+import type { TuitionExemptionType } from '../../domain/value-objects/tuition-exemption-type';
 
 export type EnrollmentWithDetails = {
     studentId: string;
@@ -23,6 +24,18 @@ export type MyCourseData = {
     active: boolean;
     /** Status da matrícula do aluno/dependente na turma. */
     enrollmentStatus: MyCourseEnrollmentStatus;
+};
+
+export type MyTuitionExemptEnrollmentData = {
+    enrollmentId: string;
+    studentName: string;
+    courseId: string;
+    courseName: string;
+    classId: string;
+    className: string;
+    tuitionExemptionType: TuitionExemptionType;
+    /** Valor de referência da mensalidade (turma ou curso), em centavos. */
+    monthlyTuitionAmountCents: number | null;
 };
 
 export type AdminStudentListFilters = {
@@ -84,6 +97,8 @@ export interface EnrollmentRepository {
     findRecentBySchoolId?(schoolId: string, limit: number): Promise<EnrollmentWithDetails[]>;
     countActiveBySchoolId?(schoolId: string): Promise<number>;
     findMyCourses?(userId: string): Promise<MyCourseData[]>;
+    /** Matrículas ativas isentas de mensalidade do titular e dependentes. */
+    findMyTuitionExemptEnrollments?(userId: string): Promise<MyTuitionExemptEnrollmentData[]>;
     hasActiveEnrollmentInSchool?(schoolId: string, userId: string): Promise<boolean>;
     findAllPaginatedForAdmin?(
         filters: AdminStudentListFilters,
