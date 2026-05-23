@@ -863,11 +863,16 @@ export function adminRouter({
             icon: z.string().trim().max(191).nullable().optional(),
             description: z.string().trim().max(5000).nullable().optional(),
             subcategories: z
-                .array(z.object({ id: z.string().uuid().optional(), name: z.string().trim().min(1).max(191) }))
+                .array(
+                    z.object({
+                        id: z.string().trim().min(1).max(36).optional(),
+                        name: z.string().trim().min(1).max(191)
+                    })
+                )
                 .optional()
         }).strict();
         router.patch('/categories/:categoryId', requireAuth, requireAdminPersona, asyncHandler(async (req, res) => {
-            const paramsSchema = z.object({ categoryId: z.string().uuid() });
+            const paramsSchema = z.object({ categoryId: z.string().trim().min(1).max(36) });
             const { categoryId } = paramsSchema.parse(req.params);
             const body = updateCategorySchema.parse(req.body);
             const payload = await updateCategory.exec({

@@ -37,10 +37,17 @@ export class UpdateCategory {
 
         const subcategories =
             input.subcategories !== undefined
-                ? input.subcategories.map((s) => ({
-                      id: s.id?.trim() ? s.id : Uuid(),
-                      name: s.name.trim()
-                  }))
+                ? input.subcategories.map((s) => {
+                      const name = s.name.trim();
+                      const rawId = s.id?.trim();
+                      if (rawId) {
+                          return { id: rawId, name };
+                      }
+                      const byName = existing.subcategories.find(
+                          (existingSub) => existingSub.name.localeCompare(name, 'pt-BR', { sensitivity: 'accent' }) === 0
+                      );
+                      return { id: byName?.id ?? Uuid(), name };
+                  })
                 : existing.subcategories;
 
         await this.categories.save({

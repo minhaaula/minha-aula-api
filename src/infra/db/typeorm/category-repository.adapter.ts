@@ -1,3 +1,4 @@
+import { In, Not } from 'typeorm';
 import { AppDataSource } from './datasource';
 import {
     CategoryRepository,
@@ -48,44 +49,42 @@ export class CategoryRepositoryAdapter implements CategoryRepository {
     }
 
     async save(input: CategorySaveInput): Promise<void> {
-        const categoryRow = await this.repo.findOne({
-            where: { id: input.id },
-            relations: { subcategories: true }
+        const normalizedSubs = input.subcategories.map((sub) => ({
+            id: sub.id.trim(),
+            name: sub.name.trim()
+        }));
+        const inputIds = normalizedSubs.map((sub) => sub.id);
+
+        await this.repo.save({
+            id: input.id,
+            name: input.name.trim(),
+            icon: input.icon?.trim() ?? null,
+            description: input.description?.trim() ?? null
         });
 
-        if (categoryRow) {
-            categoryRow.name = input.name.trim();
-            categoryRow.icon = input.icon?.trim() ?? null;
-            categoryRow.description = input.description?.trim() ?? null;
-            await this.repo.save(categoryRow);
-        } else {
-            await this.repo.save({
-                id: input.id,
-                name: input.name.trim(),
-                icon: input.icon?.trim() ?? null,
-                description: input.description?.trim() ?? null
+        if (inputIds.length > 0) {
+            await this.subRepo.delete({
+                categoryId: input.id,
+                id: Not(In(inputIds))
             });
+        } else {
+            await this.subRepo.delete({ categoryId: input.id });
         }
 
         const existingSubs = await this.subRepo.find({
             where: { categoryId: input.id }
         });
-        const inputIds = new Set(input.subcategories.map((s) => s.id));
-        const toRemove = existingSubs.filter((s) => !inputIds.has(s.id));
-        if (toRemove.length > 0) {
-            await this.subRepo.remove(toRemove);
-        }
 
-        for (const sub of input.subcategories) {
-            const existing = existingSubs.find((s) => s.id === sub.id);
+        for (const sub of normalizedSubs) {
+            const existing = existingSubs.find((row) => row.id.trim() === sub.id);
             if (existing) {
-                existing.name = sub.name.trim();
+                existing.name = sub.name;
                 await this.subRepo.save(existing);
             } else {
                 await this.subRepo.save({
                     id: sub.id,
                     categoryId: input.id,
-                    name: sub.name.trim()
+                    name: sub.name
                 });
             }
         }
