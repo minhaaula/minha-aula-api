@@ -46,6 +46,8 @@ export type AdminStudentListItem = {
     cpf: string | null;
     studentId: string;
     studentName: string;
+    /** Conta do titular: ACTIVE (ativo) ou INACTIVE (inativo). */
+    status: 'ACTIVE' | 'INACTIVE';
     studentType: 'USER';
     /** Data de nascimento do titular (YYYY-MM-DD). */
     birthDate: string | null;

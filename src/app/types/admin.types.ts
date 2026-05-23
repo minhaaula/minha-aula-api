@@ -10,6 +10,17 @@ import type { SchoolProfileOnboarding } from './school.types';
 /** Status da escola no sistema: ativo (com plano em uso) ou inativo */
 export type SchoolStatus = 'ACTIVE' | 'INACTIVE';
 
+/** Status da conta do aluno titular (users.active) ou do dependente (soft delete). */
+export type StudentAccountStatus = 'ACTIVE' | 'INACTIVE';
+
+export function presentStudentAccountStatus(active: boolean): StudentAccountStatus {
+    return active ? 'ACTIVE' : 'INACTIVE';
+}
+
+export function presentDependentStudentStatus(deletedAt: Date | null): StudentAccountStatus {
+    return deletedAt ? 'INACTIVE' : 'ACTIVE';
+}
+
 /** Status de pagamento do plano: em dia, atrasado ou sem plano */
 export type PaymentStatus = 'EM_DIA' | 'ATRASADO' | null;
 

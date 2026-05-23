@@ -10,6 +10,8 @@ import {
 import { Enrollment } from '../../../domain/entities/enrollment';
 import { EnrollmentOrm } from './entities/enrollment.orm';
 
+import { presentStudentAccountStatus } from '../../../app/types/admin.types';
+
 function formatAdminStudentBirthDate(value: unknown): string | null {
     if (value == null) return null;
     if (value instanceof Date) {
@@ -355,7 +357,8 @@ export class EnrollmentRepositoryAdapter implements EnrollmentRepository {
                 'studentUser.addressCity AS addressCity',
                 'studentUser.addressState AS addressState',
                 'studentUser.addressZipCode AS addressZipCode',
-                'studentUser.createdAt AS createdAt'
+                'studentUser.createdAt AS createdAt',
+                'studentUser.active AS active'
             ])
             .addSelect(
                 '(SELECT COUNT(*) FROM enrollments e2 WHERE e2.student_user_id = studentUser.id AND e2.status = \'ACTIVE\')',
@@ -373,6 +376,7 @@ export class EnrollmentRepositoryAdapter implements EnrollmentRepository {
             .addGroupBy('studentUser.addressState')
             .addGroupBy('studentUser.addressZipCode')
             .addGroupBy('studentUser.createdAt')
+            .addGroupBy('studentUser.active')
             .orderBy('studentUser.createdAt', 'DESC')
             .skip(safeOffset)
             .take(safeLimit)
@@ -382,6 +386,7 @@ export class EnrollmentRepositoryAdapter implements EnrollmentRepository {
             cpf: row.cpf ?? null,
             studentId: row.studentId,
             studentName: row.studentName ?? '',
+            status: presentStudentAccountStatus(Number(row.active ?? 1) !== 0),
             studentType: 'USER' as const,
             birthDate: formatAdminStudentBirthDate(row.birthDate),
             endereco: {

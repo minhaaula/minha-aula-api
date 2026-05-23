@@ -9,6 +9,11 @@ import { formatSchoolChargeDescriptionForSchoolUi } from '../../../shared/format
 import { presentTuitionExemptionFromEnrollmentRaw } from '../../presenters/tuition-exemption.presenter';
 import type { TuitionExemptionType } from '../../../domain/value-objects/tuition-exemption-type';
 import type { Gender } from '../../../domain/value-objects/gender';
+import {
+    presentDependentStudentStatus,
+    presentStudentAccountStatus,
+    type StudentAccountStatus
+} from '../../types/admin.types';
 
 export interface GetAdminStudentDetailsInput {
     studentId: string;
@@ -61,6 +66,8 @@ export interface GetAdminStudentDetailsOutput {
         birthDate: Date | null;
         gender: Gender | null;
         studentType: 'USER' | 'DEPENDENT';
+        /** ACTIVE = ativo, INACTIVE = inativo (conta desativada ou dependente removido). */
+        status: StudentAccountStatus;
         endereco: PostalAddressProps;
     };
     responsible: {
@@ -121,6 +128,7 @@ export class GetAdminStudentDetails {
                     birthDate: user.birthDate,
                     gender: user.gender ?? null,
                     studentType: 'USER',
+                    status: presentStudentAccountStatus(user.active),
                     endereco: user.address.toPrimitives()
                 },
                 responsible: null,
@@ -155,6 +163,7 @@ export class GetAdminStudentDetails {
                 birthDate: dependent.birthDate,
                 gender: dependent.gender ?? null,
                 studentType: 'DEPENDENT',
+                status: presentDependentStudentStatus(dependent.deletedAt),
                 endereco: responsible.address.toPrimitives()
             },
             responsible: {

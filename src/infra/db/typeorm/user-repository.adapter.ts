@@ -2,6 +2,7 @@ import { Email } from '../../../domain/value-objects/email';
 import { User } from '../../../domain/entities/user';
 import { UserRepository } from '../../../ports/repositories/user.repo';
 import type { AdminStudentListFilters, AdminStudentListResult } from '../../../ports/repositories/enrollment.repo';
+import { presentStudentAccountStatus } from '../../../app/types/admin.types';
 import { UserOrm } from './entities/user.orm';
 import { AppDataSource } from './datasource';
 import { PostalAddress } from '../../../domain/value-objects/postal-address';
@@ -161,7 +162,8 @@ export class UserRepositoryAdapter implements UserRepository {
                 'user.address_city AS addressCity',
                 'user.address_state AS addressState',
                 'user.address_zip_code AS addressZipCode',
-                'user.created_at AS createdAt'
+                'user.created_at AS createdAt',
+                'user.active AS active'
             ])
             .addSelect(
                 `(SELECT COUNT(*) FROM enrollments e WHERE e.student_user_id = user.id AND e.status = 'ACTIVE')`,
@@ -176,6 +178,7 @@ export class UserRepositoryAdapter implements UserRepository {
             cpf: row.cpf ?? null,
             studentId: row.studentId,
             studentName: row.studentName ?? '',
+            status: presentStudentAccountStatus(Number(row.active ?? 1) !== 0),
             studentType: 'USER' as const,
             birthDate: formatBirthDate(row.birthDate),
             endereco: {
