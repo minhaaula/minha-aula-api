@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import type { RequestSchoolActionOtp } from '../../../../app/use-cases/request-school-action-otp';
-import type { VerifySchoolActionOtp } from '../../../../app/use-cases/verify-school-action-otp';
+import type { RequestSchoolActionOtp } from '../../../../app/use-cases/schools/request-school-action-otp';
+import type { VerifySchoolActionOtp } from '../../../../app/use-cases/schools/verify-school-action-otp';
 import type { SchoolContextRequest } from '../../middlewares/resolve-school-context';
 import { asyncHandler } from '../../utils/async-handler';
 import type { SchoolRouteGuards } from './guards';

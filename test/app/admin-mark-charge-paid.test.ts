@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { AdminMarkChargePaid } from '../../src/app/use-cases/admin-mark-charge-paid';
+import { AdminMarkChargePaid } from '../../src/app/use-cases/admin/admin-mark-charge-paid';
 import type { SchoolFinancialChargeRepository } from '../../src/ports/repositories/school-financial-charge.repo';
 import type { SchoolRepository } from '../../src/ports/repositories/school.repo';
 import { SchoolFinancialCharge } from '../../src/domain/entities/school-financial-charge';

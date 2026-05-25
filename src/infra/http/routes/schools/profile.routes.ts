@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { asyncHandler } from '../../utils/async-handler';
-import type { GetSchoolProfile } from '../../../../app/use-cases/get-school-profile';
-import type { UpdateSchool } from '../../../../app/use-cases/update-school';
+import type { GetSchoolProfile } from '../../../../app/use-cases/schools/get-school-profile';
+import type { UpdateSchool } from '../../../../app/use-cases/schools/update-school';
 import { updateSchoolSchema } from '../../validators/school-schemas';
 import type { SchoolRouteGuards } from './guards';
 import type { SchoolContextRequest } from '../../middlewares/resolve-school-context';
@@ -45,6 +45,7 @@ export function buildProfileRoutes(deps: ProfileRoutesDeps, guards: SchoolRouteG
                 ownerBirthDate: data.ownerBirthDate === undefined ? undefined : data.ownerBirthDate,
                 ownerUserId: data.ownerUserId === undefined ? undefined : data.ownerUserId,
                 ownerPassword: data.ownerPassword === undefined ? undefined : data.ownerPassword,
+                ownerStudentAccessEnabled: data.ownerStudentAccessEnabled,
                 incomeValue: data.incomeValue === undefined ? undefined : data.incomeValue,
                 links: data.links
             });

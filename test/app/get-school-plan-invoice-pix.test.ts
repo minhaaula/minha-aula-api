@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { GetSchoolPlanInvoicePix } from '../../src/app/use-cases/get-school-plan-invoice-pix';
+import { GetSchoolPlanInvoicePix } from '../../src/app/use-cases/schools/get-school-plan-invoice-pix';
 import { SchoolPlanInvoiceRepository } from '../../src/ports/repositories/school-plan-invoice.repo';
 import { SchoolPlanInvoice } from '../../src/domain/entities/school-plan-invoice';
 import type { AsaasProviderPort } from '../../src/ports/providers/asaas-port';

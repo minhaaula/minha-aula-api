@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { SendClassPushNotification } from '../../src/app/use-cases/send-class-push-notification';
+import { SendClassPushNotification } from '../../src/app/use-cases/schools/send-class-push-notification';
 import { Course } from '../../src/domain/entities/course';
 import { CourseClass } from '../../src/domain/entities/course-class';
 import { Enrollment } from '../../src/domain/entities/enrollment';

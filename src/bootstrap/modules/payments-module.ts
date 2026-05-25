@@ -1,9 +1,9 @@
 import { ModuleBuildResult, ModuleSetupContext } from './types';
 import { PaymentRepositoryAdapter } from '../../infra/db/typeorm/payment-repository.adapter';
 import { OutboxProducer } from '../../infra/messaging/bullmq/outbox-producer';
-import { CreatePayment } from '../../app/use-cases/create-payment';
-import { CapturePayment } from '../../app/use-cases/CapturePayment';
-import { IssueBoleto } from '../../app/use-cases/issue-boleto';
+import { CreatePayment } from '../../app/use-cases/payments/create-payment';
+import { CapturePayment } from '../../app/use-cases/payments/CapturePayment';
+import { IssueBoleto } from '../../app/use-cases/payments/issue-boleto';
 import { paymentsRouter } from '../../infra/http/routes/payments.routes';
 import { PaymentProviderPort } from '../../ports/providers/payment-provider.port';
 import { MODULE_DOC_FILES } from '../module-config';

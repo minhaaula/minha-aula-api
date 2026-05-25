@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { CreateSchoolBankAccount } from '../../src/app/use-cases/create-school-bank-account';
-import { UpdateSchoolBankAccount } from '../../src/app/use-cases/update-school-bank-account';
-import { ListSchoolBankAccounts } from '../../src/app/use-cases/list-school-bank-accounts';
+import { CreateSchoolBankAccount } from '../../src/app/use-cases/schools/create-school-bank-account';
+import { UpdateSchoolBankAccount } from '../../src/app/use-cases/schools/update-school-bank-account';
+import { ListSchoolBankAccounts } from '../../src/app/use-cases/schools/list-school-bank-accounts';
 import { SchoolBankAccountRepository } from '../../src/ports/repositories/school-bank-account.repo';
 import { SchoolRepository } from '../../src/ports/repositories/school.repo';
 import { SchoolBankAccount } from '../../src/domain/entities/school-bank-account';

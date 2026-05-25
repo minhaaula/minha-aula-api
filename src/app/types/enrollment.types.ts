@@ -2,6 +2,8 @@
  * Tipos relacionados a solicitações de matrícula
  */
 
+import type { TuitionExemptionType } from '../../domain/value-objects/tuition-exemption-type';
+
 export interface CreateEnrollmentRequestInput {
     schoolId: string;
     courseClassId: string;
@@ -12,7 +14,10 @@ export interface CreateEnrollmentRequestInput {
     discountMonths?: number | null;
     enrollmentFeeAmount?: number | null;
     enrollmentFeeDueDate?: string | null;
-    firstMonthlyPaymentDate: string;
+    /** Opcional quando há isenção (`tuitionExemptionType`); default = hoje no use case. */
+    firstMonthlyPaymentDate?: string;
+    /** Quando `tuitionExempt` é true na criação do pedido. */
+    tuitionExemptionType?: TuitionExemptionType | null;
     /** Quando a escola cria o pedido para o aluno (responsible-requests), dispara email, push e notificação in-app. */
     initiatedBySchool?: boolean;
 }
@@ -75,6 +80,7 @@ export interface EnrollStudentInput {
     dependentId?: string | null;
     discount?: number | null;
     discountMonths?: number | null;
+    tuitionExemptionType?: TuitionExemptionType | null;
 }
 
 export interface EnrollStudentOutput {
@@ -87,6 +93,8 @@ export interface EnrollStudentOutput {
     status: string;
     enrolledAt: Date;
     updatedAt: Date;
+    tuitionExempt: boolean;
+    tuitionExemptionType: TuitionExemptionType | null;
 }
 
 export interface UnenrollStudentFromClassInput {

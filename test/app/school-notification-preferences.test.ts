@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { School } from '../../src/domain/entities/school';
 import { PostalAddress } from '../../src/domain/value-objects/postal-address';
 import type { SchoolRepository } from '../../src/ports/repositories/school.repo';
-import { GetSchoolNotificationPreferences } from '../../src/app/use-cases/get-school-notification-preferences';
-import { UpdateSchoolNotificationPreferences } from '../../src/app/use-cases/update-school-notification-preferences';
+import { GetSchoolNotificationPreferences } from '../../src/app/use-cases/schools/get-school-notification-preferences';
+import { UpdateSchoolNotificationPreferences } from '../../src/app/use-cases/schools/update-school-notification-preferences';
 
 class InMemorySchoolRepository implements SchoolRepository {
     private readonly items = new Map<string, School>();

@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { asyncHandler } from '../../utils/async-handler';
-import type { ListClassSessions } from '../../../../app/use-cases/list-class-sessions';
-import type { CancelClassSession } from '../../../../app/use-cases/cancel-class-session';
+import type { ListClassSessions } from '../../../../app/use-cases/courses/list-class-sessions';
+import type { CancelClassSession } from '../../../../app/use-cases/courses/cancel-class-session';
 import { listClassSessionsQuerySchema, sessionIdParamsSchema } from '../../validators/school-schemas';
 import type { SchoolRouteGuards } from './guards';
 import type { SchoolContextRequest } from '../../middlewares/resolve-school-context';

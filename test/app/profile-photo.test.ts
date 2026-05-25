@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
-import { UploadStudentProfilePhoto } from '../../src/app/use-cases/upload-student-profile-photo';
-import { RemoveStudentProfilePhoto } from '../../src/app/use-cases/remove-student-profile-photo';
-import { UploadDependentProfilePhoto } from '../../src/app/use-cases/upload-dependent-profile-photo';
-import { RemoveDependentProfilePhoto } from '../../src/app/use-cases/remove-dependent-profile-photo';
+import { UploadStudentProfilePhoto } from '../../src/app/use-cases/students/upload-student-profile-photo';
+import { RemoveStudentProfilePhoto } from '../../src/app/use-cases/students/remove-student-profile-photo';
+import { UploadDependentProfilePhoto } from '../../src/app/use-cases/students/upload-dependent-profile-photo';
+import { RemoveDependentProfilePhoto } from '../../src/app/use-cases/students/remove-dependent-profile-photo';
 import { User } from '../../src/domain/entities/user';
 import { Email } from '../../src/domain/value-objects/email';
 import { PostalAddress } from '../../src/domain/value-objects/postal-address';

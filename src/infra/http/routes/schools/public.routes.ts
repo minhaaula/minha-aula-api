@@ -1,17 +1,19 @@
 import { Router, type RequestHandler } from 'express';
 import { asyncHandler } from '../../utils/async-handler';
-import type { CreateSchool } from '../../../../app/use-cases/create-school';
-import type { LoginSchool } from '../../../../app/use-cases/login-school';
-import type { ListCategories } from '../../../../app/use-cases/list-categories';
-import type { ListSubscriptionPlans } from '../../../../app/use-cases/list-subscription-plans';
-import type { RequestPhoneOtpChallenge } from '../../../../app/use-cases/request-phone-otp-challenge';
-import type { VerifyPhoneOtpChallenge } from '../../../../app/use-cases/verify-phone-otp-challenge';
+import type { CreateSchool } from '../../../../app/use-cases/schools/create-school';
+import type { LoginSchool } from '../../../../app/use-cases/auth/login-school';
+import type { ListCategories } from '../../../../app/use-cases/catalog/list-categories';
+import type { ListSubscriptionPlans } from '../../../../app/use-cases/catalog/list-subscription-plans';
+import type { RequestPhoneOtpChallenge } from '../../../../app/use-cases/auth/request-phone-otp-challenge';
+import type { VerifyPhoneOtpChallenge } from '../../../../app/use-cases/auth/verify-phone-otp-challenge';
 import type { AuthenticatedRequest } from '../../middlewares/auth';
 import { authRateLimiter } from '../../middlewares/rate-limiter';
 import { UserPersonaEnum } from '../../../../domain/value-objects/user-persona';
 import { createSchoolObjectSchema, createSchoolSchema } from '../../validators/school-schemas';
 import { z } from 'zod';
 import { mapAddresses } from './transformers';
+import { listTuitionExemptionTypes } from '../../../../domain/value-objects/tuition-exemption-type';
+import { listGenders } from '../../../../domain/value-objects/gender';
 
 type PublicSchoolRoutesDeps = {
     createSchool: CreateSchool;
@@ -65,6 +67,14 @@ export function buildPublicSchoolRoutes(deps: PublicSchoolRoutesDeps, optionalAu
         }));
     }
 
+    router.get('/tuition-exemption-types', asyncHandler(async (_req, res) => {
+        res.json({ items: listTuitionExemptionTypes() });
+    }));
+
+    router.get('/genders', asyncHandler(async (_req, res) => {
+        res.json({ items: listGenders() });
+    }));
+
     if (deps.listCategories) {
         router.get('/categories', asyncHandler(async (_req, res) => {
             const result = await deps.listCategories!.exec();
@@ -89,6 +99,7 @@ export function buildPublicSchoolRoutes(deps: PublicSchoolRoutesDeps, optionalAu
             email: data.email,
             phone: data.phone,
             cnpj: data.cnpj ?? null,
+            isNonprofitAssociation: data.isNonprofitAssociation === true,
             incomeValue: data.incomeValue,
             addresses: mapAddresses(data.addresses),
             ownerUserId,

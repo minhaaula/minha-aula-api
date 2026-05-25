@@ -21,6 +21,10 @@ export class SchoolOrm {
 
     @Column('char', { length: 14, nullable: true }) cnpj!: string | null;
 
+    /** Associação sem fins lucrativos — exige CNPJ no cadastro. */
+    @Column('tinyint', { name: 'is_nonprofit_association', width: 1, default: () => '0' })
+    isNonprofitAssociation!: boolean;
+
     @Column('char', { length: 36, name: 'owner_user_id', nullable: true }) ownerUserId!: string | null;
 
     @ManyToOne(() => UserOrm, (user) => user.schools, { nullable: true, onDelete: 'SET NULL' })

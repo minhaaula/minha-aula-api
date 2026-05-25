@@ -1,9 +1,9 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { asyncHandler } from '../../utils/async-handler';
-import type { ListSchoolPayments } from '../../../../app/use-cases/list-school-payments';
-import type { ListPaidSchoolPayments } from '../../../../app/use-cases/list-paid-school-payments';
-import type { ConsolidateSchoolPayments } from '../../../../app/use-cases/consolidate-school-payments';
+import type { ListSchoolPayments } from '../../../../app/use-cases/schools/list-school-payments';
+import type { ListPaidSchoolPayments } from '../../../../app/use-cases/schools/list-paid-school-payments';
+import type { ConsolidateSchoolPayments } from '../../../../app/use-cases/schools/consolidate-school-payments';
 import type { SchoolRouteGuards } from './guards';
 import type { SchoolContextRequest } from '../../middlewares/resolve-school-context';
 import { SchoolFinancialChargeStatus } from '../../../../domain/entities/school-financial-charge';

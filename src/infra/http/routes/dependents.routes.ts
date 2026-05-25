@@ -1,17 +1,18 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { AddDependent } from '../../../app/use-cases/add-dependent';
-import { ListMyDependents } from '../../../app/use-cases/list-my-dependents';
-import { DeleteDependent } from '../../../app/use-cases/delete-dependent';
-import { UpdateDependent } from '../../../app/use-cases/update-dependent';
+import { AddDependent } from '../../../app/use-cases/students/add-dependent';
+import { ListMyDependents } from '../../../app/use-cases/students/list-my-dependents';
+import { DeleteDependent } from '../../../app/use-cases/students/delete-dependent';
+import { UpdateDependent } from '../../../app/use-cases/students/update-dependent';
 import { AuthenticatedRequest } from '../middlewares/auth';
 import { requirePersona } from '../middlewares/require-persona';
 import { UserPersonaEnum } from '../../../domain/value-objects/user-persona';
 import { asyncHandler } from '../utils/async-handler';
 import { profilePhotoUpload } from '../middlewares/profile-photo-upload';
-import type { UploadDependentProfilePhoto } from '../../../app/use-cases/upload-dependent-profile-photo';
-import type { RemoveDependentProfilePhoto } from '../../../app/use-cases/remove-dependent-profile-photo';
+import type { UploadDependentProfilePhoto } from '../../../app/use-cases/students/upload-dependent-profile-photo';
+import type { RemoveDependentProfilePhoto } from '../../../app/use-cases/students/remove-dependent-profile-photo';
 import { AppError } from '../../../shared/errors';
+import { optionalGenderSchema } from '../validators/gender-schemas';
 
 export function dependentsRouter(deps: { 
     addDependent: AddDependent;
@@ -38,7 +39,8 @@ export function dependentsRouter(deps: {
             fullName: z.string().trim().min(3, 'Nome deve ter pelo menos 3 caracteres'),
             cpf: z.string().trim().min(11).max(14).optional().nullable(),
             birthDate: z.string().trim().optional().nullable(),
-            relationship: z.string().trim().optional().nullable()
+            relationship: z.string().trim().optional().nullable(),
+            gender: optionalGenderSchema
         });
         const data = schema.parse(req.body);
         const dependent = await deps.addDependent.exec({
@@ -46,7 +48,8 @@ export function dependentsRouter(deps: {
             fullName: data.fullName,
             cpf: data.cpf ?? null,
             birthDate: data.birthDate ?? null,
-            relationship: data.relationship ?? null
+            relationship: data.relationship ?? null,
+            gender: data.gender ?? null
         });
         res.status(201).json(dependent);
     }));
@@ -139,7 +142,8 @@ export function dependentsRouter(deps: {
             const schema = z.object({
                 fullName: z.string().min(3).optional(),
                 birthDate: z.string().trim().optional().nullable(),
-                relationship: z.string().min(1).optional().nullable()
+                relationship: z.string().min(1).optional().nullable(),
+                gender: optionalGenderSchema
             });
             const data = schema.parse(req.body);
 
@@ -148,7 +152,8 @@ export function dependentsRouter(deps: {
                 dependentId,
                 fullName: data.fullName,
                 birthDate: data.birthDate ?? undefined,
-                relationship: data.relationship ?? undefined
+                relationship: data.relationship ?? undefined,
+                gender: data.gender !== undefined ? data.gender : undefined
             });
 
             res.json(updated);

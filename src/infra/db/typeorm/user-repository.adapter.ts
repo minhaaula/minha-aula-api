@@ -2,6 +2,7 @@ import { Email } from '../../../domain/value-objects/email';
 import { User } from '../../../domain/entities/user';
 import { UserRepository } from '../../../ports/repositories/user.repo';
 import type { AdminStudentListFilters, AdminStudentListResult } from '../../../ports/repositories/enrollment.repo';
+import { presentStudentAccountStatus } from '../../../app/types/admin.types';
 import { UserOrm } from './entities/user.orm';
 import { AppDataSource } from './datasource';
 import { PostalAddress } from '../../../domain/value-objects/postal-address';
@@ -161,7 +162,8 @@ export class UserRepositoryAdapter implements UserRepository {
                 'user.address_city AS addressCity',
                 'user.address_state AS addressState',
                 'user.address_zip_code AS addressZipCode',
-                'user.created_at AS createdAt'
+                'user.created_at AS createdAt',
+                'user.active AS active'
             ])
             .addSelect(
                 `(SELECT COUNT(*) FROM enrollments e WHERE e.student_user_id = user.id AND e.status = 'ACTIVE')`,
@@ -176,6 +178,7 @@ export class UserRepositoryAdapter implements UserRepository {
             cpf: row.cpf ?? null,
             studentId: row.studentId,
             studentName: row.studentName ?? '',
+            status: presentStudentAccountStatus(Number(row.active ?? 1) !== 0),
             studentType: 'USER' as const,
             birthDate: formatBirthDate(row.birthDate),
             endereco: {
@@ -225,7 +228,9 @@ export class UserRepositoryAdapter implements UserRepository {
             active: row.active !== 0,
             deactivationReason: row.deactivationReason ?? null,
             deactivationDescription: row.deactivationDescription ?? null,
-            photoStorageKey: row.photoUrl ?? null
+            photoStorageKey: row.photoUrl ?? null,
+            studentAccessEnabled: normalizeStudentAccessEnabled(row.studentAccessEnabled),
+            gender: row.gender ?? null
         });
     }
 
@@ -246,14 +251,25 @@ export class UserRepositoryAdapter implements UserRepository {
         row.addressZipCode = user.address.zipCode;
         assertUserPersona(user.persona);
         row.persona = user.persona;
+        row.studentAccessEnabled = user.studentAccessEnabled ? 1 : 0;
         row.passwordHash = user.passwordHash;
         row.createdAt = user.createdAt;
         row.active = user.active ? 1 : 0;
         row.deactivationReason = user.deactivationReason ?? null;
         row.deactivationDescription = user.deactivationDescription ?? null;
         row.photoUrl = user.photoStorageKey;
+        row.gender = user.gender;
         return row;
     }
+}
+
+function normalizeStudentAccessEnabled(value: unknown): boolean {
+    if (value === undefined || value === null) return true;
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'number') return value === 1;
+    if (typeof value === 'string') return value === '1';
+    if (Buffer.isBuffer(value) && value.length === 1) return value[0] === 1;
+    return true;
 }
 
 

@@ -1,21 +1,23 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { asyncHandler } from '../../utils/async-handler';
-import type { CreateCourse } from '../../../../app/use-cases/create-course';
-import type { UpdateCourse } from '../../../../app/use-cases/update-course';
-import type { ListSchoolCourses } from '../../../../app/use-cases/list-school-courses';
-import type { GetSchoolCourse } from '../../../../app/use-cases/get-school-course';
-import type { CreateCourseClass } from '../../../../app/use-cases/create-course-class';
-import type { UpdateCourseClass } from '../../../../app/use-cases/update-course-class';
-import type { ListCourseClasses } from '../../../../app/use-cases/list-course-classes';
-import type { GetCourseClass } from '../../../../app/use-cases/get-course-class';
-import type { ScheduleClassSession } from '../../../../app/use-cases/schedule-class-session';
-import type { ListClassSessions } from '../../../../app/use-cases/list-class-sessions';
-import type { EnrollStudent } from '../../../../app/use-cases/enroll-student';
-import type { UnenrollStudentFromClass } from '../../../../app/use-cases/unenroll-student-from-class';
-import type { ListEnrollmentRequests } from '../../../../app/use-cases/list-enrollment-requests';
-import type { DeleteCourse } from '../../../../app/use-cases/delete-course';
-import type { DeleteCourseClass } from '../../../../app/use-cases/delete-course-class';
+import type { CreateCourse } from '../../../../app/use-cases/courses/create-course';
+import type { UpdateCourse } from '../../../../app/use-cases/courses/update-course';
+import type { ListSchoolCourses } from '../../../../app/use-cases/schools/list-school-courses';
+import type { GetSchoolCourse } from '../../../../app/use-cases/schools/get-school-course';
+import type { CreateCourseClass } from '../../../../app/use-cases/courses/create-course-class';
+import type { UpdateCourseClass } from '../../../../app/use-cases/courses/update-course-class';
+import type { ListCourseClasses } from '../../../../app/use-cases/courses/list-course-classes';
+import type { GetCourseClass } from '../../../../app/use-cases/courses/get-course-class';
+import type { ScheduleClassSession } from '../../../../app/use-cases/courses/schedule-class-session';
+import type { ListClassSessions } from '../../../../app/use-cases/courses/list-class-sessions';
+import type { EnrollStudent } from '../../../../app/use-cases/enrollments/enroll-student';
+import type { UnenrollStudentFromClass } from '../../../../app/use-cases/enrollments/unenroll-student-from-class';
+import type { UpdateSchoolEnrollment } from '../../../../app/use-cases/schools/update-school-enrollment';
+import { updateSchoolEnrollmentSchema } from '../../validators/update-school-enrollment-schemas';
+import type { ListEnrollmentRequests } from '../../../../app/use-cases/enrollments/list-enrollment-requests';
+import type { DeleteCourse } from '../../../../app/use-cases/courses/delete-course';
+import type { DeleteCourseClass } from '../../../../app/use-cases/courses/delete-course-class';
 import {
     classSessionsDateRangeSchema,
     courseClassParamsSchema,
@@ -28,6 +30,10 @@ import {
     updateCourseSchema
 } from '../../validators/school-schemas';
 import type { SchoolRouteGuards } from './guards';
+import {
+    enrollmentTuitionExemptionFields,
+    refineEnrollmentTuitionExemption
+} from '../../validators/enrollment-exemption-schemas';
 import type { SchoolContextRequest } from '../../middlewares/resolve-school-context';
 import { mapCourseCategories } from './transformers';
 import type { EnrollmentRequest } from '../../../../domain/entities/enrollment-request';
@@ -46,6 +52,7 @@ type CoursesRoutesDeps = {
     listClassSessions: ListClassSessions;
     enrollStudent?: EnrollStudent;
     unenrollStudentFromClass?: UnenrollStudentFromClass;
+    updateSchoolEnrollment?: UpdateSchoolEnrollment;
     listEnrollmentRequests?: ListEnrollmentRequests;
     deleteCourse?: DeleteCourse;
     deleteCourseClass?: DeleteCourseClass;
@@ -74,6 +81,14 @@ export function buildCoursesRoutes(deps: CoursesRoutesDeps, guards: SchoolRouteG
             decidedAt: request.decidedAt,
             decidedByUserId: request.decidedByUserId,
             notes: request.notes,
+            discont: request.discountCents !== null ? request.discountCents / 100 : null,
+            enrollmentFeeAmount: request.enrollmentFeeCents !== null ? request.enrollmentFeeCents / 100 : null,
+            enrollmentFeeDueDate: request.enrollmentFeeDueDate
+                ? request.enrollmentFeeDueDate.toISOString().slice(0, 10)
+                : null,
+            firstMonthlyPaymentDate: request.firstMonthlyPaymentDate.toISOString().slice(0, 10),
+            tuitionExempt: request.isTuitionExempt,
+            tuitionExemptionType: request.tuitionExemptionType,
             enrollmentId: request.enrollmentId,
             createdAt: request.createdAt,
             courseLabel: 'request' in item ? item.courseLabel : null,
@@ -275,23 +290,26 @@ export function buildCoursesRoutes(deps: CoursesRoutesDeps, guards: SchoolRouteG
     if (deps.enrollStudent) {
         router.post('/:courseId/classes/:classId/enrollments', ...protectedMiddleware, asyncHandler(async (req, res) => {
             const { courseId, classId } = courseClassParamsSchema.parse(req.params);
-            const bodySchema = z.object({
-                studentUserId: z.string().uuid(),
-                dependentId: z.string().uuid().optional(),
-                discont: z.coerce.number().min(0).optional(),
-                discountMonths: z.coerce.number().int().min(1).optional()
-            }).superRefine((data, ctx) => {
-                // Se há desconto, discountMonths é obrigatório
-                if (data.discont !== undefined && data.discont !== null && data.discont > 0) {
-                    if (!data.discountMonths || data.discountMonths < 1) {
-                        ctx.addIssue({
-                            code: z.ZodIssueCode.custom,
-                            path: ['discountMonths'],
-                            message: 'discountMonths é obrigatório quando há desconto (discont > 0)'
-                        });
+            const bodySchema = z
+                .object({
+                    studentUserId: z.string().uuid(),
+                    dependentId: z.string().uuid().optional(),
+                    discont: z.coerce.number().min(0).optional(),
+                    discountMonths: z.coerce.number().int().min(1).optional(),
+                    ...enrollmentTuitionExemptionFields
+                })
+                .superRefine((data, ctx) => {
+                    if (data.discont !== undefined && data.discont !== null && data.discont > 0) {
+                        if (!data.discountMonths || data.discountMonths < 1) {
+                            ctx.addIssue({
+                                code: z.ZodIssueCode.custom,
+                                path: ['discountMonths'],
+                                message: 'discountMonths é obrigatório quando há desconto (discont > 0)'
+                            });
+                        }
                     }
-                }
-            });
+                    refineEnrollmentTuitionExemption(data, ctx);
+                });
             const data = bodySchema.parse(req.body ?? {});
             const schoolId = (req as SchoolContextRequest).schoolId as string;
 
@@ -302,7 +320,9 @@ export function buildCoursesRoutes(deps: CoursesRoutesDeps, guards: SchoolRouteG
                 studentUserId: data.studentUserId,
                 dependentId: data.dependentId ?? null,
                 discount: data.discont ?? null,
-                discountMonths: data.discountMonths ?? null
+                discountMonths: data.discountMonths ?? null,
+                tuitionExemptionType:
+                    data.tuitionExempt === true ? (data.tuitionExemptionType ?? null) : null
             });
 
             res.status(201).json(enrollment);
@@ -322,6 +342,34 @@ export function buildCoursesRoutes(deps: CoursesRoutesDeps, guards: SchoolRouteG
                     courseId,
                     classId,
                     enrollmentId
+                });
+
+                res.json(result);
+            })
+        );
+    }
+
+    if (deps.updateSchoolEnrollment) {
+        router.patch(
+            '/:courseId/classes/:classId/enrollments/:enrollmentId',
+            ...protectedMiddleware,
+            asyncHandler(async (req, res) => {
+                const { courseId, classId, enrollmentId } = courseClassEnrollmentParamsSchema.parse(req.params);
+                const schoolId = (req as SchoolContextRequest).schoolId as string;
+                const data = updateSchoolEnrollmentSchema.parse(req.body ?? {});
+
+                const result = await deps.updateSchoolEnrollment!.exec({
+                    schoolId,
+                    courseId,
+                    classId,
+                    enrollmentId,
+                    paymentDueDay: data.paymentDueDay,
+                    firstMonthlyPaymentDate: data.firstMonthlyPaymentDate,
+                    discountCents: data.clearDiscount ? null : data.discountCents,
+                    discountMonths: data.clearDiscount ? null : data.discountMonths,
+                    clearDiscount: data.clearDiscount,
+                    tuitionExempt: data.tuitionExempt,
+                    tuitionExemptionType: data.tuitionExemptionType ?? null
                 });
 
                 res.json(result);

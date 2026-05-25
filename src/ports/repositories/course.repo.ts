@@ -3,7 +3,10 @@ import { Course } from '../../domain/entities/course';
 export type CourseCategoryInfo = {
     courseId: string;
     category: string | null;
+    /** Primeira subcategoria (compatibilidade). */
     subcategory: string | null;
+    /** Todas as subcategorias vinculadas ao curso. */
+    subcategories: string[];
 };
 
 export type CourseWithSchoolInfo = {
@@ -22,6 +25,7 @@ export interface CourseRepository {
     findBySchoolAndName(schoolId: string, name: string): Promise<Course | null>;
     findBySchoolId(schoolId: string): Promise<Course[]>;
     countActiveBySchoolId?(schoolId: string): Promise<number>;
+    countActiveBySchoolIds?(schoolIds: string[]): Promise<Map<string, number>>;
     save(course: Course): Promise<void>;
     findCategoriesByCourseIds?(courseIds: string[]): Promise<CourseCategoryInfo[]>;
     findAllWithFilters?(filters: {

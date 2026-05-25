@@ -6,6 +6,7 @@ export interface CourseClassRepository {
     findByCourseId(courseId: string): Promise<CourseClass[]>;
     findByCourseIds(courseIds: string[]): Promise<CourseClass[]>;
     countActiveBySchoolId?(schoolId: string): Promise<number>;
+    countActiveBySchoolIds?(schoolIds: string[]): Promise<Map<string, number>>;
     save(courseClass: CourseClass): Promise<void>;
     countAll?(): Promise<number>;
 }

@@ -9,6 +9,8 @@ export interface CreateSchoolInput {
     email: string;
     phone: string;
     cnpj?: string | null;
+    /** Associação sem fins lucrativos — quando true, CNPJ é obrigatório. */
+    isNonprofitAssociation?: boolean;
     incomeValue?: number;
     addresses?: PostalAddressInput[];
     ownerUserId?: string | null;
@@ -30,6 +32,7 @@ export interface CreateSchoolOutput {
     email: string;
     phone: string;
     cnpj: string | null;
+    isNonprofitAssociation: boolean;
     addresses: PostalAddressOutput[];
     createdAt: Date;
     ownerUserId: string | null;
@@ -57,6 +60,8 @@ export interface UpdateSchoolInput {
     ownerWhatsapp?: string | null;
     ownerUserId?: string | null;
     ownerPassword?: string | null;
+    /** Habilita login no app de aluno para o usuário dono (persona SCHOOL). */
+    ownerStudentAccessEnabled?: boolean;
     incomeValue?: number;
     links?: {
         facebook?: string | null;
@@ -90,6 +95,7 @@ export interface UpdateSchoolOutput {
         youtube: string | null;
         site: string | null;
     };
+    ownerStudentAccessEnabled: boolean | null;
 }
 
 export interface SchoolSummary {
@@ -160,6 +166,7 @@ export interface GetSchoolProfileOutput {
     /** YYYY-MM-DD */
     ownerBirthDate: string | null;
     ownerWhatsapp: string | null;
+    ownerStudentAccessEnabled: boolean | null;
     incomeValue: number;
     bankAccounts: BankAccountOutput[];
     links: {

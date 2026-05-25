@@ -11,11 +11,11 @@
  */
 
 import { describe, expect, it, vi } from 'vitest';
-import { CreateSchool } from '../../src/app/use-cases/create-school';
-import { AssignSchoolPlan } from '../../src/app/use-cases/assign-school-plan';
-import { IssueSchoolPlanInvoice } from '../../src/app/use-cases/issue-school-plan-invoice';
-import { HandleAsaasPaymentWebhook } from '../../src/app/use-cases/handle-asaas-payment-webhook';
-import { EnsureSchoolAsaasAccount } from '../../src/app/use-cases/ensure-school-asaas-account';
+import { CreateSchool } from '../../src/app/use-cases/schools/create-school';
+import { AssignSchoolPlan } from '../../src/app/use-cases/schools/assign-school-plan';
+import { IssueSchoolPlanInvoice } from '../../src/app/use-cases/schools/issue-school-plan-invoice';
+import { HandleAsaasPaymentWebhook } from '../../src/app/use-cases/payments/handle-asaas-payment-webhook';
+import { EnsureSchoolAsaasAccount } from '../../src/app/use-cases/schools/ensure-school-asaas-account';
 import { SchoolRepository } from '../../src/ports/repositories/school.repo';
 import { SchoolPlanFinanceRepository } from '../../src/ports/repositories/school-plan-finance.repo';
 import { SchoolPlanInvoiceRepository } from '../../src/ports/repositories/school-plan-invoice.repo';

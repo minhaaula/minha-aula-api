@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ListSubscriptionPlans } from '../../src/app/use-cases/list-subscription-plans';
+import { ListSubscriptionPlans } from '../../src/app/use-cases/catalog/list-subscription-plans';
 import { SubscriptionPlanRepository } from '../../src/ports/repositories/subscription-plan.repo';
 import { SubscriptionPlan } from '../../src/domain/entities/subscription-plan';
 

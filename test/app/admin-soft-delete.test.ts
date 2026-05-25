@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { AdminSoftDeleteSchool } from '../../src/app/use-cases/admin-soft-delete-school';
-import { AdminSoftDeleteUser } from '../../src/app/use-cases/admin-soft-delete-user';
+import { AdminSoftDeleteSchool } from '../../src/app/use-cases/admin/admin-soft-delete-school';
+import { AdminSoftDeleteUser } from '../../src/app/use-cases/admin/admin-soft-delete-user';
 import { SchoolRepository } from '../../src/ports/repositories/school.repo';
 import { UserRepository } from '../../src/ports/repositories/user.repo';
 import { School } from '../../src/domain/entities/school';

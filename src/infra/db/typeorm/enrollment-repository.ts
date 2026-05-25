@@ -10,6 +10,23 @@ import {
 import { Enrollment } from '../../../domain/entities/enrollment';
 import { EnrollmentOrm } from './entities/enrollment.orm';
 
+import { presentStudentAccountStatus } from '../../../app/types/admin.types';
+
+function parseClassSchedule(value: unknown): Array<{ day: string; start: string; end: string }> {
+    if (Array.isArray(value)) {
+        return value as Array<{ day: string; start: string; end: string }>;
+    }
+    if (typeof value === 'string') {
+        try {
+            const parsed = JSON.parse(value) as unknown;
+            return Array.isArray(parsed) ? (parsed as Array<{ day: string; start: string; end: string }>) : [];
+        } catch {
+            return [];
+        }
+    }
+    return [];
+}
+
 function formatAdminStudentBirthDate(value: unknown): string | null {
     if (value == null) return null;
     if (value instanceof Date) {
@@ -66,6 +83,30 @@ export class EnrollmentRepositoryAdapter implements EnrollmentRepository {
             .andWhere('enrollment.status = :status', { status: 'ACTIVE' })
             .getMany();
         return rows.map((row) => this.toDomain(row));
+    }
+
+    async countActiveEnrollmentsByDependentIds(dependentIds: string[]): Promise<Map<string, number>> {
+        const ids = [...new Set(dependentIds.map((id) => id.trim()).filter(Boolean))];
+        const counts = new Map<string, number>();
+        if (ids.length === 0) {
+            return counts;
+        }
+
+        const rows = await this.repo
+            .createQueryBuilder('enrollment')
+            .select('enrollment.dependentId', 'dependentId')
+            .addSelect('COUNT(*)', 'courseCount')
+            .where('enrollment.dependentId IN (:...ids)', { ids })
+            .andWhere('enrollment.status = :status', { status: 'ACTIVE' })
+            .groupBy('enrollment.dependentId')
+            .getRawMany<{ dependentId: string; courseCount: string }>();
+
+        for (const row of rows) {
+            if (row.dependentId) {
+                counts.set(row.dependentId, Number(row.courseCount ?? 0));
+            }
+        }
+        return counts;
     }
 
     async save(enrollment: Enrollment): Promise<void> {
@@ -183,14 +224,188 @@ export class EnrollmentRepositoryAdapter implements EnrollmentRepository {
         }));
     }
 
-    async countActiveBySchoolId(schoolId: string): Promise<number> {
-        return await this.repo
-            .createQueryBuilder('enrollment')
-            .leftJoin('enrollment.courseClass', 'class')
-            .leftJoin('class.course', 'course')
-            .where('course.schoolId = :schoolId', { schoolId })
+    /**
+     * Alunos distintos com matrícula ACTIVE em curso/turma ativos da escola
+     * (mesma regra de `ListSchoolStudents` no formato admin).
+     */
+    private static readonly ACTIVE_STUDENT_KEY_SQL = `CASE
+        WHEN enrollment.student_type = 'DEPENDENT' AND enrollment.dependent_id IS NOT NULL
+            THEN CONCAT('dep:', enrollment.dependent_id)
+        ELSE CONCAT('user:', COALESCE(enrollment.student_user_id, enrollment.owner_user_id))
+    END`;
+
+    private applyActiveSchoolStudentCountFilters(
+        qb: ReturnType<typeof this.repo.createQueryBuilder>
+    ): ReturnType<typeof this.repo.createQueryBuilder> {
+        return qb
+            .innerJoin('enrollment.courseClass', 'class')
+            .innerJoin('class.course', 'course')
             .andWhere('enrollment.status = :status', { status: 'ACTIVE' })
-            .getCount();
+            .andWhere('course.isActive = :courseActive', { courseActive: true })
+            .andWhere('course.deletedAt IS NULL')
+            .andWhere('class.isActive = :classActive', { classActive: true })
+            .andWhere(
+                "(enrollment.student_type != 'DEPENDENT' OR enrollment.dependent_id IS NOT NULL)"
+            );
+    }
+
+    async countActiveBySchoolId(schoolId: string): Promise<number> {
+        const row = await this.applyActiveSchoolStudentCountFilters(
+            this.repo.createQueryBuilder('enrollment')
+        )
+            .select(
+                `COUNT(DISTINCT ${EnrollmentRepositoryAdapter.ACTIVE_STUDENT_KEY_SQL})`,
+                'cnt'
+            )
+            .where('course.schoolId = :schoolId', { schoolId })
+            .getRawOne<{ cnt: string }>();
+
+        return Number(row?.cnt ?? 0);
+    }
+
+    async countActiveBySchoolIds(schoolIds: string[]): Promise<Map<string, number>> {
+        const ids = [...new Set(schoolIds.map((id) => id.trim()).filter(Boolean))];
+        const map = new Map<string, number>();
+        for (const id of ids) {
+            map.set(id, 0);
+        }
+        if (ids.length === 0) {
+            return map;
+        }
+
+        const rows = await this.applyActiveSchoolStudentCountFilters(
+            this.repo.createQueryBuilder('enrollment')
+        )
+            .select('course.schoolId', 'schoolId')
+            .addSelect(
+                `COUNT(DISTINCT ${EnrollmentRepositoryAdapter.ACTIVE_STUDENT_KEY_SQL})`,
+                'cnt'
+            )
+            .where('course.schoolId IN (:...ids)', { ids })
+            .groupBy('course.schoolId')
+            .getRawMany<{ schoolId: string; cnt: string }>();
+
+        for (const row of rows) {
+            map.set(row.schoolId, Number(row.cnt ?? 0));
+        }
+        return map;
+    }
+
+    async findMyTuitionExemptEnrollments(
+        userId: string
+    ): Promise<import('../../../ports/repositories/enrollment.repo').MyTuitionExemptEnrollmentData[]> {
+        const results = await this.repo
+            .createQueryBuilder('enrollment')
+            .innerJoin('enrollment.courseClass', 'courseClass')
+            .innerJoin('courseClass.course', 'course')
+            .leftJoin('enrollment.studentUser', 'studentUser')
+            .leftJoin('enrollment.dependent', 'dependent')
+            .where('enrollment.ownerUserId = :userId', { userId })
+            .andWhere('enrollment.status = :status', { status: 'ACTIVE' })
+            .andWhere('enrollment.tuitionExemptionType IS NOT NULL')
+            .select([
+                'enrollment.id AS enrollmentId',
+                'enrollment.tuitionExemptionType AS tuitionExemptionType',
+                'course.id AS courseId',
+                'course.name AS courseName',
+                'courseClass.id AS classId',
+                'courseClass.label AS className',
+                'COALESCE(courseClass.monthlyPriceCents, course.monthlyPriceCents) AS monthlyTuitionAmountCents',
+                'COALESCE(studentUser.fullName, dependent.fullName) AS studentName'
+            ])
+            .orderBy('enrollment.enrolledAt', 'DESC')
+            .getRawMany();
+
+        return results.map((row: Record<string, unknown>) => ({
+            enrollmentId: String(row.enrollmentId),
+            studentName: String(row.studentName ?? ''),
+            courseId: String(row.courseId),
+            courseName: String(row.courseName),
+            classId: String(row.classId),
+            className: String(row.className),
+            tuitionExemptionType: row.tuitionExemptionType as import('../../../ports/repositories/enrollment.repo').MyTuitionExemptEnrollmentData['tuitionExemptionType'],
+            monthlyTuitionAmountCents:
+                row.monthlyTuitionAmountCents != null ? Number(row.monthlyTuitionAmountCents) : null
+        }));
+    }
+
+    async findMyEnrollmentDetailsByCourseId(
+        ownerUserId: string,
+        courseId: string
+    ): Promise<import('../../../ports/repositories/enrollment.repo').MyEnrollmentDetailByCourseRow[]> {
+        const results = await this.repo
+            .createQueryBuilder('enrollment')
+            .innerJoin('enrollment.courseClass', 'courseClass')
+            .innerJoin('courseClass.course', 'course')
+            .innerJoin('course.school', 'school')
+            .innerJoin('enrollment.owner', 'ownerUser')
+            .leftJoin('enrollment.studentUser', 'studentUser')
+            .leftJoin('enrollment.dependent', 'dependent')
+            .where('enrollment.ownerUserId = :ownerUserId', { ownerUserId })
+            .andWhere('course.id = :courseId', { courseId })
+            .select([
+                'enrollment.id AS enrollmentId',
+                'enrollment.enrolledAt AS enrolledAt',
+                'enrollment.status AS status',
+                'enrollment.studentType AS studentType',
+                'enrollment.tuitionExemptionType AS tuitionExemptionType',
+                'enrollment.fullAmountCents AS fullAmountCents',
+                'enrollment.paymentDueDay AS paymentDueDay',
+                'enrollment.discountCents AS discountCents',
+                'enrollment.discountMonths AS discountMonths',
+                'COALESCE(studentUser.fullName, dependent.fullName) AS studentName',
+                'COALESCE(studentUser.cpf, dependent.cpf) AS studentCpf',
+                'course.id AS courseId',
+                'course.name AS courseName',
+                'course.monthlyPriceCents AS courseMonthlyPriceCents',
+                'courseClass.id AS classId',
+                'courseClass.label AS className',
+                'courseClass.schedule AS schedule',
+                'courseClass.monthlyPriceCents AS classMonthlyPriceCents',
+                'school.id AS schoolId',
+                'school.name AS schoolName',
+                'school.cnpj AS schoolCnpj',
+                'ownerUser.id AS ownerUserId',
+                'ownerUser.fullName AS ownerFullName',
+                'ownerUser.cpf AS ownerCpf',
+                'ownerUser.email AS ownerEmail',
+                'ownerUser.phone AS ownerPhone'
+            ])
+            .orderBy('enrollment.enrolledAt', 'DESC')
+            .getRawMany();
+
+        return results.map((row: Record<string, unknown>) => ({
+            enrollmentId: String(row.enrollmentId),
+            enrolledAt:
+                row.enrolledAt instanceof Date ? row.enrolledAt : new Date(String(row.enrolledAt ?? '')),
+            status: row.status as import('../../../ports/repositories/enrollment.repo').MyCourseEnrollmentStatus,
+            studentType: row.studentType as 'USER' | 'DEPENDENT',
+            studentName: String(row.studentName ?? ''),
+            studentCpf: row.studentCpf != null ? String(row.studentCpf) : null,
+            courseId: String(row.courseId),
+            courseName: String(row.courseName),
+            classId: String(row.classId),
+            className: String(row.className),
+            schedule: parseClassSchedule(row.schedule),
+            schoolId: String(row.schoolId),
+            schoolName: String(row.schoolName),
+            schoolCnpj: row.schoolCnpj != null ? String(row.schoolCnpj) : null,
+            ownerUserId: String(row.ownerUserId),
+            ownerFullName: String(row.ownerFullName ?? ''),
+            ownerCpf: String(row.ownerCpf ?? ''),
+            ownerEmail: String(row.ownerEmail ?? ''),
+            ownerPhone: String(row.ownerPhone ?? ''),
+            tuitionExemptionType:
+                row.tuitionExemptionType as import('../../../ports/repositories/enrollment.repo').MyEnrollmentDetailByCourseRow['tuitionExemptionType'],
+            fullAmountCents: row.fullAmountCents != null ? Number(row.fullAmountCents) : null,
+            paymentDueDay: row.paymentDueDay != null ? Number(row.paymentDueDay) : null,
+            discountCents: row.discountCents != null ? Number(row.discountCents) : null,
+            discountMonths: row.discountMonths != null ? Number(row.discountMonths) : null,
+            courseMonthlyPriceCents:
+                row.courseMonthlyPriceCents != null ? Number(row.courseMonthlyPriceCents) : null,
+            classMonthlyPriceCents:
+                row.classMonthlyPriceCents != null ? Number(row.classMonthlyPriceCents) : null
+        }));
     }
 
     async findMyCourses(userId: string): Promise<import('../../../ports/repositories/enrollment.repo').MyCourseData[]> {
@@ -206,6 +421,7 @@ export class EnrollmentRepositoryAdapter implements EnrollmentRepository {
                 statuses: ['ACTIVE', 'CANCELLED', 'COMPLETED']
             })
             .select([
+                'enrollment.id AS enrollmentId',
                 'course.id AS courseId',
                 'course.name AS courseName',
                 'course.isActive AS courseIsActive',
@@ -219,18 +435,10 @@ export class EnrollmentRepositoryAdapter implements EnrollmentRepository {
             .getRawMany();
 
         return results.map((row: any) => {
-            let schedule: Array<{ day: string; start: string; end: string }> = [];
-            if (Array.isArray(row.schedule)) {
-                schedule = row.schedule;
-            } else if (typeof row.schedule === 'string') {
-                try {
-                    schedule = JSON.parse(row.schedule);
-                } catch {
-                    schedule = [];
-                }
-            }
+            const schedule = parseClassSchedule(row.schedule);
 
             return {
+                enrollmentId: String(row.enrollmentId),
                 courseId: row.courseId,
                 courseName: row.courseName,
                 schoolId: row.schoolId,
@@ -355,7 +563,8 @@ export class EnrollmentRepositoryAdapter implements EnrollmentRepository {
                 'studentUser.addressCity AS addressCity',
                 'studentUser.addressState AS addressState',
                 'studentUser.addressZipCode AS addressZipCode',
-                'studentUser.createdAt AS createdAt'
+                'studentUser.createdAt AS createdAt',
+                'studentUser.active AS active'
             ])
             .addSelect(
                 '(SELECT COUNT(*) FROM enrollments e2 WHERE e2.student_user_id = studentUser.id AND e2.status = \'ACTIVE\')',
@@ -373,6 +582,7 @@ export class EnrollmentRepositoryAdapter implements EnrollmentRepository {
             .addGroupBy('studentUser.addressState')
             .addGroupBy('studentUser.addressZipCode')
             .addGroupBy('studentUser.createdAt')
+            .addGroupBy('studentUser.active')
             .orderBy('studentUser.createdAt', 'DESC')
             .skip(safeOffset)
             .take(safeLimit)
@@ -382,6 +592,7 @@ export class EnrollmentRepositoryAdapter implements EnrollmentRepository {
             cpf: row.cpf ?? null,
             studentId: row.studentId,
             studentName: row.studentName ?? '',
+            status: presentStudentAccountStatus(Number(row.active ?? 1) !== 0),
             studentType: 'USER' as const,
             birthDate: formatAdminStudentBirthDate(row.birthDate),
             endereco: {
@@ -418,6 +629,9 @@ export class EnrollmentRepositoryAdapter implements EnrollmentRepository {
                 updatedAt: row.updatedAt,
                 fullAmountCents: row.fullAmountCents,
                 paymentDueDay: row.paymentDueDay,
+                tuitionExemptionType: row.tuitionExemptionType,
+                discountCents: row.discountCents ?? null,
+                discountMonths: row.discountMonths ?? null,
                 currentSchoolStudentLevelId: row.currentSchoolStudentLevelId
             });
         }
@@ -431,6 +645,9 @@ export class EnrollmentRepositoryAdapter implements EnrollmentRepository {
             updatedAt: row.updatedAt,
             fullAmountCents: row.fullAmountCents,
             paymentDueDay: row.paymentDueDay,
+            tuitionExemptionType: row.tuitionExemptionType,
+            discountCents: row.discountCents ?? null,
+            discountMonths: row.discountMonths ?? null,
             currentSchoolStudentLevelId: row.currentSchoolStudentLevelId
         });
     }
@@ -445,7 +662,10 @@ export class EnrollmentRepositoryAdapter implements EnrollmentRepository {
         row.dependentId = enrollment.dependentId;
         row.status = enrollment.status;
         row.fullAmountCents = enrollment.fullAmountCents;
+        row.tuitionExemptionType = enrollment.tuitionExemptionType;
         row.paymentDueDay = enrollment.paymentDueDay;
+        row.discountCents = enrollment.discountCents;
+        row.discountMonths = enrollment.discountMonths;
         row.currentSchoolStudentLevelId = enrollment.currentSchoolStudentLevelId;
         row.enrolledAt = enrollment.enrolledAt;
         row.updatedAt = new Date();

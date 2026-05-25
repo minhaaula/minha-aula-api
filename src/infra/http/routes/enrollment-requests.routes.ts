@@ -1,15 +1,21 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { CreateEnrollmentRequest } from '../../../app/use-cases/create-enrollment-request';
-import { ApproveEnrollmentRequest } from '../../../app/use-cases/approve-enrollment-request';
-import { ListEnrollmentRequests } from '../../../app/use-cases/list-enrollment-requests';
-import { GetEnrollmentRequest } from '../../../app/use-cases/get-enrollment-request';
-import { IssueEnrollmentFeeBoleto } from '../../../app/use-cases/issue-enrollment-fee-boleto';
+import { CreateEnrollmentRequest } from '../../../app/use-cases/enrollments/create-enrollment-request';
+import { ApproveEnrollmentRequest } from '../../../app/use-cases/enrollments/approve-enrollment-request';
+import { ListEnrollmentRequests } from '../../../app/use-cases/enrollments/list-enrollment-requests';
+import { GetEnrollmentRequest } from '../../../app/use-cases/enrollments/get-enrollment-request';
+import { IssueEnrollmentFeeBoleto } from '../../../app/use-cases/payments/issue-enrollment-fee-boleto';
 import { AuthenticatedRequest } from '../middlewares/auth';
 import { requirePersona } from '../middlewares/require-persona';
 import { UserPersonaEnum } from '../../../domain/value-objects/user-persona';
 import type { EnrollmentRequest, EnrollmentRequestStatus } from '../../../domain/entities/enrollment-request';
 import type { EnrollmentRequestWithDetails } from '../../../ports/repositories/enrollment-request.repo';
+import {
+    enrollmentTuitionExemptionFields,
+    optionalFirstMonthlyPaymentDateSchema,
+    refineEnrollmentTuitionExemption,
+    refineFirstMonthlyPaymentDateUnlessExempt
+} from '../validators/enrollment-exemption-schemas';
 
 /** Express pode entregar o mesmo parâmetro como string ou string[] (ex.: cliente duplicando query). */
 function firstQueryString(value: unknown): string | undefined {
@@ -52,6 +58,8 @@ export function enrollmentRequestsRouter(deps: {
                 ? request.enrollmentFeeDueDate.toISOString().slice(0, 10)
                 : null,
             firstMonthlyPaymentDate: request.firstMonthlyPaymentDate.toISOString().slice(0, 10),
+            tuitionExempt: request.isTuitionExempt,
+            tuitionExemptionType: request.tuitionExemptionType,
             enrollmentId: request.enrollmentId,
             createdAt: request.createdAt,
             courseLabel: 'request' in item ? item.courseLabel : null,
@@ -239,28 +247,32 @@ export function enrollmentRequestsRouter(deps: {
             const loggedUserId = authReq.user?.sub;
             const persona = authReq.user?.persona;
 
-            const bodySchema = z.object({
-                requestedForUserId: z.string().uuid().optional(),
-                requestedForDependentId: z.string().uuid().nullable().optional(),
-                notes: z.string().max(255).optional(),
-                discont: z.coerce.number().min(0).optional(),
-                discountMonths: z.coerce.number().int().min(1).optional(),
-                schoolId: z.string().uuid().optional(),
-                enrollmentFeeAmount: z.coerce.number().min(0).optional(),
-                enrollmentFeeDueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-                firstMonthlyPaymentDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
-            }).superRefine((data, ctx) => {
-                // Se há desconto, discountMonths é obrigatório
-                if (data.discont !== undefined && data.discont !== null && data.discont > 0) {
-                    if (!data.discountMonths || data.discountMonths < 1) {
-                        ctx.addIssue({
-                            code: z.ZodIssueCode.custom,
-                            path: ['discountMonths'],
-                            message: 'discountMonths é obrigatório quando há desconto (discont > 0)'
-                        });
+            const bodySchema = z
+                .object({
+                    requestedForUserId: z.string().uuid().optional(),
+                    requestedForDependentId: z.string().uuid().nullable().optional(),
+                    notes: z.string().max(255).optional(),
+                    discont: z.coerce.number().min(0).optional(),
+                    discountMonths: z.coerce.number().int().min(1).optional(),
+                    schoolId: z.string().uuid().optional(),
+                    enrollmentFeeAmount: z.coerce.number().min(0).optional(),
+                    enrollmentFeeDueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+                    firstMonthlyPaymentDate: optionalFirstMonthlyPaymentDateSchema,
+                    ...enrollmentTuitionExemptionFields
+                })
+                .superRefine((data, ctx) => {
+                    if (data.discont !== undefined && data.discont !== null && data.discont > 0) {
+                        if (!data.discountMonths || data.discountMonths < 1) {
+                            ctx.addIssue({
+                                code: z.ZodIssueCode.custom,
+                                path: ['discountMonths'],
+                                message: 'discountMonths é obrigatório quando há desconto (discont > 0)'
+                            });
+                        }
                     }
-                }
-            });
+                    refineEnrollmentTuitionExemption(data, ctx);
+                    refineFirstMonthlyPaymentDateUnlessExempt(data, ctx);
+                });
             const data = bodySchema.parse(req.body);
 
             // Determinar schoolId
@@ -312,6 +324,8 @@ export function enrollmentRequestsRouter(deps: {
                 enrollmentFeeAmount: data.enrollmentFeeAmount ?? null,
                 enrollmentFeeDueDate: data.enrollmentFeeDueDate ?? null,
                 firstMonthlyPaymentDate: data.firstMonthlyPaymentDate,
+                tuitionExemptionType:
+                    data.tuitionExempt === true ? (data.tuitionExemptionType ?? null) : null,
                 initiatedBySchool
             });
             res.status(201).json(serializeEnrollmentRequest(request));
@@ -330,27 +344,32 @@ export function enrollmentRequestsRouter(deps: {
             const authReq = req as AuthenticatedRequest;
             const persona = authReq.user?.persona;
 
-            const bodySchema = z.object({
-                requestedForUserId: z.string().uuid(),
-                requestedForDependentId: z.string().uuid().nullable().optional(),
-                notes: z.string().max(255).optional(),
-                discont: z.coerce.number().min(0).optional(),
-                discountMonths: z.coerce.number().int().min(1).optional(),
-                schoolId: z.string().uuid().optional(),
-                enrollmentFeeAmount: z.coerce.number().min(0).optional(),
-                enrollmentFeeDueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-                firstMonthlyPaymentDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
-            }).superRefine((data, ctx) => {
-                if (data.discont !== undefined && data.discont !== null && data.discont > 0) {
-                    if (!data.discountMonths || data.discountMonths < 1) {
-                        ctx.addIssue({
-                            code: z.ZodIssueCode.custom,
-                            path: ['discountMonths'],
-                            message: 'discountMonths é obrigatório quando há desconto (discont > 0)'
-                        });
+            const bodySchema = z
+                .object({
+                    requestedForUserId: z.string().uuid(),
+                    requestedForDependentId: z.string().uuid().nullable().optional(),
+                    notes: z.string().max(255).optional(),
+                    discont: z.coerce.number().min(0).optional(),
+                    discountMonths: z.coerce.number().int().min(1).optional(),
+                    schoolId: z.string().uuid().optional(),
+                    enrollmentFeeAmount: z.coerce.number().min(0).optional(),
+                    enrollmentFeeDueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+                    firstMonthlyPaymentDate: optionalFirstMonthlyPaymentDateSchema,
+                    ...enrollmentTuitionExemptionFields
+                })
+                .superRefine((data, ctx) => {
+                    if (data.discont !== undefined && data.discont !== null && data.discont > 0) {
+                        if (!data.discountMonths || data.discountMonths < 1) {
+                            ctx.addIssue({
+                                code: z.ZodIssueCode.custom,
+                                path: ['discountMonths'],
+                                message: 'discountMonths é obrigatório quando há desconto (discont > 0)'
+                            });
+                        }
                     }
-                }
-            });
+                    refineEnrollmentTuitionExemption(data, ctx);
+                    refineFirstMonthlyPaymentDateUnlessExempt(data, ctx);
+                });
 
             const data = bodySchema.parse(req.body);
 
@@ -384,6 +403,8 @@ export function enrollmentRequestsRouter(deps: {
                 enrollmentFeeAmount: data.enrollmentFeeAmount ?? null,
                 enrollmentFeeDueDate: data.enrollmentFeeDueDate ?? null,
                 firstMonthlyPaymentDate: data.firstMonthlyPaymentDate,
+                tuitionExemptionType:
+                    data.tuitionExempt === true ? (data.tuitionExemptionType ?? null) : null,
                 initiatedBySchool: true
             });
 

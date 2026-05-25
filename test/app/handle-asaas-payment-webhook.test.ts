@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { HandleAsaasPaymentWebhook } from '../../src/app/use-cases/handle-asaas-payment-webhook';
+import { HandleAsaasPaymentWebhook } from '../../src/app/use-cases/payments/handle-asaas-payment-webhook';
 import { SchoolPlanInvoiceRepository } from '../../src/ports/repositories/school-plan-invoice.repo';
 import { SchoolPlanInvoice } from '../../src/domain/entities/school-plan-invoice';
 import { SchoolPlanFinanceRepository } from '../../src/ports/repositories/school-plan-finance.repo';

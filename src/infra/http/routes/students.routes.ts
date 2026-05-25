@@ -1,50 +1,66 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { ListStudents } from '../../../app/use-cases/list-students';
-import { GetStudentDirectoryEntry } from '../../../app/use-cases/get-student-directory-entry';
-import { ListMyCourses } from '../../../app/use-cases/list-my-courses';
-import { ListAllCourses } from '../../../app/use-cases/list-all-courses';
-import { ListStudentPayments } from '../../../app/use-cases/list-student-payments';
-import { ListStudentPaidTotalsByYear } from '../../../app/use-cases/list-student-paid-totals-by-year';
-import { GetStudentPaymentDetails } from '../../../app/use-cases/get-student-payment-details';
-import { GetMyProfile } from '../../../app/use-cases/get-my-profile';
-import { ListMyEnrollmentRequests } from '../../../app/use-cases/list-my-enrollment-requests';
-import { UpdateStudentProfile } from '../../../app/use-cases/update-student-profile';
-import { DeactivateStudentAccount } from '../../../app/use-cases/deactivate-student-account';
-import { ListSchoolCourses } from '../../../app/use-cases/list-school-courses';
-import { ListSchoolReviews } from '../../../app/use-cases/list-school-reviews';
-import { CreateSchoolReview } from '../../../app/use-cases/create-school-review';
-import { ApproveEnrollmentRequest } from '../../../app/use-cases/approve-enrollment-request';
-import { RejectEnrollmentRequest } from '../../../app/use-cases/reject-enrollment-request';
-import { GetSchoolPublicDetails } from '../../../app/use-cases/get-school-public-details';
-import { GenerateTuitionPix } from '../../../app/use-cases/generate-tuition-pix';
-import { ListStudentNotifications } from '../../../app/use-cases/list-student-notifications';
-import { ReadAllNotifications } from '../../../app/use-cases/read-all-notifications';
-import { ReadStudentNotification } from '../../../app/use-cases/read-student-notification';
-import type { RegisterPushToken } from '../../../app/use-cases/register-push-token';
-import type { UnregisterPushToken } from '../../../app/use-cases/unregister-push-token';
-import type { ListEnrollmentTimeline } from '../../../app/use-cases/list-enrollment-timeline';
-import { parseEnrollmentTimelineQuery } from '../../../app/use-cases/list-enrollment-timeline';
+import { ListStudents } from '../../../app/use-cases/students/list-students';
+import { GetStudentDirectoryEntry } from '../../../app/use-cases/students/get-student-directory-entry';
+import { ListMyCourses } from '../../../app/use-cases/students/list-my-courses';
+import { ListMyTuitionExemptEnrollments } from '../../../app/use-cases/students/list-my-tuition-exempt-enrollments';
+import { GetMyEnrollmentByCourse } from '../../../app/use-cases/students/get-my-enrollment-by-course';
+import { ListAllCourses } from '../../../app/use-cases/students/list-all-courses';
+import { ListStudentPayments } from '../../../app/use-cases/students/list-student-payments';
+import { ListStudentPaidTotalsByYear } from '../../../app/use-cases/students/list-student-paid-totals-by-year';
+import { GetStudentPaymentDetails } from '../../../app/use-cases/students/get-student-payment-details';
+import { VerifyStudentPaymentStatus } from '../../../app/use-cases/students/verify-student-payment-status';
+import { GetMyProfile } from '../../../app/use-cases/students/get-my-profile';
+import { ListMyEnrollmentRequests } from '../../../app/use-cases/enrollments/list-my-enrollment-requests';
+import { UpdateStudentProfile } from '../../../app/use-cases/students/update-student-profile';
+import { DeactivateStudentAccount } from '../../../app/use-cases/students/deactivate-student-account';
+import { ListSchoolCourses } from '../../../app/use-cases/schools/list-school-courses';
+import { ListSchoolReviews } from '../../../app/use-cases/schools/list-school-reviews';
+import { CreateSchoolReview } from '../../../app/use-cases/schools/create-school-review';
+import { ApproveEnrollmentRequest } from '../../../app/use-cases/enrollments/approve-enrollment-request';
+import { RejectEnrollmentRequest } from '../../../app/use-cases/enrollments/reject-enrollment-request';
+import { GetSchoolPublicDetails } from '../../../app/use-cases/schools/get-school-public-details';
+import { GenerateTuitionPix } from '../../../app/use-cases/payments/generate-tuition-pix';
+import { ListStudentNotifications } from '../../../app/use-cases/students/list-student-notifications';
+import { ReadAllNotifications } from '../../../app/use-cases/students/read-all-notifications';
+import { ReadStudentNotification } from '../../../app/use-cases/students/read-student-notification';
+import type { RegisterPushToken } from '../../../app/use-cases/students/register-push-token';
+import type { UnregisterPushToken } from '../../../app/use-cases/students/unregister-push-token';
+import type { ListEnrollmentTimeline } from '../../../app/use-cases/enrollments/list-enrollment-timeline';
+import { parseEnrollmentTimelineQuery } from '../../../app/use-cases/enrollments/list-enrollment-timeline';
 import { buildStudentProfilePhotoRoutes } from './students/profile-photo.routes';
-import type { UploadStudentProfilePhoto } from '../../../app/use-cases/upload-student-profile-photo';
-import type { RemoveStudentProfilePhoto } from '../../../app/use-cases/remove-student-profile-photo';
+import type { UploadStudentProfilePhoto } from '../../../app/use-cases/students/upload-student-profile-photo';
+import type { RemoveStudentProfilePhoto } from '../../../app/use-cases/students/remove-student-profile-photo';
 import { requirePersona } from '../middlewares/require-persona';
 import { UserPersonaEnum } from '../../../domain/value-objects/user-persona';
 import { AuthenticatedRequest } from '../middlewares/auth';
 import { asyncHandler } from '../utils/async-handler';
-import { updateStudentProfileSchema, deactivateStudentAccountSchema } from '../validators/student-schemas';
+import {
+    updateStudentProfileSchema,
+    deactivateStudentAccountSchema,
+    requestStudentProfileUpdateOtpSchema,
+    verifyStudentProfileUpdateOtpSchema
+} from '../validators/student-schemas';
+import type { RequestStudentProfileUpdateOtp } from '../../../app/use-cases/students/request-student-profile-update-otp';
+import type { VerifyStudentProfileUpdateOtp } from '../../../app/use-cases/students/verify-student-profile-update-otp';
+import { authRateLimiter } from '../middlewares/rate-limiter';
 
 export function studentsRouter(deps: { 
     listStudents: ListStudents; 
     getStudentDirectoryEntry: GetStudentDirectoryEntry;
     listMyCourses?: ListMyCourses;
+    listMyTuitionExemptEnrollments?: ListMyTuitionExemptEnrollments;
+    getMyEnrollmentByCourse?: GetMyEnrollmentByCourse;
     listAllCourses?: ListAllCourses;
     listStudentPayments?: ListStudentPayments;
     listStudentPaidTotalsByYear?: ListStudentPaidTotalsByYear;
     getStudentPaymentDetails?: GetStudentPaymentDetails;
+    verifyStudentPaymentStatus?: VerifyStudentPaymentStatus;
     getMyProfile?: GetMyProfile;
     listMyEnrollmentRequests?: ListMyEnrollmentRequests;
     updateStudentProfile?: UpdateStudentProfile;
+    requestStudentProfileUpdateOtp?: RequestStudentProfileUpdateOtp;
+    verifyStudentProfileUpdateOtp?: VerifyStudentProfileUpdateOtp;
     deactivateStudentAccount?: DeactivateStudentAccount;
     listSchoolCourses?: ListSchoolCourses;
     listSchoolReviews?: ListSchoolReviews;
@@ -195,6 +211,55 @@ export function studentsRouter(deps: {
         }));
     }
 
+    if (deps.requestStudentProfileUpdateOtp) {
+        r.post(
+            '/me/profile-update/verification/request',
+            requireStudent,
+            authRateLimiter,
+            asyncHandler(async (req, res) => {
+                const authReq = req as AuthenticatedRequest;
+                if (!authReq.user?.sub) {
+                    return res.status(401).json({
+                        error: 'Não autorizado',
+                        code: 'UNAUTHORIZED'
+                    });
+                }
+
+                const data = requestStudentProfileUpdateOtpSchema.parse(req.body ?? {});
+                const result = await deps.requestStudentProfileUpdateOtp!.exec({
+                    userId: authReq.user.sub,
+                    phone: data.phone
+                });
+                res.status(201).json(result);
+            })
+        );
+    }
+
+    if (deps.verifyStudentProfileUpdateOtp) {
+        r.post(
+            '/me/profile-update/verification/verify',
+            requireStudent,
+            authRateLimiter,
+            asyncHandler(async (req, res) => {
+                const authReq = req as AuthenticatedRequest;
+                if (!authReq.user?.sub) {
+                    return res.status(401).json({
+                        error: 'Não autorizado',
+                        code: 'UNAUTHORIZED'
+                    });
+                }
+
+                const data = verifyStudentProfileUpdateOtpSchema.parse(req.body ?? {});
+                const result = await deps.verifyStudentProfileUpdateOtp!.exec({
+                    userId: authReq.user.sub,
+                    challengeId: data.challengeId,
+                    code: data.code
+                });
+                res.json(result);
+            })
+        );
+    }
+
     if (deps.updateStudentProfile) {
         r.put('/me', requireStudent, asyncHandler(async (req, res) => {
             const authReq = req as AuthenticatedRequest;
@@ -208,10 +273,13 @@ export function studentsRouter(deps: {
             const data = updateStudentProfileSchema.parse(req.body ?? {});
             const result = await deps.updateStudentProfile!.exec({
                 userId: authReq.user.sub,
+                profileUpdateVerificationToken: data.profileUpdateVerificationToken,
                 fullName: data.fullName,
                 email: data.email,
                 phone: data.phone,
-                address: data.address
+                birthDate: data.birthDate,
+                address: data.address,
+                gender: data.gender !== undefined ? data.gender : undefined
             });
 
             res.json(result);
@@ -231,6 +299,48 @@ export function studentsRouter(deps: {
                 userId: authReq.user.sub,
                 motivo: dto.motivo,
                 descricao: dto.descricao ?? ''
+            });
+            res.json(result);
+        }));
+    }
+
+    if (deps.listMyTuitionExemptEnrollments) {
+        r.get('/enrollments/tuition-exempt', requireStudent, asyncHandler(async (req, res) => {
+            const authReq = req as AuthenticatedRequest;
+            if (!authReq.user?.sub) {
+                return res.status(401).json({
+                    error: 'Não autorizado',
+                    code: 'UNAUTHORIZED'
+                });
+            }
+
+            const result = await deps.listMyTuitionExemptEnrollments!.exec({ userId: authReq.user.sub });
+            res.json(result);
+        }));
+    }
+
+    if (deps.getMyEnrollmentByCourse) {
+        r.get('/courses/:courseId/enrollment', requireStudent, asyncHandler(async (req, res) => {
+            const authReq = req as AuthenticatedRequest;
+            if (!authReq.user?.sub) {
+                return res.status(401).json({
+                    error: 'Não autorizado',
+                    code: 'UNAUTHORIZED'
+                });
+            }
+
+            const params = z.object({ courseId: z.string().uuid() }).parse(req.params);
+            const query = z
+                .object({
+                    enrollmentId: z.string().uuid().optional()
+                })
+                .parse(req.query);
+
+            const result = await deps.getMyEnrollmentByCourse!.exec({
+                ownerUserId: authReq.user.sub,
+                courseId: params.courseId,
+                enrollmentId:
+                    typeof query.enrollmentId === 'string' ? query.enrollmentId : undefined
             });
             res.json(result);
         }));
@@ -331,6 +441,30 @@ export function studentsRouter(deps: {
             const result = await deps.listStudentPaidTotalsByYear!.exec({
                 userId: authReq.user.sub
             });
+            res.json(result);
+        }));
+    }
+
+    if (deps.verifyStudentPaymentStatus) {
+        r.get('/payments/:paymentId/status', requireStudent, asyncHandler(async (req, res) => {
+            const authReq = req as AuthenticatedRequest;
+            if (!authReq.user?.sub) {
+                return res.status(401).json({
+                    error: 'Não autorizado',
+                    code: 'UNAUTHORIZED'
+                });
+            }
+
+            const paramsSchema = z.object({
+                paymentId: z.string().uuid('ID do pagamento inválido')
+            });
+            const { paymentId } = paramsSchema.parse(req.params);
+
+            const result = await deps.verifyStudentPaymentStatus!.exec({
+                paymentId,
+                userId: authReq.user.sub
+            });
+
             res.json(result);
         }));
     }

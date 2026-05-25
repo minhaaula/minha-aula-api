@@ -3,9 +3,9 @@ import { asyncHandler } from '../../utils/async-handler';
 import { RequestHandler } from 'express';
 import { requirePersona } from '../../middlewares/require-persona';
 import { UserPersonaEnum } from '../../../../domain/value-objects/user-persona';
-import type { CreateDiscountCoupon } from '../../../../app/use-cases/create-discount-coupon';
-import type { ListDiscountCoupons } from '../../../../app/use-cases/list-discount-coupons';
-import type { ValidateDiscountCoupon } from '../../../../app/use-cases/validate-discount-coupon';
+import type { CreateDiscountCoupon } from '../../../../app/use-cases/admin/create-discount-coupon';
+import type { ListDiscountCoupons } from '../../../../app/use-cases/admin/list-discount-coupons';
+import type { ValidateDiscountCoupon } from '../../../../app/use-cases/admin/validate-discount-coupon';
 import { z } from 'zod';
 
 /** Body compartilhado entre POST /admin/coupons e POST /admin/schools/:schoolId/plans/coupons */

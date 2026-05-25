@@ -74,6 +74,32 @@ export class CourseRepositoryAdapter implements CourseRepository {
         });
     }
 
+    async countActiveBySchoolIds(schoolIds: string[]): Promise<Map<string, number>> {
+        const ids = [...new Set(schoolIds.map((id) => id.trim()).filter(Boolean))];
+        const map = new Map<string, number>();
+        for (const id of ids) {
+            map.set(id, 0);
+        }
+        if (ids.length === 0) {
+            return map;
+        }
+
+        const rows = await this.repo
+            .createQueryBuilder('course')
+            .select('course.schoolId', 'schoolId')
+            .addSelect('COUNT(*)', 'cnt')
+            .where('course.schoolId IN (:...ids)', { ids })
+            .andWhere('course.isActive = :isActive', { isActive: true })
+            .andWhere('course.deletedAt IS NULL')
+            .groupBy('course.schoolId')
+            .getRawMany<{ schoolId: string; cnt: string }>();
+
+        for (const row of rows) {
+            map.set(row.schoolId, Number(row.cnt ?? 0));
+        }
+        return map;
+    }
+
     async findCategoriesByCourseIds(courseIds: string[]): Promise<import('../../../ports/repositories/course.repo').CourseCategoryInfo[]> {
         if (courseIds.length === 0) return [];
 
@@ -90,28 +116,35 @@ export class CourseRepositoryAdapter implements CourseRepository {
             ORDER BY cc.created_at ASC
         `, courseIds);
 
-        const categoriesMap = new Map<string, { category: string | null; subcategory: string | null }>();
+        const categoriesMap = new Map<string, { category: string | null; subcategories: Set<string> }>();
         for (const row of results) {
             const courseId = row.course_id;
             if (!categoriesMap.has(courseId)) {
                 categoriesMap.set(courseId, {
                     category: row.category_name || null,
-                    subcategory: row.subcategory_name || null
+                    subcategories: new Set()
                 });
-            } else {
-                const existing = categoriesMap.get(courseId)!;
-                if (!existing.subcategory && row.subcategory_name) {
-                    existing.subcategory = row.subcategory_name;
-                }
+            }
+            const existing = categoriesMap.get(courseId)!;
+            if (!existing.category && row.category_name) {
+                existing.category = row.category_name;
+            }
+            if (row.subcategory_name) {
+                existing.subcategories.add(row.subcategory_name);
             }
         }
 
-        return courseIds.map(courseId => {
-            const info = categoriesMap.get(courseId) || { category: null, subcategory: null };
+        return courseIds.map((courseId) => {
+            const info = categoriesMap.get(courseId) ?? {
+                category: null,
+                subcategories: new Set<string>()
+            };
+            const subcategories = Array.from(info.subcategories).sort((a, b) => a.localeCompare(b, 'pt-BR'));
             return {
                 courseId,
                 category: info.category,
-                subcategory: info.subcategory
+                subcategory: subcategories[0] ?? null,
+                subcategories
             };
         });
     }

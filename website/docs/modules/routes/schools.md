@@ -898,6 +898,13 @@ Erro `SCHOOL_STUDENT_LEVEL_IN_USE` quando houver associações.
 
 Retorna as matrículas ativas com os dados do aluno, dependente (quando existir), curso e turma.
 
+**Filtros (query):**
+
+- `name` — nome do aluno ou dependente (contém, case insensitive)
+- `courseId` — curso
+- `classId` — turma (`course_classes.id`)
+- `cpf` — CPF do titular ou do dependente matriculado
+
 ---
 
 ### `GET` `/schools/students/directory/\{cpf\}`

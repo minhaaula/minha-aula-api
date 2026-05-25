@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { RequestUserPasswordReset } from '../../src/app/use-cases/request-user-password-reset';
-import { ResetUserPassword } from '../../src/app/use-cases/reset-user-password';
+import { RequestUserPasswordReset } from '../../src/app/use-cases/auth/request-user-password-reset';
+import { ResetUserPassword } from '../../src/app/use-cases/auth/reset-user-password';
 import { UserRepository } from '../../src/ports/repositories/user.repo';
 import { PasswordResetTokenRepository } from '../../src/ports/repositories/password-reset-token.repo';
 import { PasswordHasherPort } from '../../src/ports/providers/password-hasher.port';

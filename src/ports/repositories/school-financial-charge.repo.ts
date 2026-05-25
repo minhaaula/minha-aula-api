@@ -74,6 +74,7 @@ export interface SchoolFinancialChargeRepository {
     getPaidTotalsByYearForOwnerUserId?(ownerUserId: string): Promise<StudentPaidTotalByYear[]>;
     findPaidChargesBySchoolId?(schoolId: string): Promise<PaidChargeSummary[]>;
     findLastTuitionCharge?(enrollmentId: string, courseClassId: string, ownerUserId: string, studentUserId: string | null, dependentId: string | null): Promise<SchoolFinancialCharge | null>;
+    findEarliestTuitionCharge?(courseClassId: string, ownerUserId: string, studentUserId: string | null, dependentId: string | null): Promise<SchoolFinancialCharge | null>;
     findTuitionChargesForMonth?(courseClassId: string, ownerUserId: string, studentUserId: string | null, dependentId: string | null, year: number, month: number): Promise<SchoolFinancialCharge[]>;
     getRevenueHistory?(schoolId: string, monthsLimit: number): Promise<Array<{ month: string; valueCents: number }>>;
     getOverdueSummary?(schoolId: string): Promise<{ totalAmountCents: number; count: number }>;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { UnenrollStudentFromClass } from '../../src/app/use-cases/unenroll-student-from-class';
+import { UnenrollStudentFromClass } from '../../src/app/use-cases/enrollments/unenroll-student-from-class';
 import type { CourseRepository } from '../../src/ports/repositories/course.repo';
 import type { CourseClassRepository } from '../../src/ports/repositories/course-class.repo';
 import type { EnrollmentRepository } from '../../src/ports/repositories/enrollment.repo';

@@ -21,6 +21,11 @@ export function getCalendarYmdInTimeZone(date: Date, timeZone: string): { year: 
     return { year: y, month: m, day: d };
 }
 
+/** Ano / mês / dia no fuso padrão do app (`APP_TIMEZONE` ou America/Sao_Paulo). */
+export function getAppCalendarYmd(date: Date = new Date()): { year: number; month: number; day: number } {
+    return getCalendarYmdInTimeZone(date, DEFAULT_APP_TIMEZONE());
+}
+
 function ymdToStamp(y: number, m: number, d: number): number {
     return y * 10000 + m * 100 + d;
 }

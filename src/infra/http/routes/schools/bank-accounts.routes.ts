@@ -1,9 +1,9 @@
 import { Router } from 'express';
 import { asyncHandler } from '../../utils/async-handler';
-import type { ListSchoolBankAccounts } from '../../../../app/use-cases/list-school-bank-accounts';
-import type { CreateSchoolBankAccount } from '../../../../app/use-cases/create-school-bank-account';
-import type { UpdateSchoolBankAccount } from '../../../../app/use-cases/update-school-bank-account';
-import type { DeleteSchoolBankAccount } from '../../../../app/use-cases/delete-school-bank-account';
+import type { ListSchoolBankAccounts } from '../../../../app/use-cases/schools/list-school-bank-accounts';
+import type { CreateSchoolBankAccount } from '../../../../app/use-cases/schools/create-school-bank-account';
+import type { UpdateSchoolBankAccount } from '../../../../app/use-cases/schools/update-school-bank-account';
+import type { DeleteSchoolBankAccount } from '../../../../app/use-cases/schools/delete-school-bank-account';
 import { createBankAccountSchema, updateBankAccountSchema } from '../../validators/bank-account-schemas';
 import type { SchoolRouteGuards } from './guards';
 import type { SchoolContextRequest } from '../../middlewares/resolve-school-context';

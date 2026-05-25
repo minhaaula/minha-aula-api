@@ -1,5 +1,6 @@
 import { Column, CreateDateColumn, Entity, Index, OneToMany, PrimaryColumn } from 'typeorm';
 import { SchoolOrm } from './school.orm';
+import type { Gender } from '../../../../domain/value-objects/gender';
 
 @Entity('users')
 @Index(['email'], { unique: true })
@@ -8,6 +9,7 @@ export class UserOrm {
     @PrimaryColumn('char', { length: 36 }) id!: string;
     @Column('varchar', { length: 191, name: 'full_name' }) fullName!: string;
     @Column('date', { name: 'birth_date' }) birthDate!: Date;
+    @Column('enum', { enum: ['MALE', 'FEMALE'], nullable: true }) gender!: Gender | null;
     @Column('varchar', { length: 191 }) email!: string;
     @Column('varchar', { length: 32 }) phone!: string;
     @Column('char', { length: 11 }) cpf!: string;
@@ -19,6 +21,7 @@ export class UserOrm {
     @Column('varchar', { length: 64, name: 'address_state' }) addressState!: string;
     @Column('varchar', { length: 16, name: 'address_zip_code' }) addressZipCode!: string;
     @Column('varchar', { length: 16 }) persona!: string;
+    @Column('tinyint', { name: 'student_access_enabled', default: 1 }) studentAccessEnabled!: number;
     @Column('varchar', { length: 255, name: 'password_hash' }) passwordHash!: string;
     @Column('varchar', { length: 500, name: 'photo_url', nullable: true }) photoUrl!: string | null;
     @Column('tinyint', { name: 'active', default: 1 }) active!: number;

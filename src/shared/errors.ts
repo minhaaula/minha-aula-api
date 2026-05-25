@@ -9,6 +9,8 @@ export enum ErrorCode {
     INVALID_EMAIL = 'INVALID_EMAIL',
     INVALID_DATE = 'INVALID_DATE',
     INVALID_BIRTH_DATE = 'INVALID_BIRTH_DATE',
+    /** Titular (aluno) com menos de 18 anos — use dependente. */
+    STUDENT_UNDERAGE_NOT_ALLOWED = 'STUDENT_UNDERAGE_NOT_ALLOWED',
     INVALID_PHONE = 'INVALID_PHONE',
     INVALID_IDENTIFIERS = 'INVALID_IDENTIFIERS',
     REQUIRED_FIELD = 'REQUIRED_FIELD',
@@ -44,9 +46,11 @@ export enum ErrorCode {
     SCHOOL_CONTEXT_NOT_FOUND = 'SCHOOL_CONTEXT_NOT_FOUND',
     NOT_ALLOWED = 'NOT_ALLOWED',
     INVALID_CREDENTIALS = 'INVALID_CREDENTIALS',
+    STUDENT_ACCESS_NOT_ENABLED = 'STUDENT_ACCESS_NOT_ENABLED',
     ACCOUNT_DEACTIVATED = 'ACCOUNT_DEACTIVATED',
     ACCOUNT_ALREADY_DEACTIVATED = 'ACCOUNT_ALREADY_DEACTIVATED',
     SCHOOL_ALREADY_DELETED = 'SCHOOL_ALREADY_DELETED',
+    SCHOOL_ONBOARDING_ALREADY_COMPLETED = 'SCHOOL_ONBOARDING_ALREADY_COMPLETED',
     CANNOT_DELETE_ADMIN_USER = 'CANNOT_DELETE_ADMIN_USER',
     CANNOT_DELETE_USER_WITH_ACTIVE_SCHOOL = 'CANNOT_DELETE_USER_WITH_ACTIVE_SCHOOL',
     
@@ -74,6 +78,12 @@ export enum ErrorCode {
     SCHOOL_SIGNUP_PHONE_NOT_VERIFIED = 'SCHOOL_SIGNUP_PHONE_NOT_VERIFIED',
     /** Envio do código ainda não concluído pelo worker (Twilio Verify na fila). */
     OTP_SEND_PENDING = 'OTP_SEND_PENDING',
+    /** Alteração de perfil do aluno exige token emitido após verificação do WhatsApp. */
+    STUDENT_PROFILE_NOT_VERIFIED = 'STUDENT_PROFILE_NOT_VERIFIED',
+    /** Usuário com persona SCHOOL não pode alterar identidade via rotas do aluno. @deprecated use SCHOOL_PERSONA_STUDENT_PROFILE_UPDATE_FORBIDDEN */
+    SCHOOL_OWNER_STUDENT_PROFILE_FIELD_LOCKED = 'SCHOOL_OWNER_STUDENT_PROFILE_FIELD_LOCKED',
+    /** Persona SCHOOL não pode alterar cadastro via rotas do app aluno — usar Painel da Escola. */
+    SCHOOL_PERSONA_STUDENT_PROFILE_UPDATE_FORBIDDEN = 'SCHOOL_PERSONA_STUDENT_PROFILE_UPDATE_FORBIDDEN',
     
     // Sistema (7000-7999)
     INTERNAL_ERROR = 'INTERNAL_ERROR',
@@ -89,6 +99,8 @@ export const ErrorMessages: Record<ErrorCode, string> = {
     [ErrorCode.INVALID_EMAIL]: 'Email inválido',
     [ErrorCode.INVALID_DATE]: 'Data inválida',
     [ErrorCode.INVALID_BIRTH_DATE]: 'Data de nascimento inválida',
+    [ErrorCode.STUDENT_UNDERAGE_NOT_ALLOWED]:
+        'O titular deve ter 18 anos ou mais. Menores de idade só podem ser cadastrados como dependentes.',
     [ErrorCode.INVALID_PHONE]: 'Telefone inválido',
     [ErrorCode.INVALID_IDENTIFIERS]: 'Identificadores inválidos',
     [ErrorCode.REQUIRED_FIELD]: 'Campo obrigatório não informado',
@@ -124,9 +136,12 @@ export const ErrorMessages: Record<ErrorCode, string> = {
     [ErrorCode.SCHOOL_CONTEXT_NOT_FOUND]: 'Contexto de escola não encontrado para o usuário',
     [ErrorCode.NOT_ALLOWED]: 'Operação não permitida',
     [ErrorCode.INVALID_CREDENTIALS]: 'Credenciais inválidas',
+    [ErrorCode.STUDENT_ACCESS_NOT_ENABLED]: 'Acesso como aluno não está habilitado para esta conta',
     [ErrorCode.ACCOUNT_DEACTIVATED]: 'Conta desativada',
     [ErrorCode.ACCOUNT_ALREADY_DEACTIVATED]: 'Conta já está desativada',
     [ErrorCode.SCHOOL_ALREADY_DELETED]: 'Escola já foi excluída',
+    [ErrorCode.SCHOOL_ONBOARDING_ALREADY_COMPLETED]:
+        'Não é possível alterar o cadastro: onboarding da escola já foi concluído',
     [ErrorCode.CANNOT_DELETE_ADMIN_USER]: 'Não é permitido excluir usuário administrador',
     [ErrorCode.CANNOT_DELETE_USER_WITH_ACTIVE_SCHOOL]: 'Usuário possui escola ativa vinculada. Exclua a escola antes.',
     
@@ -151,6 +166,12 @@ export const ErrorMessages: Record<ErrorCode, string> = {
     [ErrorCode.SIGNUP_PHONE_NOT_VERIFIED]: 'Confirme o código enviado ao WhatsApp antes de concluir o cadastro',
     [ErrorCode.SCHOOL_SIGNUP_PHONE_NOT_VERIFIED]: 'Confirme o código enviado ao WhatsApp antes de concluir o cadastro da escola',
     [ErrorCode.OTP_SEND_PENDING]: 'Aguarde alguns instantes. O código está sendo enviado ao WhatsApp.',
+    [ErrorCode.STUDENT_PROFILE_NOT_VERIFIED]:
+        'Confirme o código enviado ao WhatsApp antes de salvar as alterações do perfil',
+    [ErrorCode.SCHOOL_OWNER_STUDENT_PROFILE_FIELD_LOCKED]:
+        'Usuários que também são donos de escola, devem realizar alteração de dados pelo Painel da Escola.',
+    [ErrorCode.SCHOOL_PERSONA_STUDENT_PROFILE_UPDATE_FORBIDDEN]:
+        'Usuários que também são donos de escola, devem realizar alteração de dados pelo Painel da Escola.',
     
     // Sistema
     [ErrorCode.INTERNAL_ERROR]: 'Erro interno do servidor',
@@ -171,7 +192,10 @@ export class AppError extends Error {
     }
 
     static fromCode(code: ErrorCode, details?: Record<string, unknown>): AppError {
-        const message = ErrorMessages[code] || ErrorMessages[ErrorCode.INTERNAL_ERROR];
+        const override =
+            typeof details?.message === 'string' ? details.message : undefined;
+        const message =
+            override ?? ErrorMessages[code] ?? ErrorMessages[ErrorCode.INTERNAL_ERROR];
         return new AppError(code, message, details);
     }
 

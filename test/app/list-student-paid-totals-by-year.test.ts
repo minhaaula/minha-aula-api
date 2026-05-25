@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ListStudentPaidTotalsByYear } from '../../src/app/use-cases/list-student-paid-totals-by-year';
+import { ListStudentPaidTotalsByYear } from '../../src/app/use-cases/students/list-student-paid-totals-by-year';
 import {
     SchoolFinancialChargeRepository,
     StudentPaidTotalByYear

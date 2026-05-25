@@ -232,7 +232,9 @@ export class EnrollmentRequestRepositoryAdapter implements EnrollmentRequestRepo
             courseLabel: row.courseClass?.course?.name ?? null,
             studentName: row.requestedFor.fullName,
             dependentName: row.dependent?.fullName ?? null,
-            schoolName: row.school?.name ?? ''
+            schoolName: row.school?.name ?? '',
+            schoolCnpj: row.school?.cnpj?.trim() ? row.school.cnpj.trim() : null,
+            schoolOwnerCpf: row.school?.ownerCpf?.trim() ? row.school.ownerCpf.trim() : null
         }));
 
         return { items, total };
@@ -268,6 +270,7 @@ export class EnrollmentRequestRepositoryAdapter implements EnrollmentRequestRepo
             enrollmentFeeCents: row.enrollmentFeeCents ?? null,
             enrollmentFeeDueDate,
             firstMonthlyPaymentDate,
+            tuitionExemptionType: row.tuitionExemptionType ?? null,
             createdAt: row.createdAt
         });
         const rawStatus = (row.status as unknown as string) ?? 'PENDING';
@@ -281,6 +284,7 @@ export class EnrollmentRequestRepositoryAdapter implements EnrollmentRequestRepo
         (entity as any)._enrollmentFeeCents = row.enrollmentFeeCents ?? null;
         (entity as any)._enrollmentFeeDueDate = enrollmentFeeDueDate;
         (entity as any)._firstMonthlyPaymentDate = firstMonthlyPaymentDate;
+        (entity as any)._tuitionExemptionType = row.tuitionExemptionType ?? null;
         (entity as any)._enrollmentId = row.enrollmentId;
         return entity;
     }
@@ -303,6 +307,7 @@ export class EnrollmentRequestRepositoryAdapter implements EnrollmentRequestRepo
             ? request.enrollmentFeeDueDate.toISOString().slice(0, 10)
             : null;
         row.firstMonthlyPaymentDate = request.firstMonthlyPaymentDate.toISOString().slice(0, 10);
+        row.tuitionExemptionType = request.tuitionExemptionType;
         row.enrollmentId = request.enrollmentId;
         row.createdAt = request.createdAt;
         row.activePendingTargetKey = computeEnrollmentRequestActivePendingKey({

@@ -1,17 +1,18 @@
 import { Router, type RequestHandler } from 'express';
 import { z } from 'zod';
-import { RegisterUser } from '../../../app/use-cases/register-user';
-import { LoginUser } from '../../../app/use-cases/login-user';
-import { RefreshToken } from '../../../app/use-cases/refresh-token';
+import { RegisterUser } from '../../../app/use-cases/auth/register-user';
+import { LoginUser } from '../../../app/use-cases/auth/login-user';
+import { RefreshToken } from '../../../app/use-cases/auth/refresh-token';
 import { USER_PERSONAS } from '../../../domain/value-objects/user-persona';
-import { UpdateUserPassword } from '../../../app/use-cases/update-user-password';
-import type { RequestPhoneOtpChallenge } from '../../../app/use-cases/request-phone-otp-challenge';
-import type { VerifyPhoneOtpChallenge } from '../../../app/use-cases/verify-phone-otp-challenge';
-import { ResetUserPassword } from '../../../app/use-cases/reset-user-password';
-import { ValidatePasswordResetToken } from '../../../app/use-cases/validate-password-reset-token';
+import { UpdateUserPassword } from '../../../app/use-cases/auth/update-user-password';
+import type { RequestPhoneOtpChallenge } from '../../../app/use-cases/auth/request-phone-otp-challenge';
+import type { VerifyPhoneOtpChallenge } from '../../../app/use-cases/auth/verify-phone-otp-challenge';
+import { ResetUserPassword } from '../../../app/use-cases/auth/reset-user-password';
+import { ValidatePasswordResetToken } from '../../../app/use-cases/auth/validate-password-reset-token';
 import { AuthenticatedRequest } from '../middlewares/auth';
 import { cpfNumberSchema, phoneNumberSchema } from '../validators/numeric-fields';
 import { addressSchema } from '../validators/common-schemas';
+import { optionalGenderSchema } from '../validators/gender-schemas';
 import { authRateLimiter, registrationRateLimiter } from '../middlewares/rate-limiter';
 
 const cpfSchema = cpfNumberSchema();
@@ -51,7 +52,8 @@ export function authRouter({
         address: addressSchema,
         persona: z.enum(USER_PERSONAS),
         password: z.string().min(8),
-        phoneVerificationToken: z.string().min(1, 'Confirme o telefone no WhatsApp antes de cadastrar')
+        phoneVerificationToken: z.string().min(1, 'Confirme o telefone no WhatsApp antes de cadastrar'),
+        gender: optionalGenderSchema
     });
 
     const loginSchema = z.object({

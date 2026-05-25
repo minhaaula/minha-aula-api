@@ -7,57 +7,65 @@ import { CourseClassRepositoryAdapter } from '../../infra/db/typeorm/course-clas
 import { EnrollmentRepositoryAdapter } from '../../infra/db/typeorm/enrollment-repository';
 import { EnrollmentRequestRepositoryAdapter } from '../../infra/db/typeorm/enrollment-request-repository.adapter';
 import { SchoolFinancialChargeRepositoryAdapter } from '../../infra/db/typeorm/school-financial-charge-repository.adapter';
-import { AddDependent } from '../../app/use-cases/add-dependent';
-import { CreateEnrollmentRequest } from '../../app/use-cases/create-enrollment-request';
-import { ApproveEnrollmentRequest } from '../../app/use-cases/approve-enrollment-request';
-import { RejectEnrollmentRequest } from '../../app/use-cases/reject-enrollment-request';
-import { IssueEnrollmentFeeBoleto } from '../../app/use-cases/issue-enrollment-fee-boleto';
+import { AddDependent } from '../../app/use-cases/students/add-dependent';
+import { CreateEnrollmentRequest } from '../../app/use-cases/enrollments/create-enrollment-request';
+import { ApproveEnrollmentRequest } from '../../app/use-cases/enrollments/approve-enrollment-request';
+import { RejectEnrollmentRequest } from '../../app/use-cases/enrollments/reject-enrollment-request';
+import { IssueEnrollmentFeeBoleto } from '../../app/use-cases/payments/issue-enrollment-fee-boleto';
 import { dependentsRouter } from '../../infra/http/routes/dependents.routes';
 import { enrollmentRequestsRouter } from '../../infra/http/routes/enrollment-requests.routes';
-import { ListStudents } from '../../app/use-cases/list-students';
+import { ListStudents } from '../../app/use-cases/students/list-students';
 import { studentsRouter } from '../../infra/http/routes/students.routes';
-import { ListSchools } from '../../app/use-cases/list-schools';
-import { ListEnrollmentRequests } from '../../app/use-cases/list-enrollment-requests';
-import { GetEnrollmentRequest } from '../../app/use-cases/get-enrollment-request';
+import { ListSchools } from '../../app/use-cases/admin/list-schools';
+import { ListEnrollmentRequests } from '../../app/use-cases/enrollments/list-enrollment-requests';
+import { GetEnrollmentRequest } from '../../app/use-cases/enrollments/get-enrollment-request';
 import { PaymentProviderPort } from '../../ports/providers/payment-provider.port';
-import { GetStudentDirectoryEntry } from '../../app/use-cases/get-student-directory-entry';
-import { ListMyCourses } from '../../app/use-cases/list-my-courses';
-import { ListAllCourses } from '../../app/use-cases/list-all-courses';
-import { ListStudentPayments } from '../../app/use-cases/list-student-payments';
-import { ListStudentPaidTotalsByYear } from '../../app/use-cases/list-student-paid-totals-by-year';
-import { GetStudentPaymentDetails } from '../../app/use-cases/get-student-payment-details';
-import { ListMyDependents } from '../../app/use-cases/list-my-dependents';
-import { DeleteDependent } from '../../app/use-cases/delete-dependent';
-import { UpdateDependent } from '../../app/use-cases/update-dependent';
-import { GetMyProfile } from '../../app/use-cases/get-my-profile';
-import { ListMyEnrollmentRequests } from '../../app/use-cases/list-my-enrollment-requests';
-import { UpdateStudentProfile } from '../../app/use-cases/update-student-profile';
-import { DeactivateStudentAccount } from '../../app/use-cases/deactivate-student-account';
-import { ListSchoolCourses } from '../../app/use-cases/list-school-courses';
-import { ListSchoolReviews } from '../../app/use-cases/list-school-reviews';
-import { CreateSchoolReview } from '../../app/use-cases/create-school-review';
-import { GetSchoolPublicDetails } from '../../app/use-cases/get-school-public-details';
-import { GenerateTuitionPix } from '../../app/use-cases/generate-tuition-pix';
+import { GetStudentDirectoryEntry } from '../../app/use-cases/students/get-student-directory-entry';
+import { ListMyCourses } from '../../app/use-cases/students/list-my-courses';
+import { ListMyTuitionExemptEnrollments } from '../../app/use-cases/students/list-my-tuition-exempt-enrollments';
+import { GetMyEnrollmentByCourse } from '../../app/use-cases/students/get-my-enrollment-by-course';
+import { ListAllCourses } from '../../app/use-cases/students/list-all-courses';
+import { ListStudentPayments } from '../../app/use-cases/students/list-student-payments';
+import { ListStudentPaidTotalsByYear } from '../../app/use-cases/students/list-student-paid-totals-by-year';
+import { GetStudentPaymentDetails } from '../../app/use-cases/students/get-student-payment-details';
+import { VerifyStudentPaymentStatus } from '../../app/use-cases/students/verify-student-payment-status';
+import { ListMyDependents } from '../../app/use-cases/students/list-my-dependents';
+import { DeleteDependent } from '../../app/use-cases/students/delete-dependent';
+import { UpdateDependent } from '../../app/use-cases/students/update-dependent';
+import { GetMyProfile } from '../../app/use-cases/students/get-my-profile';
+import { ListMyEnrollmentRequests } from '../../app/use-cases/enrollments/list-my-enrollment-requests';
+import { UpdateStudentProfile } from '../../app/use-cases/students/update-student-profile';
+import { RequestStudentProfileUpdateOtp } from '../../app/use-cases/students/request-student-profile-update-otp';
+import { VerifyStudentProfileUpdateOtp } from '../../app/use-cases/students/verify-student-profile-update-otp';
+import { AuthPhoneOtpChallengeRepositoryAdapter } from '../../infra/db/typeorm/auth-phone-otp-challenge-repository.adapter';
+import { createTwilioVerifyFromEnv } from '../../infra/providers/twilio/create-twilio-verify-provider';
+import type { HmacTokenProvider } from '../../infra/auth/hmac-token-provider';
+import { DeactivateStudentAccount } from '../../app/use-cases/students/deactivate-student-account';
+import { ListSchoolCourses } from '../../app/use-cases/schools/list-school-courses';
+import { ListSchoolReviews } from '../../app/use-cases/schools/list-school-reviews';
+import { CreateSchoolReview } from '../../app/use-cases/schools/create-school-review';
+import { GetSchoolPublicDetails } from '../../app/use-cases/schools/get-school-public-details';
+import { GenerateTuitionPix } from '../../app/use-cases/payments/generate-tuition-pix';
 import { CategoryRepositoryAdapter } from '../../infra/db/typeorm/category-repository.adapter';
 import { SchoolReviewRepositoryAdapter } from '../../infra/db/typeorm/school-review-repository.adapter';
 import { NotificationRepositoryAdapter } from '../../infra/db/typeorm/notification-repository.adapter';
-import { ListStudentNotifications } from '../../app/use-cases/list-student-notifications';
-import { ReadAllNotifications } from '../../app/use-cases/read-all-notifications';
-import { ReadStudentNotification } from '../../app/use-cases/read-student-notification';
+import { ListStudentNotifications } from '../../app/use-cases/students/list-student-notifications';
+import { ReadAllNotifications } from '../../app/use-cases/students/read-all-notifications';
+import { ReadStudentNotification } from '../../app/use-cases/students/read-student-notification';
 import { PushTokenRepositoryAdapter } from '../../infra/db/typeorm/push-token-repository.adapter';
-import { RegisterPushToken } from '../../app/use-cases/register-push-token';
-import { UnregisterPushToken } from '../../app/use-cases/unregister-push-token';
+import { RegisterPushToken } from '../../app/use-cases/students/register-push-token';
+import { UnregisterPushToken } from '../../app/use-cases/students/unregister-push-token';
 import { EnrollmentProgressRepositoryAdapter } from '../../infra/db/typeorm/enrollment-progress-repository.adapter';
-import { ListEnrollmentTimeline } from '../../app/use-cases/list-enrollment-timeline';
-import { UploadStudentProfilePhoto } from '../../app/use-cases/upload-student-profile-photo';
-import { RemoveStudentProfilePhoto } from '../../app/use-cases/remove-student-profile-photo';
-import { UploadDependentProfilePhoto } from '../../app/use-cases/upload-dependent-profile-photo';
-import { RemoveDependentProfilePhoto } from '../../app/use-cases/remove-dependent-profile-photo';
+import { ListEnrollmentTimeline } from '../../app/use-cases/enrollments/list-enrollment-timeline';
+import { UploadStudentProfilePhoto } from '../../app/use-cases/students/upload-student-profile-photo';
+import { RemoveStudentProfilePhoto } from '../../app/use-cases/students/remove-student-profile-photo';
+import { UploadDependentProfilePhoto } from '../../app/use-cases/students/upload-dependent-profile-photo';
+import { RemoveDependentProfilePhoto } from '../../app/use-cases/students/remove-dependent-profile-photo';
 
 import { StorageProviderPort } from '../../ports/providers/storage-provider.port';
 import { SchoolImageRepositoryAdapter } from '../../infra/db/typeorm/school-image-repository.adapter';
 import { OutboxRepository } from '../../ports/repositories/outbox.repo';
-import { NotifyStudentUser } from '../../app/use-cases/notify-student-user';
+import { NotifyStudentUser } from '../../app/use-cases/shared/notify-student-user';
 import { MODULE_DOC_FILES } from '../module-config';
 
 export type StudentsModuleDeps = {
@@ -77,6 +85,7 @@ export type StudentsModuleDeps = {
     pushTokensRepo?: PushTokenRepositoryAdapter;
     outbox?: OutboxRepository;
     frontendBaseUrl?: string;
+    tokenProvider?: HmacTokenProvider;
 };
 
 export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupContext): ModuleBuildResult {
@@ -95,10 +104,31 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
     );
     const getStudentDirectoryEntry = new GetStudentDirectoryEntry(deps.usersRepo, deps.dependentsRepo);
     const getMyProfile = new GetMyProfile(deps.usersRepo, deps.dependentsRepo, deps.storageProvider);
-    const updateStudentProfile = new UpdateStudentProfile(deps.usersRepo);
+    const authPhoneOtpRepo = new AuthPhoneOtpChallengeRepositoryAdapter();
+    const twilioVerify = createTwilioVerifyFromEnv();
+    const requestStudentProfileUpdateOtp = new RequestStudentProfileUpdateOtp(
+        authPhoneOtpRepo,
+        deps.usersRepo,
+        twilioVerify,
+        deps.outbox
+    );
+    const verifyStudentProfileUpdateOtp =
+        deps.tokenProvider
+            ? new VerifyStudentProfileUpdateOtp(
+                  authPhoneOtpRepo,
+                  twilioVerify,
+                  deps.tokenProvider,
+                  deps.usersRepo
+              )
+            : undefined;
+    const updateStudentProfile = deps.tokenProvider
+        ? new UpdateStudentProfile(deps.usersRepo, deps.tokenProvider)
+        : undefined;
     const deactivateStudentAccount = new DeactivateStudentAccount(deps.usersRepo);
     const schoolImagesRepo = new SchoolImageRepositoryAdapter();
     const listMyCourses = new ListMyCourses(deps.enrollmentsRepo, deps.coursesRepo, deps.schoolsRepo, schoolImagesRepo, deps.storageProvider);
+    const listMyTuitionExemptEnrollments = new ListMyTuitionExemptEnrollments(deps.enrollmentsRepo);
+    const getMyEnrollmentByCourse = new GetMyEnrollmentByCourse(deps.enrollmentsRepo);
     const listAllCourses = deps.categoriesRepo
         ? new ListAllCourses(deps.coursesRepo, deps.categoriesRepo, schoolImagesRepo, deps.storageProvider, deps.schoolReviewsRepo)
         : undefined;
@@ -110,6 +140,11 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
         deps.dependentsRepo,
         deps.coursesRepo,
         deps.classesRepo
+    );
+    const verifyStudentPaymentStatus = new VerifyStudentPaymentStatus(
+        deps.financialChargesRepo,
+        deps.schoolsRepo,
+        deps.paymentProvider
     );
     const listSchools = new ListSchools(deps.schoolsRepo);
     const createEnrollmentRequest = new CreateEnrollmentRequest(
@@ -226,12 +261,17 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
         getStudentDirectoryEntry,
         getMyProfile,
         updateStudentProfile,
+        requestStudentProfileUpdateOtp,
+        verifyStudentProfileUpdateOtp,
         deactivateStudentAccount,
         listMyCourses,
+        listMyTuitionExemptEnrollments,
+        getMyEnrollmentByCourse,
         listAllCourses,
         listStudentPayments,
         listStudentPaidTotalsByYear,
         getStudentPaymentDetails,
+        verifyStudentPaymentStatus,
         listMyEnrollmentRequests,
         listSchoolCourses,
         listSchoolReviews,

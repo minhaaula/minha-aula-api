@@ -1,3 +1,5 @@
+import { AppError, ErrorCode } from './errors';
+
 /**
  * Considera menor de idade quem tem menos de 18 anos completos na data de referência.
  */
@@ -16,4 +18,16 @@ export function isMinorByBirthDate(
         age -= 1;
     }
     return age < 18;
+}
+
+/** Titular (conta STUDENT) não pode ser menor de 18 anos; dependentes podem. */
+export function assertTitularMinimumAge(
+    birthDate: Date,
+    referenceDate: Date = new Date()
+): void {
+    if (isMinorByBirthDate(birthDate, referenceDate)) {
+        throw AppError.fromCode(ErrorCode.STUDENT_UNDERAGE_NOT_ALLOWED, {
+            birthDate: birthDate.toISOString().slice(0, 10)
+        });
+    }
 }

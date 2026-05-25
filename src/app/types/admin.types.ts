@@ -10,6 +10,17 @@ import type { SchoolProfileOnboarding } from './school.types';
 /** Status da escola no sistema: ativo (com plano em uso) ou inativo */
 export type SchoolStatus = 'ACTIVE' | 'INACTIVE';
 
+/** Status da conta do aluno titular (users.active) ou do dependente (soft delete). */
+export type StudentAccountStatus = 'ACTIVE' | 'INACTIVE';
+
+export function presentStudentAccountStatus(active: boolean): StudentAccountStatus {
+    return active ? 'ACTIVE' : 'INACTIVE';
+}
+
+export function presentDependentStudentStatus(deletedAt: Date | null): StudentAccountStatus {
+    return deletedAt ? 'INACTIVE' : 'ACTIVE';
+}
+
 /** Status de pagamento do plano: em dia, atrasado ou sem plano */
 export type PaymentStatus = 'EM_DIA' | 'ATRASADO' | null;
 
@@ -41,6 +52,12 @@ export interface SchoolWithPlanItem {
      * `null` quando não há subconta (`accountId` ausente).
      */
     asaasAccount: AdminSchoolAsaasAccountView | null;
+    /** Matrículas ativas na escola (mesma regra do dashboard da escola). */
+    studentCount: number;
+    /** Cursos ativos (`is_active`, não excluídos). */
+    courseCount: number;
+    /** Turmas ativas. */
+    classCount: number;
 }
 
 /**
@@ -53,6 +70,8 @@ export interface AdminSchoolDetails extends SchoolWithPlanItem {
     schoolLogo: string | null;
     incomeValue: number;
     ownerUserId: string | null;
+    /** Se o dono pode usar login de aluno (null sem owner_user_id). */
+    ownerStudentAccessEnabled: boolean | null;
     /**
      * Identificadores da conta no provedor de pagamentos (Asaas).
      * Podem ser nulos quando a conta ainda não foi criada/associada.

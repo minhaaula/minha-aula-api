@@ -1,3 +1,6 @@
+import type { Gender } from '../value-objects/gender';
+import { parseGender } from '../value-objects/gender';
+
 export class Dependent {
     private constructor(
         public readonly id: string,
@@ -8,7 +11,8 @@ export class Dependent {
         public readonly relationship: string | null,
         public readonly createdAt: Date,
         private _deletedAt: Date | null = null,
-        private _photoStorageKey: string | null = null
+        private _photoStorageKey: string | null = null,
+        private readonly _gender: Gender | null = null
     ) {}
 
     static create(params: {
@@ -21,6 +25,7 @@ export class Dependent {
         createdAt?: Date;
         deletedAt?: Date | null;
         photoStorageKey?: string | null;
+        gender?: Gender | null;
     }) {
         const userId = params.userId.trim();
         if (!userId) throw new Error('User id is required');
@@ -39,8 +44,13 @@ export class Dependent {
             relationship,
             params.createdAt ?? new Date(),
             params.deletedAt ?? null,
-            params.photoStorageKey?.trim() || null
+            params.photoStorageKey?.trim() || null,
+            parseGender(params.gender)
         );
+    }
+
+    get gender(): Gender | null {
+        return this._gender;
     }
 
     get photoStorageKey(): string | null {

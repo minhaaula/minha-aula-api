@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { aggregateStudentChargeAmounts } from '../../src/app/use-cases/consolidate-school-student-financial';
+import { aggregateStudentChargeAmounts } from '../../src/app/use-cases/schools/consolidate-school-student-financial';
 
 describe('aggregateStudentChargeAmounts', () => {
     it('separa pago, pendente, atrasado e inclui cancelado só no grand total', () => {

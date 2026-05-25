@@ -1,10 +1,10 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { asyncHandler } from '../../utils/async-handler';
-import type { RequestPhoneOtpChallenge } from '../../../../app/use-cases/request-phone-otp-challenge';
-import type { VerifyPhoneOtpChallenge } from '../../../../app/use-cases/verify-phone-otp-challenge';
-import type { ResetPassword } from '../../../../app/use-cases/reset-password';
-import type { ValidatePasswordResetToken } from '../../../../app/use-cases/validate-password-reset-token';
+import type { RequestPhoneOtpChallenge } from '../../../../app/use-cases/auth/request-phone-otp-challenge';
+import type { VerifyPhoneOtpChallenge } from '../../../../app/use-cases/auth/verify-phone-otp-challenge';
+import type { ResetPassword } from '../../../../app/use-cases/auth/reset-password';
+import type { ValidatePasswordResetToken } from '../../../../app/use-cases/auth/validate-password-reset-token';
 
 type PasswordResetRoutesDeps = {
     requestSchoolPasswordPhoneOtp?: RequestPhoneOtpChallenge;

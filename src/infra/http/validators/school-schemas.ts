@@ -15,6 +15,8 @@ export const createSchoolObjectSchema = z.object({
     email: z.string().trim().email(),
     phone: phoneNumberSchema(),
     cnpj: cnpjNumberSchema().optional().nullable(),
+    /** Associação sem fins lucrativos — quando true, CNPJ é obrigatório. */
+    isNonprofitAssociation: z.boolean().optional().default(false),
     incomeValue: z.number().int().positive().optional(),
     ownerName: z.string().trim().min(3),
     ownerCpf: cpfNumberSchema(),
@@ -30,6 +32,13 @@ export const createSchoolObjectSchema = z.object({
 export const createSchoolSchema = createSchoolObjectSchema.superRefine((data, ctx) => {
     const cnpjDigits = (data.cnpj ?? '').replace(/\D/g, '');
     const hasCnpj = cnpjDigits.length === 14;
+    if (data.isNonprofitAssociation && !hasCnpj) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'CNPJ é obrigatório quando a escola é associação sem fins lucrativos.',
+            path: ['cnpj']
+        });
+    }
     if (!hasCnpj && !data.ownerBirthDate?.trim()) {
         ctx.addIssue({
             code: z.ZodIssueCode.custom,
@@ -51,6 +60,7 @@ export const updateSchoolSchema = z.object({
     ownerWhatsapp: z.union([z.null(), phoneNumberSchema()]).optional(),
     ownerUserId: z.string().trim().min(1).nullable().optional(),
     ownerPassword: z.string().min(8).nullable().optional(),
+    ownerStudentAccessEnabled: z.boolean().optional(),
     incomeValue: z.number().int().positive().optional(),
     addresses: z.array(addressSchema).optional(),
     links: z.object({

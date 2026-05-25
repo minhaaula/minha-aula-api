@@ -1,4 +1,9 @@
-export type AuthPhoneOtpPurpose = 'signup' | 'school_signup' | 'user_password_reset' | 'school_password_reset';
+export type AuthPhoneOtpPurpose =
+    | 'signup'
+    | 'school_signup'
+    | 'user_password_reset'
+    | 'school_password_reset'
+    | 'student_profile_update';
 
 /** Quando Twilio Verify envia o OTP, o código real não fica no banco. */
 export class AuthPhoneOtpChallenge {
@@ -8,6 +13,7 @@ export class AuthPhoneOtpChallenge {
         public readonly code: string,
         public readonly phone: string,
         public readonly email: string | null,
+        public readonly subjectUserId: string | null,
         public readonly expiresAt: Date,
         public readonly attemptsUsed: number,
         public readonly maxAttempts: number,
@@ -23,6 +29,7 @@ export class AuthPhoneOtpChallenge {
         code: string;
         phone: string;
         email?: string | null;
+        subjectUserId?: string | null;
         expiresAt: Date;
         attemptsUsed?: number;
         maxAttempts?: number;
@@ -44,6 +51,7 @@ export class AuthPhoneOtpChallenge {
             code,
             phone,
             params.email?.trim().toLowerCase() ?? null,
+            params.subjectUserId?.trim() || null,
             params.expiresAt,
             params.attemptsUsed ?? 0,
             params.maxAttempts ?? 5,
@@ -77,6 +85,7 @@ export class AuthPhoneOtpChallenge {
             code: this.code,
             phone: this.phone,
             email: this.email,
+            subjectUserId: this.subjectUserId,
             expiresAt: this.expiresAt,
             attemptsUsed: this.attemptsUsed + 1,
             maxAttempts: this.maxAttempts,
@@ -94,6 +103,7 @@ export class AuthPhoneOtpChallenge {
             code: this.code,
             phone: this.phone,
             email: this.email,
+            subjectUserId: this.subjectUserId,
             expiresAt: this.expiresAt,
             attemptsUsed: this.attemptsUsed,
             maxAttempts: this.maxAttempts,

@@ -1,0 +1,43 @@
+import { SchoolBankAccountRepository } from '../../../ports/repositories/school-bank-account.repo';
+import { ConsumeSchoolActionOtp } from '../shared/consume-school-action-otp';
+
+export class DeleteSchoolBankAccount {
+    constructor(
+        private readonly bankAccounts: SchoolBankAccountRepository,
+        private readonly otp?: ConsumeSchoolActionOtp
+    ) {}
+
+    async exec(input: { accountId: string; schoolId: string; otpChallengeId: string }): Promise<void> {
+        const accountId = input.accountId.trim();
+        if (!accountId) {
+            throw new Error('Account id is required');
+        }
+
+        const schoolId = input.schoolId.trim();
+        if (!schoolId) {
+            throw new Error('School id is required');
+        }
+
+        const otpChallengeId = input.otpChallengeId.trim();
+        if (!otpChallengeId) {
+            throw new Error('OTP challenge id is required');
+        }
+
+        const existing = await this.bankAccounts.findById(accountId);
+        if (!existing) {
+            throw new Error('Bank account not found');
+        }
+
+        if (existing.schoolId !== schoolId) {
+            throw new Error('Bank account does not belong to this school');
+        }
+
+        await this.otp?.exec({
+            schoolId,
+            challengeId: otpChallengeId,
+            purpose: 'BANK_ACCOUNT_CHANGE'
+        });
+
+        await this.bankAccounts.delete(accountId);
+    }
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ListSchoolPlanInvoices } from '../../src/app/use-cases/list-school-plan-invoices';
+import { ListSchoolPlanInvoices } from '../../src/app/use-cases/schools/list-school-plan-invoices';
 import { SchoolPlanFinanceRepository } from '../../src/ports/repositories/school-plan-finance.repo';
 import { SchoolPlanInvoiceRepository } from '../../src/ports/repositories/school-plan-invoice.repo';
 import { SchoolPlanFinance } from '../../src/domain/entities/school-plan-finance';

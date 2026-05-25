@@ -1,12 +1,12 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { asyncHandler } from '../../utils/async-handler';
-import type { ListSchoolNotifications } from '../../../../app/use-cases/list-school-notifications';
-import type { SendClassPushNotification } from '../../../../app/use-cases/send-class-push-notification';
-import type { GetSchoolNotificationPreferences } from '../../../../app/use-cases/get-school-notification-preferences';
-import type { UpdateSchoolNotificationPreferences } from '../../../../app/use-cases/update-school-notification-preferences';
-import type { ReadSchoolNotification } from '../../../../app/use-cases/read-school-notification';
-import type { ReadAllSchoolNotifications } from '../../../../app/use-cases/read-all-school-notifications';
+import type { ListSchoolNotifications } from '../../../../app/use-cases/schools/list-school-notifications';
+import type { SendClassPushNotification } from '../../../../app/use-cases/schools/send-class-push-notification';
+import type { GetSchoolNotificationPreferences } from '../../../../app/use-cases/schools/get-school-notification-preferences';
+import type { UpdateSchoolNotificationPreferences } from '../../../../app/use-cases/schools/update-school-notification-preferences';
+import type { ReadSchoolNotification } from '../../../../app/use-cases/schools/read-school-notification';
+import type { ReadAllSchoolNotifications } from '../../../../app/use-cases/schools/read-all-school-notifications';
 import type { SchoolRouteGuards } from './guards';
 import type { SchoolContextRequest } from '../../middlewares/resolve-school-context';
 

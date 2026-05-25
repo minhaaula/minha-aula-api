@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { EnrollStudent } from '../../src/app/use-cases/enroll-student';
+import { EnrollStudent } from '../../src/app/use-cases/enrollments/enroll-student';
 import { CourseRepository } from '../../src/ports/repositories/course.repo';
 import { CourseClassRepository } from '../../src/ports/repositories/course-class.repo';
 import { UserRepository } from '../../src/ports/repositories/user.repo';
@@ -167,11 +167,13 @@ const makeStudent = (id: string, name: string) => User.create({
     createdAt: new Date('2024-01-01T00:00:00Z')
 });
 
-const makeCourse = () => Course.create({
-    id: 'course-1',
-    schoolId: 'school-1',
-    name: 'Curso Teste'
-});
+const makeCourse = (monthlyPriceCents?: number | null) =>
+    Course.create({
+        id: 'course-1',
+        schoolId: 'school-1',
+        name: 'Curso Teste',
+        monthlyPriceCents: monthlyPriceCents ?? null
+    });
 
 const makeClass = () => CourseClass.create({
     id: 'class-1',
@@ -203,6 +205,120 @@ describe('EnrollStudent use case', () => {
         expect(result.studentType).toBe('USER');
         expect(result.studentUserId).toBe(student.id);
         expect(enrollments.all()).toHaveLength(1);
+    });
+
+    it('stores course monthly price when not tuition-exempt', async () => {
+        const courses = new InMemoryCourseRepository();
+        const classes = new InMemoryCourseClassRepository();
+        const users = new InMemoryUserRepository();
+        const dependents = new InMemoryDependentRepository();
+        const enrollments = new InMemoryEnrollmentRepository();
+        courses.seed(makeCourse(15000));
+        classes.seed(makeClass());
+        const student = makeStudent('student-paid', 'Aluno Pago');
+        users.seed(student);
+
+        const useCase = new EnrollStudent(courses, classes, users, dependents, enrollments);
+        const result = await useCase.exec({
+            schoolId: 'school-1',
+            courseId: 'course-1',
+            classId: 'class-1',
+            studentUserId: student.id
+        });
+
+        expect(result.tuitionExempt).toBe(false);
+        expect(result.tuitionExemptionType).toBeNull();
+        expect(enrollments.all()[0].fullAmountCents).toBe(15000);
+        expect(enrollments.all()[0].isTuitionExempt).toBe(false);
+    });
+
+    it('enrolls a tuition-exempt student without monthly amount', async () => {
+        const courses = new InMemoryCourseRepository();
+        const classes = new InMemoryCourseClassRepository();
+        const users = new InMemoryUserRepository();
+        const dependents = new InMemoryDependentRepository();
+        const enrollments = new InMemoryEnrollmentRepository();
+        courses.seed(makeCourse(15000));
+        classes.seed(makeClass());
+        const student = makeStudent('student-isento', 'Aluno Isento');
+        users.seed(student);
+
+        const useCase = new EnrollStudent(courses, classes, users, dependents, enrollments);
+        const result = await useCase.exec({
+            schoolId: 'school-1',
+            courseId: 'course-1',
+            classId: 'class-1',
+            studentUserId: student.id,
+            tuitionExemptionType: 'SCHOLARSHIP'
+        });
+
+        expect(result.tuitionExempt).toBe(true);
+        expect(result.tuitionExemptionType).toBe('SCHOLARSHIP');
+        const saved = enrollments.all()[0];
+        expect(saved.isTuitionExempt).toBe(true);
+        expect(saved.fullAmountCents).toBeNull();
+        expect(saved.tuitionExemptionType).toBe('SCHOLARSHIP');
+    });
+
+    it.each(['EMPLOYEE', 'RELATIVE', 'SCHOLARSHIP', 'NONPROFIT'] as const)(
+        'accepts tuition exemption type %s',
+        async (tuitionExemptionType) => {
+            const courses = new InMemoryCourseRepository();
+            const classes = new InMemoryCourseClassRepository();
+            const users = new InMemoryUserRepository();
+            const dependents = new InMemoryDependentRepository();
+            const enrollments = new InMemoryEnrollmentRepository();
+            courses.seed(makeCourse(20000));
+            classes.seed(makeClass());
+            const student = makeStudent(`student-${tuitionExemptionType}`, 'Aluno');
+            users.seed(student);
+
+            const useCase = new EnrollStudent(courses, classes, users, dependents, enrollments);
+            const result = await useCase.exec({
+                schoolId: 'school-1',
+                courseId: 'course-1',
+                classId: 'class-1',
+                studentUserId: student.id,
+                tuitionExemptionType
+            });
+
+            expect(result.tuitionExempt).toBe(true);
+            expect(result.tuitionExemptionType).toBe(tuitionExemptionType);
+        }
+    );
+
+    it('enrolls a tuition-exempt dependent', async () => {
+        const courses = new InMemoryCourseRepository();
+        const classes = new InMemoryCourseClassRepository();
+        const users = new InMemoryUserRepository();
+        const dependents = new InMemoryDependentRepository();
+        const enrollments = new InMemoryEnrollmentRepository();
+        courses.seed(makeCourse(12000));
+        classes.seed(makeClass());
+        const owner = makeStudent('owner-exempt', 'Responsável');
+        users.seed(owner);
+        const dependent = Dependent.create({
+            id: 'dep-exempt',
+            userId: owner.id,
+            fullName: 'Dependente Isento',
+            birthDate: null
+        });
+        dependents.seed(dependent);
+
+        const useCase = new EnrollStudent(courses, classes, users, dependents, enrollments);
+        const result = await useCase.exec({
+            schoolId: 'school-1',
+            courseId: 'course-1',
+            classId: 'class-1',
+            studentUserId: owner.id,
+            dependentId: dependent.id,
+            tuitionExemptionType: 'RELATIVE'
+        });
+
+        expect(result.studentType).toBe('DEPENDENT');
+        expect(result.tuitionExempt).toBe(true);
+        expect(result.tuitionExemptionType).toBe('RELATIVE');
+        expect(enrollments.all()[0].fullAmountCents).toBeNull();
     });
 
     it('enrolls a dependent when provided', async () => {

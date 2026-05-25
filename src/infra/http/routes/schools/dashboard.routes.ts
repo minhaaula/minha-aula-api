@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { asyncHandler } from '../../utils/async-handler';
 import { SchoolContextRequest } from '../../middlewares/resolve-school-context';
 import { SchoolRouteGuards } from './guards';
-import { GetSchoolDashboard } from '../../../../app/use-cases/get-school-dashboard';
+import { GetSchoolDashboard } from '../../../../app/use-cases/schools/get-school-dashboard';
 
 export interface DashboardRoutesDeps {
     getSchoolDashboard: GetSchoolDashboard;

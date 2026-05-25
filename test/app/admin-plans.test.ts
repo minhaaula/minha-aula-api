@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { ListAdminSubscriptionPlans } from '../../src/app/use-cases/list-admin-subscription-plans';
-import { CreateSubscriptionPlan } from '../../src/app/use-cases/create-subscription-plan';
-import { UpdateSubscriptionPlan } from '../../src/app/use-cases/update-subscription-plan';
+import { ListAdminSubscriptionPlans } from '../../src/app/use-cases/admin/list-admin-subscription-plans';
+import { CreateSubscriptionPlan } from '../../src/app/use-cases/admin/create-subscription-plan';
+import { UpdateSubscriptionPlan } from '../../src/app/use-cases/admin/update-subscription-plan';
 import { SubscriptionPlanRepository } from '../../src/ports/repositories/subscription-plan.repo';
 import { SubscriptionPlan } from '../../src/domain/entities/subscription-plan';
 import { AppError, ErrorCode } from '../../src/shared/errors';

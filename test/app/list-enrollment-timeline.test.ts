@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ListEnrollmentTimeline } from '../../src/app/use-cases/list-enrollment-timeline';
+import { ListEnrollmentTimeline } from '../../src/app/use-cases/enrollments/list-enrollment-timeline';
 import type {
     EnrollmentProgressRepository,
     EnrollmentTimelineContext,

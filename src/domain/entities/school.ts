@@ -60,6 +60,8 @@ export class School {
         private readonly _email: Email,
         private readonly _phone: string,
         private readonly _cnpj: string | null,
+        /** Associação sem fins lucrativos (exige CNPJ no cadastro). */
+        private readonly _isNonprofitAssociation: boolean,
         private readonly _ownerUserId: string | null,
         private readonly _ownerName: string | null,
         private readonly _ownerCpf: string | null,
@@ -94,6 +96,7 @@ export class School {
         email: string;
         phone: string;
         cnpj?: string | null;
+        isNonprofitAssociation?: boolean;
         addresses?: PostalAddress[];
         ownerUserId?: string | null;
         createdAt?: Date;
@@ -134,6 +137,7 @@ export class School {
         const email = Email.create(params.email);
         const phone = School.normalizePhone(params.phone);
         const cnpj = School.normalizeCnpj(params.cnpj);
+        const isNonprofitAssociation = params.isNonprofitAssociation === true;
 
         const ownerUserId = params.ownerUserId ? params.ownerUserId.trim() : null;
         const ownerName = School.normalizeOwnerName(params.ownerName);
@@ -167,6 +171,7 @@ export class School {
             email,
             phone,
             cnpj,
+            isNonprofitAssociation,
             ownerUserId && ownerUserId.length ? ownerUserId : null,
             ownerName,
             ownerCpf,
@@ -207,6 +212,10 @@ export class School {
 
     get cnpj(): string | null {
         return this._cnpj;
+    }
+
+    get isNonprofitAssociation(): boolean {
+        return this._isNonprofitAssociation;
     }
 
     get ownerUserId(): string | null {
@@ -555,6 +564,7 @@ export class School {
             email: this.email,
             phone: this.phone,
             cnpj: this.cnpj,
+            isNonprofitAssociation: this.isNonprofitAssociation,
             addresses: this.addresses,
             ownerUserId: this.ownerUserId,
             ownerName: this.ownerName,

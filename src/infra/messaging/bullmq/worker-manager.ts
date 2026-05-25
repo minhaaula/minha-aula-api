@@ -222,6 +222,7 @@ export function startWorker(): Worker {
                         code: otp.code,
                         phone: otp.phone,
                         email: otp.email,
+                        subjectUserId: otp.subjectUserId,
                         expiresAt: otp.expiresAt,
                         attemptsUsed: otp.attemptsUsed,
                         maxAttempts: otp.maxAttempts,
@@ -490,7 +491,7 @@ export function startWorker(): Worker {
                 const { SchoolPlanFinanceRepositoryAdapter } = await import('../../db/typeorm/school-plan-finance-repository.adapter.js');
                 const { SchoolRepositoryAdapter } = await import('../../db/typeorm/school-repository.js');
                 const { AsaasProvider } = await import('../../providers/asaas/asaas-provider.js');
-                const { FetchPaymentReceipts } = await import('../../../app/use-cases/fetch-payment-receipts.js');
+                const { FetchPaymentReceipts } = await import('../../../app/use-cases/payments/fetch-payment-receipts.js');
 
                 const invoicesRepo = new SchoolPlanInvoiceRepositoryAdapter();
                 const financesRepo = new SchoolPlanFinanceRepositoryAdapter();
@@ -528,7 +529,7 @@ export function startWorker(): Worker {
                 const { SchoolPlanFinanceRepositoryAdapter } = await import('../../db/typeorm/school-plan-finance-repository.adapter.js');
                 const { SchoolRepositoryAdapter } = await import('../../db/typeorm/school-repository.js');
                 const { AsaasProvider } = await import('../../providers/asaas/asaas-provider.js');
-                const { SyncPaymentStatus } = await import('../../../app/use-cases/sync-payment-status.js');
+                const { SyncPaymentStatus } = await import('../../../app/use-cases/payments/sync-payment-status.js');
 
                 const invoicesRepo = new SchoolPlanInvoiceRepositoryAdapter();
                 const financesRepo = new SchoolPlanFinanceRepositoryAdapter();
@@ -576,7 +577,7 @@ export function startWorker(): Worker {
                 const { SchoolPlanInvoiceRepositoryAdapter } = await import('../../db/typeorm/school-plan-invoice-repository.adapter.js');
                 const { SchoolRepositoryAdapter } = await import('../../db/typeorm/school-repository.js');
                 const { AsaasProvider } = await import('../../providers/asaas/asaas-provider.js');
-                const { EnsureSchoolAsaasAccount } = await import('../../../app/use-cases/ensure-school-asaas-account.js');
+                const { EnsureSchoolAsaasAccount } = await import('../../../app/use-cases/schools/ensure-school-asaas-account.js');
 
                 const invoicesRepo = new SchoolPlanInvoiceRepositoryAdapter();
                 const schoolsRepo = new SchoolRepositoryAdapter();
@@ -903,7 +904,7 @@ export function startWorker(): Worker {
                 log.info('[OUTBOX] Processando job: schedule_charge_due_reminders');
                 await ensureDb();
                 try {
-                    const { ScheduleChargeDueReminders } = await import('../../../app/use-cases/schedule-charge-due-reminders.js');
+                    const { ScheduleChargeDueReminders } = await import('../../../app/use-cases/payments/schedule-charge-due-reminders.js');
                     const { SchoolFinancialChargeRepositoryAdapter } = await import('../../db/typeorm/school-financial-charge-repository.adapter.js');
                     const { SchoolPlanInvoiceRepositoryAdapter } = await import('../../db/typeorm/school-plan-invoice-repository.adapter.js');
                     const { ChargeDueReminderRepositoryAdapter } = await import('../../db/typeorm/charge-due-reminder-repository.adapter.js');
@@ -912,7 +913,7 @@ export function startWorker(): Worker {
                     const { SchoolRepositoryAdapter } = await import('../../db/typeorm/school-repository.js');
                     const { CourseRepositoryAdapter } = await import('../../db/typeorm/course-repository.js');
                     const { NotificationRepositoryAdapter } = await import('../../db/typeorm/notification-repository.adapter.js');
-                    const { NotifyStudentUser } = await import('../../../app/use-cases/notify-student-user.js');
+                    const { NotifyStudentUser } = await import('../../../app/use-cases/shared/notify-student-user.js');
 
                     const chargeRepo = new SchoolFinancialChargeRepositoryAdapter();
                     const invoiceRepo = new SchoolPlanInvoiceRepositoryAdapter();

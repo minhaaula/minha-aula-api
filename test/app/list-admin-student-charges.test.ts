@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { ListAdminStudentCharges } from '../../src/app/use-cases/list-admin-student-charges';
+import { ListAdminStudentCharges } from '../../src/app/use-cases/admin/list-admin-student-charges';
 import { User } from '../../src/domain/entities/user';
 import { Dependent } from '../../src/domain/entities/dependent';
 import { Email } from '../../src/domain/value-objects/email';

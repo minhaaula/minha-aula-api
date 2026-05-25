@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ListMyEnrollmentRequests } from '../../src/app/use-cases/list-my-enrollment-requests';
+import { ListMyEnrollmentRequests } from '../../src/app/use-cases/enrollments/list-my-enrollment-requests';
 import { EnrollmentRequestRepository } from '../../src/ports/repositories/enrollment-request.repo';
 import { EnrollmentRequest, EnrollmentRequestStatus } from '../../src/domain/entities/enrollment-request';
 import { EnrollmentRequestWithDetails } from '../../src/ports/repositories/enrollment-request.repo';
@@ -329,6 +329,36 @@ describe('ListMyEnrollmentRequests use case', () => {
         expect(result.requests[0].schoolName).toBeNull();
         expect(result.requests[0].monthlyTuitionAmount).toBeNull();
         expect(result.requests[0].schedule).toEqual([]);
+    });
+
+    it('exposes tuition exemption and hides monthly amounts when request is exempt', async () => {
+        const repo = new InMemoryEnrollmentRequestRepository();
+        const dependents = new InMemoryDependentsRepository();
+        const userId = 'user-exempt';
+
+        const exemptRequest = EnrollmentRequest.create({
+            id: 'req-exempt',
+            schoolId: 'school-1',
+            courseClassId: 'class-1',
+            requestedForUserId: userId,
+            firstMonthlyPaymentDate: new Date('2024-02-01'),
+            tuitionExemptionType: 'SCHOLARSHIP'
+        });
+
+        repo.seed([
+            makeRequestWithDetails(exemptRequest, 'Curso', 'Turma A', 'João', null, {
+                monthlyPriceCents: 150_000
+            })
+        ]);
+
+        const useCase = new ListMyEnrollmentRequests(repo, dependents);
+        const result = await useCase.exec({ userId });
+
+        expect(result.requests).toHaveLength(1);
+        expect(result.requests[0].tuitionExempt).toBe(true);
+        expect(result.requests[0].tuitionExemptionType).toBe('SCHOLARSHIP');
+        expect(result.requests[0].monthlyTuitionAmount).toBeNull();
+        expect(result.requests[0].monthlyTuitionNetAmount).toBeNull();
     });
 
     it('handles requests with dependents', async () => {

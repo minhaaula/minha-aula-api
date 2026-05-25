@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, afterEach } from 'vitest';
-import { AssignSchoolPlan } from '../../src/app/use-cases/assign-school-plan';
+import { AssignSchoolPlan } from '../../src/app/use-cases/schools/assign-school-plan';
 import { SchoolRepository } from '../../src/ports/repositories/school.repo';
 import { SubscriptionPlanRepository } from '../../src/ports/repositories/subscription-plan.repo';
 import { SchoolPlanFinanceRepository } from '../../src/ports/repositories/school-plan-finance.repo';
@@ -7,7 +7,7 @@ import { School } from '../../src/domain/entities/school';
 import { PostalAddress } from '../../src/domain/value-objects/postal-address';
 import { SubscriptionPlan } from '../../src/domain/entities/subscription-plan';
 import { SchoolPlanFinance } from '../../src/domain/entities/school-plan-finance';
-import { IssueSchoolPlanInvoice } from '../../src/app/use-cases/issue-school-plan-invoice';
+import { IssueSchoolPlanInvoice } from '../../src/app/use-cases/schools/issue-school-plan-invoice';
 import { SchoolPlanInvoiceRepository } from '../../src/ports/repositories/school-plan-invoice.repo';
 import { SchoolPlanInvoice } from '../../src/domain/entities/school-plan-invoice';
 import { PaymentProviderPort, CreateChargeInput, CreateBoletoChargeInput, CreatePixChargeInput } from '../../src/ports/providers/payment-provider.port';
