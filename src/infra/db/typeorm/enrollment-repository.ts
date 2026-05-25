@@ -70,6 +70,30 @@ export class EnrollmentRepositoryAdapter implements EnrollmentRepository {
         return rows.map((row) => this.toDomain(row));
     }
 
+    async countActiveEnrollmentsByDependentIds(dependentIds: string[]): Promise<Map<string, number>> {
+        const ids = [...new Set(dependentIds.map((id) => id.trim()).filter(Boolean))];
+        const counts = new Map<string, number>();
+        if (ids.length === 0) {
+            return counts;
+        }
+
+        const rows = await this.repo
+            .createQueryBuilder('enrollment')
+            .select('enrollment.dependentId', 'dependentId')
+            .addSelect('COUNT(*)', 'courseCount')
+            .where('enrollment.dependentId IN (:...ids)', { ids })
+            .andWhere('enrollment.status = :status', { status: 'ACTIVE' })
+            .groupBy('enrollment.dependentId')
+            .getRawMany<{ dependentId: string; courseCount: string }>();
+
+        for (const row of rows) {
+            if (row.dependentId) {
+                counts.set(row.dependentId, Number(row.courseCount ?? 0));
+            }
+        }
+        return counts;
+    }
+
     async save(enrollment: Enrollment): Promise<void> {
         await this.repo.save(this.toOrm(enrollment));
     }

@@ -53,6 +53,8 @@ export type AdminStudentListDependentItem = {
     cpf: string | null;
     dataNascimento: string | null;
     vinculo: string | null;
+    /** Matrículas ativas do dependente. */
+    countCursos: number;
 };
 
 export type AdminStudentListItem = {
@@ -92,6 +94,8 @@ export interface EnrollmentRepository {
     findByClassAndDependent(classId: string, dependentId: string): Promise<Enrollment | null>;
     findActiveByClassIds(classIds: string[]): Promise<Enrollment[]>;
     findActiveByDependentId(dependentId: string): Promise<Enrollment[]>;
+    /** Contagem de matrículas ACTIVE por dependente (chave = dependentId). */
+    countActiveEnrollmentsByDependentIds?(dependentIds: string[]): Promise<Map<string, number>>;
     save(enrollment: Enrollment): Promise<void>;
     findRecent?(limit: number): Promise<EnrollmentWithDetails[]>;
     findRecentBySchoolId?(schoolId: string, limit: number): Promise<EnrollmentWithDetails[]>;

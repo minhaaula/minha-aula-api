@@ -1,7 +1,7 @@
 import type { EnrollmentRepository } from '../../../ports/repositories/enrollment.repo';
 import type { TuitionExemptionType } from '../../../domain/value-objects/tuition-exemption-type';
 import { presentTuitionExemption } from '../../presenters/tuition-exemption.presenter';
-import { getCalendarYmdInTimeZone } from '../../../shared/billing-due-date';
+import { getAppCalendarYmd } from '../../../shared/billing-due-date';
 
 export type CurrentMonthInfo = {
     year: number;
@@ -55,7 +55,7 @@ export class ListMyTuitionExemptEnrollments {
     }
 
     private resolveCurrentMonth(now: Date): CurrentMonthInfo {
-        const { year, month } = getCalendarYmdInTimeZone(now);
+        const { year, month } = getAppCalendarYmd(now);
         return { year, month };
     }
 }
