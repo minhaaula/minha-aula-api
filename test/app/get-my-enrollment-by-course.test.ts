@@ -64,7 +64,8 @@ describe('GetMyEnrollmentByCourse', () => {
             discountAmount: 50,
             discountMonths: 3,
             discountValidUntilMonth: 'Mar',
-            tuitionExempt: false
+            tuitionExempt: false,
+            paymentDueDay: 10
         });
     });
 

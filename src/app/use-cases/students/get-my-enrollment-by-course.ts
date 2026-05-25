@@ -43,6 +43,8 @@ export type StudentEnrollmentByCourseItem = {
     discountAmount: number | null;
     discountMonths: number | null;
     discountValidUntilMonth: string | null;
+    /** Dia do mês (1–31) para vencimento da mensalidade. */
+    paymentDueDay: number;
 };
 
 export class GetMyEnrollmentByCourse {
@@ -125,7 +127,8 @@ export class GetMyEnrollmentByCourse {
             discountValidUntilMonth: resolveDiscountValidUntilMonthLabel(
                 row.enrolledAt,
                 tuition.discountMonths
-            )
+            ),
+            paymentDueDay: row.paymentDueDay ?? 10
         };
     }
 }
