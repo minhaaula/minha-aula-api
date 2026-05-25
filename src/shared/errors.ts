@@ -9,6 +9,8 @@ export enum ErrorCode {
     INVALID_EMAIL = 'INVALID_EMAIL',
     INVALID_DATE = 'INVALID_DATE',
     INVALID_BIRTH_DATE = 'INVALID_BIRTH_DATE',
+    /** Titular (aluno) com menos de 18 anos — use dependente. */
+    STUDENT_UNDERAGE_NOT_ALLOWED = 'STUDENT_UNDERAGE_NOT_ALLOWED',
     INVALID_PHONE = 'INVALID_PHONE',
     INVALID_IDENTIFIERS = 'INVALID_IDENTIFIERS',
     REQUIRED_FIELD = 'REQUIRED_FIELD',
@@ -97,6 +99,8 @@ export const ErrorMessages: Record<ErrorCode, string> = {
     [ErrorCode.INVALID_EMAIL]: 'Email inválido',
     [ErrorCode.INVALID_DATE]: 'Data inválida',
     [ErrorCode.INVALID_BIRTH_DATE]: 'Data de nascimento inválida',
+    [ErrorCode.STUDENT_UNDERAGE_NOT_ALLOWED]:
+        'O titular deve ter 18 anos ou mais. Menores de idade só podem ser cadastrados como dependentes.',
     [ErrorCode.INVALID_PHONE]: 'Telefone inválido',
     [ErrorCode.INVALID_IDENTIFIERS]: 'Identificadores inválidos',
     [ErrorCode.REQUIRED_FIELD]: 'Campo obrigatório não informado',

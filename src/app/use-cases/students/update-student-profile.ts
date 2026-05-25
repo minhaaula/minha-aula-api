@@ -8,6 +8,7 @@ import { parseGender } from '../../../domain/value-objects/gender';
 import { AppError, ErrorCode } from '../../../shared/errors';
 import { toE164Brazil } from '../../../shared/phone-e164';
 import { assertSchoolPersonaCannotUseStudentProfileRoutes } from './assert-school-persona-student-profile-fields';
+import { assertTitularMinimumAge } from '../../../shared/is-minor-by-birth-date';
 
 /** Somente dados pessoais; matrícula não é alterável por esta rota (persona SCHOOL: bloqueio total). */
 export interface UpdateStudentProfileInput {
@@ -104,6 +105,8 @@ export class UpdateStudentProfile {
 
         const birthDate =
             input.birthDate !== undefined ? this.parseBirthDate(input.birthDate) : user.birthDate;
+
+        assertTitularMinimumAge(birthDate);
 
         const updated = User.create({
             id: user.id,

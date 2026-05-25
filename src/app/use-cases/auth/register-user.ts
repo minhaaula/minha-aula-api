@@ -11,6 +11,7 @@ import { AppError, ErrorCode } from '../../../shared/errors';
 import type { RegisterUserInput, RegisterUserOutput } from '../../types/auth.types';
 import type { NotifyStudentUser } from '../shared/notify-student-user';
 import { toE164Brazil } from '../../../shared/phone-e164';
+import { assertTitularMinimumAge } from '../../../shared/is-minor-by-birth-date';
 
 export class RegisterUser {
     constructor(
@@ -44,6 +45,10 @@ export class RegisterUser {
         }
 
         assertUserPersona(input.persona);
+
+        if (input.persona === UserPersonaEnum.STUDENT) {
+            assertTitularMinimumAge(birthDate);
+        }
 
         const address = PostalAddress.create({
             street: input.address.street,

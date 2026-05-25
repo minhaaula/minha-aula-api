@@ -9,6 +9,7 @@ import type { Gender } from '../../../domain/value-objects/gender';
 import { parseGender } from '../../../domain/value-objects/gender';
 import type { PostalAddressProps } from '../../../domain/value-objects/postal-address';
 import { AppError, ErrorCode } from '../../../shared/errors';
+import { assertTitularMinimumAge } from '../../../shared/is-minor-by-birth-date';
 import {
     presentStudentAccountStatus,
     type StudentAccountStatus
@@ -129,6 +130,8 @@ export class UpdateAdminStudent {
             }
             birthDate = this.parseBirthDate(input.birthDate);
         }
+
+        assertTitularMinimumAge(birthDate);
 
         const gender =
             input.gender !== undefined ? this.resolveGender(input.gender) : user.gender;
