@@ -47,6 +47,7 @@ export class GetSchoolProfile {
         email: string;
         phone: string;
         cnpj: string | null;
+        isNonprofitAssociation: boolean;
         addresses: PostalAddressProps[];
         createdAt: Date;
         ownerUserId: string | null;
@@ -188,6 +189,7 @@ export class GetSchoolProfile {
             email: school.email,
             phone: school.phone,
             cnpj: school.cnpj,
+            isNonprofitAssociation: school.isNonprofitAssociation,
             addresses: school.addresses.map((address) => address.toPrimitives()),
             createdAt: school.createdAt,
             ownerUserId: school.ownerUserId,

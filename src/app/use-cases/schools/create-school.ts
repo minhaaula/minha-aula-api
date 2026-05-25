@@ -69,6 +69,13 @@ export class CreateSchool {
             }
         }
         const cnpjDigits = (input.cnpj ?? '').replace(/\D/g, '');
+        const isNonprofitAssociation = input.isNonprofitAssociation === true;
+        if (isNonprofitAssociation && cnpjDigits.length !== 14) {
+            throw AppError.fromCode(ErrorCode.REQUIRED_FIELD, {
+                field: 'cnpj',
+                message: 'CNPJ é obrigatório quando a escola é associação sem fins lucrativos.'
+            });
+        }
         if (cnpjDigits.length === 14 && this.schools.findByCnpj) {
             const existingByCnpj = await this.schools.findByCnpj(cnpjDigits);
             if (existingByCnpj) {
@@ -153,6 +160,7 @@ export class CreateSchool {
             email: input.email,
             phone: input.phone,
             cnpj: input.cnpj ?? null,
+            isNonprofitAssociation,
             ownerUserId,
             ownerName: input.ownerName ?? null,
             ownerCpf: input.ownerCpf ?? null,
@@ -208,6 +216,7 @@ export class CreateSchool {
             email: school.email,
             phone: school.phone,
             cnpj: school.cnpj,
+            isNonprofitAssociation: school.isNonprofitAssociation,
             addresses: school.addresses.map((address) => address.toPrimitives()),
             createdAt: school.createdAt,
             ownerUserId: school.ownerUserId,

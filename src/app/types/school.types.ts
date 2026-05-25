@@ -9,6 +9,8 @@ export interface CreateSchoolInput {
     email: string;
     phone: string;
     cnpj?: string | null;
+    /** Associação sem fins lucrativos — quando true, CNPJ é obrigatório. */
+    isNonprofitAssociation?: boolean;
     incomeValue?: number;
     addresses?: PostalAddressInput[];
     ownerUserId?: string | null;
@@ -30,6 +32,7 @@ export interface CreateSchoolOutput {
     email: string;
     phone: string;
     cnpj: string | null;
+    isNonprofitAssociation: boolean;
     addresses: PostalAddressOutput[];
     createdAt: Date;
     ownerUserId: string | null;

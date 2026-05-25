@@ -160,6 +160,7 @@ export class SchoolRepositoryAdapter implements SchoolRepository {
             email: row.email,
             phone: row.phone,
             cnpj: row.cnpj ?? null,
+            isNonprofitAssociation: row.isNonprofitAssociation === true,
             ownerUserId: row.ownerUserId ?? null,
             ownerName: row.ownerName ?? null,
             ownerCpf: row.ownerCpf ?? null,
@@ -201,6 +202,7 @@ export class SchoolRepositoryAdapter implements SchoolRepository {
         row.email = school.email;
         row.phone = school.phone;
         row.cnpj = school.cnpj;
+        row.isNonprofitAssociation = school.isNonprofitAssociation;
         row.ownerUserId = school.ownerUserId;
         row.ownerName = school.ownerName;
         row.ownerCpf = school.ownerCpf;

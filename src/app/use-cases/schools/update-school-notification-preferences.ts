@@ -30,6 +30,7 @@ export class UpdateSchoolNotificationPreferences {
             email: school.email,
             phone: school.phone,
             cnpj: school.cnpj,
+            isNonprofitAssociation: school.isNonprofitAssociation,
             addresses: school.addresses,
             createdAt: school.createdAt,
             ownerUserId: school.ownerUserId,

@@ -88,6 +88,7 @@ export class UpdateSchool {
             email,
             phone,
             cnpj,
+            isNonprofitAssociation: school.isNonprofitAssociation,
             addresses,
             ownerUserId,
             ownerName,
