@@ -224,14 +224,43 @@ export class EnrollmentRepositoryAdapter implements EnrollmentRepository {
         }));
     }
 
-    async countActiveBySchoolId(schoolId: string): Promise<number> {
-        return await this.repo
-            .createQueryBuilder('enrollment')
-            .leftJoin('enrollment.courseClass', 'class')
-            .leftJoin('class.course', 'course')
-            .where('course.schoolId = :schoolId', { schoolId })
+    /**
+     * Alunos distintos com matrícula ACTIVE em curso/turma ativos da escola
+     * (mesma regra de `ListSchoolStudents` no formato admin).
+     */
+    private static readonly ACTIVE_STUDENT_KEY_SQL = `CASE
+        WHEN enrollment.student_type = 'DEPENDENT' AND enrollment.dependent_id IS NOT NULL
+            THEN CONCAT('dep:', enrollment.dependent_id)
+        ELSE CONCAT('user:', COALESCE(enrollment.student_user_id, enrollment.owner_user_id))
+    END`;
+
+    private applyActiveSchoolStudentCountFilters(
+        qb: ReturnType<typeof this.repo.createQueryBuilder>
+    ): ReturnType<typeof this.repo.createQueryBuilder> {
+        return qb
+            .innerJoin('enrollment.courseClass', 'class')
+            .innerJoin('class.course', 'course')
             .andWhere('enrollment.status = :status', { status: 'ACTIVE' })
-            .getCount();
+            .andWhere('course.isActive = :courseActive', { courseActive: true })
+            .andWhere('course.deletedAt IS NULL')
+            .andWhere('class.isActive = :classActive', { classActive: true })
+            .andWhere(
+                "(enrollment.student_type != 'DEPENDENT' OR enrollment.dependent_id IS NOT NULL)"
+            );
+    }
+
+    async countActiveBySchoolId(schoolId: string): Promise<number> {
+        const row = await this.applyActiveSchoolStudentCountFilters(
+            this.repo.createQueryBuilder('enrollment')
+        )
+            .select(
+                `COUNT(DISTINCT ${EnrollmentRepositoryAdapter.ACTIVE_STUDENT_KEY_SQL})`,
+                'cnt'
+            )
+            .where('course.schoolId = :schoolId', { schoolId })
+            .getRawOne<{ cnt: string }>();
+
+        return Number(row?.cnt ?? 0);
     }
 
     async countActiveBySchoolIds(schoolIds: string[]): Promise<Map<string, number>> {
@@ -244,14 +273,15 @@ export class EnrollmentRepositoryAdapter implements EnrollmentRepository {
             return map;
         }
 
-        const rows = await this.repo
-            .createQueryBuilder('enrollment')
-            .innerJoin('enrollment.courseClass', 'class')
-            .innerJoin('class.course', 'course')
+        const rows = await this.applyActiveSchoolStudentCountFilters(
+            this.repo.createQueryBuilder('enrollment')
+        )
             .select('course.schoolId', 'schoolId')
-            .addSelect('COUNT(*)', 'cnt')
+            .addSelect(
+                `COUNT(DISTINCT ${EnrollmentRepositoryAdapter.ACTIVE_STUDENT_KEY_SQL})`,
+                'cnt'
+            )
             .where('course.schoolId IN (:...ids)', { ids })
-            .andWhere('enrollment.status = :status', { status: 'ACTIVE' })
             .groupBy('course.schoolId')
             .getRawMany<{ schoolId: string; cnt: string }>();
 

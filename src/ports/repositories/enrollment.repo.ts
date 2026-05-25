@@ -129,6 +129,7 @@ export interface EnrollmentRepository {
     save(enrollment: Enrollment): Promise<void>;
     findRecent?(limit: number): Promise<EnrollmentWithDetails[]>;
     findRecentBySchoolId?(schoolId: string, limit: number): Promise<EnrollmentWithDetails[]>;
+    /** Alunos distintos (titular ou dependente) com matrícula ACTIVE em curso/turma ativos. */
     countActiveBySchoolId?(schoolId: string): Promise<number>;
     countActiveBySchoolIds?(schoolIds: string[]): Promise<Map<string, number>>;
     findMyCourses?(userId: string): Promise<MyCourseData[]>;
