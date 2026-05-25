@@ -3,6 +3,9 @@ import { UserRepository } from '../../../ports/repositories/user.repo';
 import { SchoolPlanFinanceRepository } from '../../../ports/repositories/school-plan-finance.repo';
 import { SchoolPlanInvoiceRepository } from '../../../ports/repositories/school-plan-invoice.repo';
 import type { SchoolImageRepository } from '../../../ports/repositories/school-image.repo';
+import type { CourseRepository } from '../../../ports/repositories/course.repo';
+import type { CourseClassRepository } from '../../../ports/repositories/course-class.repo';
+import type { EnrollmentRepository } from '../../../ports/repositories/enrollment.repo';
 import type { AsaasProviderPort } from '../../../ports/providers/asaas-port';
 import type { StorageProviderPort } from '../../../ports/providers/storage-provider.port';
 import { presentAdminSchoolAsaasAccountFromSchool } from '../../presenters/admin-school-asaas-account.presenter';
@@ -20,7 +23,10 @@ export class GetAdminSchoolDetails {
         private readonly planInvoices: SchoolPlanInvoiceRepository,
         private readonly asaasProvider?: AsaasProviderPort,
         private readonly schoolImages?: SchoolImageRepository,
-        private readonly storage?: StorageProviderPort | null
+        private readonly storage?: StorageProviderPort | null,
+        private readonly courses?: CourseRepository,
+        private readonly classes?: CourseClassRepository,
+        private readonly enrollments?: EnrollmentRepository
     ) {}
 
     async exec(input: { schoolId: string }): Promise<AdminSchoolDetails> {
@@ -71,6 +77,12 @@ export class GetAdminSchoolDetails {
             ownerStudentAccessEnabled = owner?.studentAccessEnabled ?? null;
         }
 
+        const [studentCount, courseCount, classCount] = await Promise.all([
+            this.enrollments?.countActiveBySchoolId?.(school.id) ?? Promise.resolve(0),
+            this.courses?.countActiveBySchoolId?.(school.id) ?? Promise.resolve(0),
+            this.classes?.countActiveBySchoolId?.(school.id) ?? Promise.resolve(0)
+        ]);
+
         return {
             id: school.id,
             name: school.name,
@@ -98,7 +110,10 @@ export class GetAdminSchoolDetails {
             onboardingCompletedAt: school.onboardingCompletedAt,
             hasCompletedFirstPayment,
             onboarding,
-            asaasAccount: presentAdminSchoolAsaasAccountFromSchool(school)
+            asaasAccount: presentAdminSchoolAsaasAccountFromSchool(school),
+            studentCount,
+            courseCount,
+            classCount
         };
     }
 }

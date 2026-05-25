@@ -127,7 +127,10 @@ export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext)
         deps.planInvoicesRepo,
         deps.asaasProvider,
         schoolImagesRepo,
-        deps.storageProvider
+        deps.storageProvider,
+        deps.coursesRepo,
+        deps.classesRepo,
+        deps.enrollmentsRepo
     );
 
     const getAdminSchoolPlans = new GetAdminSchoolPlans(
