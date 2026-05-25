@@ -38,7 +38,7 @@ describe('ListMyTuitionExemptEnrollments', () => {
 
         expect(result.currentMonth.year).toBeGreaterThan(2020);
         expect(result.currentMonth.month).toBeGreaterThanOrEqual(1);
-        expect(result.currentMonth.label).toMatch(/de \d{4}$/);
+        expect(result.currentMonth).not.toHaveProperty('label');
         expect(result.enrollments).toHaveLength(1);
         expect(result.enrollments[0]).toMatchObject({
             enrollmentId: 'enr-1',

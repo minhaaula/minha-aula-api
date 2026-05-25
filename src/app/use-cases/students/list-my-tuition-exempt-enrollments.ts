@@ -3,25 +3,9 @@ import type { TuitionExemptionType } from '../../../domain/value-objects/tuition
 import { presentTuitionExemption } from '../../presenters/tuition-exemption.presenter';
 import { getCalendarYmdInTimeZone } from '../../../shared/billing-due-date';
 
-const MONTH_NAMES_PT = [
-    'Janeiro',
-    'Fevereiro',
-    'Março',
-    'Abril',
-    'Maio',
-    'Junho',
-    'Julho',
-    'Agosto',
-    'Setembro',
-    'Outubro',
-    'Novembro',
-    'Dezembro'
-] as const;
-
 export type CurrentMonthInfo = {
     year: number;
     month: number;
-    label: string;
 };
 
 export type TuitionExemptEnrollmentRecord = {
@@ -72,11 +56,6 @@ export class ListMyTuitionExemptEnrollments {
 
     private resolveCurrentMonth(now: Date): CurrentMonthInfo {
         const { year, month } = getCalendarYmdInTimeZone(now);
-        const monthName = MONTH_NAMES_PT[month - 1] ?? String(month);
-        return {
-            year,
-            month,
-            label: `${monthName} de ${year}`
-        };
+        return { year, month };
     }
 }
