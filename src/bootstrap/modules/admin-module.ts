@@ -113,7 +113,10 @@ export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext)
     const listSchoolsWithPlans = new ListSchoolsWithPlans(
         deps.schoolsRepo,
         deps.planFinancesRepo,
-        deps.planInvoicesRepo
+        deps.planInvoicesRepo,
+        deps.coursesRepo,
+        deps.classesRepo,
+        deps.enrollmentsRepo
     );
 
     const schoolImagesRepo: SchoolImageRepository = new SchoolImageRepositoryAdapter();

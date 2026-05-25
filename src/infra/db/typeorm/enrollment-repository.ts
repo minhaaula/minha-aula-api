@@ -234,6 +234,33 @@ export class EnrollmentRepositoryAdapter implements EnrollmentRepository {
             .getCount();
     }
 
+    async countActiveBySchoolIds(schoolIds: string[]): Promise<Map<string, number>> {
+        const ids = [...new Set(schoolIds.map((id) => id.trim()).filter(Boolean))];
+        const map = new Map<string, number>();
+        for (const id of ids) {
+            map.set(id, 0);
+        }
+        if (ids.length === 0) {
+            return map;
+        }
+
+        const rows = await this.repo
+            .createQueryBuilder('enrollment')
+            .innerJoin('enrollment.courseClass', 'class')
+            .innerJoin('class.course', 'course')
+            .select('course.schoolId', 'schoolId')
+            .addSelect('COUNT(*)', 'cnt')
+            .where('course.schoolId IN (:...ids)', { ids })
+            .andWhere('enrollment.status = :status', { status: 'ACTIVE' })
+            .groupBy('course.schoolId')
+            .getRawMany<{ schoolId: string; cnt: string }>();
+
+        for (const row of rows) {
+            map.set(row.schoolId, Number(row.cnt ?? 0));
+        }
+        return map;
+    }
+
     async findMyTuitionExemptEnrollments(
         userId: string
     ): Promise<import('../../../ports/repositories/enrollment.repo').MyTuitionExemptEnrollmentData[]> {

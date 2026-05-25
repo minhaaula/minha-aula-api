@@ -74,6 +74,32 @@ export class CourseRepositoryAdapter implements CourseRepository {
         });
     }
 
+    async countActiveBySchoolIds(schoolIds: string[]): Promise<Map<string, number>> {
+        const ids = [...new Set(schoolIds.map((id) => id.trim()).filter(Boolean))];
+        const map = new Map<string, number>();
+        for (const id of ids) {
+            map.set(id, 0);
+        }
+        if (ids.length === 0) {
+            return map;
+        }
+
+        const rows = await this.repo
+            .createQueryBuilder('course')
+            .select('course.schoolId', 'schoolId')
+            .addSelect('COUNT(*)', 'cnt')
+            .where('course.schoolId IN (:...ids)', { ids })
+            .andWhere('course.isActive = :isActive', { isActive: true })
+            .andWhere('course.deletedAt IS NULL')
+            .groupBy('course.schoolId')
+            .getRawMany<{ schoolId: string; cnt: string }>();
+
+        for (const row of rows) {
+            map.set(row.schoolId, Number(row.cnt ?? 0));
+        }
+        return map;
+    }
+
     async findCategoriesByCourseIds(courseIds: string[]): Promise<import('../../../ports/repositories/course.repo').CourseCategoryInfo[]> {
         if (courseIds.length === 0) return [];
 

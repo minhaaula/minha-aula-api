@@ -1,6 +1,9 @@
 import { SchoolRepository } from '../../../ports/repositories/school.repo';
 import { SchoolPlanFinanceRepository } from '../../../ports/repositories/school-plan-finance.repo';
 import { SchoolPlanInvoiceRepository } from '../../../ports/repositories/school-plan-invoice.repo';
+import type { CourseRepository } from '../../../ports/repositories/course.repo';
+import type { CourseClassRepository } from '../../../ports/repositories/course-class.repo';
+import type { EnrollmentRepository } from '../../../ports/repositories/enrollment.repo';
 import { presentAdminSchoolAsaasAccountFromSchool } from '../../presenters/admin-school-asaas-account.presenter';
 import { presentSchoolPlanFinance, type SchoolPlanFinanceView } from '../../presenters/school-plan-finance.presenter';
 import type { SchoolWithPlanItem, SchoolStatus, PaymentStatus } from '../../types/admin.types';
@@ -66,7 +69,10 @@ export class ListSchoolsWithPlans {
     constructor(
         private readonly schools: SchoolRepository,
         private readonly planFinances: SchoolPlanFinanceRepository,
-        private readonly planInvoices: SchoolPlanInvoiceRepository
+        private readonly planInvoices: SchoolPlanInvoiceRepository,
+        private readonly courses: CourseRepository,
+        private readonly classes: CourseClassRepository,
+        private readonly enrollments: EnrollmentRepository
     ) {}
 
     async exec(input?: ListSchoolsWithPlansInput): Promise<ListSchoolsWithPlansOutput> {
@@ -111,7 +117,10 @@ export class ListSchoolsWithPlans {
                 hasCompletedFirstPayment,
                 onboardingCompleted,
                 accountId: school.accountId,
-                asaasAccount: presentAdminSchoolAsaasAccountFromSchool(school)
+                asaasAccount: presentAdminSchoolAsaasAccountFromSchool(school),
+                studentCount: 0,
+                courseCount: 0,
+                classCount: 0
             };
         });
 
@@ -165,7 +174,8 @@ export class ListSchoolsWithPlans {
             if (dateB !== dateA) return dateB - dateA;
             return a.name.localeCompare(b.name, 'pt-BR');
         });
-        const schools = sorted.slice(offset, offset + limit);
+        const pageSchools = sorted.slice(offset, offset + limit);
+        const schools = await this.attachSchoolCounts(pageSchools);
 
         return {
             schools,
@@ -178,6 +188,26 @@ export class ListSchoolsWithPlans {
                 hasMore: offset + limit < total
             }
         };
+    }
+
+    private async attachSchoolCounts(items: SchoolWithPlanItem[]): Promise<SchoolWithPlanItem[]> {
+        if (items.length === 0) {
+            return items;
+        }
+
+        const schoolIds = items.map((s) => s.id);
+        const [studentCounts, courseCounts, classCounts] = await Promise.all([
+            this.enrollments.countActiveBySchoolIds?.(schoolIds) ?? new Map<string, number>(),
+            this.courses.countActiveBySchoolIds?.(schoolIds) ?? new Map<string, number>(),
+            this.classes.countActiveBySchoolIds?.(schoolIds) ?? new Map<string, number>()
+        ]);
+
+        return items.map((school) => ({
+            ...school,
+            studentCount: studentCounts.get(school.id) ?? 0,
+            courseCount: courseCounts.get(school.id) ?? 0,
+            classCount: classCounts.get(school.id) ?? 0
+        }));
     }
 
     private async loadPlanFinancesMap(schoolIds: string[]): Promise<Map<string, SchoolPlanFinanceView>> {

@@ -129,6 +129,7 @@ export interface EnrollmentRepository {
     findRecent?(limit: number): Promise<EnrollmentWithDetails[]>;
     findRecentBySchoolId?(schoolId: string, limit: number): Promise<EnrollmentWithDetails[]>;
     countActiveBySchoolId?(schoolId: string): Promise<number>;
+    countActiveBySchoolIds?(schoolIds: string[]): Promise<Map<string, number>>;
     findMyCourses?(userId: string): Promise<MyCourseData[]>;
     /** Matrículas ativas isentas de mensalidade do titular e dependentes. */
     findMyTuitionExemptEnrollments?(userId: string): Promise<MyTuitionExemptEnrollmentData[]>;

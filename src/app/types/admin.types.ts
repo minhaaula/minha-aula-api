@@ -52,6 +52,12 @@ export interface SchoolWithPlanItem {
      * `null` quando não há subconta (`accountId` ausente).
      */
     asaasAccount: AdminSchoolAsaasAccountView | null;
+    /** Matrículas ativas na escola (mesma regra do dashboard da escola). */
+    studentCount: number;
+    /** Cursos ativos (`is_active`, não excluídos). */
+    courseCount: number;
+    /** Turmas ativas. */
+    classCount: number;
 }
 
 /**

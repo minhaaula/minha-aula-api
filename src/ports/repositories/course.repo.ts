@@ -25,6 +25,7 @@ export interface CourseRepository {
     findBySchoolAndName(schoolId: string, name: string): Promise<Course | null>;
     findBySchoolId(schoolId: string): Promise<Course[]>;
     countActiveBySchoolId?(schoolId: string): Promise<number>;
+    countActiveBySchoolIds?(schoolIds: string[]): Promise<Map<string, number>>;
     save(course: Course): Promise<void>;
     findCategoriesByCourseIds?(courseIds: string[]): Promise<CourseCategoryInfo[]>;
     findAllWithFilters?(filters: {
