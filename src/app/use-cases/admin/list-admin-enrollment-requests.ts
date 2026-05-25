@@ -16,6 +16,9 @@ export type ListAdminEnrollmentRequestsOutput = {
         status: string;
         schoolId: string;
         schoolName: string;
+        schoolCnpj: string | null;
+        /** CPF do responsável da escola; preenchido apenas quando `schoolCnpj` é null. */
+        cpf: string | null;
         courseClassId: string;
         courseLabel: string | null;
         courseClassLabel: string | null;
@@ -73,11 +76,15 @@ export class ListAdminEnrollmentRequests {
             offset
         });
 
-        const requests = items.map((item) => ({
+        const requests = items.map((item) => {
+            const schoolCnpj = item.schoolCnpj;
+            return {
             id: item.request.id,
             status: item.request.status,
             schoolId: item.request.schoolId,
             schoolName: item.schoolName,
+            schoolCnpj,
+            cpf: schoolCnpj ? null : item.schoolOwnerCpf,
             courseClassId: item.request.courseClassId,
             courseLabel: item.courseLabel,
             courseClassLabel: item.courseClassLabel,
@@ -95,7 +102,8 @@ export class ListAdminEnrollmentRequests {
             firstMonthlyPaymentDate: item.request.firstMonthlyPaymentDate.toISOString().slice(0, 10),
             enrollmentId: item.request.enrollmentId,
             createdAt: item.request.createdAt
-        }));
+        };
+        });
 
         return {
             requests,

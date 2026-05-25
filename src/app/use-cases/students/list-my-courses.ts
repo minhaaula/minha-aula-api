@@ -7,6 +7,7 @@ import type { StorageProviderPort } from '../../../ports/providers/storage-provi
 import type { MyCourseEnrollmentStatus } from '../../../ports/repositories/enrollment.repo';
 
 export interface MyCourseRecord {
+    enrollmentId: string;
     courseId: string;
     courseName: string;
     schoolId: string;
@@ -95,6 +96,7 @@ export class ListMyCourses {
             const city = citiesMap.get(data.schoolId) || null;
 
             return {
+                enrollmentId: data.enrollmentId,
                 courseId: data.courseId,
                 courseName: data.courseName,
                 schoolId: data.schoolId,

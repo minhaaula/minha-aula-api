@@ -14,6 +14,7 @@ export type EnrollmentWithDetails = {
 export type MyCourseEnrollmentStatus = 'PENDING' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
 
 export type MyCourseData = {
+    enrollmentId: string;
     courseId: string;
     courseName: string;
     schoolId: string;

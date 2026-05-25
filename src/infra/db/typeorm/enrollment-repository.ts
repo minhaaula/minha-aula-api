@@ -391,6 +391,7 @@ export class EnrollmentRepositoryAdapter implements EnrollmentRepository {
                 statuses: ['ACTIVE', 'CANCELLED', 'COMPLETED']
             })
             .select([
+                'enrollment.id AS enrollmentId',
                 'course.id AS courseId',
                 'course.name AS courseName',
                 'course.isActive AS courseIsActive',
@@ -407,6 +408,7 @@ export class EnrollmentRepositoryAdapter implements EnrollmentRepository {
             const schedule = parseClassSchedule(row.schedule);
 
             return {
+                enrollmentId: String(row.enrollmentId),
                 courseId: row.courseId,
                 courseName: row.courseName,
                 schoolId: row.schoolId,

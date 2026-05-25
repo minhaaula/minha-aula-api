@@ -34,7 +34,12 @@ export interface EnrollmentRequestWithDetails {
     dependentRelationship?: string | null;
 }
 
-export type AdminEnrollmentRequestItem = EnrollmentRequestWithDetails & { schoolName: string };
+export type AdminEnrollmentRequestItem = EnrollmentRequestWithDetails & {
+    schoolName: string;
+    schoolCnpj: string | null;
+    /** CPF do responsável da escola (`schools.owner_cpf`). */
+    schoolOwnerCpf: string | null;
+};
 
 export interface EnrollmentRequestRepository {
     findById(id: string): Promise<EnrollmentRequest | null>;

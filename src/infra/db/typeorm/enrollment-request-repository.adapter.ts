@@ -232,7 +232,9 @@ export class EnrollmentRequestRepositoryAdapter implements EnrollmentRequestRepo
             courseLabel: row.courseClass?.course?.name ?? null,
             studentName: row.requestedFor.fullName,
             dependentName: row.dependent?.fullName ?? null,
-            schoolName: row.school?.name ?? ''
+            schoolName: row.school?.name ?? '',
+            schoolCnpj: row.school?.cnpj?.trim() ? row.school.cnpj.trim() : null,
+            schoolOwnerCpf: row.school?.ownerCpf?.trim() ? row.school.ownerCpf.trim() : null
         }));
 
         return { items, total };
