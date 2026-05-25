@@ -4,6 +4,7 @@ import { ListStudents } from '../../../app/use-cases/students/list-students';
 import { GetStudentDirectoryEntry } from '../../../app/use-cases/students/get-student-directory-entry';
 import { ListMyCourses } from '../../../app/use-cases/students/list-my-courses';
 import { ListMyTuitionExemptEnrollments } from '../../../app/use-cases/students/list-my-tuition-exempt-enrollments';
+import { GetMyEnrollmentByCourse } from '../../../app/use-cases/students/get-my-enrollment-by-course';
 import { ListAllCourses } from '../../../app/use-cases/students/list-all-courses';
 import { ListStudentPayments } from '../../../app/use-cases/students/list-student-payments';
 import { ListStudentPaidTotalsByYear } from '../../../app/use-cases/students/list-student-paid-totals-by-year';
@@ -49,6 +50,7 @@ export function studentsRouter(deps: {
     getStudentDirectoryEntry: GetStudentDirectoryEntry;
     listMyCourses?: ListMyCourses;
     listMyTuitionExemptEnrollments?: ListMyTuitionExemptEnrollments;
+    getMyEnrollmentByCourse?: GetMyEnrollmentByCourse;
     listAllCourses?: ListAllCourses;
     listStudentPayments?: ListStudentPayments;
     listStudentPaidTotalsByYear?: ListStudentPaidTotalsByYear;
@@ -313,6 +315,33 @@ export function studentsRouter(deps: {
             }
 
             const result = await deps.listMyTuitionExemptEnrollments!.exec({ userId: authReq.user.sub });
+            res.json(result);
+        }));
+    }
+
+    if (deps.getMyEnrollmentByCourse) {
+        r.get('/courses/:courseId/enrollment', requireStudent, asyncHandler(async (req, res) => {
+            const authReq = req as AuthenticatedRequest;
+            if (!authReq.user?.sub) {
+                return res.status(401).json({
+                    error: 'Não autorizado',
+                    code: 'UNAUTHORIZED'
+                });
+            }
+
+            const params = z.object({ courseId: z.string().uuid() }).parse(req.params);
+            const query = z
+                .object({
+                    enrollmentId: z.string().uuid().optional()
+                })
+                .parse(req.query);
+
+            const result = await deps.getMyEnrollmentByCourse!.exec({
+                ownerUserId: authReq.user.sub,
+                courseId: params.courseId,
+                enrollmentId:
+                    typeof query.enrollmentId === 'string' ? query.enrollmentId : undefined
+            });
             res.json(result);
         }));
     }

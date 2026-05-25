@@ -12,6 +12,21 @@ import { EnrollmentOrm } from './entities/enrollment.orm';
 
 import { presentStudentAccountStatus } from '../../../app/types/admin.types';
 
+function parseClassSchedule(value: unknown): Array<{ day: string; start: string; end: string }> {
+    if (Array.isArray(value)) {
+        return value as Array<{ day: string; start: string; end: string }>;
+    }
+    if (typeof value === 'string') {
+        try {
+            const parsed = JSON.parse(value) as unknown;
+            return Array.isArray(parsed) ? (parsed as Array<{ day: string; start: string; end: string }>) : [];
+        } catch {
+            return [];
+        }
+    }
+    return [];
+}
+
 function formatAdminStudentBirthDate(value: unknown): string | null {
     if (value == null) return null;
     if (value instanceof Date) {
@@ -257,6 +272,85 @@ export class EnrollmentRepositoryAdapter implements EnrollmentRepository {
         }));
     }
 
+    async findMyEnrollmentDetailsByCourseId(
+        ownerUserId: string,
+        courseId: string
+    ): Promise<import('../../../ports/repositories/enrollment.repo').MyEnrollmentDetailByCourseRow[]> {
+        const results = await this.repo
+            .createQueryBuilder('enrollment')
+            .innerJoin('enrollment.courseClass', 'courseClass')
+            .innerJoin('courseClass.course', 'course')
+            .innerJoin('course.school', 'school')
+            .innerJoin('enrollment.owner', 'ownerUser')
+            .leftJoin('enrollment.studentUser', 'studentUser')
+            .leftJoin('enrollment.dependent', 'dependent')
+            .where('enrollment.ownerUserId = :ownerUserId', { ownerUserId })
+            .andWhere('course.id = :courseId', { courseId })
+            .select([
+                'enrollment.id AS enrollmentId',
+                'enrollment.enrolledAt AS enrolledAt',
+                'enrollment.status AS status',
+                'enrollment.studentType AS studentType',
+                'enrollment.tuitionExemptionType AS tuitionExemptionType',
+                'enrollment.fullAmountCents AS fullAmountCents',
+                'enrollment.paymentDueDay AS paymentDueDay',
+                'enrollment.discountCents AS discountCents',
+                'enrollment.discountMonths AS discountMonths',
+                'COALESCE(studentUser.fullName, dependent.fullName) AS studentName',
+                'COALESCE(studentUser.cpf, dependent.cpf) AS studentCpf',
+                'course.id AS courseId',
+                'course.name AS courseName',
+                'course.monthlyPriceCents AS courseMonthlyPriceCents',
+                'courseClass.id AS classId',
+                'courseClass.label AS className',
+                'courseClass.schedule AS schedule',
+                'courseClass.monthlyPriceCents AS classMonthlyPriceCents',
+                'school.id AS schoolId',
+                'school.name AS schoolName',
+                'school.cnpj AS schoolCnpj',
+                'ownerUser.id AS ownerUserId',
+                'ownerUser.fullName AS ownerFullName',
+                'ownerUser.cpf AS ownerCpf',
+                'ownerUser.email AS ownerEmail',
+                'ownerUser.phone AS ownerPhone'
+            ])
+            .orderBy('enrollment.enrolledAt', 'DESC')
+            .getRawMany();
+
+        return results.map((row: Record<string, unknown>) => ({
+            enrollmentId: String(row.enrollmentId),
+            enrolledAt:
+                row.enrolledAt instanceof Date ? row.enrolledAt : new Date(String(row.enrolledAt ?? '')),
+            status: row.status as import('../../../ports/repositories/enrollment.repo').MyCourseEnrollmentStatus,
+            studentType: row.studentType as 'USER' | 'DEPENDENT',
+            studentName: String(row.studentName ?? ''),
+            studentCpf: row.studentCpf != null ? String(row.studentCpf) : null,
+            courseId: String(row.courseId),
+            courseName: String(row.courseName),
+            classId: String(row.classId),
+            className: String(row.className),
+            schedule: parseClassSchedule(row.schedule),
+            schoolId: String(row.schoolId),
+            schoolName: String(row.schoolName),
+            schoolCnpj: row.schoolCnpj != null ? String(row.schoolCnpj) : null,
+            ownerUserId: String(row.ownerUserId),
+            ownerFullName: String(row.ownerFullName ?? ''),
+            ownerCpf: String(row.ownerCpf ?? ''),
+            ownerEmail: String(row.ownerEmail ?? ''),
+            ownerPhone: String(row.ownerPhone ?? ''),
+            tuitionExemptionType:
+                row.tuitionExemptionType as import('../../../ports/repositories/enrollment.repo').MyEnrollmentDetailByCourseRow['tuitionExemptionType'],
+            fullAmountCents: row.fullAmountCents != null ? Number(row.fullAmountCents) : null,
+            paymentDueDay: row.paymentDueDay != null ? Number(row.paymentDueDay) : null,
+            discountCents: row.discountCents != null ? Number(row.discountCents) : null,
+            discountMonths: row.discountMonths != null ? Number(row.discountMonths) : null,
+            courseMonthlyPriceCents:
+                row.courseMonthlyPriceCents != null ? Number(row.courseMonthlyPriceCents) : null,
+            classMonthlyPriceCents:
+                row.classMonthlyPriceCents != null ? Number(row.classMonthlyPriceCents) : null
+        }));
+    }
+
     async findMyCourses(userId: string): Promise<import('../../../ports/repositories/enrollment.repo').MyCourseData[]> {
         const results = await this.repo
             .createQueryBuilder('enrollment')
@@ -283,16 +377,7 @@ export class EnrollmentRepositoryAdapter implements EnrollmentRepository {
             .getRawMany();
 
         return results.map((row: any) => {
-            let schedule: Array<{ day: string; start: string; end: string }> = [];
-            if (Array.isArray(row.schedule)) {
-                schedule = row.schedule;
-            } else if (typeof row.schedule === 'string') {
-                try {
-                    schedule = JSON.parse(row.schedule);
-                } catch {
-                    schedule = [];
-                }
-            }
+            const schedule = parseClassSchedule(row.schedule);
 
             return {
                 courseId: row.courseId,

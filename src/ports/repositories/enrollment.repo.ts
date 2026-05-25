@@ -26,6 +26,35 @@ export type MyCourseData = {
     enrollmentStatus: MyCourseEnrollmentStatus;
 };
 
+export type MyEnrollmentDetailByCourseRow = {
+    enrollmentId: string;
+    enrolledAt: Date;
+    status: MyCourseEnrollmentStatus;
+    studentType: 'USER' | 'DEPENDENT';
+    studentName: string;
+    studentCpf: string | null;
+    courseId: string;
+    courseName: string;
+    classId: string;
+    className: string;
+    schedule: Array<{ day: string; start: string; end: string }>;
+    schoolId: string;
+    schoolName: string;
+    schoolCnpj: string | null;
+    ownerUserId: string;
+    ownerFullName: string;
+    ownerCpf: string;
+    ownerEmail: string;
+    ownerPhone: string;
+    tuitionExemptionType: TuitionExemptionType | null;
+    fullAmountCents: number | null;
+    paymentDueDay: number | null;
+    discountCents: number | null;
+    discountMonths: number | null;
+    courseMonthlyPriceCents: number | null;
+    classMonthlyPriceCents: number | null;
+};
+
 export type MyTuitionExemptEnrollmentData = {
     enrollmentId: string;
     studentName: string;
@@ -103,6 +132,11 @@ export interface EnrollmentRepository {
     findMyCourses?(userId: string): Promise<MyCourseData[]>;
     /** Matrículas ativas isentas de mensalidade do titular e dependentes. */
     findMyTuitionExemptEnrollments?(userId: string): Promise<MyTuitionExemptEnrollmentData[]>;
+    /** Matrículas do titular/dependentes em um curso (`course.id`). */
+    findMyEnrollmentDetailsByCourseId?(
+        ownerUserId: string,
+        courseId: string
+    ): Promise<MyEnrollmentDetailByCourseRow[]>;
     hasActiveEnrollmentInSchool?(schoolId: string, userId: string): Promise<boolean>;
     findAllPaginatedForAdmin?(
         filters: AdminStudentListFilters,
