@@ -1,3 +1,5 @@
+import { coerceToDate } from '../../../shared/date-utils';
+
 export type TuitionDueDateParts = {
     dueDate: Date;
     dueYear: number;
@@ -6,8 +8,12 @@ export type TuitionDueDateParts = {
     adjustedDueDay: number;
 };
 
-export function startOfLocalDay(date: Date): Date {
-    const normalized = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+export function startOfLocalDay(date: Date | string | number): Date {
+    const parsed = coerceToDate(date);
+    if (!parsed) {
+        throw new Error('Invalid date');
+    }
+    const normalized = new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
     normalized.setHours(0, 0, 0, 0);
     return normalized;
 }

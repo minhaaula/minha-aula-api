@@ -3,6 +3,7 @@ import { AppDataSource } from './datasource';
 import { SchoolFinancialChargeRepository, StudentPaymentInfo, StudentPaidTotalByYear, PaidChargeSummary, AdminStudentChargeItem } from '../../../ports/repositories/school-financial-charge.repo';
 import { SchoolFinancialCharge, SchoolFinancialChargeStatus, SchoolFinancialChargeType } from '../../../domain/entities/school-financial-charge';
 import { SchoolFinancialChargeOrm } from './entities/school-financial-charge.orm';
+import { coerceToDate } from '../../../shared/date-utils';
 
 export class SchoolFinancialChargeRepositoryAdapter implements SchoolFinancialChargeRepository {
     private readonly repo = AppDataSource.getRepository(SchoolFinancialChargeOrm);
@@ -613,7 +614,7 @@ export class SchoolFinancialChargeRepositoryAdapter implements SchoolFinancialCh
             discountReason: row.discountReason,
             netAmountCents: row.netAmountCents,
             providerNetAmountCents: row.providerNetAmountCents ?? null,
-            dueDate: row.dueDate,
+            dueDate: coerceToDate(row.dueDate) ?? new Date(row.dueDate),
             status: row.status,
             asaasPaymentId: row.asaasPaymentId,
             asaasInvoiceUrl: row.asaasInvoiceUrl,

@@ -1,3 +1,4 @@
+import { coerceToDate } from '../../../shared/date-utils';
 import { resolveNextTuitionDueDate, startOfLocalDay } from './resolve-next-tuition-due-date';
 
 /**
@@ -5,28 +6,34 @@ import { resolveNextTuitionDueDate, startOfLocalDay } from './resolve-next-tuiti
  * primeira cobrança TUITION existente, ou primeiro ciclo desde a matrícula).
  */
 export function resolveFirstTuitionPaymentDueDate(params: {
-    enrolledAt: Date;
+    enrolledAt: Date | string | number;
     paymentDueDay: number;
-    requestFirstMonthlyPaymentDate?: Date | null;
-    earliestTuitionChargeDueDate?: Date | null;
+    requestFirstMonthlyPaymentDate?: Date | string | number | null;
+    earliestTuitionChargeDueDate?: Date | string | number | null;
 }): Date {
     const candidateTimes: number[] = [];
 
-    if (params.requestFirstMonthlyPaymentDate) {
-        candidateTimes.push(startOfLocalDay(params.requestFirstMonthlyPaymentDate).getTime());
+    const requestFirst = coerceToDate(params.requestFirstMonthlyPaymentDate);
+    if (requestFirst) {
+        candidateTimes.push(startOfLocalDay(requestFirst).getTime());
     }
-    if (params.earliestTuitionChargeDueDate) {
-        candidateTimes.push(startOfLocalDay(params.earliestTuitionChargeDueDate).getTime());
+    const earliestCharge = coerceToDate(params.earliestTuitionChargeDueDate);
+    if (earliestCharge) {
+        candidateTimes.push(startOfLocalDay(earliestCharge).getTime());
     }
 
     if (candidateTimes.length > 0) {
         return new Date(Math.min(...candidateTimes));
     }
 
-    return resolveNextTuitionDueDate(params.enrolledAt, params.paymentDueDay).dueDate;
+    const enrolledAt = coerceToDate(params.enrolledAt) ?? new Date();
+    return resolveNextTuitionDueDate(enrolledAt, params.paymentDueDay).dueDate;
 }
 
-export function isTuitionDueOnOrAfterFirstPayment(proposedDueDate: Date, firstPaymentDueDate: Date): boolean {
+export function isTuitionDueOnOrAfterFirstPayment(
+    proposedDueDate: Date | string | number,
+    firstPaymentDueDate: Date | string | number
+): boolean {
     return (
         startOfLocalDay(proposedDueDate).getTime() >= startOfLocalDay(firstPaymentDueDate).getTime()
     );

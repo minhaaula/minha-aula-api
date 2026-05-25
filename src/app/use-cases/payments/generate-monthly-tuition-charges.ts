@@ -10,6 +10,7 @@ import type { NotifyStudentUser } from "../shared/notify-student-user";
 import { AppDataSource } from "../../../infra/db/typeorm/datasource";
 import { EnrollmentOrm } from "../../../infra/db/typeorm/entities/enrollment.orm";
 import { Enrollment } from "../../../domain/entities/enrollment";
+import { coerceToDate } from "../../../shared/date-utils";
 import {
   isTuitionDueOnOrAfterFirstPayment,
   resolveFirstTuitionPaymentDueDate,
@@ -98,6 +99,8 @@ export class GenerateMonthlyTuitionCharges {
     });
 
     const activeEnrollments: Enrollment[] = enrollmentRows.map((row) => {
+      const enrolledAt = coerceToDate(row.enrolledAt) ?? new Date();
+      const updatedAt = coerceToDate(row.updatedAt) ?? enrolledAt;
       if (row.studentType === "USER") {
         return Enrollment.createForUser({
           id: row.id,
@@ -105,8 +108,8 @@ export class GenerateMonthlyTuitionCharges {
           ownerUserId: row.ownerUserId,
           studentUserId: row.studentUserId!,
           status: row.status as any,
-          enrolledAt: row.enrolledAt,
-          updatedAt: row.updatedAt,
+          enrolledAt,
+          updatedAt,
           fullAmountCents: row.fullAmountCents,
           paymentDueDay: row.paymentDueDay,
           tuitionExemptionType: row.tuitionExemptionType,
@@ -121,8 +124,8 @@ export class GenerateMonthlyTuitionCharges {
         ownerUserId: row.ownerUserId,
         dependentId: row.dependentId!,
         status: row.status as any,
-        enrolledAt: row.enrolledAt,
-        updatedAt: row.updatedAt,
+        enrolledAt,
+        updatedAt,
         fullAmountCents: row.fullAmountCents,
         paymentDueDay: row.paymentDueDay,
         tuitionExemptionType: row.tuitionExemptionType,
