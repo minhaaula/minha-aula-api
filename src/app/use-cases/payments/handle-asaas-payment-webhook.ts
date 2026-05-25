@@ -12,6 +12,7 @@ import {
     SchoolFinancialChargeStatus
 } from '../../../domain/entities/school-financial-charge';
 import { log } from '../../../shared/logger';
+import { parseAsaasReaisToCents } from '../../../shared/asaas-money';
 
 type AsaasPaymentPayload = {
     id: string;
@@ -242,6 +243,13 @@ export class HandleAsaasPaymentWebhook {
         }
 
         if (charge.status === 'PAID' && targetStatus === 'PAID') {
+            const backfilled = await this.tryBackfillProviderNetAmountCents(charge, payment);
+            if (backfilled) {
+                log.info('[Webhook Asaas] providerNetAmountCents preenchido em cobrança já paga', {
+                    chargeId: charge.id,
+                    providerRef
+                });
+            }
             return { handled: true, reason: 'Charge already paid (idempotency)' };
         }
         if (charge.status === 'PAID' && targetStatus !== 'PAID') {
@@ -272,10 +280,10 @@ export class HandleAsaasPaymentWebhook {
             targetStatus === 'PAID'
                 ? this.mapBillingTypeToPaymentMethod(payment.billingType) ?? charge.paymentMethod
                 : charge.paymentMethod;
-        const netAmountCentsFromAsaas =
-            targetStatus === 'PAID' && typeof payment.netValue === 'number' && Number.isFinite(payment.netValue)
-                ? Math.round(payment.netValue * 100)
-                : null;
+        const providerNetAmountCents =
+            targetStatus === 'PAID'
+                ? await this.resolveProviderNetAmountCents(charge, payment)
+                : charge.providerNetAmountCents;
 
         const updated = SchoolFinancialCharge.restore({
             id: charge.id,
@@ -291,7 +299,7 @@ export class HandleAsaasPaymentWebhook {
             discountCents: charge.discountCents,
             discountReason: charge.discountReason,
             netAmountCents: charge.netAmountCents,
-            providerNetAmountCents: netAmountCentsFromAsaas ?? charge.providerNetAmountCents ?? null,
+            providerNetAmountCents,
             dueDate: charge.dueDate,
             status: targetStatus,
             asaasPaymentId: charge.asaasPaymentId,
@@ -320,6 +328,85 @@ export class HandleAsaasPaymentWebhook {
         });
 
         return { handled: true };
+    }
+
+    /** Líquido Asaas: webhook → API GET /payments/:id → valor já persistido. */
+    private async resolveProviderNetAmountCents(
+        charge: SchoolFinancialCharge,
+        payment: AsaasPaymentPayload
+    ): Promise<number | null> {
+        const fromWebhook = parseAsaasReaisToCents(payment.netValue);
+        if (fromWebhook != null) {
+            return fromWebhook;
+        }
+
+        const paymentId = charge.asaasPaymentId?.trim() || payment.id?.trim();
+        if (paymentId && this.asaasProvider?.getPayment) {
+            try {
+                const remote = await this.asaasProvider.getPayment(paymentId);
+                const fromApi = parseAsaasReaisToCents(remote.netValue);
+                if (fromApi != null) {
+                    return fromApi;
+                }
+            } catch (error) {
+                log.warn('[Webhook Asaas] Falha ao buscar netValue no Asaas', {
+                    chargeId: charge.id,
+                    paymentId,
+                    error: error instanceof Error ? error.message : String(error)
+                });
+            }
+        }
+
+        return charge.providerNetAmountCents ?? null;
+    }
+
+    /**
+     * PAYMENT_CONFIRMED pode chegar antes de PAYMENT_RECEIVED (com `netValue`).
+     * Se a cobrança já está PAID sem líquido, tenta preencher no evento seguinte.
+     */
+    private async tryBackfillProviderNetAmountCents(
+        charge: SchoolFinancialCharge,
+        payment: AsaasPaymentPayload
+    ): Promise<boolean> {
+        if (charge.providerNetAmountCents != null && charge.providerNetAmountCents > 0) {
+            return false;
+        }
+
+        const cents = await this.resolveProviderNetAmountCents(charge, payment);
+        if (cents == null) {
+            return false;
+        }
+
+        const updated = SchoolFinancialCharge.restore({
+            id: charge.id,
+            schoolId: charge.schoolId,
+            ownerUserId: charge.ownerUserId,
+            studentUserId: charge.studentUserId,
+            dependentId: charge.dependentId,
+            courseId: charge.courseId,
+            courseClassId: charge.courseClassId,
+            chargeType: charge.chargeType,
+            description: charge.description,
+            amountCents: charge.amountCents,
+            discountCents: charge.discountCents,
+            discountReason: charge.discountReason,
+            netAmountCents: charge.netAmountCents,
+            providerNetAmountCents: cents,
+            dueDate: charge.dueDate,
+            status: charge.status,
+            asaasPaymentId: charge.asaasPaymentId,
+            asaasInvoiceUrl: charge.asaasInvoiceUrl,
+            asaasPayload: charge.asaasPayload,
+            paidAt: charge.paidAt,
+            paymentMethod: charge.paymentMethod,
+            paidObservation: charge.paidObservation,
+            cancelledAt: charge.cancelledAt,
+            createdAt: charge.createdAt,
+            updatedAt: new Date()
+        });
+
+        await this.financialCharges!.save(updated);
+        return true;
     }
 
     private resolveFinancialChargeTargetStatus(

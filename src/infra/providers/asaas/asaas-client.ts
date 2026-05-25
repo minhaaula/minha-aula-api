@@ -213,6 +213,7 @@ export class AsaasClient {
     async getPayment(paymentId: string): Promise<{
         id: string;
         status?: string;
+        netValue?: number | null;
         transactionReceiptUrl?: string | null;
         paymentDate?: string | null;
         confirmedDate?: string | null;
@@ -222,6 +223,7 @@ export class AsaasClient {
             const { data } = await this.http.get<{
                 id: string;
                 status?: string;
+                netValue?: number | null;
                 transactionReceiptUrl?: string | null;
                 paymentDate?: string | null;
                 confirmedDate?: string | null;

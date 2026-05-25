@@ -9,6 +9,7 @@ import {
 } from '../../../domain/entities/school-financial-charge';
 import { AppError, ErrorCode } from '../../../shared/errors';
 import { log } from '../../../shared/logger';
+import { parseAsaasReaisToCents } from '../../../shared/asaas-money';
 
 const SUCCESS_STATUSES = new Set(['RECEIVED', 'RECEIVED_IN_CASH', 'CONFIRMED']);
 const OVERDUE_STATUSES = new Set(['OVERDUE']);
@@ -126,6 +127,11 @@ export class VerifyStudentPaymentStatus {
             const paymentMethod: SchoolFinancialChargePaymentMethod | null =
                 targetStatus === 'PAID' ? 'PIX' : charge.paymentMethod;
 
+            const providerNetAmountCents =
+                targetStatus === 'PAID'
+                    ? parseAsaasReaisToCents(payment.netValue) ?? charge.providerNetAmountCents
+                    : charge.providerNetAmountCents;
+
             const updated = SchoolFinancialCharge.restore({
                 id: charge.id,
                 schoolId: charge.schoolId,
@@ -140,7 +146,7 @@ export class VerifyStudentPaymentStatus {
                 discountCents: charge.discountCents,
                 discountReason: charge.discountReason,
                 netAmountCents: charge.netAmountCents,
-                providerNetAmountCents: charge.providerNetAmountCents,
+                providerNetAmountCents,
                 dueDate: charge.dueDate,
                 status: targetStatus,
                 asaasPaymentId: charge.asaasPaymentId,
