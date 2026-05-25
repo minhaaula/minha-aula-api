@@ -464,4 +464,96 @@ describe('HandleAsaasPaymentWebhook', () => {
         expect(updated?.paidAt).not.toBeNull();
         expect(updated?.providerNetAmountCents).toBe(2901);
     });
+
+    it('aceita netValue como string no webhook', async () => {
+        const invoices = new InMemoryInvoiceRepo();
+        const finances = new InMemoryFinanceRepo();
+        const schools = new InMemorySchoolRepo();
+        const charges = new InMemoryFinancialChargesRepo();
+
+        const charge = SchoolFinancialCharge.create({
+            id: 'charge-str-net',
+            schoolId: 'school-ch',
+            ownerUserId: 'owner-1',
+            studentUserId: 'stu-1',
+            dependentId: null,
+            courseId: 'course-1',
+            courseClassId: 'class-1',
+            chargeType: 'TUITION',
+            description: 'Mensalidade',
+            amountCents: 5000,
+            dueDate: new Date('2026-05-10')
+        });
+        charge.markAsSynced({ paymentId: 'pay_str', invoiceUrl: null, payload: {} });
+        charges.seed(charge);
+
+        const useCase = new HandleAsaasPaymentWebhook(invoices, finances, schools, undefined, undefined, charges);
+        await useCase.exec({
+            event: 'PAYMENT_RECEIVED',
+            payment: {
+                id: 'pay_str',
+                status: 'RECEIVED',
+                netValue: '48.50' as unknown as number,
+                externalReference: charge.id,
+                billingType: 'PIX'
+            }
+        });
+
+        const updated = await charges.findById(charge.id);
+        expect(updated?.providerNetAmountCents).toBe(4850);
+    });
+
+    it('preenche providerNetAmountCents em cobrança já PAID quando chega netValue depois', async () => {
+        const invoices = new InMemoryInvoiceRepo();
+        const finances = new InMemoryFinanceRepo();
+        const schools = new InMemorySchoolRepo();
+        const charges = new InMemoryFinancialChargesRepo();
+
+        const charge = SchoolFinancialCharge.create({
+            id: 'charge-backfill',
+            schoolId: 'school-ch',
+            ownerUserId: 'owner-1',
+            studentUserId: 'stu-1',
+            dependentId: null,
+            courseId: 'course-1',
+            courseClassId: 'class-1',
+            chargeType: 'TUITION',
+            description: 'Mensalidade',
+            amountCents: 5000,
+            dueDate: new Date('2026-05-10')
+        });
+        charge.markAsSynced({ paymentId: 'pay_bf', invoiceUrl: null, payload: {} });
+        charges.seed(charge);
+
+        const useCase = new HandleAsaasPaymentWebhook(invoices, finances, schools, undefined, undefined, charges);
+
+        await useCase.exec({
+            event: 'PAYMENT_CONFIRMED',
+            payment: {
+                id: 'pay_bf',
+                status: 'CONFIRMED',
+                externalReference: charge.id,
+                billingType: 'PIX'
+            }
+        });
+
+        const afterConfirm = await charges.findById(charge.id);
+        expect(afterConfirm?.status).toBe('PAID');
+        expect(afterConfirm?.providerNetAmountCents).toBeNull();
+
+        await useCase.exec({
+            event: 'PAYMENT_RECEIVED',
+            payment: {
+                id: 'pay_bf',
+                status: 'RECEIVED',
+                netValue: 48.5,
+                externalReference: charge.id,
+                billingType: 'PIX'
+            }
+        });
+
+        const afterReceived = await charges.findById(charge.id);
+        expect(afterReceived?.status).toBe('PAID');
+        expect(afterReceived?.providerNetAmountCents).toBe(4850);
+    });
 });
