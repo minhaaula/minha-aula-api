@@ -11,6 +11,7 @@ import { Enrollment } from '../../../domain/entities/enrollment';
 import { EnrollmentOrm } from './entities/enrollment.orm';
 
 import { presentStudentAccountStatus } from '../../../app/types/admin.types';
+import { coerceToDate } from '../../../shared/date-utils';
 
 function parseClassSchedule(value: unknown): Array<{ day: string; start: string; end: string }> {
     if (Array.isArray(value)) {
@@ -618,6 +619,8 @@ export class EnrollmentRepositoryAdapter implements EnrollmentRepository {
     }
 
     private toDomain(row: EnrollmentOrm): Enrollment {
+        const enrolledAt = coerceToDate(row.enrolledAt) ?? new Date();
+        const updatedAt = coerceToDate(row.updatedAt) ?? enrolledAt;
         if (row.studentType === 'USER') {
             return Enrollment.createForUser({
                 id: row.id,
@@ -625,8 +628,8 @@ export class EnrollmentRepositoryAdapter implements EnrollmentRepository {
                 ownerUserId: row.ownerUserId,
                 studentUserId: row.studentUserId!,
                 status: row.status as any,
-                enrolledAt: row.enrolledAt,
-                updatedAt: row.updatedAt,
+                enrolledAt,
+                updatedAt,
                 fullAmountCents: row.fullAmountCents,
                 paymentDueDay: row.paymentDueDay,
                 tuitionExemptionType: row.tuitionExemptionType,
@@ -641,8 +644,8 @@ export class EnrollmentRepositoryAdapter implements EnrollmentRepository {
             ownerUserId: row.ownerUserId,
             dependentId: row.dependentId!,
             status: row.status as any,
-            enrolledAt: row.enrolledAt,
-            updatedAt: row.updatedAt,
+            enrolledAt,
+            updatedAt,
             fullAmountCents: row.fullAmountCents,
             paymentDueDay: row.paymentDueDay,
             tuitionExemptionType: row.tuitionExemptionType,

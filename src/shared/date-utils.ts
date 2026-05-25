@@ -2,6 +2,18 @@
  * Utilitários para manipulação de datas com foco em consistência UTC
  */
 
+/** Converte valor do driver/JSON (Date, ISO string, timestamp) em `Date` válida. */
+export function coerceToDate(value: Date | string | number | null | undefined): Date | null {
+    if (value == null || value === '') {
+        return null;
+    }
+    if (value instanceof Date) {
+        return Number.isNaN(value.getTime()) ? null : value;
+    }
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
 /**
  * Normaliza uma data para UTC, removendo informações de hora
  * Útil para comparações de datas de vencimento, onde apenas o dia importa

@@ -18,6 +18,7 @@ import {
   resolveNextTuitionDueDate,
   shouldGenerateTuitionChargeInWindow,
 } from "./resolve-next-tuition-due-date";
+import { coerceToDate } from "../../../shared/date-utils";
 
 type GenerateMonthlyTuitionChargesInput = {
   targetMonth?: number; // 1-12, se não fornecido usa o próximo mês
@@ -98,6 +99,8 @@ export class GenerateMonthlyTuitionCharges {
     });
 
     const activeEnrollments: Enrollment[] = enrollmentRows.map((row) => {
+      const enrolledAt = coerceToDate(row.enrolledAt) ?? new Date();
+      const updatedAt = coerceToDate(row.updatedAt) ?? enrolledAt;
       if (row.studentType === "USER") {
         return Enrollment.createForUser({
           id: row.id,
@@ -105,8 +108,8 @@ export class GenerateMonthlyTuitionCharges {
           ownerUserId: row.ownerUserId,
           studentUserId: row.studentUserId!,
           status: row.status as any,
-          enrolledAt: row.enrolledAt,
-          updatedAt: row.updatedAt,
+          enrolledAt,
+          updatedAt,
           fullAmountCents: row.fullAmountCents,
           paymentDueDay: row.paymentDueDay,
           tuitionExemptionType: row.tuitionExemptionType,
@@ -121,8 +124,8 @@ export class GenerateMonthlyTuitionCharges {
         ownerUserId: row.ownerUserId,
         dependentId: row.dependentId!,
         status: row.status as any,
-        enrolledAt: row.enrolledAt,
-        updatedAt: row.updatedAt,
+        enrolledAt,
+        updatedAt,
         fullAmountCents: row.fullAmountCents,
         paymentDueDay: row.paymentDueDay,
         tuitionExemptionType: row.tuitionExemptionType,
