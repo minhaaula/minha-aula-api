@@ -19,7 +19,6 @@ import {
   resolveNextTuitionDueDate,
   shouldGenerateTuitionChargeInWindow,
 } from "./resolve-next-tuition-due-date";
-import { coerceToDate } from "../../../shared/date-utils";
 
 type GenerateMonthlyTuitionChargesInput = {
   targetMonth?: number; // 1-12, se não fornecido usa o próximo mês
