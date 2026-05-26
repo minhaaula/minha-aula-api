@@ -25,14 +25,14 @@ describe('resolveFirstTuitionPaymentDueDate', () => {
         expect(first.getDate()).toBe(20);
     });
 
-    it('aceita firstMonthlyPaymentDate como string (ORM/MySQL)', () => {
+    it('aceita enrolledAt como string (driver MySQL / TypeORM)', () => {
         const first = resolveFirstTuitionPaymentDueDate({
-            enrolledAt: '2026-05-10T15:00:00.000Z',
-            paymentDueDay: 25,
-            requestFirstMonthlyPaymentDate: '2026-05-25'
+            enrolledAt: '2026-05-10T15:00:00.000Z' as unknown as Date,
+            paymentDueDay: 25
         });
-        expect(first.getDate()).toBe(25);
+        expect(first.getFullYear()).toBe(2026);
         expect(first.getMonth()).toBe(4);
+        expect(first.getDate()).toBe(25);
     });
 
     it('não permite vencimento antes da primeira mensalidade', () => {
