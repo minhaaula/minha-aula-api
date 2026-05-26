@@ -2,35 +2,16 @@
  * Utilitários para manipulação de datas com foco em consistência UTC
  */
 
-/** Converte valor do ORM/driver (Date, ISO string, timestamp) em `Date` válido. */
-export function coerceToDate(value: unknown): Date | null {
+/** Converte valor do driver/JSON (Date, ISO string, timestamp) em `Date` válida. */
+export function coerceToDate(value: Date | string | number | null | undefined): Date | null {
     if (value == null || value === '') {
         return null;
     }
     if (value instanceof Date) {
         return Number.isNaN(value.getTime()) ? null : value;
     }
-    if (typeof value === 'number') {
-        const parsed = new Date(value);
-        return Number.isNaN(parsed.getTime()) ? null : parsed;
-    }
-    if (typeof value === 'string') {
-        const trimmed = value.trim();
-        if (!trimmed) {
-            return null;
-        }
-        const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(trimmed);
-        if (dateOnly) {
-            const year = Number(dateOnly[1]);
-            const month = Number(dateOnly[2]);
-            const day = Number(dateOnly[3]);
-            const parsed = new Date(year, month - 1, day);
-            return Number.isNaN(parsed.getTime()) ? null : parsed;
-        }
-        const parsed = new Date(trimmed);
-        return Number.isNaN(parsed.getTime()) ? null : parsed;
-    }
-    return null;
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
 /**

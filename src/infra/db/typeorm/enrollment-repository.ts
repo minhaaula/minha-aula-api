@@ -619,6 +619,8 @@ export class EnrollmentRepositoryAdapter implements EnrollmentRepository {
     }
 
     private toDomain(row: EnrollmentOrm): Enrollment {
+        const enrolledAt = coerceToDate(row.enrolledAt) ?? new Date();
+        const updatedAt = coerceToDate(row.updatedAt) ?? enrolledAt;
         if (row.studentType === 'USER') {
             return Enrollment.createForUser({
                 id: row.id,
@@ -626,8 +628,8 @@ export class EnrollmentRepositoryAdapter implements EnrollmentRepository {
                 ownerUserId: row.ownerUserId,
                 studentUserId: row.studentUserId!,
                 status: row.status as any,
-                enrolledAt: coerceToDate(row.enrolledAt) ?? new Date(),
-                updatedAt: coerceToDate(row.updatedAt) ?? new Date(),
+                enrolledAt,
+                updatedAt,
                 fullAmountCents: row.fullAmountCents,
                 paymentDueDay: row.paymentDueDay,
                 tuitionExemptionType: row.tuitionExemptionType,
@@ -642,8 +644,8 @@ export class EnrollmentRepositoryAdapter implements EnrollmentRepository {
             ownerUserId: row.ownerUserId,
             dependentId: row.dependentId!,
             status: row.status as any,
-            enrolledAt: coerceToDate(row.enrolledAt) ?? new Date(),
-            updatedAt: coerceToDate(row.updatedAt) ?? new Date(),
+            enrolledAt,
+            updatedAt,
             fullAmountCents: row.fullAmountCents,
             paymentDueDay: row.paymentDueDay,
             tuitionExemptionType: row.tuitionExemptionType,
