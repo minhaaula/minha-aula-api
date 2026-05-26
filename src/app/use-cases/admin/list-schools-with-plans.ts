@@ -104,6 +104,7 @@ export class ListSchoolsWithPlans {
                 email: school.email,
                 phone: school.phone,
                 cnpj: school.cnpj,
+                isNonprofitAssociation: school.isNonprofitAssociation,
                 addresses: school.addresses.map((address) => address.toPrimitives()),
                 createdAt: school.createdAt,
                 ownerName: school.ownerName,
