@@ -11,6 +11,9 @@ export type PaymentHistoryItem = {
     id: string;
     schoolId: string;
     schoolName: string;
+    schoolCnpj: string | null;
+    /** CPF do titular da escola; preenchido apenas quando `schoolCnpj` é null. */
+    cpf: string | null;
     planId: string;
     financeId: string;
     status: string;
