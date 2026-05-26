@@ -8,6 +8,7 @@ import { GetAdminStatus } from '../../../app/use-cases/admin/get-admin-status';
 import { ListSchoolsWithPlans } from '../../../app/use-cases/admin/list-schools-with-plans';
 import { LoginAdmin } from '../../../app/use-cases/auth/login-admin';
 import { GetAdminDashboard } from '../../../app/use-cases/admin/get-admin-dashboard';
+import type { GetAdminAppClientConsolidated } from '../../../app/use-cases/admin/get-admin-app-client-consolidated';
 import { requirePersona } from '../middlewares/require-persona';
 import { authRateLimiter } from '../middlewares/rate-limiter';
 import { UserPersonaEnum } from '../../../domain/value-objects/user-persona';
@@ -75,6 +76,7 @@ type AdminRouterDeps = {
     listSchoolsWithPlans: ListSchoolsWithPlans;
     loginAdmin: LoginAdmin;
     getAdminDashboard?: GetAdminDashboard;
+    getAdminAppClientConsolidated?: GetAdminAppClientConsolidated;
     getAdminSchoolDetails: GetAdminSchoolDetails;
     getAdminSchoolPlans: GetAdminSchoolPlans;
     updateSchool: UpdateSchool;
@@ -136,6 +138,7 @@ export function adminRouter({
     listSchoolsWithPlans,
     loginAdmin,
     getAdminDashboard,
+    getAdminAppClientConsolidated,
     getAdminSchoolDetails,
     getAdminSchoolPlans,
     updateSchool,
@@ -887,6 +890,13 @@ export function adminRouter({
         router.get('/dashboard', requireAuth, requireAdminPersona, asyncHandler(async (_req, res) => {
             const dashboard = await getAdminDashboard.exec();
             res.json(dashboard);
+        }));
+    }
+
+    if (getAdminAppClientConsolidated) {
+        router.get('/app-client-consolidated', requireAuth, requireAdminPersona, asyncHandler(async (_req, res) => {
+            const consolidated = await getAdminAppClientConsolidated.exec();
+            res.json(consolidated);
         }));
     }
 

@@ -30,6 +30,7 @@ import { SchoolReviewOrm } from './entities/school-review.orm';
 import { SchoolImageOrm } from './entities/school-image.orm';
 import { DiscountCouponOrm } from './entities/discount-coupon.orm';
 import { UserPushTokenOrm } from './entities/user-push-token.orm';
+import { UserAppClientStateOrm } from './entities/user-app-client-state.orm';
 import { ChargeDueReminderOrm } from './entities/charge-due-reminder.orm';
 import { JobExecutionLogOrm } from './entities/job-execution-log.orm';
 import { SchoolActionOtpOrm } from './entities/school-action-otp.orm';
@@ -78,6 +79,7 @@ export const AppDataSource = new DataSource({
         SchoolImageOrm,
         DiscountCouponOrm,
         UserPushTokenOrm,
+        UserAppClientStateOrm,
         ChargeDueReminderOrm,
         JobExecutionLogOrm,
         SchoolActionOtpOrm,

@@ -58,7 +58,28 @@ export function authRouter({
 
     const loginSchema = z.object({
         cpf: cpfSchema,
-        password: z.string().min(8)
+        password: z.string().min(8),
+        platform: z.enum(['ANDROID', 'IOS']).optional(),
+        appVersion: z.string().trim().min(1).max(32).optional(),
+        osVersion: z.string().trim().min(1).max(64).optional(),
+        notificationsEnabled: z.boolean().optional()
+    }).superRefine((data, ctx) => {
+        const clientFields = [
+            data.platform,
+            data.appVersion,
+            data.osVersion,
+            data.notificationsEnabled
+        ];
+        const anyClient = clientFields.some((v) => v !== undefined);
+        const allClient = clientFields.every((v) => v !== undefined);
+        if (anyClient && !allClient) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message:
+                    'Informe platform, appVersion, osVersion e notificationsEnabled juntos para registrar o app do aluno.',
+                path: ['platform']
+            });
+        }
     });
 
     const updatePasswordSchema = z.object({
@@ -120,7 +141,20 @@ export function authRouter({
     r.post('/login', authRateLimiter, async (req, res, next) => {
         try {
             const dto = loginSchema.parse(req.body);
-            const result = await loginUser.exec(dto);
+            const appClient =
+                dto.platform !== undefined
+                    ? {
+                          platform: dto.platform,
+                          appVersion: dto.appVersion!,
+                          osVersion: dto.osVersion!,
+                          notificationsEnabled: dto.notificationsEnabled!
+                      }
+                    : undefined;
+            const result = await loginUser.exec({
+                cpf: dto.cpf,
+                password: dto.password,
+                appClient
+            });
             res.json(result);
         } catch (e) {
             next(e);

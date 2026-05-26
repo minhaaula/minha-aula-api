@@ -3,7 +3,7 @@ x-student-auth-info: |
   utilize as rotas do módulo Auth (/auth/*):
   - POST /auth/verification/request (purpose `signup`) e POST /auth/verification/verify — confirmação do telefone no WhatsApp
   - POST /auth/register - Cadastro de estudante (campo `phoneVerificationToken` obrigatório)
-  - POST /auth/login - Login de estudante
+  - POST /auth/login - Login de estudante (opcional: `platform`, `appVersion`, `osVersion`, `notificationsEnabled` — metadados do app gravados em `user_app_client_state`)
   - PATCH /auth/password - Alteração de senha (quando logado)
   - POST /auth/verification/request (purpose `user_password_reset` + **cpf**) e POST /auth/verification/verify — código no WhatsApp para esqueci minha senha
   - POST /auth/password/validate - Validar token de reset

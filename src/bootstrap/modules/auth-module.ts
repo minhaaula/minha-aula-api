@@ -19,6 +19,7 @@ import { VerifyPhoneOtpChallenge } from '../../app/use-cases/auth/verify-phone-o
 import { EmailProviderPort } from '../../ports/providers/email-provider.port';
 import type { OutboxRepository } from '../../ports/repositories/outbox.repo';
 import type { NotifyStudentUser } from '../../app/use-cases/shared/notify-student-user';
+import { UserAppClientStateRepositoryAdapter } from '../../infra/db/typeorm/user-app-client-state-repository.adapter';
 
 export type AuthModuleDeps = {
     usersRepo: UserRepositoryAdapter;
@@ -55,13 +56,15 @@ export function buildAuthModule(deps: AuthModuleDeps, ctx: ModuleSetupContext): 
         deps.frontendBaseUrl,
         deps.notifyStudent
     );
+    const appClientStateRepo = new UserAppClientStateRepositoryAdapter();
     const loginUser = new LoginUser(
         deps.usersRepo,
         deps.passwordHasher,
         deps.tokenProvider,
         deps.tokenTtl,
         deps.activeModules,
-        deps.schoolsRepo
+        deps.schoolsRepo,
+        appClientStateRepo
     );
     const updateUserPassword = new UpdateUserPassword(deps.usersRepo, deps.passwordHasher);
     const refreshToken = new RefreshToken(
