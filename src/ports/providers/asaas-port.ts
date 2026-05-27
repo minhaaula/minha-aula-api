@@ -102,6 +102,8 @@ export type AsaasAccountBalance = {
 export type AsaasPaymentDetails = {
     id: string;
     status?: string;
+    /** Valor líquido em reais (taxa Asaas já descontada). */
+    netValue?: number | null;
     transactionReceiptUrl?: string | null;
     paymentDate?: string | null;
     confirmedDate?: string | null;
