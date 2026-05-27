@@ -245,7 +245,6 @@ export class EnrollmentRepositoryAdapter implements EnrollmentRepository {
         return qb
             .innerJoin('enrollment.courseClass', 'class')
             .innerJoin('class.course', 'course')
-            .innerJoin('enrollment.ownerUser', 'owner')
             .leftJoin('enrollment.dependent', 'dep')
             .andWhere('enrollment.status = :status', { status: 'ACTIVE' })
             .andWhere('course.isActive = :courseActive', { courseActive: true })
