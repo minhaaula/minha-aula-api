@@ -39,7 +39,9 @@ export class CreateCourseClass {
         }
 
         const existing = await this.classes.findByCourseAndLabel(course.id, label);
-        if (existing) throw AppError.fromCode(ErrorCode.ALREADY_EXISTS, { message: 'Class label already in use for this course' });
+        if (existing) {
+            throw AppError.fromCode(ErrorCode.ALREADY_EXISTS, { courseId: course.id, label: input.label });
+        }
 
         const courseClass = CourseClass.create({
             id: Uuid(),

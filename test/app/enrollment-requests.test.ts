@@ -775,7 +775,9 @@ describe('ApproveEnrollmentRequest', () => {
 
         const useCase = new ApproveEnrollmentRequest(requests, enrollments, classes, courses, charges);
         await expect(useCase.exec({ requestId: 'missing', approverUserId: 'owner' })).rejects.toThrow('Solicitação de matrícula não encontrada');
-        await expect(useCase.exec({ requestId: request.id, approverUserId: 'other' })).rejects.toThrow('Operação não permitida');
+        await expect(useCase.exec({ requestId: request.id, approverUserId: 'other' })).rejects.toThrow(
+            'Usuário não autorizado a aprovar esta solicitação de matrícula'
+        );
 
         enrollments.seed(Enrollment.createForDependent({
             id: 'enroll-existing',

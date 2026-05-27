@@ -130,8 +130,9 @@ export function authRouter({
 
     r.post('/login', authRateLimiter, async (req, res, next) => {
         try {
-            const dto = loginSchema.parse(req.body ?? {});
-            const appClient = parseLoginAppClient(dto);
+            const rawBody = req.body ?? {};
+            const dto = loginSchema.parse(rawBody);
+            const appClient = parseLoginAppClient(rawBody);
             const result = await loginUser.exec({
                 cpf: dto.cpf,
                 password: dto.password,
@@ -160,8 +161,9 @@ export function authRouter({
     if (refreshToken) {
         r.post('/refresh', async (req, res, next) => {
             try {
-                const dto = refreshBodySchema.parse(req.body ?? {});
-                const appClient = parseLoginAppClient(dto);
+                const rawBody = req.body ?? {};
+                const dto = refreshBodySchema.parse(rawBody);
+                const appClient = parseLoginAppClient(rawBody);
                 const result = await refreshToken.exec({
                     refreshToken: dto.refreshToken,
                     appClient

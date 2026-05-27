@@ -46,7 +46,7 @@ export class UpdateCourse {
         if (name !== existingCourse.name) {
             const duplicate = await this.courses.findBySchoolAndName(school.id, name);
             if (duplicate && duplicate.id !== existingCourse.id) {
-                throw AppError.fromCode(ErrorCode.ALREADY_EXISTS, { message: 'Course name already in use for this school' });
+                throw AppError.fromCode(ErrorCode.ALREADY_EXISTS, { schoolId, courseId, name: input.name });
             }
         }
 

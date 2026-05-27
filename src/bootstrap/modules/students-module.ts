@@ -61,6 +61,8 @@ import { UploadStudentProfilePhoto } from '../../app/use-cases/students/upload-s
 import { RemoveStudentProfilePhoto } from '../../app/use-cases/students/remove-student-profile-photo';
 import { UploadDependentProfilePhoto } from '../../app/use-cases/students/upload-dependent-profile-photo';
 import { RemoveDependentProfilePhoto } from '../../app/use-cases/students/remove-dependent-profile-photo';
+import { UpsertStudentAppClientState } from '../../app/use-cases/students/upsert-student-app-client-state';
+import { UserAppClientStateRepositoryAdapter } from '../../infra/db/typeorm/user-app-client-state-repository.adapter';
 
 import { StorageProviderPort } from '../../ports/providers/storage-provider.port';
 import { SchoolImageRepositoryAdapter } from '../../infra/db/typeorm/school-image-repository.adapter';
@@ -256,6 +258,12 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
         ? new RemoveDependentProfilePhoto(deps.dependentsRepo, deps.storageProvider)
         : undefined;
 
+    const appClientStateRepo = new UserAppClientStateRepositoryAdapter();
+    const upsertStudentAppClientState = new UpsertStudentAppClientState(
+        deps.usersRepo,
+        appClientStateRepo
+    );
+
     const studentsRouterInstance = studentsRouter({
         listStudents,
         getStudentDirectoryEntry,
@@ -287,7 +295,8 @@ export function buildStudentsModule(deps: StudentsModuleDeps, _ctx: ModuleSetupC
         unregisterPushToken,
         listEnrollmentTimeline,
         uploadStudentProfilePhoto,
-        removeStudentProfilePhoto
+        removeStudentProfilePhoto,
+        upsertStudentAppClientState
     });
 
     const listMyDependents = new ListMyDependents(deps.dependentsRepo, deps.storageProvider);
