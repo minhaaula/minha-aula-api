@@ -9,6 +9,49 @@ import { addressSchema } from './common-schemas';
 // Re-export para compatibilidade
 export { addressSchema };
 
+/** Aceita boolean, 0/1 e strings ("true"/"false") — comum em formulários mobile/web. */
+export const isNonprofitAssociationSchema = z.preprocess((value) => {
+    if (value === true || value === 1 || value === '1') {
+        return true;
+    }
+    if (typeof value === 'string' && value.trim().toLowerCase() === 'true') {
+        return true;
+    }
+    if (value === false || value === 0 || value === '0') {
+        return false;
+    }
+    if (typeof value === 'string' && value.trim().toLowerCase() === 'false') {
+        return false;
+    }
+    return value;
+}, z.boolean().optional().default(false));
+
+/**
+ * Normaliza aliases do body de cadastro de escola antes do Zod.
+ * Front pode enviar `is_nonprofit_association`, `isNonprofit`, etc.
+ */
+export function normalizeSchoolCreateBody(body: unknown): unknown {
+    if (body === null || typeof body !== 'object' || Array.isArray(body)) {
+        return body;
+    }
+
+    const record = body as Record<string, unknown>;
+    const nonprofitRaw =
+        record.isNonprofitAssociation ??
+        record.is_nonprofit_association ??
+        record.isNonprofit ??
+        record.nonprofitAssociation;
+
+    if (nonprofitRaw === undefined) {
+        return body;
+    }
+
+    return {
+        ...record,
+        isNonprofitAssociation: nonprofitRaw
+    };
+}
+
 /** Schema “cru” (com `.shape`) para reutilizar campos em OTP/login; a validação final é `createSchoolSchema`. */
 export const createSchoolObjectSchema = z.object({
     name: z.string().trim().min(3),
@@ -16,7 +59,7 @@ export const createSchoolObjectSchema = z.object({
     phone: phoneNumberSchema(),
     cnpj: cnpjNumberSchema().optional().nullable(),
     /** Associação sem fins lucrativos — quando true, CNPJ é obrigatório. */
-    isNonprofitAssociation: z.boolean().optional().default(false),
+    isNonprofitAssociation: isNonprofitAssociationSchema,
     incomeValue: z.number().int().positive().optional(),
     ownerName: z.string().trim().min(3),
     ownerCpf: cpfNumberSchema(),

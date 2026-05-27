@@ -181,6 +181,8 @@ export class SchoolPlanInvoiceRepositoryAdapter implements SchoolPlanInvoiceRepo
                 'invoice.id AS id',
                 'invoice.schoolId AS schoolId',
                 'school.name AS schoolName',
+                'school.cnpj AS schoolCnpj',
+                'school.ownerCpf AS schoolOwnerCpf',
                 'invoice.planId AS planId',
                 'invoice.financeId AS financeId',
                 'invoice.status AS status',
@@ -229,10 +231,19 @@ export class SchoolPlanInvoiceRepositoryAdapter implements SchoolPlanInvoiceRepo
 
         const [rawRows, total] = await Promise.all([qb.getRawMany(), countQb.getCount()]);
 
-        const items = (rawRows as any[]).map((row) => ({
+        const items = (rawRows as any[]).map((row) => {
+            const schoolCnpj =
+                typeof row.schoolCnpj === 'string' && row.schoolCnpj.trim() ? row.schoolCnpj.trim() : null;
+            const schoolOwnerCpf =
+                typeof row.schoolOwnerCpf === 'string' && row.schoolOwnerCpf.trim()
+                    ? row.schoolOwnerCpf.trim()
+                    : null;
+            return {
             id: row.id,
             schoolId: row.schoolId,
             schoolName: row.schoolName ?? '',
+            schoolCnpj,
+            cpf: schoolCnpj ? null : schoolOwnerCpf,
             planId: row.planId,
             financeId: row.financeId,
             status: row.status,
@@ -242,7 +253,8 @@ export class SchoolPlanInvoiceRepositoryAdapter implements SchoolPlanInvoiceRepo
             paidAt: row.paidAt ? new Date(row.paidAt) : null,
             description: row.description ?? null,
             createdAt: new Date(row.createdAt)
-        }));
+        };
+        });
 
         return {
             items,

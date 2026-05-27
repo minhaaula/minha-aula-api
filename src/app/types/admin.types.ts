@@ -30,6 +30,8 @@ export interface SchoolWithPlanItem {
     email: string;
     phone: string;
     cnpj: string | null;
+    /** Associação sem fins lucrativos (exige CNPJ no cadastro). */
+    isNonprofitAssociation: boolean;
     addresses: PostalAddressOutput[];
     createdAt: Date;
     ownerName: string | null;

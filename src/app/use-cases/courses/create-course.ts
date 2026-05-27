@@ -28,7 +28,9 @@ export class CreateCourse {
         if (!school) throw AppError.fromCode(ErrorCode.SCHOOL_NOT_FOUND, { schoolId: input.schoolId });
 
         const existingCourse = await this.courses.findBySchoolAndName(school.id, input.name);
-        if (existingCourse) throw AppError.fromCode(ErrorCode.ALREADY_EXISTS, { message: 'Course name already in use for this school' });
+        if (existingCourse) {
+            throw AppError.fromCode(ErrorCode.ALREADY_EXISTS, { schoolId: school.id, name: input.name });
+        }
 
         const course = Course.create({
             id: Uuid(),

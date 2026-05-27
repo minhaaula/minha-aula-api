@@ -2428,6 +2428,10 @@ paths:
         matrículas e cobranças pagas em todas as escolas, e array de dependentes com seus dados
         e matrículas quando o aluno for titular (USER).
         Cada matrícula e cobrança inclui a escola (id e name).
+
+        Inclui `appClient` com metadados do app mobile (`user_app_client_state`):
+        titular usa a própria conta; dependente usa a conta do responsável (quem faz login no app).
+        `null` se o aluno nunca enviou metadados no login.
       security:
         - bearerAuth: []
       parameters:
@@ -2706,6 +2710,40 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AdminPaidSchoolPaymentsResponse'
+        '401':
+          description: Usuário não autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Usuário não autorizado (requer persona ADMIN).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/app-client-consolidated:
+    get:
+      tags:
+        - Admin
+      summary: Consolidado do app mobile dos alunos (versões, plataforma e SO)
+      description: |
+        Agrega dados de `user_app_client_state` (gravados no login do aluno com metadados do app):
+
+        - Versões do app (`appVersions` + `appVersionsLabel`, ex. `1.2.3 (20), 1.4.5 (33)`)
+        - Usuários por plataforma (`byPlatform`: ANDROID / IOS + `byPlatformLabel`)
+        - Versões de SO por plataforma (`osVersionsByPlatform` + `osVersionsLabels`)
+
+        Requer persona ADMIN.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Consolidado retornado com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminAppClientConsolidatedResponse'
         '401':
           description: Usuário não autenticado.
           content:
@@ -4547,12 +4585,34 @@ components:
               - id
               - fullName
               - enrollments
+        appClient:
+          type: object
+          nullable: true
+          description: |
+            Estado do app do aluno (login com metadados). Titular: conta do usuário;
+            dependente: conta do responsável. Ausente no banco = null.
+          properties:
+            platform:
+              type: string
+              enum: ['ANDROID', 'IOS']
+            appVersion:
+              type: string
+              example: '2.1.3'
+            lastSeenAt:
+              type: string
+              format: date-time
+            notificationsEnabled:
+              type: boolean
+            osVersion:
+              type: string
+              example: 'Android 14'
       required:
         - student
         - responsible
         - enrollments
         - paidCharges
         - dependents
+        - appClient
     AdminStudentChargeItem:
       type: object
       properties:
@@ -5025,6 +5085,66 @@ components:
               description: URL do site institucional
     PostalAddressOutput:
       $ref: '#/components/schemas/PostalAddressOutput'
+    AdminAppClientConsolidatedResponse:
+      type: object
+      properties:
+        totalUsers:
+          type: integer
+          description: Total de registros em user_app_client_state
+        appVersions:
+          type: array
+          items:
+            type: object
+            properties:
+              appVersion:
+                type: string
+                example: '1.2.3'
+              count:
+                type: integer
+                example: 20
+        appVersionsLabel:
+          type: string
+          example: '1.2.3 (20), 1.4.5 (33)'
+        byPlatform:
+          type: object
+          properties:
+            ANDROID:
+              type: integer
+            IOS:
+              type: integer
+        byPlatformLabel:
+          type: string
+          example: 'Android: 120, iOS: 85'
+        osVersionsByPlatform:
+          type: object
+          properties:
+            ANDROID:
+              type: array
+              items:
+                type: object
+                properties:
+                  osVersion:
+                    type: string
+                  count:
+                    type: integer
+            IOS:
+              type: array
+              items:
+                type: object
+                properties:
+                  osVersion:
+                    type: string
+                  count:
+                    type: integer
+        osVersionsLabels:
+          type: object
+          properties:
+            ANDROID:
+              type: string
+              example: 'Android 14 (25), Android 13 (5)'
+            IOS:
+              type: string
+              example: 'iOS 17.4 (23)'
     AdminDashboardResponse:
       type: object
       properties:

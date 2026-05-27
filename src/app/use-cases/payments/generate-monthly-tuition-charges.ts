@@ -10,6 +10,7 @@ import type { NotifyStudentUser } from "../shared/notify-student-user";
 import { AppDataSource } from "../../../infra/db/typeorm/datasource";
 import { EnrollmentOrm } from "../../../infra/db/typeorm/entities/enrollment.orm";
 import { Enrollment } from "../../../domain/entities/enrollment";
+import { coerceToDate } from "../../../shared/date-utils";
 import {
   isTuitionDueOnOrAfterFirstPayment,
   resolveFirstTuitionPaymentDueDate,
@@ -18,7 +19,6 @@ import {
   resolveNextTuitionDueDate,
   shouldGenerateTuitionChargeInWindow,
 } from "./resolve-next-tuition-due-date";
-import { coerceToDate } from "../../../shared/date-utils";
 
 type GenerateMonthlyTuitionChargesInput = {
   targetMonth?: number; // 1-12, se não fornecido usa o próximo mês

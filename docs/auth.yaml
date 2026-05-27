@@ -8,6 +8,10 @@ x-auth-info: |
   A recuperação de senha de usuário (ex.: aluno) usa `purpose` `user_password_reset` com **CPF** (não e-mail), depois `POST /auth/password/reset`
   com o `resetToken` retornado na verificação.
 
+  **App mobile (aluno):** no `POST /auth/login`, o app pode enviar `platform`, `appVersion`, `osVersion` e
+  `notificationsEnabled` (todos opcionais, mas obrigatórios em conjunto). Os dados são gravados/atualizados na tabela
+  `user_app_client_state` (1 registro por usuário; `last_seen_at` definido no servidor a cada login bem-sucedido).
+
 paths:
   /auth/verification/request:
     post:
@@ -174,6 +178,10 @@ paths:
       description: |
         Autentica um usuário e retorna um access token (validade curta) e um refresh token (validade de 30 dias).
         O refresh token deve ser usado para obter novos access tokens quando o atual expirar.
+
+        **App do aluno (opcional):** envie `platform` (`ANDROID` ou `IOS`), `appVersion`, `osVersion` e
+        `notificationsEnabled` juntos para registrar/atualizar o estado do cliente em `user_app_client_state`
+        (`last_seen_at` é preenchido pelo servidor no login).
       requestBody:
         required: true
         content:

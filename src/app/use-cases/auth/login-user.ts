@@ -7,6 +7,12 @@ import { SchoolRepository } from '../../../ports/repositories/school.repo';
 import { AppError, ErrorCode } from '../../../shared/errors';
 import { User } from '../../../domain/entities/user';
 import { resolveStudentLoginTokenPersona } from '../../../shared/user-student-access';
+import type {
+    UpsertUserAppClientStateInput,
+    UserAppClientStateRepository
+} from '../../../ports/repositories/user-app-client-state.repo';
+
+export type LoginUserClientStateInput = Omit<UpsertUserAppClientStateInput, 'userId' | 'lastSeenAt'>;
 
 export class LoginUser {
     private readonly allowedPersonas?: Set<string>;
@@ -17,12 +23,17 @@ export class LoginUser {
         private readonly tokens: TokenProviderPort,
         private readonly defaultTtl: number,
         activeModules: readonly string[] = [],
-        private readonly schools?: SchoolRepository
+        private readonly schools?: SchoolRepository,
+        private readonly appClientState?: UserAppClientStateRepository
     ) {
         this.allowedPersonas = this.resolveAllowedPersonas(activeModules);
     }
 
-    async exec(input: { cpf: string; password: string; }): Promise<{ accessToken: string; refreshToken: string; userId: string; fullName: string; email: string; cpf: string; persona: string; expiresIn: number; refreshTokenExpiresIn: number; schoolId?: string; studentAccessEnabled: boolean; }> {
+    async exec(input: {
+        cpf: string;
+        password: string;
+        appClient?: LoginUserClientStateInput;
+    }): Promise<{ accessToken: string; refreshToken: string; userId: string; fullName: string; email: string; cpf: string; persona: string; expiresIn: number; refreshTokenExpiresIn: number; schoolId?: string; studentAccessEnabled: boolean; }> {
         const cpf = this.normalizeCpf(input.cpf);
         const user = await this.users.findByCpf(cpf);
 
@@ -61,6 +72,17 @@ export class LoginUser {
             type: 'refresh'
         };
         const refreshToken = await this.tokens.sign(refreshPayload, { expiresIn: refreshTokenExpiresIn });
+
+        if (input.appClient && this.appClientState) {
+            await this.appClientState.upsert({
+                userId: user.id.trim(),
+                platform: input.appClient.platform,
+                appVersion: input.appClient.appVersion,
+                osVersion: input.appClient.osVersion,
+                notificationsEnabled: input.appClient.notificationsEnabled,
+                lastSeenAt: new Date()
+            });
+        }
 
         return {
             accessToken,

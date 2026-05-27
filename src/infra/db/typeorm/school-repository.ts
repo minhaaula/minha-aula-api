@@ -160,7 +160,7 @@ export class SchoolRepositoryAdapter implements SchoolRepository {
             email: row.email,
             phone: row.phone,
             cnpj: row.cnpj ?? null,
-            isNonprofitAssociation: row.isNonprofitAssociation === true,
+            isNonprofitAssociation: Boolean(row.isNonprofitAssociation),
             ownerUserId: row.ownerUserId ?? null,
             ownerName: row.ownerName ?? null,
             ownerCpf: row.ownerCpf ?? null,

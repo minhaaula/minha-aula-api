@@ -20,6 +20,28 @@ Autenticação de **usuários** (não escola). Personas incluem STUDENT, ADMIN, 
 Autentica um usuário e retorna um access token (validade curta) e um refresh token (validade de 30 dias).
 O refresh token deve ser usado para obter novos access tokens quando o atual expirar.
 
+**App do aluno (opcional):** no body, envie os quatro campos juntos para persistir metadados do dispositivo:
+
+| Campo | Tipo | Exemplo |
+|-------|------|---------|
+| `platform` | `ANDROID` \| `IOS` | `ANDROID` |
+| `appVersion` | string | `2.1.3` |
+| `osVersion` | string | `Android 14` |
+| `notificationsEnabled` | boolean | `true` |
+
+Gravados na tabela `user_app_client_state` (1 linha por usuário; `last_seen_at` definido no servidor a cada login). Login sem esses campos continua válido.
+
+```json
+{
+  "cpf": "12345678909",
+  "password": "senha12345",
+  "platform": "IOS",
+  "appVersion": "2.1.3",
+  "osVersion": "iOS 17.4",
+  "notificationsEnabled": true
+}
+```
+
 ---
 
 ### `PATCH` `/auth/password`

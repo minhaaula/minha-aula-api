@@ -13,6 +13,7 @@ import { AuthenticatedRequest } from '../middlewares/auth';
 import { cpfNumberSchema, phoneNumberSchema } from '../validators/numeric-fields';
 import { addressSchema } from '../validators/common-schemas';
 import { optionalGenderSchema } from '../validators/gender-schemas';
+import { parseLoginAppClient } from '../validators/app-client-schemas';
 import { authRateLimiter, registrationRateLimiter } from '../middlewares/rate-limiter';
 
 const cpfSchema = cpfNumberSchema();
@@ -56,10 +57,20 @@ export function authRouter({
         gender: optionalGenderSchema
     });
 
-    const loginSchema = z.object({
-        cpf: cpfSchema,
-        password: z.string().min(8)
-    });
+    const loginSchema = z
+        .object({
+            cpf: cpfSchema,
+            password: z.string().min(8),
+            platform: z.union([z.enum(['ANDROID', 'IOS']), z.string()]).optional(),
+            appVersion: z.string().trim().min(1).max(32).optional(),
+            app_version: z.string().trim().min(1).max(32).optional(),
+            osVersion: z.string().trim().min(1).max(64).optional(),
+            os_version: z.string().trim().min(1).max(64).optional(),
+            notificationsEnabled: z.union([z.boolean(), z.number(), z.string()]).optional(),
+            notifications_enabled: z.union([z.boolean(), z.number(), z.string()]).optional(),
+            appClient: z.object({}).passthrough().optional()
+        })
+        .passthrough();
 
     const updatePasswordSchema = z.object({
         currentPassword: z.string().min(8),
@@ -119,23 +130,44 @@ export function authRouter({
 
     r.post('/login', authRateLimiter, async (req, res, next) => {
         try {
-            const dto = loginSchema.parse(req.body);
-            const result = await loginUser.exec(dto);
+            const rawBody = req.body ?? {};
+            const dto = loginSchema.parse(rawBody);
+            const appClient = parseLoginAppClient(rawBody);
+            const result = await loginUser.exec({
+                cpf: dto.cpf,
+                password: dto.password,
+                appClient
+            });
             res.json(result);
         } catch (e) {
             next(e);
         }
     });
 
-    if (refreshToken) {
-        const refreshTokenSchema = z.object({
-            refreshToken: z.string().min(1, 'Refresh token é obrigatório')
-        });
+    const refreshBodySchema = z
+        .object({
+            refreshToken: z.string().min(1, 'Refresh token é obrigatório'),
+            platform: z.union([z.enum(['ANDROID', 'IOS']), z.string()]).optional(),
+            appVersion: z.string().trim().min(1).max(32).optional(),
+            app_version: z.string().trim().min(1).max(32).optional(),
+            osVersion: z.string().trim().min(1).max(64).optional(),
+            os_version: z.string().trim().min(1).max(64).optional(),
+            notificationsEnabled: z.union([z.boolean(), z.number(), z.string()]).optional(),
+            notifications_enabled: z.union([z.boolean(), z.number(), z.string()]).optional(),
+            appClient: z.object({}).passthrough().optional()
+        })
+        .passthrough();
 
+    if (refreshToken) {
         r.post('/refresh', async (req, res, next) => {
             try {
-                const dto = refreshTokenSchema.parse(req.body);
-                const result = await refreshToken.exec(dto);
+                const rawBody = req.body ?? {};
+                const dto = refreshBodySchema.parse(rawBody);
+                const appClient = parseLoginAppClient(rawBody);
+                const result = await refreshToken.exec({
+                    refreshToken: dto.refreshToken,
+                    appClient
+                });
                 res.json(result);
             } catch (e) {
                 next(e);

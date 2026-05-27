@@ -135,17 +135,18 @@ export class EnrollmentRepositoryAdapter implements EnrollmentRepository {
     }
 
     async getTopSchoolsByStudentCount(limit: number): Promise<Array<{ schoolId: string; schoolName: string; city: string | null; count: number }>> {
-        const rows = await this.repo
-            .createQueryBuilder('enrollment')
-            .innerJoin('enrollment.courseClass', 'class')
-            .innerJoin('class.course', 'course')
+        const rows = await this.applyActiveSchoolStudentCountFilters(
+            this.repo.createQueryBuilder('enrollment')
+        )
             .innerJoin('course.school', 'school')
             .leftJoin('school.addresses', 'addr')
-            .where('enrollment.status = :status', { status: 'ACTIVE' })
-            .select('school.id AS schoolId')
-            .addSelect('school.name AS schoolName')
+            .select('school.id', 'schoolId')
+            .addSelect('school.name', 'schoolName')
             .addSelect('MAX(addr.city)', 'city')
-            .addSelect('COUNT(DISTINCT COALESCE(enrollment.studentUserId, enrollment.dependentId))', 'count')
+            .addSelect(
+                `COUNT(DISTINCT ${EnrollmentRepositoryAdapter.ACTIVE_STUDENT_KEY_SQL})`,
+                'count'
+            )
             .groupBy('school.id')
             .addGroupBy('school.name')
             .orderBy('count', 'DESC')
@@ -228,9 +229,12 @@ export class EnrollmentRepositoryAdapter implements EnrollmentRepository {
     /**
      * Alunos distintos com matrícula ACTIVE em curso/turma ativos da escola
      * (mesma regra de `ListSchoolStudents` no formato admin).
+     * Ver `resolveSchoolActiveStudentKey` em `shared/school-active-student-key.ts`.
      */
     private static readonly ACTIVE_STUDENT_KEY_SQL = `CASE
-        WHEN enrollment.student_type = 'DEPENDENT' AND enrollment.dependent_id IS NOT NULL
+        WHEN enrollment.student_type = 'DEPENDENT'
+            AND enrollment.dependent_id IS NOT NULL
+            AND dep.deleted_at IS NULL
             THEN CONCAT('dep:', enrollment.dependent_id)
         ELSE CONCAT('user:', COALESCE(enrollment.student_user_id, enrollment.owner_user_id))
     END`;
@@ -241,12 +245,15 @@ export class EnrollmentRepositoryAdapter implements EnrollmentRepository {
         return qb
             .innerJoin('enrollment.courseClass', 'class')
             .innerJoin('class.course', 'course')
+            .leftJoin('enrollment.dependent', 'dep')
             .andWhere('enrollment.status = :status', { status: 'ACTIVE' })
             .andWhere('course.isActive = :courseActive', { courseActive: true })
             .andWhere('course.deletedAt IS NULL')
             .andWhere('class.isActive = :classActive', { classActive: true })
             .andWhere(
-                "(enrollment.student_type != 'DEPENDENT' OR enrollment.dependent_id IS NOT NULL)"
+                `(enrollment.student_type != 'DEPENDENT'
+                    OR enrollment.dependent_id IS NULL
+                    OR dep.deleted_at IS NULL)`
             );
     }
 

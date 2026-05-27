@@ -43,6 +43,8 @@ import {
 } from '../validators/student-schemas';
 import type { RequestStudentProfileUpdateOtp } from '../../../app/use-cases/students/request-student-profile-update-otp';
 import type { VerifyStudentProfileUpdateOtp } from '../../../app/use-cases/students/verify-student-profile-update-otp';
+import type { UpsertStudentAppClientState } from '../../../app/use-cases/students/upsert-student-app-client-state';
+import { parseLoginAppClient } from '../validators/app-client-schemas';
 import { authRateLimiter } from '../middlewares/rate-limiter';
 
 export function studentsRouter(deps: { 
@@ -77,6 +79,7 @@ export function studentsRouter(deps: {
     listEnrollmentTimeline?: ListEnrollmentTimeline;
     uploadStudentProfilePhoto?: UploadStudentProfilePhoto;
     removeStudentProfilePhoto?: RemoveStudentProfilePhoto;
+    upsertStudentAppClientState?: UpsertStudentAppClientState;
 }) {
     const r = Router();
 
@@ -187,6 +190,35 @@ export function studentsRouter(deps: {
                 removeStudentProfilePhoto: deps.removeStudentProfilePhoto
             })
         );
+    }
+
+    if (deps.upsertStudentAppClientState) {
+        r.put('/me/app-client', requireStudent, asyncHandler(async (req, res) => {
+            const authReq = req as AuthenticatedRequest;
+            const userId = authReq.user?.sub;
+            if (!userId) {
+                return res.status(401).json({ error: 'Unauthorized' });
+            }
+
+            const appClient = parseLoginAppClient(req.body ?? {});
+            if (!appClient) {
+                return res.status(400).json({
+                    code: 'VALIDATION_ERROR',
+                    message:
+                        'Informe platform, appVersion e osVersion para registrar o app (notificationsEnabled é opcional).'
+                });
+            }
+
+            const record = await deps.upsertStudentAppClientState!.exec({ userId, appClient });
+            res.json({
+                userId: record.userId,
+                platform: record.platform,
+                appVersion: record.appVersion,
+                osVersion: record.osVersion,
+                notificationsEnabled: record.notificationsEnabled,
+                lastSeenAt: record.lastSeenAt.toISOString()
+            });
+        }));
     }
 
     if (deps.getMyProfile) {

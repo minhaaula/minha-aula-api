@@ -55,7 +55,7 @@ export class UpdateCourseClass {
         if (label !== courseClass.label) {
             const duplicate = await this.classes.findByCourseAndLabel(course.id, label);
             if (duplicate && duplicate.id !== courseClass.id) {
-                throw AppError.fromCode(ErrorCode.ALREADY_EXISTS, { message: 'Class label already in use for this course' });
+                throw AppError.fromCode(ErrorCode.ALREADY_EXISTS, { courseId, classId, label: input.label });
             }
         }
 

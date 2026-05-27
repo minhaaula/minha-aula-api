@@ -4,6 +4,8 @@ import { GetAdminStatus } from '../../app/use-cases/admin/get-admin-status';
 import { ListSchoolsWithPlans } from '../../app/use-cases/admin/list-schools-with-plans';
 import { LoginAdmin } from '../../app/use-cases/auth/login-admin';
 import { GetAdminDashboard } from '../../app/use-cases/admin/get-admin-dashboard';
+import { GetAdminAppClientConsolidated } from '../../app/use-cases/admin/get-admin-app-client-consolidated';
+import { UserAppClientStateRepositoryAdapter } from '../../infra/db/typeorm/user-app-client-state-repository.adapter';
 import { CreateDiscountCoupon } from '../../app/use-cases/admin/create-discount-coupon';
 import { ListDiscountCoupons } from '../../app/use-cases/admin/list-discount-coupons';
 import { ValidateDiscountCoupon } from '../../app/use-cases/admin/validate-discount-coupon';
@@ -171,6 +173,9 @@ export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext)
         listSchoolsWithPlans
     );
 
+    const appClientStateRepo = new UserAppClientStateRepositoryAdapter();
+    const getAdminAppClientConsolidated = new GetAdminAppClientConsolidated(appClientStateRepo);
+
     const listSchoolStudents = new ListSchoolStudents(
         deps.coursesRepo,
         deps.classesRepo,
@@ -182,7 +187,11 @@ export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext)
     const listAllStudents = new ListAllStudents(deps.enrollmentsRepo, deps.usersRepo, deps.dependentsRepo);
 
     const listAdminStudentCourses = new ListAdminStudentCourses(deps.usersRepo, deps.dependentsRepo);
-    const getAdminStudentDetails = new GetAdminStudentDetails(deps.usersRepo, deps.dependentsRepo);
+    const getAdminStudentDetails = new GetAdminStudentDetails(
+        deps.usersRepo,
+        deps.dependentsRepo,
+        appClientStateRepo
+    );
     const updateAdminStudent = new UpdateAdminStudent(deps.usersRepo, deps.dependentsRepo);
     const listAdminSchoolCourses = new ListAdminSchoolCourses(
         deps.coursesRepo,
@@ -301,6 +310,7 @@ export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext)
         listSchoolsWithPlans,
         loginAdmin,
         getAdminDashboard,
+        getAdminAppClientConsolidated,
         getAdminSchoolDetails,
         getAdminSchoolPlans,
         updateSchool,
