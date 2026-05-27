@@ -341,6 +341,16 @@ paths:
             type: string
           description: Filtrar por CPF do titular ou do dependente (com ou sem formatação).
         - in: query
+          name: page
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: |
+            Página (1-based). Quando informada, tem prioridade sobre `offset`
+            (`offset = (page - 1) * limit`). Ex.: `page=2` com `limit=30` equivale a `offset=30`.
+        - in: query
           name: limit
           required: false
           schema:
@@ -356,7 +366,8 @@ paths:
             type: integer
             minimum: 0
             default: 0
-          description: 'Número de resultados a pular para paginação (padrão: 0)'
+          description: |
+            Resultados a pular (padrão: 0). Ignorado se `page` for informado.
       responses:
         '200':
           description: Lista de alunos matriculados na escola.

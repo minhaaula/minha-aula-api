@@ -1,6 +1,10 @@
 import type { PostalAddressProps } from '../../../domain/value-objects/postal-address';
 import { UserRepository } from '../../../ports/repositories/user.repo';
 import { DependentRepository } from '../../../ports/repositories/dependent.repo';
+import type {
+    UserAppClientStateRecord,
+    UserAppClientStateRepository
+} from '../../../ports/repositories/user-app-client-state.repo';
 import { AppDataSource } from '../../../infra/db/typeorm/datasource';
 import { EnrollmentOrm } from '../../../infra/db/typeorm/entities/enrollment.orm';
 import { SchoolFinancialChargeOrm } from '../../../infra/db/typeorm/entities/school-financial-charge.orm';
@@ -46,6 +50,30 @@ type PaidChargeItem = {
     class: { id: string; label: string };
 };
 
+export type AdminStudentAppClientOutput = {
+    platform: UserAppClientStateRecord['platform'];
+    appVersion: string;
+    lastSeenAt: Date;
+    notificationsEnabled: boolean;
+    osVersion: string;
+} | null;
+
+export function presentAdminStudentAppClient(
+    record: UserAppClientStateRecord | null
+): AdminStudentAppClientOutput {
+    if (!record) {
+        return null;
+    }
+
+    return {
+        platform: record.platform,
+        appVersion: record.appVersion,
+        lastSeenAt: record.lastSeenAt,
+        notificationsEnabled: record.notificationsEnabled,
+        osVersion: record.osVersion
+    };
+}
+
 export type AdminStudentDependentItem = {
     id: string;
     fullName: string;
@@ -80,12 +108,15 @@ export interface GetAdminStudentDetailsOutput {
     enrollments: EnrollmentItem[];
     paidCharges: PaidChargeItem[];
     dependents: AdminStudentDependentItem[];
+    /** Metadados do app (titular: conta do aluno; dependente: conta do responsável). */
+    appClient: AdminStudentAppClientOutput;
 }
 
 export class GetAdminStudentDetails {
     constructor(
         private readonly users: UserRepository,
-        private readonly dependents: DependentRepository
+        private readonly dependents: DependentRepository,
+        private readonly appClientState?: UserAppClientStateRepository
     ) {}
 
     async exec(input: GetAdminStudentDetailsInput): Promise<GetAdminStudentDetailsOutput | null> {
@@ -98,10 +129,11 @@ export class GetAdminStudentDetails {
 
         const user = await this.users.findById(studentId);
         if (user) {
-            const [enrollments, paidCharges, dependentsList] = await Promise.all([
+            const [enrollments, paidCharges, dependentsList, appClient] = await Promise.all([
                 this.findEnrollmentsForUser(user.id),
                 this.findPaidChargesForUser(user.id),
-                this.dependents.findByUserIds([user.id])
+                this.dependents.findByUserIds([user.id]),
+                this.loadAppClient(user.id)
             ]);
 
             const dependents: AdminStudentDependentItem[] = [];
@@ -134,7 +166,8 @@ export class GetAdminStudentDetails {
                 responsible: null,
                 enrollments,
                 paidCharges,
-                dependents
+                dependents,
+                appClient
             };
         }
 
@@ -148,9 +181,10 @@ export class GetAdminStudentDetails {
             return null;
         }
 
-        const [enrollments, paidCharges] = await Promise.all([
+        const [enrollments, paidCharges, appClient] = await Promise.all([
             this.findEnrollmentsForDependent(dependent.id),
-            this.findPaidChargesForDependent(dependent.id)
+            this.findPaidChargesForDependent(dependent.id),
+            this.loadAppClient(responsible.id)
         ]);
 
         return {
@@ -175,8 +209,19 @@ export class GetAdminStudentDetails {
             },
             enrollments,
             paidCharges,
-            dependents: []
+            dependents: [],
+            appClient
         };
+    }
+
+    private async loadAppClient(userId: string): Promise<AdminStudentAppClientOutput> {
+        const findByUserId = this.appClientState?.findByUserId;
+        if (!findByUserId) {
+            return null;
+        }
+
+        const row = await findByUserId.call(this.appClientState, userId);
+        return presentAdminStudentAppClient(row);
     }
 
     private async findEnrollmentsForUser(userId: string): Promise<EnrollmentItem[]> {
