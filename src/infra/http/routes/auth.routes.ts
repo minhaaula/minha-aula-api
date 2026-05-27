@@ -13,6 +13,7 @@ import { AuthenticatedRequest } from '../middlewares/auth';
 import { cpfNumberSchema, phoneNumberSchema } from '../validators/numeric-fields';
 import { addressSchema } from '../validators/common-schemas';
 import { optionalGenderSchema } from '../validators/gender-schemas';
+import { parseLoginAppClient } from '../validators/app-client-schemas';
 import { authRateLimiter, registrationRateLimiter } from '../middlewares/rate-limiter';
 
 const cpfSchema = cpfNumberSchema();
@@ -56,31 +57,20 @@ export function authRouter({
         gender: optionalGenderSchema
     });
 
-    const loginSchema = z.object({
-        cpf: cpfSchema,
-        password: z.string().min(8),
-        platform: z.enum(['ANDROID', 'IOS']).optional(),
-        appVersion: z.string().trim().min(1).max(32).optional(),
-        osVersion: z.string().trim().min(1).max(64).optional(),
-        notificationsEnabled: z.boolean().optional()
-    }).superRefine((data, ctx) => {
-        const clientFields = [
-            data.platform,
-            data.appVersion,
-            data.osVersion,
-            data.notificationsEnabled
-        ];
-        const anyClient = clientFields.some((v) => v !== undefined);
-        const allClient = clientFields.every((v) => v !== undefined);
-        if (anyClient && !allClient) {
-            ctx.addIssue({
-                code: z.ZodIssueCode.custom,
-                message:
-                    'Informe platform, appVersion, osVersion e notificationsEnabled juntos para registrar o app do aluno.',
-                path: ['platform']
-            });
-        }
-    });
+    const loginSchema = z
+        .object({
+            cpf: cpfSchema,
+            password: z.string().min(8),
+            platform: z.union([z.enum(['ANDROID', 'IOS']), z.string()]).optional(),
+            appVersion: z.string().trim().min(1).max(32).optional(),
+            app_version: z.string().trim().min(1).max(32).optional(),
+            osVersion: z.string().trim().min(1).max(64).optional(),
+            os_version: z.string().trim().min(1).max(64).optional(),
+            notificationsEnabled: z.union([z.boolean(), z.number(), z.string()]).optional(),
+            notifications_enabled: z.union([z.boolean(), z.number(), z.string()]).optional(),
+            appClient: z.object({}).passthrough().optional()
+        })
+        .passthrough();
 
     const updatePasswordSchema = z.object({
         currentPassword: z.string().min(8),
@@ -140,16 +130,8 @@ export function authRouter({
 
     r.post('/login', authRateLimiter, async (req, res, next) => {
         try {
-            const dto = loginSchema.parse(req.body);
-            const appClient =
-                dto.platform !== undefined
-                    ? {
-                          platform: dto.platform,
-                          appVersion: dto.appVersion!,
-                          osVersion: dto.osVersion!,
-                          notificationsEnabled: dto.notificationsEnabled!
-                      }
-                    : undefined;
+            const dto = loginSchema.parse(req.body ?? {});
+            const appClient = parseLoginAppClient(dto);
             const result = await loginUser.exec({
                 cpf: dto.cpf,
                 password: dto.password,
@@ -161,15 +143,29 @@ export function authRouter({
         }
     });
 
-    if (refreshToken) {
-        const refreshTokenSchema = z.object({
-            refreshToken: z.string().min(1, 'Refresh token é obrigatório')
-        });
+    const refreshBodySchema = z
+        .object({
+            refreshToken: z.string().min(1, 'Refresh token é obrigatório'),
+            platform: z.union([z.enum(['ANDROID', 'IOS']), z.string()]).optional(),
+            appVersion: z.string().trim().min(1).max(32).optional(),
+            app_version: z.string().trim().min(1).max(32).optional(),
+            osVersion: z.string().trim().min(1).max(64).optional(),
+            os_version: z.string().trim().min(1).max(64).optional(),
+            notificationsEnabled: z.union([z.boolean(), z.number(), z.string()]).optional(),
+            notifications_enabled: z.union([z.boolean(), z.number(), z.string()]).optional(),
+            appClient: z.object({}).passthrough().optional()
+        })
+        .passthrough();
 
+    if (refreshToken) {
         r.post('/refresh', async (req, res, next) => {
             try {
-                const dto = refreshTokenSchema.parse(req.body);
-                const result = await refreshToken.exec(dto);
+                const dto = refreshBodySchema.parse(req.body ?? {});
+                const appClient = parseLoginAppClient(dto);
+                const result = await refreshToken.exec({
+                    refreshToken: dto.refreshToken,
+                    appClient
+                });
                 res.json(result);
             } catch (e) {
                 next(e);

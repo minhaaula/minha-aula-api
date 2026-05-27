@@ -6,9 +6,16 @@ import { UserPersonaEnum } from '../../../domain/value-objects/user-persona';
 import { AppError, ErrorCode } from '../../../shared/errors';
 import { isUserPersona } from '../../../domain/value-objects/user-persona';
 import { canActAsStudent } from '../../../shared/user-student-access';
+import type {
+    UpsertUserAppClientStateInput,
+    UserAppClientStateRepository
+} from '../../../ports/repositories/user-app-client-state.repo';
+
+export type RefreshTokenAppClientInput = Omit<UpsertUserAppClientStateInput, 'userId' | 'lastSeenAt'>;
 
 export interface RefreshTokenInput {
     refreshToken: string;
+    appClient?: RefreshTokenAppClientInput;
 }
 
 export interface RefreshTokenOutput {
@@ -21,7 +28,8 @@ export class RefreshToken {
         private readonly tokens: TokenProviderPort,
         private readonly users: UserRepository,
         private readonly schools?: SchoolRepository,
-        private readonly defaultTtl: number = 3600
+        private readonly defaultTtl: number = 3600,
+        private readonly appClientState?: UserAppClientStateRepository
     ) {}
 
     async exec(input: RefreshTokenInput): Promise<RefreshTokenOutput> {
@@ -83,6 +91,17 @@ export class RefreshToken {
             }
 
             const accessToken = await this.tokens.sign(newPayload, { expiresIn });
+
+            if (input.appClient && this.appClientState) {
+                await this.appClientState.upsert({
+                    userId: user.id,
+                    platform: input.appClient.platform,
+                    appVersion: input.appClient.appVersion,
+                    osVersion: input.appClient.osVersion,
+                    notificationsEnabled: input.appClient.notificationsEnabled,
+                    lastSeenAt: new Date()
+                });
+            }
 
             return {
                 accessToken,

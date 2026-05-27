@@ -71,7 +71,8 @@ export function buildAuthModule(deps: AuthModuleDeps, ctx: ModuleSetupContext): 
         deps.tokenProvider,
         deps.usersRepo,
         deps.schoolsRepo,
-        deps.tokenTtl
+        deps.tokenTtl,
+        appClientStateRepo
     );
 
     const resetUserPassword = new ResetUserPassword(deps.usersRepo, resetTokensRepo, deps.passwordHasher);
