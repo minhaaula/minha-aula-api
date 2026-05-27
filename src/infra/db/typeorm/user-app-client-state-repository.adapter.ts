@@ -18,17 +18,20 @@ export class UserAppClientStateRepositoryAdapter implements UserAppClientStateRe
         const userId = input.userId.trim();
         const lastSeenAt = input.lastSeenAt ?? new Date();
 
-        const existing = await this.repo.findOne({ where: { userId } });
-        const row = existing ?? this.repo.create({ userId });
+        await this.repo.upsert(
+            {
+                userId,
+                platform: input.platform,
+                appVersion: input.appVersion.trim(),
+                osVersion: input.osVersion.trim(),
+                notificationsEnabled: input.notificationsEnabled,
+                lastSeenAt
+            },
+            ['userId']
+        );
 
-        row.platform = input.platform;
-        row.appVersion = input.appVersion.trim();
-        row.osVersion = input.osVersion.trim();
-        row.notificationsEnabled = input.notificationsEnabled;
-        row.lastSeenAt = lastSeenAt;
-
-        const saved = await this.repo.save(row);
-        return this.toRecord(saved);
+        const row = await this.repo.findOneByOrFail({ userId });
+        return this.toRecord(row);
     }
 
     async findByUserId(userId: string): Promise<UserAppClientStateRecord | null> {
@@ -37,15 +40,20 @@ export class UserAppClientStateRepositoryAdapter implements UserAppClientStateRe
     }
 
     async getConsolidatedStats(): Promise<AppClientConsolidatedStats> {
-        const rows = await this.repo.find({
-            select: {
-                platform: true,
-                appVersion: true,
-                osVersion: true
-            }
-        });
+        // Usa SQL direto para evitar problema do TypeORM 0.3.x:
+        // `find()` com `select` parcial pode não hidratar PrimaryColumn (@OneToOne + @JoinColumn)
+        // corretamente quando user_id é FK ao mesmo tempo que PK.
+        const rawRows: RawAppClientRow[] = await AppDataSource.query(`
+            SELECT
+                user_id     AS userId,
+                platform    AS platform,
+                app_version AS appVersion,
+                os_version  AS osVersion
+            FROM user_app_client_state
+        `);
 
-        return buildAppClientConsolidatedStats(rows);
+        const dedupedRows = dedupeRawAppClientRows(rawRows);
+        return buildAppClientConsolidatedStats(dedupedRows);
     }
 
     private toRecord(row: UserAppClientStateOrm): UserAppClientStateRecord {
@@ -62,11 +70,43 @@ export class UserAppClientStateRepositoryAdapter implements UserAppClientStateRe
     }
 }
 
+// Linha bruta devolvida pelo MySQL (aliases podem vir em snake_case dependendo do driver)
+type RawAppClientRow = {
+    userId?: unknown;
+    user_id?: unknown;
+    platform?: unknown;
+    appVersion?: unknown;
+    app_version?: unknown;
+    osVersion?: unknown;
+    os_version?: unknown;
+};
+
 type AppClientConsolidatedRow = {
-    platform: AppClientPlatform | string;
+    userId: string;
+    platform: string;
     appVersion: string;
     osVersion: string;
 };
+
+function normalizeRawRow(row: RawAppClientRow): AppClientConsolidatedRow {
+    return {
+        userId:     String(row.userId     ?? row.user_id    ?? '').trim(),
+        platform:   String(row.platform   ?? '').trim().toUpperCase(),
+        appVersion: String(row.appVersion ?? row.app_version ?? '').trim(),
+        osVersion:  String(row.osVersion  ?? row.os_version  ?? '').trim()
+    };
+}
+
+function dedupeRawAppClientRows(rawRows: RawAppClientRow[]): AppClientConsolidatedRow[] {
+    const seen = new Map<string, AppClientConsolidatedRow>();
+    for (const raw of rawRows) {
+        const row = normalizeRawRow(raw);
+        if (row.userId) {
+            seen.set(row.userId, row);
+        }
+    }
+    return [...seen.values()];
+}
 
 export function buildAppClientConsolidatedStats(rows: AppClientConsolidatedRow[]): AppClientConsolidatedStats {
     const versionMap = new Map<string, number>();
@@ -83,19 +123,16 @@ export function buildAppClientConsolidatedStats(rows: AppClientConsolidatedRow[]
             byPlatform.IOS += 1;
         }
 
-        const appVersion = row.appVersion.trim();
-        if (appVersion) {
-            versionMap.set(appVersion, (versionMap.get(appVersion) ?? 0) + 1);
+        if (row.appVersion) {
+            versionMap.set(row.appVersion, (versionMap.get(row.appVersion) ?? 0) + 1);
         }
 
-        const osVersion = row.osVersion.trim();
-        if (!osVersion) {
-            continue;
-        }
+        if (!row.osVersion) continue;
+
         if (row.platform === 'ANDROID') {
-            osByPlatform.ANDROID.set(osVersion, (osByPlatform.ANDROID.get(osVersion) ?? 0) + 1);
+            osByPlatform.ANDROID.set(row.osVersion, (osByPlatform.ANDROID.get(row.osVersion) ?? 0) + 1);
         } else if (row.platform === 'IOS') {
-            osByPlatform.IOS.set(osVersion, (osByPlatform.IOS.get(osVersion) ?? 0) + 1);
+            osByPlatform.IOS.set(row.osVersion, (osByPlatform.IOS.get(row.osVersion) ?? 0) + 1);
         }
     }
 

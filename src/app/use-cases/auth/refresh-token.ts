@@ -94,7 +94,7 @@ export class RefreshToken {
 
             if (input.appClient && this.appClientState) {
                 await this.appClientState.upsert({
-                    userId: user.id,
+                    userId: user.id.trim(),
                     platform: input.appClient.platform,
                     appVersion: input.appClient.appVersion,
                     osVersion: input.appClient.osVersion,
