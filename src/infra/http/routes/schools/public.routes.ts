@@ -9,7 +9,11 @@ import type { VerifyPhoneOtpChallenge } from '../../../../app/use-cases/auth/ver
 import type { AuthenticatedRequest } from '../../middlewares/auth';
 import { authRateLimiter } from '../../middlewares/rate-limiter';
 import { UserPersonaEnum } from '../../../../domain/value-objects/user-persona';
-import { createSchoolObjectSchema, createSchoolSchema } from '../../validators/school-schemas';
+import {
+    createSchoolObjectSchema,
+    createSchoolSchema,
+    normalizeSchoolCreateBody
+} from '../../validators/school-schemas';
 import { z } from 'zod';
 import { mapAddresses } from './transformers';
 import { listTuitionExemptionTypes } from '../../../../domain/value-objects/tuition-exemption-type';
@@ -90,7 +94,7 @@ export function buildPublicSchoolRoutes(deps: PublicSchoolRoutesDeps, optionalAu
     }
 
     router.post('/', optionalAuth, asyncHandler(async (req, res) => {
-        const data = createSchoolSchema.parse(req.body);
+        const data = createSchoolSchema.parse(normalizeSchoolCreateBody(req.body ?? {}));
         const authReq = req as AuthenticatedRequest;
         const ownerUserId = authReq.user?.persona === UserPersonaEnum.SCHOOL ? authReq.user.sub : null;
 
@@ -99,7 +103,7 @@ export function buildPublicSchoolRoutes(deps: PublicSchoolRoutesDeps, optionalAu
             email: data.email,
             phone: data.phone,
             cnpj: data.cnpj ?? null,
-            isNonprofitAssociation: data.isNonprofitAssociation === true,
+            isNonprofitAssociation: data.isNonprofitAssociation,
             incomeValue: data.incomeValue,
             addresses: mapAddresses(data.addresses),
             ownerUserId,

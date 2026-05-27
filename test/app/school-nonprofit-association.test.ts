@@ -4,7 +4,10 @@ import { GetSchoolProfile } from '../../src/app/use-cases/schools/get-school-pro
 import { School } from '../../src/domain/entities/school';
 import { PostalAddress } from '../../src/domain/value-objects/postal-address';
 import { AppError } from '../../src/shared/errors';
-import { createSchoolSchema } from '../../src/infra/http/validators/school-schemas';
+import {
+    createSchoolSchema,
+    normalizeSchoolCreateBody
+} from '../../src/infra/http/validators/school-schemas';
 import type { SchoolRepository } from '../../src/ports/repositories/school.repo';
 import type { PasswordHasherPort } from '../../src/ports/providers/password-hasher.port';
 import type { TokenProviderPort } from '../../src/ports/providers/token-provider.port';
@@ -115,6 +118,28 @@ describe('associação sem fins lucrativos (escola)', () => {
             ownerWhatsappVerificationToken: schoolSignupVerificationToken(ownerWhatsapp),
             addresses: [baseAddress]
         })).rejects.toBeInstanceOf(AppError);
+    });
+
+    it('schema aceita is_nonprofit_association e string "true"', () => {
+        const ownerWhatsapp = '(11) 99876-5432';
+        const parsed = createSchoolSchema.parse(
+            normalizeSchoolCreateBody({
+            name: 'Associação',
+            email: 'a@b.org',
+            phone: ownerWhatsapp,
+            cnpj: '12.345.678/0001-90',
+            is_nonprofit_association: 'true',
+            ownerName: 'João',
+            ownerCpf: '529.982.247-25',
+            ownerEmail: 'joao@b.org',
+            ownerWhatsapp,
+            ownerWhatsappVerificationToken: 'token-placeholder',
+            ownerPassword: 'senha12345',
+            addresses: [baseAddress]
+            })
+        );
+
+        expect(parsed.isNonprofitAssociation).toBe(true);
     });
 
     it('persiste false por padrão', async () => {
