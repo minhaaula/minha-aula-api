@@ -26,8 +26,12 @@ type ListSchoolStudentsInput = {
     cpf?: string | null;
     limit?: number;
     offset?: number;
-    /** Quando 'admin', retorna um item por titular com array dependentes (para painel admin). */
-    outputFormat?: 'admin' | 'legacy';
+    /**
+     * - `'admin'`: um item por estudante com array de matrículas e dados do responsável (painel admin).
+     * - `'school'`: um item por matrícula com apenas o estudante matriculado (painel escola).
+     * - `'legacy'`: formato antigo com `student` + `dependent` separados.
+     */
+    outputFormat?: 'admin' | 'school' | 'legacy';
 };
 
 export type AdminSchoolStudentResponsible = {
@@ -82,8 +86,26 @@ export type SchoolStudentRecord = {
     tuitionExemptionType: TuitionExemptionType | null;
 };
 
+/** Item do formato 'school': um estudante matriculado por enrollment, sem dados do responsável/pai. */
+export type SchoolStudentEnrollmentItem = {
+    enrollmentId: string;
+    status: Enrollment['status'];
+    enrolledAt: Date;
+    updatedAt: Date;
+    studentId: string;
+    studentName: string;
+    cpf: string | null;
+    birthDate: Date | null;
+    gender: Gender | null;
+    isDependent: boolean;
+    tuitionExempt: boolean;
+    tuitionExemptionType: TuitionExemptionType | null;
+    course: { id: string; name: string };
+    class: { id: string; label: string };
+};
+
 export type ListSchoolStudentsOutput = {
-    students: AdminSchoolStudentItem[] | SchoolStudentRecord[];
+    students: AdminSchoolStudentItem[] | SchoolStudentEnrollmentItem[] | SchoolStudentRecord[];
     total: number;
     limit: number;
     offset: number;
@@ -261,6 +283,77 @@ export class ListSchoolStudents {
 
             return {
                 students: paginatedResults,
+                total,
+                limit,
+                offset
+            };
+        }
+
+        if (input.outputFormat === 'school') {
+            const dependentById = new Map<string, Dependent>();
+            for (const list of dependentsByOwner.values()) {
+                for (const dep of list) dependentById.set(dep.id, dep);
+            }
+            const courseById = new Map(courses.map((c) => [c.id, c]));
+            const classById = new Map(classes.map((cls) => [cls.id, cls]));
+
+            const schoolResults: SchoolStudentEnrollmentItem[] = [];
+
+            for (const enrollment of enrollments) {
+                const courseClass = classById.get(enrollment.courseClassId);
+                if (!courseClass) continue;
+                const course = courseById.get(courseClass.courseId);
+                if (!course) continue;
+
+                const owner = owners.get(enrollment.ownerUserId);
+                if (!owner) continue;
+
+                const isDependentEnrollment =
+                    enrollment.studentType === 'DEPENDENT' && Boolean(enrollment.dependentId);
+                const dependent =
+                    isDependentEnrollment && enrollment.dependentId
+                        ? dependentById.get(enrollment.dependentId)
+                        : null;
+
+                if (isDependentEnrollment && !dependent) continue;
+
+                const studentId = isDependentEnrollment
+                    ? dependent!.id
+                    : (enrollment.studentUserId ?? enrollment.ownerUserId);
+                const studentName = isDependentEnrollment ? dependent!.fullName : owner.fullName;
+                const cpf = isDependentEnrollment ? (dependent!.cpf ?? null) : owner.cpf;
+                const birthDate = isDependentEnrollment ? dependent!.birthDate : owner.birthDate;
+                const gender = isDependentEnrollment ? (dependent!.gender ?? null) : owner.gender;
+
+                if (nameFilter && !studentName.toLowerCase().includes(nameFilter)) continue;
+                if (cpfFilter && !this.matchesCpf(cpf, cpfFilter)) continue;
+
+                const exemption = presentTuitionExemption(enrollment.tuitionExemptionType);
+
+                schoolResults.push({
+                    enrollmentId: enrollment.id,
+                    status: enrollment.status,
+                    enrolledAt: enrollment.enrolledAt,
+                    updatedAt: enrollment.updatedAt,
+                    studentId,
+                    studentName,
+                    cpf,
+                    birthDate,
+                    gender,
+                    isDependent: isDependentEnrollment,
+                    ...exemption,
+                    course: { id: course.id, name: course.name },
+                    class: { id: courseClass.id, label: courseClass.label }
+                });
+            }
+
+            const sorted = schoolResults.sort((a, b) =>
+                a.studentName.localeCompare(b.studentName, undefined, { sensitivity: 'base' })
+            );
+            const total = sorted.length;
+
+            return {
+                students: sorted.slice(offset, offset + limit),
                 total,
                 limit,
                 offset

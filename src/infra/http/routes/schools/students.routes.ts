@@ -73,7 +73,8 @@ export function buildStudentsRoutes(deps: StudentsRoutesDeps, guards: SchoolRout
     }
 
     const querySchema = z.object({
-        name: z.string().trim().min(1).optional(),
+        /** Nome do estudante matriculado (titular ou dependente). */
+        studentName: z.string().trim().min(1).optional(),
         courseId: z.string().uuid().optional(),
         classId: z.string().uuid().optional(),
         cpf: cpfNumberSchema().optional(),
@@ -86,7 +87,7 @@ export function buildStudentsRoutes(deps: StudentsRoutesDeps, guards: SchoolRout
         const schoolId = (req as SchoolContextRequest).schoolId as string;
 
         const query = querySchema.parse({
-            name: typeof req.query.name === 'string' ? req.query.name : undefined,
+            studentName: typeof req.query.studentName === 'string' ? req.query.studentName : undefined,
             courseId: typeof req.query.courseId === 'string' ? req.query.courseId : undefined,
             classId: typeof req.query.classId === 'string' ? req.query.classId : undefined,
             cpf: typeof req.query.cpf === 'string' ? req.query.cpf : undefined,
@@ -104,12 +105,13 @@ export function buildStudentsRoutes(deps: StudentsRoutesDeps, guards: SchoolRout
 
         const result = await deps.listSchoolStudents.exec({
             schoolId,
-            name: query.name,
+            name: query.studentName,
             courseId: query.courseId,
             classId: query.classId,
             cpf: query.cpf,
             limit,
-            offset
+            offset,
+            outputFormat: 'school'
         });
 
         res.json({
