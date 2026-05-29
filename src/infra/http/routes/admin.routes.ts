@@ -739,6 +739,40 @@ export function adminRouter({
         }));
     }
 
+    /**
+     * Disparar backfill do providerNetAmountCents (Asaas netValue) manualmente.
+     * Observação: o job recorrente roda automaticamente a cada minuto via BullMQ repeat;
+     * esta rota serve para forçar execução imediata.
+     */
+    router.post('/crons/asaas/backfill-provider-net-amount/run', requireAuth, requireAdminPersona, asyncHandler(async (req, res) => {
+        if (!process.env.REDIS_HOST) {
+            return res.status(503).json({
+                error: 'Queue not configured',
+                message: 'REDIS_HOST não está configurado. Não é possível executar o backfill manualmente.'
+            });
+        }
+
+        const bodySchema = z.object({
+            limit: z.number().int().min(1).max(2000).optional(),
+            dryRun: z.boolean().optional()
+        }).strict();
+        const body = bodySchema.parse(req.body ?? {});
+
+        const queue = new Queue(getOutboxQueueName(), { connection });
+        try {
+            const cronName = 'backfill_asaas_provider_net_amount';
+            const aggregateId = `admin-cron-run:${cronName}:${Date.now()}`;
+            const job = await queue.add(
+                cronName,
+                { type: cronName, payload: { limit: body.limit, dryRun: body.dryRun }, aggregateId },
+                { removeOnComplete: true, attempts: 1 }
+            );
+            res.status(202).json({ enqueued: true, jobId: job.id ?? null, cronName });
+        } finally {
+            await queue.close();
+        }
+    }));
+
     if (adminMarkInvoicePaid) {
         const markInvoicePaidBodySchema = z.object({
             paidAt: z.string().datetime().optional()
