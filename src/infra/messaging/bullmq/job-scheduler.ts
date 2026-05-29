@@ -7,6 +7,8 @@ import { Queue } from 'bullmq';
 import { log } from '../../../shared/logger';
 import { connection, getOutboxQueueName } from './queue-config';
 
+const BACKFILL_ASAAS_PROVIDER_NET_AMOUNT_JOB_NAME = 'backfill_asaas_provider_net_amount';
+
 /**
  * Agenda o job de busca de recibos de pagamento
  */
@@ -374,6 +376,69 @@ export async function scheduleBoletoNotificationsJob(): Promise<void> {
 }
 
 /**
+ * Agenda o job de backfill do providerNetAmountCents (Asaas netValue) para cobranças PAID sem valor líquido.
+ * Roda a cada 1 minuto.
+ */
+export async function scheduleBackfillAsaasProviderNetAmountJob(): Promise<void> {
+    if (!process.env.REDIS_HOST) {
+        log.warn(
+            '[Job Scheduler] REDIS_HOST não configurado. Job backfill_asaas_provider_net_amount não será agendado.'
+        );
+        return;
+    }
+
+    try {
+        const queue = new Queue(getOutboxQueueName(), { connection });
+        const desiredPattern = '*/1 * * * *';
+        const repeatableJobs = await queue.getRepeatableJobs();
+        const existingJob = repeatableJobs.find((job) => job.name === BACKFILL_ASAAS_PROVIDER_NET_AMOUNT_JOB_NAME);
+
+        if (existingJob) {
+            if (existingJob.pattern === desiredPattern) {
+                log.info('[Job Scheduler] Job backfill_asaas_provider_net_amount já está agendado (a cada 1 min)', {
+                    id: existingJob.id,
+                    pattern: existingJob.pattern,
+                    nextRun: existingJob.next
+                });
+                await queue.close();
+                return;
+            }
+            await queue.removeRepeatableByKey(existingJob.key);
+            log.info(
+                '[Job Scheduler] Job backfill_asaas_provider_net_amount antigo removido (pattern anterior: ' +
+                    existingJob.pattern +
+                    '), reagendando com */1'
+            );
+        }
+
+        await queue.add(
+            BACKFILL_ASAAS_PROVIDER_NET_AMOUNT_JOB_NAME,
+            {
+                type: BACKFILL_ASAAS_PROVIDER_NET_AMOUNT_JOB_NAME,
+                payload: {
+                    limit: 200
+                },
+                aggregateId: 'asaas-net-amount-backfill-scheduler'
+            },
+            {
+                repeat: { pattern: desiredPattern, tz: 'America/Sao_Paulo' },
+                removeOnComplete: true,
+                attempts: 3,
+                backoff: { type: 'exponential', delay: 5000 }
+            }
+        );
+
+        log.info('[Job Scheduler] Job backfill_asaas_provider_net_amount agendado para executar a cada 1 minuto');
+        await queue.close();
+    } catch (error) {
+        log.error('[Job Scheduler] Erro ao agendar job backfill_asaas_provider_net_amount', {
+            error: error instanceof Error ? error.message : String(error)
+        });
+        throw error;
+    }
+}
+
+/**
  * Agenda todos os jobs repetitivos
  */
 export async function scheduleAllJobs(): Promise<void> {
@@ -385,7 +450,8 @@ export async function scheduleAllJobs(): Promise<void> {
         scheduleFetchSchoolOnboardingJob(),
         scheduleChargeDueRemindersJob(),
         scheduleGenerateMonthlyChargesJob(),
-        scheduleBoletoNotificationsJob()
+        scheduleBoletoNotificationsJob(),
+        scheduleBackfillAsaasProviderNetAmountJob()
     ]);
 
     log.info('[Job Scheduler] Todos os jobs foram agendados com sucesso');

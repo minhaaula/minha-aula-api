@@ -1021,6 +1021,37 @@ export function startWorker(): Worker {
                 return;
             }
 
+            if (job.name === 'backfill_asaas_provider_net_amount' || jobType === 'backfill_asaas_provider_net_amount') {
+                log.info('[OUTBOX] Processando job: backfill_asaas_provider_net_amount');
+                await ensureDb();
+                try {
+                    const { runBackfillAsaasProviderNetAmount } = await import('../../cron/backfill-asaas-provider-net-amount.js');
+
+                    // Permite ajustar parâmetros via payload, mantendo defaults do cron.
+                    const limit =
+                        typeof event.payload?.limit === 'number'
+                            ? Math.min(Math.max(event.payload.limit, 1), 2000)
+                            : undefined;
+                    const dryRun = event.payload?.dryRun === true;
+
+                    if (limit !== undefined) {
+                        process.env.CRON_ASAAS_NET_AMOUNT_LIMIT = String(limit);
+                    }
+                    if (dryRun) {
+                        process.env.CRON_ASAAS_NET_AMOUNT_DRY_RUN = 'true';
+                    }
+
+                    const result = await runBackfillAsaasProviderNetAmount();
+                    log.info('[OUTBOX] backfill_asaas_provider_net_amount concluído', result);
+                } catch (err) {
+                    log.error('[OUTBOX] backfill_asaas_provider_net_amount falhou', {
+                        error: err instanceof Error ? err.message : String(err)
+                    });
+                    throw err;
+                }
+                return;
+            }
+
             // default: manter comportamento atual (log)
             log.warn('[OUTBOX] unhandled event', { name: job.name, payload: event.payload });
         },
