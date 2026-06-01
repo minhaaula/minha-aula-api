@@ -12,9 +12,13 @@ import type { CourseRepository } from '../../src/ports/repositories/course.repo'
 import type { CourseClassRepository } from '../../src/ports/repositories/course-class.repo';
 import type { EnrollmentRepository } from '../../src/ports/repositories/enrollment.repo';
 import { AppError, ErrorCode } from '../../src/shared/errors';
+import { EnrollStudent } from '../../src/app/use-cases/enrollments/enroll-student';
+import { User } from '../../src/domain/entities/user';
+import { Email } from '../../src/domain/value-objects/email';
 import {
     assertNonprofitSchoolAllowsClassMonthlyPrice,
-    resolveEffectiveClassMonthlyPriceCents
+    resolveEffectiveClassMonthlyPriceCents,
+    resolveNonprofitTuitionExemptionType
 } from '../../src/shared/nonprofit-school';
 
 const address = PostalAddress.create({
@@ -78,6 +82,13 @@ describe('nonprofit-school rules', () => {
     it('resolveEffectiveClassMonthlyPriceCents usa turma quando informada', () => {
         expect(resolveEffectiveClassMonthlyPriceCents(0, 5000)).toBe(0);
         expect(resolveEffectiveClassMonthlyPriceCents(null, 5000)).toBe(5000);
+    });
+
+    it('resolveNonprofitTuitionExemptionType força NONPROFIT na associação', () => {
+        expect(resolveNonprofitTuitionExemptionType(false, null)).toBeNull();
+        expect(resolveNonprofitTuitionExemptionType(false, 'SCHOLARSHIP')).toBe('SCHOLARSHIP');
+        expect(resolveNonprofitTuitionExemptionType(true, null)).toBe('NONPROFIT');
+        expect(resolveNonprofitTuitionExemptionType(true, 'SCHOLARSHIP')).toBe('NONPROFIT');
     });
 
     it('rejeita mensalidade efetiva acima de zero para associação sem fins lucrativos', () => {
@@ -175,6 +186,71 @@ describe('nonprofit-school rules', () => {
                 paymentDueDay: 5
             })
         ).rejects.toMatchObject({ code: ErrorCode.NONPROFIT_ENROLLMENT_EDIT_FORBIDDEN });
+    });
+
+    it('EnrollStudent matricula sempre isenta (NONPROFIT) em escola sem fins lucrativos', async () => {
+        const school = makeNonprofitSchool();
+        const course = Course.create({
+            id: 'course-1',
+            schoolId: school.id,
+            name: 'Curso',
+            description: null,
+            monthlyPriceCents: 50_000,
+            isActive: true
+        });
+        const courseClass = CourseClass.create({
+            id: 'class-1',
+            courseId: course.id,
+            label: 'Turma A',
+            schedule: [{ day: 'MONDAY', start: '09:00', end: '10:00' }],
+            monthlyPriceCents: null
+        });
+        const owner = User.create({
+            id: 'user-1',
+            fullName: 'Titular',
+            email: Email.create('t@test.com'),
+            phone: '11999999999',
+            cpf: '12345678901',
+            birthDate: new Date('1990-01-01'),
+            address,
+            persona: 'STUDENT' as never,
+            createdAt: new Date()
+        });
+
+        const courses = {
+            findById: async (id: string) => (id === course.id ? course : null)
+        };
+        const classes = {
+            findById: async (id: string) => (id === courseClass.id ? courseClass : null)
+        };
+        const users = { findById: async () => owner };
+        const dependents = { findById: async () => null };
+        const enrollments = {
+            findByClassAndUser: async () => null,
+            findByClassAndDependent: async () => null,
+            save: async () => {}
+        };
+
+        const useCase = new EnrollStudent(
+            courses as never,
+            classes as never,
+            users as never,
+            dependents as never,
+            enrollments as never,
+            new InMemorySchoolRepo(school) as never
+        );
+
+        const result = await useCase.exec({
+            schoolId: school.id,
+            courseId: course.id,
+            classId: courseClass.id,
+            studentUserId: owner.id,
+            discount: 50,
+            discountMonths: 3
+        });
+
+        expect(result.tuitionExempt).toBe(true);
+        expect(result.tuitionExemptionType).toBe('NONPROFIT');
     });
 
     it('UpdateCourseClass bloqueia definir mensalidade em escola sem fins lucrativos', async () => {

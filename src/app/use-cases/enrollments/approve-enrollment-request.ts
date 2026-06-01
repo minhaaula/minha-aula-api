@@ -21,6 +21,8 @@ import type { ApproveEnrollmentRequestInput, ApproveEnrollmentRequestOutput } fr
 import type { IssueEnrollmentFeeBoleto } from '../payments/issue-enrollment-fee-boleto';
 import type { GenerateTuitionPix } from '../payments/generate-tuition-pix';
 import type { NotifyStudentUser } from '../shared/notify-student-user';
+import { resolveNonprofitTuitionExemptionType } from '../../../shared/nonprofit-school';
+import type { TuitionExemptionType } from '../../../domain/value-objects/tuition-exemption-type';
 
 export class ApproveEnrollmentRequest {
     constructor(
@@ -68,15 +70,26 @@ export class ApproveEnrollmentRequest {
                 requestId: request.id
             });
         }
+        const school = this.schools ? await this.schools.findById(request.schoolId) : null;
+        const isNonprofit = school?.isNonprofitAssociation === true;
+        const tuitionExemptionType = resolveNonprofitTuitionExemptionType(
+            isNonprofit,
+            request.tuitionExemptionType
+        );
+
         // Preço da mensalidade pode estar no curso ou na turma (ignorado quando isento)
-        const effectiveMonthlyPriceCents = request.isTuitionExempt
+        const effectiveMonthlyPriceCents = tuitionExemptionType
             ? null
             : (course.monthlyPriceCents ?? courseClass.monthlyPriceCents);
 
-        const enrollment = this.createEnrollmentFromRequest(request, effectiveMonthlyPriceCents);
+        const enrollment = this.createEnrollmentFromRequest(request, effectiveMonthlyPriceCents, {
+            tuitionExemptionType,
+            discountCents: isNonprofit ? null : request.discountCents,
+            discountMonths: isNonprofit ? null : request.discountMonths
+        });
 
         // Criar cobrança de taxa de matrícula se aplicável
-        const pendingCharge = await this.buildEnrollmentCharge(request);
+        const pendingCharge = isNonprofit ? null : await this.buildEnrollmentCharge(request);
 
         // Salvar matrícula e cobrança
         await this.enrollments.save(enrollment);
@@ -118,7 +131,7 @@ export class ApproveEnrollmentRequest {
 
         // Gerar primeira mensalidade sempre que houver valor (não gera para aluno isento)
         let firstTuitionChargeId: string | null = null;
-        if (!request.isTuitionExempt && effectiveMonthlyPriceCents && effectiveMonthlyPriceCents > 0) {
+        if (!tuitionExemptionType && effectiveMonthlyPriceCents && effectiveMonthlyPriceCents > 0) {
             try {
                 const firstTuitionCharge = await this.createFirstTuitionCharge(
                     enrollment,
@@ -266,7 +279,15 @@ export class ApproveEnrollmentRequest {
         }
     }
 
-    private createEnrollmentFromRequest(request: EnrollmentRequest, fullAmountCents: number | null): Enrollment {
+    private createEnrollmentFromRequest(
+        request: EnrollmentRequest,
+        fullAmountCents: number | null,
+        financials: {
+            tuitionExemptionType: TuitionExemptionType | null;
+            discountCents: number | null;
+            discountMonths: number | null;
+        }
+    ): Enrollment {
         const enrollmentId = Uuid();
         const paymentDueDay = getUtcDay(new Date(request.firstMonthlyPaymentDate));
 
@@ -278,9 +299,9 @@ export class ApproveEnrollmentRequest {
                 dependentId: request.requestedForDependentId,
                 fullAmountCents,
                 paymentDueDay,
-                tuitionExemptionType: request.tuitionExemptionType,
-                discountCents: request.discountCents,
-                discountMonths: request.discountMonths
+                tuitionExemptionType: financials.tuitionExemptionType,
+                discountCents: financials.discountCents,
+                discountMonths: financials.discountMonths
             });
         }
 
@@ -291,9 +312,9 @@ export class ApproveEnrollmentRequest {
             studentUserId: request.requestedForUserId,
             fullAmountCents,
             paymentDueDay,
-            tuitionExemptionType: request.tuitionExemptionType,
-            discountCents: request.discountCents,
-            discountMonths: request.discountMonths
+            tuitionExemptionType: financials.tuitionExemptionType,
+            discountCents: financials.discountCents,
+            discountMonths: financials.discountMonths
         });
     }
 

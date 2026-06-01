@@ -12,6 +12,7 @@ import { equalUuid } from '../../../shared/normalize-uuid';
 import { AppError, ErrorCode } from '../../../shared/errors';
 import { normalizeDateString } from '../../utils/date.utils';
 import type { TuitionExemptionType } from '../../../domain/value-objects/tuition-exemption-type';
+import { resolveNonprofitTuitionExemptionType } from '../../../shared/nonprofit-school';
 import type { CreateEnrollmentRequestInput } from '../../types/enrollment.types';
 import type { NotifyStudentUser } from '../shared/notify-student-user';
 
@@ -49,10 +50,22 @@ export class CreateEnrollmentRequest {
         // Verificar se já existe matrícula ativa/pendente
         await this.ensureNoExistingEnrollment(courseClass.id, user.id, dependentId);
 
-        // Normalizar valores monetários
-        const discountCents = this.normalizeAmount(input.discount, 'discount');
-        const discountMonths = this.normalizeDiscountMonths(input.discountMonths, discountCents);
-        const enrollmentFeeCents = this.normalizeAmount(input.enrollmentFeeAmount, 'enrollment fee');
+        const isNonprofit = school.isNonprofitAssociation;
+        const tuitionExemptionType = resolveNonprofitTuitionExemptionType(
+            isNonprofit,
+            input.tuitionExemptionType
+        );
+
+        // Normalizar valores monetários (sem fins lucrativos: sem taxa nem desconto)
+        const discountCents = isNonprofit
+            ? null
+            : this.normalizeAmount(input.discount, 'discount');
+        const discountMonths = isNonprofit
+            ? null
+            : this.normalizeDiscountMonths(input.discountMonths, discountCents);
+        const enrollmentFeeCents = isNonprofit
+            ? null
+            : this.normalizeAmount(input.enrollmentFeeAmount, 'enrollment fee');
 
         // Normalizar datas
         const enrollmentFeeDueDate = this.normalizeEnrollmentFeeDueDate(
@@ -61,7 +74,7 @@ export class CreateEnrollmentRequest {
         );
         const firstMonthlyPaymentDate = this.resolveFirstMonthlyPaymentDate(
             input.firstMonthlyPaymentDate,
-            input.tuitionExemptionType ?? null
+            tuitionExemptionType
         );
 
         if (this.requests.findPendingByCourseClassAndTarget) {
@@ -91,7 +104,7 @@ export class CreateEnrollmentRequest {
             enrollmentFeeCents,
             enrollmentFeeDueDate,
             firstMonthlyPaymentDate,
-            tuitionExemptionType: input.tuitionExemptionType ?? null
+            tuitionExemptionType
         });
 
         await this.requests.save(request);

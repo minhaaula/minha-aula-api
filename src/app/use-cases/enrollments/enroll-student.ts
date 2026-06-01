@@ -13,6 +13,7 @@ import type { NotifyStudentUser } from '../shared/notify-student-user';
 import { Enrollment } from '../../../domain/entities/enrollment';
 import type { TuitionExemptionType } from '../../../domain/value-objects/tuition-exemption-type';
 import { presentTuitionExemption } from '../../presenters/tuition-exemption.presenter';
+import { resolveNonprofitTuitionExemptionType } from '../../../shared/nonprofit-school';
 
 export class EnrollStudent {
     constructor(
@@ -48,7 +49,12 @@ export class EnrollStudent {
         // Verificar se usuário já está matriculado (se não for dependente)
         await this.ensureNoExistingEnrollment(courseClass.id, owner.id, dependentId);
 
-        const tuitionExemptionType = input.tuitionExemptionType ?? null;
+        const school = this.schools ? await this.schools.findById(course.schoolId) : null;
+        const isNonprofit = school?.isNonprofitAssociation === true;
+        const tuitionExemptionType = resolveNonprofitTuitionExemptionType(
+            isNonprofit,
+            input.tuitionExemptionType
+        );
         const monthlyPriceCents = tuitionExemptionType ? null : course.monthlyPriceCents;
         const discountCents =
             tuitionExemptionType || !input.discount
@@ -70,10 +76,8 @@ export class EnrollStudent {
         await this.enrollments.save(enrollment);
 
         // Enfileira email de confirmação de matrícula (processado pelo worker quando o módulo admin está ativo)
-        if (this.outbox && this.schools) {
-            const school = await this.schools.findById(schoolId);
-            if (school) {
-                const studentName = dependentId
+        if (this.outbox && this.schools && school) {
+            const studentName = dependentId
                     ? ((await this.dependents.findById(dependentId))?.fullName ?? owner.fullName)
                     : owner.fullName;
                 const to = owner.email.value;
@@ -108,7 +112,6 @@ export class EnrollStudent {
                         })
                         .catch(() => {});
                 }
-            }
         }
 
         const exemption = presentTuitionExemption(enrollment.tuitionExemptionType);

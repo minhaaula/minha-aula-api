@@ -1,3 +1,4 @@
+import type { TuitionExemptionType } from '../domain/value-objects/tuition-exemption-type';
 import { AppError, ErrorCode } from './errors';
 
 /** Mensalidade efetiva da turma: valor da turma ou, se ausente, do curso. */
@@ -38,4 +39,18 @@ export function assertNonprofitSchoolAllowsEnrollmentEdit(isNonprofitAssociation
         return;
     }
     throw AppError.fromCode(ErrorCode.NONPROFIT_ENROLLMENT_EDIT_FORBIDDEN);
+}
+
+/**
+ * Escola sem fins lucrativos: matrícula sempre isenta (`NONPROFIT`), sem cobrança de mensalidade.
+ * Ignora tipo solicitado pelo cliente — não é possível matricular como pagante.
+ */
+export function resolveNonprofitTuitionExemptionType(
+    isNonprofitAssociation: boolean,
+    requested: TuitionExemptionType | null | undefined
+): TuitionExemptionType | null {
+    if (!isNonprofitAssociation) {
+        return requested ?? null;
+    }
+    return 'NONPROFIT';
 }
