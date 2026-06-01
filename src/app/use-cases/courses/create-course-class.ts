@@ -1,14 +1,17 @@
 import { CourseRepository } from '../../../ports/repositories/course.repo';
 import { CourseClassRepository } from '../../../ports/repositories/course-class.repo';
+import { SchoolRepository } from '../../../ports/repositories/school.repo';
 import { CourseClass, type CourseClassScheduleEntry } from '../../../domain/entities/course-class';
 import { Uuid } from '../../../shared/uuid';
 import { equalUuid } from '../../../shared/normalize-uuid';
 import { AppError, ErrorCode } from '../../../shared/errors';
+import { assertNonprofitSchoolAllowsClassMonthlyPrice } from '../../../shared/nonprofit-school';
 
 export class CreateCourseClass {
     constructor(
         private readonly courses: CourseRepository,
-        private readonly classes: CourseClassRepository
+        private readonly classes: CourseClassRepository,
+        private readonly schools: SchoolRepository
     ) {}
 
     async exec(input: {
@@ -43,13 +46,25 @@ export class CreateCourseClass {
             throw AppError.fromCode(ErrorCode.ALREADY_EXISTS, { courseId: course.id, label: input.label });
         }
 
+        const school = await this.schools.findById(course.schoolId);
+        if (!school) {
+            throw AppError.fromCode(ErrorCode.SCHOOL_NOT_FOUND, { schoolId: course.schoolId });
+        }
+
+        const classMonthlyPriceCents = input.monthlyPriceCents ?? null;
+        assertNonprofitSchoolAllowsClassMonthlyPrice(
+            school.isNonprofitAssociation,
+            classMonthlyPriceCents,
+            course.monthlyPriceCents
+        );
+
         const courseClass = CourseClass.create({
             id: Uuid(),
             courseId: course.id,
             label,
             schedule: input.classes,
             capacity: input.capacity ?? null,
-            monthlyPriceCents: input.monthlyPriceCents ?? null,
+            monthlyPriceCents: classMonthlyPriceCents,
             classType: input.classType ?? 'PRESENCIAL'
         });
 

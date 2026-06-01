@@ -84,6 +84,10 @@ export enum ErrorCode {
     SCHOOL_OWNER_STUDENT_PROFILE_FIELD_LOCKED = 'SCHOOL_OWNER_STUDENT_PROFILE_FIELD_LOCKED',
     /** Persona SCHOOL não pode alterar cadastro via rotas do app aluno — usar Painel da Escola. */
     SCHOOL_PERSONA_STUDENT_PROFILE_UPDATE_FORBIDDEN = 'SCHOOL_PERSONA_STUDENT_PROFILE_UPDATE_FORBIDDEN',
+    /** Turma/curso com mensalidade acima de zero em escola sem fins lucrativos. */
+    NONPROFIT_CLASS_PRICE_NOT_ALLOWED = 'NONPROFIT_CLASS_PRICE_NOT_ALLOWED',
+    /** Edição financeira de matrícula bloqueada para escola sem fins lucrativos. */
+    NONPROFIT_ENROLLMENT_EDIT_FORBIDDEN = 'NONPROFIT_ENROLLMENT_EDIT_FORBIDDEN',
     
     // Sistema (7000-7999)
     INTERNAL_ERROR = 'INTERNAL_ERROR',
@@ -172,6 +176,10 @@ export const ErrorMessages: Record<ErrorCode, string> = {
         'Usuários que também são donos de escola, devem realizar alteração de dados pelo Painel da Escola.',
     [ErrorCode.SCHOOL_PERSONA_STUDENT_PROFILE_UPDATE_FORBIDDEN]:
         'Usuários que também são donos de escola, devem realizar alteração de dados pelo Painel da Escola.',
+    [ErrorCode.NONPROFIT_CLASS_PRICE_NOT_ALLOWED]:
+        'Escolas sem fins lucrativos não podem cadastrar turmas com valor de mensalidade acima de R$ 0,00',
+    [ErrorCode.NONPROFIT_ENROLLMENT_EDIT_FORBIDDEN]:
+        'Escolas sem fins lucrativos não permitem editar matrículas',
     
     // Sistema
     [ErrorCode.INTERNAL_ERROR]: 'Erro interno do servidor',

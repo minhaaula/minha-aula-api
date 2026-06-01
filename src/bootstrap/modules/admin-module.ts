@@ -62,6 +62,7 @@ import { AdminMarkInvoicePaid } from '../../app/use-cases/admin/admin-mark-invoi
 import { AdminMarkChargePaid } from '../../app/use-cases/admin/admin-mark-charge-paid';
 import { AdminDeleteCharge } from '../../app/use-cases/admin/admin-delete-charge';
 import { UnenrollStudentFromClass } from '../../app/use-cases/enrollments/unenroll-student-from-class';
+import { UpdateSchoolEnrollment } from '../../app/use-cases/schools/update-school-enrollment';
 import { SyncSchoolOnboardingDocuments } from '../../app/use-cases/schools/sync-school-onboarding-documents';
 import { AdminUploadSchoolOnboardingDocument } from '../../app/use-cases/admin/admin-upload-school-onboarding-document';
 import { GetSchoolPendingDocuments } from '../../app/use-cases/schools/get-school-pending-documents';
@@ -251,6 +252,12 @@ export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext)
         deps.classesRepo,
         deps.enrollmentsRepo
     );
+    const updateSchoolEnrollment = new UpdateSchoolEnrollment(
+        deps.coursesRepo,
+        deps.classesRepo,
+        deps.enrollmentsRepo,
+        deps.schoolsRepo
+    );
 
     const syncSchoolOnboardingDocuments = deps.asaasProvider
         ? new SyncSchoolOnboardingDocuments(deps.schoolsRepo, deps.asaasProvider)
@@ -342,6 +349,7 @@ export function buildAdminModule(deps: AdminModuleDeps, ctx: ModuleSetupContext)
         adminMarkChargePaid,
         adminDeleteCharge,
         unenrollStudentFromClass,
+        updateSchoolEnrollment,
         syncSchoolOnboardingDocuments,
         adminUploadSchoolOnboardingDocument,
         getSchoolPendingDocuments,

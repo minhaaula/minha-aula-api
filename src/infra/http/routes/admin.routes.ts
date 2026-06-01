@@ -45,6 +45,8 @@ import type { AdminMarkInvoicePaid } from '../../../app/use-cases/admin/admin-ma
 import type { AdminMarkChargePaid } from '../../../app/use-cases/admin/admin-mark-charge-paid';
 import type { AdminDeleteCharge } from '../../../app/use-cases/admin/admin-delete-charge';
 import type { UnenrollStudentFromClass } from '../../../app/use-cases/enrollments/unenroll-student-from-class';
+import type { UpdateSchoolEnrollment } from '../../../app/use-cases/schools/update-school-enrollment';
+import { updateSchoolEnrollmentSchema } from '../validators/update-school-enrollment-schemas';
 import type { SyncSchoolOnboardingDocuments } from '../../../app/use-cases/schools/sync-school-onboarding-documents';
 import type { AdminUploadSchoolOnboardingDocument } from '../../../app/use-cases/admin/admin-upload-school-onboarding-document';
 import type { GetSchoolPendingDocuments } from '../../../app/use-cases/schools/get-school-pending-documents';
@@ -109,6 +111,7 @@ type AdminRouterDeps = {
     adminMarkChargePaid?: AdminMarkChargePaid;
     adminDeleteCharge?: AdminDeleteCharge;
     unenrollStudentFromClass?: UnenrollStudentFromClass;
+    updateSchoolEnrollment?: UpdateSchoolEnrollment;
     syncSchoolOnboardingDocuments?: SyncSchoolOnboardingDocuments;
     adminUploadSchoolOnboardingDocument?: AdminUploadSchoolOnboardingDocument;
     getSchoolPendingDocuments?: GetSchoolPendingDocuments;
@@ -170,6 +173,7 @@ export function adminRouter({
     adminMarkChargePaid,
     adminDeleteCharge,
     unenrollStudentFromClass,
+    updateSchoolEnrollment,
     syncSchoolOnboardingDocuments,
     adminUploadSchoolOnboardingDocument,
     getSchoolPendingDocuments,
@@ -508,31 +512,63 @@ export function adminRouter({
         }));
     }
 
-    if (unenrollStudentFromClass) {
-        const adminUnenrollParamsSchema = z.object({
+    if (unenrollStudentFromClass || updateSchoolEnrollment) {
+        const adminEnrollmentParamsSchema = z.object({
             schoolId: z.string().uuid(),
             courseId: z.string().uuid(),
             classId: z.string().uuid(),
             enrollmentId: z.string().uuid()
         });
 
-        router.delete(
-            '/schools/:schoolId/courses/:courseId/classes/:classId/enrollments/:enrollmentId',
-            requireAuth,
-            requireAdminPersona,
-            asyncHandler(async (req, res) => {
-                const { schoolId, courseId, classId, enrollmentId } = adminUnenrollParamsSchema.parse(req.params);
+        if (updateSchoolEnrollment) {
+            router.patch(
+                '/schools/:schoolId/courses/:courseId/classes/:classId/enrollments/:enrollmentId',
+                requireAuth,
+                requireAdminPersona,
+                asyncHandler(async (req, res) => {
+                    const { schoolId, courseId, classId, enrollmentId } =
+                        adminEnrollmentParamsSchema.parse(req.params);
+                    const data = updateSchoolEnrollmentSchema.parse(req.body ?? {});
 
-                const result = await unenrollStudentFromClass.exec({
-                    schoolId,
-                    courseId,
-                    classId,
-                    enrollmentId
-                });
+                    const result = await updateSchoolEnrollment.exec({
+                        schoolId,
+                        courseId,
+                        classId,
+                        enrollmentId,
+                        paymentDueDay: data.paymentDueDay,
+                        firstMonthlyPaymentDate: data.firstMonthlyPaymentDate,
+                        discountCents: data.clearDiscount ? null : data.discountCents,
+                        discountMonths: data.clearDiscount ? null : data.discountMonths,
+                        clearDiscount: data.clearDiscount,
+                        tuitionExempt: data.tuitionExempt,
+                        tuitionExemptionType: data.tuitionExemptionType ?? null
+                    });
 
-                res.json(result);
-            })
-        );
+                    res.json(result);
+                })
+            );
+        }
+
+        if (unenrollStudentFromClass) {
+            router.delete(
+                '/schools/:schoolId/courses/:courseId/classes/:classId/enrollments/:enrollmentId',
+                requireAuth,
+                requireAdminPersona,
+                asyncHandler(async (req, res) => {
+                    const { schoolId, courseId, classId, enrollmentId } =
+                        adminEnrollmentParamsSchema.parse(req.params);
+
+                    const result = await unenrollStudentFromClass.exec({
+                        schoolId,
+                        courseId,
+                        classId,
+                        enrollmentId
+                    });
+
+                    res.json(result);
+                })
+            );
+        }
     }
 
     // Cursos do aluno e dos dependentes (todas as escolas) – apenas studentId

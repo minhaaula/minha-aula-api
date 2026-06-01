@@ -864,7 +864,7 @@ describe('School creation flow', () => {
         schools.seed(school);
         courses.seed(course);
 
-        const useCase = new CreateCourseClass(courses, courseClasses);
+        const useCase = new CreateCourseClass(courses, courseClasses, schools);
         const result = await useCase.exec({
             schoolId: school.id,
             courseId: course.id,
@@ -906,7 +906,19 @@ describe('School creation flow', () => {
         });
         courses.seed(course);
 
-        const useCase = new CreateCourseClass(courses, courseClasses);
+        const schools = new InMemorySchoolRepository();
+        schools.seed(
+            School.create({
+                id: 'school-2',
+                name: 'Escola B',
+                email: 'b@test.com',
+                phone: '11999999999',
+                cnpj: '55667788000111',
+                createdAt: new Date('2024-01-01')
+            })
+        );
+
+        const useCase = new CreateCourseClass(courses, courseClasses, schools);
         const result = await useCase.exec({
             schoolId: 'SCHOOL-2',
             courseId: course.id,

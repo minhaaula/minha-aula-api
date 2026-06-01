@@ -1,7 +1,9 @@
 import { CourseRepository } from '../../../ports/repositories/course.repo';
 import { CourseClassRepository } from '../../../ports/repositories/course-class.repo';
 import { EnrollmentRepository } from '../../../ports/repositories/enrollment.repo';
+import { SchoolRepository } from '../../../ports/repositories/school.repo';
 import { AppError, ErrorCode } from '../../../shared/errors';
+import { assertNonprofitSchoolAllowsEnrollmentEdit } from '../../../shared/nonprofit-school';
 import { equalUuid } from '../../../shared/normalize-uuid';
 import { getUtcDay } from '../../../shared/date-utils';
 import { presentTuitionExemption } from '../../presenters/tuition-exemption.presenter';
@@ -14,7 +16,8 @@ export class UpdateSchoolEnrollment {
     constructor(
         private readonly courses: CourseRepository,
         private readonly classes: CourseClassRepository,
-        private readonly enrollments: EnrollmentRepository
+        private readonly enrollments: EnrollmentRepository,
+        private readonly schools: SchoolRepository
     ) {}
 
     async exec(input: UpdateSchoolEnrollmentInput): Promise<UpdateSchoolEnrollmentOutput> {
@@ -31,6 +34,12 @@ export class UpdateSchoolEnrollment {
         if (!course || !equalUuid(course.schoolId, schoolId)) {
             throw AppError.fromCode(ErrorCode.COURSE_NOT_FOUND, { courseId, schoolId });
         }
+
+        const school = await this.schools.findById(schoolId);
+        if (!school) {
+            throw AppError.fromCode(ErrorCode.SCHOOL_NOT_FOUND, { schoolId });
+        }
+        assertNonprofitSchoolAllowsEnrollmentEdit(school.isNonprofitAssociation);
 
         const courseClass = await this.classes.findById(classId);
         if (!courseClass || !equalUuid(courseClass.courseId, courseId)) {

@@ -199,8 +199,8 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
         deps.tokenProvider
     );
     const createCourse = new CreateCourse(deps.schoolsRepo, deps.coursesRepo);
-    const createCourseClass = new CreateCourseClass(deps.coursesRepo, deps.classesRepo);
-    const updateCourseClass = new UpdateCourseClass(deps.coursesRepo, deps.classesRepo);
+    const createCourseClass = new CreateCourseClass(deps.coursesRepo, deps.classesRepo, deps.schoolsRepo);
+    const updateCourseClass = new UpdateCourseClass(deps.coursesRepo, deps.classesRepo, deps.schoolsRepo);
     const deleteCourse = new DeleteCourse(deps.coursesRepo, deps.classesRepo);
     const deleteCourseClass = new DeleteCourseClass(deps.coursesRepo, deps.classesRepo, deps.enrollmentsRepo, deps.enrollmentRequestsRepo);
     const listSchoolCourses = new ListSchoolCourses(deps.coursesRepo, deps.categoriesRepo);
@@ -339,7 +339,8 @@ export function buildSchoolsModule(deps: SchoolsModuleDeps, ctx: ModuleSetupCont
     const updateSchoolEnrollment = new UpdateSchoolEnrollment(
         deps.coursesRepo,
         deps.classesRepo,
-        deps.enrollmentsRepo
+        deps.enrollmentsRepo,
+        deps.schoolsRepo
     );
     const listEnrollmentRequests = new ListEnrollmentRequests(deps.enrollmentRequestsRepo);
     const createEnrollmentRequest = new CreateEnrollmentRequest(

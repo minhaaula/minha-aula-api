@@ -6,6 +6,8 @@ import { Enrollment } from '../../src/domain/entities/enrollment';
 import { CourseRepository } from '../../src/ports/repositories/course.repo';
 import { CourseClassRepository } from '../../src/ports/repositories/course-class.repo';
 import { EnrollmentRepository } from '../../src/ports/repositories/enrollment.repo';
+import { SchoolRepository } from '../../src/ports/repositories/school.repo';
+import { School } from '../../src/domain/entities/school';
 
 class InMemoryCourseRepo implements CourseRepository {
     constructor(private readonly course: Course) {}
@@ -33,6 +35,23 @@ class InMemoryClassRepo implements CourseClassRepository {
         return [this.cls];
     }
     async save() {}
+}
+
+class InMemorySchoolRepo implements Pick<SchoolRepository, 'findById'> {
+    async findById(id: string) {
+        if (id !== 'school-1') return null;
+        return School.create({
+            id: 'school-1',
+            name: 'Escola',
+            email: 'school@test.com',
+            phone: '11999999999',
+            ownerName: 'Owner',
+            ownerCpf: '12345678909',
+            ownerEmail: 'owner@test.com',
+            ownerWhatsapp: '11988887777',
+            isNonprofitAssociation: false
+        });
+    }
 }
 
 class InMemoryEnrollmentRepo implements EnrollmentRepository {
@@ -98,7 +117,8 @@ describe('UpdateSchoolEnrollment', () => {
         const useCase = new UpdateSchoolEnrollment(
             new InMemoryCourseRepo(makeCourse()),
             new InMemoryClassRepo(makeClass()),
-            new InMemoryEnrollmentRepo(enrollment)
+            new InMemoryEnrollmentRepo(enrollment),
+            new InMemorySchoolRepo() as SchoolRepository
         );
 
         const result = await useCase.exec({
@@ -122,7 +142,8 @@ describe('UpdateSchoolEnrollment', () => {
         const useCase = new UpdateSchoolEnrollment(
             new InMemoryCourseRepo(makeCourse()),
             new InMemoryClassRepo(makeClass()),
-            repo
+            repo,
+            new InMemorySchoolRepo() as SchoolRepository
         );
 
         await useCase.exec({
@@ -143,7 +164,8 @@ describe('UpdateSchoolEnrollment', () => {
         const useCase = new UpdateSchoolEnrollment(
             new InMemoryCourseRepo(makeCourse()),
             new InMemoryClassRepo(makeClass()),
-            repo
+            repo,
+            new InMemorySchoolRepo() as SchoolRepository
         );
 
         const exempt = await useCase.exec({
