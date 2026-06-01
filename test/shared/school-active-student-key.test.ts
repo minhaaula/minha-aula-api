@@ -48,6 +48,19 @@ describe('resolveSchoolActiveStudentKey', () => {
         ).toBeNull();
     });
 
+    it('DEPENDENT com dependent_id órfão não entra na contagem', () => {
+        expect(
+            resolveSchoolActiveStudentKey({
+                studentType: 'DEPENDENT',
+                studentUserId: null,
+                ownerUserId: 'o1',
+                dependentId: 'd-missing',
+                dependentDeletedAt: null,
+                dependentExists: false
+            })
+        ).toBeNull();
+    });
+
     it('DEPENDENT sem dependent_id conta como titular (mesma regra da listagem)', () => {
         expect(
             resolveSchoolActiveStudentKey({

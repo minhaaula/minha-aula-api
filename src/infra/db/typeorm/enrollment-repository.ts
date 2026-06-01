@@ -234,10 +234,16 @@ export class EnrollmentRepositoryAdapter implements EnrollmentRepository {
     private static readonly ACTIVE_STUDENT_KEY_SQL = `CASE
         WHEN enrollment.student_type = 'DEPENDENT'
             AND enrollment.dependent_id IS NOT NULL
+            AND dep.id IS NOT NULL
             AND dep.deleted_at IS NULL
             THEN CONCAT('dep:', enrollment.dependent_id)
         ELSE CONCAT('user:', COALESCE(enrollment.student_user_id, enrollment.owner_user_id))
     END`;
+
+    /** Mesma regra de `ListSchoolStudents`: DEPENDENT exige dependente existente e não excluído. */
+    private static readonly ACTIVE_SCHOOL_STUDENT_WHERE = `(enrollment.student_type != 'DEPENDENT'
+        OR enrollment.dependent_id IS NULL
+        OR (dep.id IS NOT NULL AND dep.deleted_at IS NULL))`;
 
     private applyActiveSchoolStudentCountFilters(
         qb: ReturnType<typeof this.repo.createQueryBuilder>
@@ -250,11 +256,11 @@ export class EnrollmentRepositoryAdapter implements EnrollmentRepository {
             .andWhere('course.isActive = :courseActive', { courseActive: true })
             .andWhere('course.deletedAt IS NULL')
             .andWhere('class.isActive = :classActive', { classActive: true })
-            .andWhere(
-                `(enrollment.student_type != 'DEPENDENT'
-                    OR enrollment.dependent_id IS NULL
-                    OR dep.deleted_at IS NULL)`
-            );
+            .andWhere(EnrollmentRepositoryAdapter.ACTIVE_SCHOOL_STUDENT_WHERE);
+    }
+
+    private static readRawSchoolId(row: { schoolId?: string; school_id?: string }): string {
+        return (row.schoolId ?? row.school_id ?? '').trim();
     }
 
     async countActiveBySchoolId(schoolId: string): Promise<number> {
@@ -291,10 +297,14 @@ export class EnrollmentRepositoryAdapter implements EnrollmentRepository {
             )
             .where('course.schoolId IN (:...ids)', { ids })
             .groupBy('course.schoolId')
-            .getRawMany<{ schoolId: string; cnt: string }>();
+            .getRawMany<{ schoolId?: string; school_id?: string; cnt: string }>();
 
         for (const row of rows) {
-            map.set(row.schoolId, Number(row.cnt ?? 0));
+            const schoolId = EnrollmentRepositoryAdapter.readRawSchoolId(row);
+            if (!schoolId) {
+                continue;
+            }
+            map.set(schoolId, Number(row.cnt ?? 0));
         }
         return map;
     }
